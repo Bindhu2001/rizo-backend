@@ -8,6 +8,11 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
+// Root route to check if server is live
+app.get('/', (req, res) => {
+  res.send('<h1>Rizo Backend Server is Running!</h1><p>API endpoints are available at /api/...</p>');
+});
+
 // Create connection pool - uses env vars on Railway, falls back to local defaults
 const pool = mysql.createPool({
   host: process.env.MYSQLHOST || 'localhost',
@@ -56,6 +61,7 @@ const formatClientTime = (clientTimeStr) => {
 app.post('/api/attendance/punch', async (req, res) => {
   try {
     const { userId, type, latitude, longitude, clientPunchTime } = req.body;
+    console.log(`[PUNCH] User: ${userId}, Type: ${type}, Time: ${clientPunchTime}`);
     
     if (latitude == null || longitude == null) {
       return res.status(400).send('Location data is required.');
@@ -118,38 +124,44 @@ app.get('/api/attendance/status/:userId', async (req, res) => {
       return res.status(404).send('User not found');
     }
 
-    // Get today's history in local date (based on JS)
-    const today = new Date().toISOString().slice(0, 10);
-    const [todayHistory] = await pool.query(
-      `SELECT * FROM attendance 
-       WHERE user_id = ? AND DATE(client_punch_time) = ? 
-       ORDER BY client_punch_time ASC`,
-      [userId, today]
+    // Get ALL history for this user to find the latest state reliably
+    const [latestPunches] = await pool.query(
+      `SELECT type, client_punch_time FROM attendance 
+       WHERE user_id = ? 
+       ORDER BY client_punch_time DESC LIMIT 1`,
+      [userId]
     );
 
     let lastType = 'NONE';
     let lastTime = null;
 
-    if (todayHistory.length > 0) {
-        const lastPunch = todayHistory[todayHistory.length - 1];
-        lastType = lastPunch.type;
-        lastTime = lastPunch.client_punch_time;
+    if (latestPunches.length > 0) {
+        lastType = latestPunches[0].type;
+        lastTime = latestPunches[0].client_punch_time;
     }
 
-    // Map DB fields to camelCase to match frontend original logic
+    console.log(`[STATUS] User: ${userId}, Latest Type in DB: ${lastType}`);
+
+    // Still get today's history for the list view, but handle date more carefully
+    // Using UTC date for consistency between server and client
+    const today = new Date().toISOString().slice(0, 10);
+    const [todayHistory] = await pool.query(
+      `SELECT * FROM attendance 
+       WHERE user_id = ? AND DATE(client_punch_time) = ? 
+       ORDER BY client_punch_time DESC`,
+       [userId, today]
+    );
+
     const formattedHistory = todayHistory.map(row => ({
       id: row.id,
       userId: row.user_id,
       type: row.type,
       latitude: row.latitude,
       longitude: row.longitude,
-      punchTime: row.client_punch_time.toISOString(), // Use raw Date object toISOString
-      clientPunchTime: row.client_punch_time.toISOString(),
+      punchTime: row.client_punch_time ? row.client_punch_time.toISOString() : null, 
+      clientPunchTime: row.client_punch_time ? row.client_punch_time.toISOString() : null,
       syncStatus: row.sync_status
     }));
-
-    // Sorting decending for history inside frontend usually
-    formattedHistory.reverse();
 
     res.json({
       lastType,
