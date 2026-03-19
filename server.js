@@ -13,18 +13,21 @@ app.get('/', (req, res) => {
   res.send('<h1>Rizo Backend Server is Running!</h1><p>API endpoints are available at /api/...</p>');
 });
 
-// Create connection pool - uses env vars on Railway, falls back to local defaults
-const pool = mysql.createPool({
+// Database setup - uses Railway env vars or falls back to local defaults
+const dbConfig = process.env.MYSQL_URL || {
   host: process.env.MYSQLHOST || 'localhost',
   user: process.env.MYSQLUSER || 'root',
   password: process.env.MYSQLPASSWORD || '',
   database: process.env.MYSQLDATABASE || 'rizo_mobile',
-  port: process.env.MYSQLPORT || 3306,
+  port: parseInt(process.env.MYSQLPORT) || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  timezone: '+00:00'
-});
+  ssl: process.env.MYSQL_URL ? { rejectUnauthorized: false } : null
+};
+
+console.log(`[INIT] Cloud Database detected: ${process.env.MYSQL_URL ? 'YES' : 'Local envs'}`);
+const pool = mysql.createPool(dbConfig);
 
 // Mock office location
 const OFFICE_LOCATION = {
