@@ -104,6 +104,16 @@ app.post('/api/attendance/punch', async (req, res) => {
       return res.status(400).send('Location data is required.');
     }
 
+    // CHECK FOR PREVIOUS TYPE - PREVENT DUPLICATES
+    const [lastPunches] = await pool.query(
+      'SELECT type FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 1',
+      [userId]
+    );
+    
+    if (lastPunches.length > 0 && lastPunches[0].type === type) {
+      return res.status(400).send(`Already Punched ${type}.`);
+    }
+
     const distance = haversineDistance(latitude, longitude, OFFICE_LOCATION.latitude, OFFICE_LOCATION.longitude);
     if (distance > OFFICE_LOCATION.radius_metres) {
       return res.status(403).send('Outside office premises.');
@@ -136,9 +146,20 @@ app.post('/api/attendance/sync-offline', async (req, res) => {
     for (const punch of punches) {
       const { userId, type, latitude, longitude, clientPunchTime } = punch;
       const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
+      
       if (users.length > 0) {
+        // PREVENT DUPLICATES DURING SYNC
+        const [lastPunches] = await pool.query(
+          'SELECT type FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 1',
+          [userId]
+        );
+        
+        if (lastPunches.length > 0 && lastPunches[0].type === type) {
+           console.log(`[SYNC SKIP] Skipping duplicate punch type ${type} for user ${userId}`);
+           continue; 
+        }
+
         const formattedTime = formatClientTime(clientPunchTime);
-        // Sync to single attendance table, set sync_status = 1 (It was 0 in local JS, now 1 in remote DB)
         await pool.query(
           'INSERT INTO attendance (user_id, type, latitude, longitude, client_punch_time, sync_status) VALUES (?, ?, ?, ?, ?, 1)',
           [userId, type, latitude, longitude, formattedTime]
