@@ -28,6 +28,40 @@ const dbConfig = process.env.MYSQL_URL || {
 
 console.log(`[INIT] Cloud Database detected: ${process.env.MYSQL_URL ? 'YES' : 'Local envs'}`);
 const pool = mysql.createPool(dbConfig);
+// Automatic Table Creation
+const initializeDatabase = async () => {
+  try {
+    console.log('[DB] Verifying tables...');
+    // Create users table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create attendance table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS attendance (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        type ENUM('IN', 'OUT') NOT NULL,
+        latitude DECIMAL(10, 8),
+        longitude DECIMAL(11, 8),
+        client_punch_time DATETIME NOT NULL,
+        sync_status TINYINT DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+    console.log('✅ Database tables verified/created');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message);
+  }
+};
 
 // Mock office location
 const OFFICE_LOCATION = {
@@ -252,6 +286,8 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend server running on port ${PORT}`);
+initializeDatabase().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Backend server running on port ${PORT}`);
+  });
 });
