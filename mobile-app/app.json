@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "Rizo",
+    "slug": "rizo-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.rizo.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/logo.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "df684a97-24e9-442d-81bc-d777f776a570"
+      }
+    },
+    "owner": "bindhu_13",
+    "plugins": [
+      "expo-sqlite"
+    ]
+  }
+}
