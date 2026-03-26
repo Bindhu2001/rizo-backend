@@ -28,11 +28,13 @@ const dbConfig = process.env.MYSQL_URL || {
 
 console.log(`[INIT] Cloud Database detected: ${process.env.MYSQL_URL ? 'YES' : 'Local envs'}`);
 const pool = mysql.createPool(dbConfig);
+
 // Automatic Table Creation
 const initializeDatabase = async () => {
   try {
     console.log('[DB] Verifying tables...');
-    // Create users table
+    
+    // 1. Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,7 +45,7 @@ const initializeDatabase = async () => {
       )
     `);
 
-    // Create attendance table
+    // 2. Attendance table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attendance (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -57,253 +59,130 @@ const initializeDatabase = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id)
       )
     `);
+
+    // 3. Client Visits table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_visits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        client_name VARCHAR(255) NOT NULL,
+        location VARCHAR(255),
+        latitude DECIMAL(10, 8),
+        longitude DECIMAL(11, 8),
+        start_time DATETIME,
+        end_time DATETIME,
+        status VARCHAR(50) DEFAULT 'SCHEDULED',
+        sync_status TINYINT DEFAULT 1,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    // 4. Leaves table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS leaves (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        leave_type VARCHAR(100) NOT NULL,
+        from_date DATE NOT NULL,
+        to_date DATE NOT NULL,
+        from_half VARCHAR(50) DEFAULT 'Full Day',
+        to_half VARCHAR(50) DEFAULT 'Full Day',
+        status VARCHAR(50) DEFAULT 'PENDING',
+        reason TEXT,
+        authorized_by VARCHAR(255),
+        approved_by VARCHAR(255),
+        contact_no VARCHAR(50),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
+    // 5. Attendance Regularization table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS attendance_reg (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        punch_date DATE NOT NULL,
+        actual_time VARCHAR(20),
+        expected_time VARCHAR(20),
+        type VARCHAR(50),
+        reason TEXT,
+        status VARCHAR(50) DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      )
+    `);
+
     console.log('✅ Database tables verified/created');
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
   }
 };
 
-// Mock office location
-const OFFICE_LOCATION = {
-  latitude: 9.9925, // Replace with actual latitude
-  longitude: 76.3148, // Replace with actual longitude
-  radius_metres: 50.0
-};
+// ─── API Endpoints ───────────────────────────────────────────────────────────
 
-// GET office location
-app.get('/api/office', (req, res) => {
-  res.json(OFFICE_LOCATION);
-});
-
-// Helper for distance calculation server-side (optional validation)
-const haversineDistance = (lat1, lon1, lat2, lon2) => {
-  const R = 6371000;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-};
-
-const formatClientTime = (clientTimeStr) => {
-  if (!clientTimeStr) return new Date().toISOString().slice(0, 19).replace('T', ' ');
-  // Handle Z or lack of it consistently
-  const d = new Date(clientTimeStr);
-  return d.toISOString().slice(0, 19).replace('T', ' ');
-};
-
-// POST punch
+// [ATTENDANCE] POST punch
 app.post('/api/attendance/punch', async (req, res) => {
   try {
     const { userId, type, latitude, longitude, clientPunchTime } = req.body;
-    console.log(`[PUNCH] User: ${userId}, Type: ${type}, Time: ${clientPunchTime}`);
-    
-    if (latitude == null || longitude == null) {
-      return res.status(400).send('Location data is required.');
-    }
-
-    // CHECK FOR PREVIOUS TYPE - PREVENT DUPLICATES
-    const [lastPunches] = await pool.query(
-      'SELECT type FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 1',
-      [userId]
-    );
-    
-    if (lastPunches.length > 0 && lastPunches[0].type === type) {
-      return res.status(400).send(`Already Punched ${type}.`);
-    }
-
-    const distance = haversineDistance(latitude, longitude, OFFICE_LOCATION.latitude, OFFICE_LOCATION.longitude);
-    if (distance > OFFICE_LOCATION.radius_metres) {
-      return res.status(403).send('Outside office premises.');
-    }
-
-    const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
-    if (users.length === 0) {
-      return res.status(404).send('User not found');
-    }
-
-    const formattedTime = formatClientTime(clientPunchTime);
-
-    // Insert into attendance table with sync_status = 1
-    await pool.query(
-      'INSERT INTO attendance (user_id, type, latitude, longitude, client_punch_time, sync_status) VALUES (?, ?, ?, ?, ?, 1)',
-      [userId, type, latitude, longitude, formattedTime]
-    );
-
-    res.json(`Punch ${type} recorded successfully!`);
-  } catch (error) {
-    console.error('Punch error:', error);
-    res.status(500).send('Database error');
-  }
-});
-
-// POST sync-offline
-app.post('/api/attendance/sync-offline', async (req, res) => {
-  try {
-    const punches = req.body;
-    for (const punch of punches) {
-      const { userId, type, latitude, longitude, clientPunchTime } = punch;
-      const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
-      
-      if (users.length > 0) {
-        // PREVENT DUPLICATES DURING SYNC
-        const [lastPunches] = await pool.query(
-          'SELECT type FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 1',
-          [userId]
-        );
-        
-        if (lastPunches.length > 0 && lastPunches[0].type === type) {
-           console.log(`[SYNC SKIP] Skipping duplicate punch type ${type} for user ${userId}`);
-           continue; 
-        }
-
-        const formattedTime = formatClientTime(clientPunchTime);
-        await pool.query(
-          'INSERT INTO attendance (user_id, type, latitude, longitude, client_punch_time, sync_status) VALUES (?, ?, ?, ?, ?, 1)',
-          [userId, type, latitude, longitude, formattedTime]
-        );
-      }
-    }
-    res.json('Offline data successfully synced to master table.');
-  } catch (error) {
-    console.error('Sync error:', error);
-    res.status(500).send('Database error');
-  }
-});
-
-// GET status
-app.get('/api/attendance/status/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const [users] = await pool.query('SELECT * FROM users WHERE id = ?', [userId]);
-    if (users.length === 0) {
-      return res.status(404).send('User not found');
-    }
-
-    // Get ALL history for this user to find the latest state reliably
-    const [latestPunches] = await pool.query(
-      `SELECT type, client_punch_time FROM attendance 
-       WHERE user_id = ? 
-       ORDER BY client_punch_time DESC LIMIT 1`,
-      [userId]
-    );
-
-    let lastType = 'NONE';
-    let lastTime = null;
-
-    if (latestPunches.length > 0) {
-        lastType = latestPunches[0].type;
-        lastTime = latestPunches[0].client_punch_time;
-    }
-
-    console.log(`[STATUS] User: ${userId}, Latest Type in DB: ${lastType}`);
-
-    // Still get today's history for the list view, but handle date more carefully
-    // Using UTC date for consistency between server and client
-    const today = new Date().toISOString().slice(0, 10);
-    const [todayHistory] = await pool.query(
-      `SELECT * FROM attendance 
-       WHERE user_id = ? AND DATE(client_punch_time) = ? 
-       ORDER BY client_punch_time DESC`,
-       [userId, today]
-    );
-
-    const formattedHistory = todayHistory.map(row => ({
-      id: row.id,
-      userId: row.user_id,
-      type: row.type,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      punchTime: row.client_punch_time ? row.client_punch_time.toISOString() : null, 
-      clientPunchTime: row.client_punch_time ? row.client_punch_time.toISOString() : null,
-      syncStatus: row.sync_status
-    }));
-
-    res.json({
-      lastType,
-      lastTime,
-      todayHistory: formattedHistory
-    });
-
-  } catch (error) {
-    console.error('Fetch status error:', error);
-    res.status(500).send('Database error');
-  }
-});
-
-// GET history
-app.get('/api/attendance/history/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const [history] = await pool.query(
-        `SELECT * FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC`,
-        [userId]
-      );
-      
-      const formattedHistory = history.map(row => ({
-        id: row.id,
-        userId: row.user_id,
-        type: row.type,
-        latitude: row.latitude,
-        longitude: row.longitude,
-        punchTime: row.client_punch_time.toISOString(),
-        clientPunchTime: row.client_punch_time.toISOString(),
-        syncStatus: row.sync_status
-      }));
-
-      res.json(formattedHistory);
-    } catch (e) {
-      res.status(500).send('Database error');
-    }
-});
-
-// POST signup
-app.post('/api/auth/signup', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-        return res.status(400).send('Missing fields');
-    }
-
     const [result] = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, password]
+      'INSERT INTO attendance (user_id, type, latitude, longitude, client_punch_time, sync_status) VALUES (?, ?, ?, ?, ?, 1)',
+      [userId, type, latitude, longitude, clientPunchTime]
     );
-
-    res.json({ message: 'User created', userId: result.insertId });
+    res.json({ success: true, id: result.insertId });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
-        return res.status(400).send('Email already exists');
-    }
-    console.error('Signup error:', error);
-    res.status(500).send('Database error');
+    res.status(500).json({ error: error.message });
   }
 });
 
-// POST login
-app.post('/api/auth/login', async (req, res) => {
+// [VISITS] POST visit
+app.post('/api/visits', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ? AND password = ?', [email, password]);
-    
-    if (users.length > 0) {
-        const user = users[0];
-        res.json({
-            user: {
-                id: user.id,
-                name: user.name,
-                email: user.email
-            }
-        });
-    } else {
-        res.status(401).send('Invalid credentials');
-    }
+    const { userId, clientName, location } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO client_visits (user_id, client_name, location, status, sync_status) VALUES (?, ?, ?, "SCHEDULED", 1)',
+      [userId, clientName, location]
+    );
+    res.json({ success: true, id: result.insertId });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).send('Database error');
+    res.status(500).json({ error: error.message });
   }
+});
+
+// [LEAVES] POST leave
+app.post('/api/leaves', async (req, res) => {
+  try {
+    const { userId, leaveType, fromDate, toDate, fromHalf, toHalf, reason, authorizedBy, approvedBy, contactNo } = req.body;
+    const [result] = await pool.query(
+      `INSERT INTO leaves (user_id, leave_type, from_date, to_date, from_half, to_half, reason, authorized_by, approved_by, contact_no, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+      [userId, leaveType, fromDate, toDate, fromHalf, toHalf, reason, authorizedBy, approvedBy, contactNo]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// [REGULARIZATION] POST reg
+app.post('/api/regularization', async (req, res) => {
+  try {
+    const { userId, punchDate, actualTime, expectedTime, type, reason } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO attendance_reg (user_id, punch_date, actual_time, expected_time, type, reason, status) VALUES (?, ?, ?, ?, ?, ?, "PENDING")',
+      [userId, punchDate, actualTime, expectedTime, type, reason]
+    );
+    res.json({ success: true, id: result.insertId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Auth endpoints
+app.post('/api/auth/login', async (req, res) => {
+  const { user_id, password } = req.body;
+  // Mock login for now or check users table
+  res.json({ success: 1, data: { user_id, employee_name: 'Test Member', designation: 'Developer' } });
 });
 
 const PORT = process.env.PORT || 8080;
