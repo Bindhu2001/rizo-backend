@@ -163,13 +163,6 @@ const HomeScreen = ({ navigation, route }) => {
     setPunching(true);
     setShowConfirmOut(false);
 
-    const localLastType = await getLastPunchType(user.user_id);
-    if (localLastType === type.toUpperCase()) {
-      Alert.alert('Sequence Warning', `You are already punched ${type}.`);
-      setPunching(false);
-      return;
-    }
-
     const previousState = isPunchedIn;
     lastActionTime.current = Date.now();
     const punchTime = new Date().toISOString();
@@ -198,8 +191,8 @@ const HomeScreen = ({ navigation, route }) => {
       });
 
       if (!savedId) {
-        Alert.alert('Sequence Blocked', `Cannot record two ${type}s in a row.`);
         setPunching(false);
+        fetchStatus(); // Re-sync UI state if it was a duplicate
         return;
       }
       
