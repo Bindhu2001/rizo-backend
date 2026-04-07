@@ -37,9 +37,9 @@ const initializeDatabase = async () => {
     // 1. Users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id VARCHAR(50) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255),
         password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -49,14 +49,13 @@ const initializeDatabase = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attendance (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
         type ENUM('IN', 'OUT') NOT NULL,
         latitude DECIMAL(10, 8),
         longitude DECIMAL(11, 8),
         client_punch_time DATETIME NOT NULL,
         sync_status TINYINT DEFAULT 1,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -64,24 +63,34 @@ const initializeDatabase = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS client_visits (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
         client_name VARCHAR(255) NOT NULL,
+        contact_number VARCHAR(50),
+        contact_person VARCHAR(255),
+        purpose TEXT,
         location VARCHAR(255),
         latitude DECIMAL(10, 8),
         longitude DECIMAL(11, 8),
         start_time DATETIME,
+        step_in_time DATETIME,
         end_time DATETIME,
         status VARCHAR(50) DEFAULT 'SCHEDULED',
         sync_status TINYINT DEFAULT 1,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Auto-migrate new columns if table existed before
+    try { await pool.query('ALTER TABLE client_visits ADD COLUMN contact_number VARCHAR(50)'); } catch(e){}
+    try { await pool.query('ALTER TABLE client_visits ADD COLUMN contact_person VARCHAR(255)'); } catch(e){}
+    try { await pool.query('ALTER TABLE client_visits ADD COLUMN purpose TEXT'); } catch(e){}
+    try { await pool.query('ALTER TABLE client_visits ADD COLUMN step_in_time DATETIME'); } catch(e){}
 
     // 4. Leaves table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS leaves (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
         leave_type VARCHAR(100) NOT NULL,
         from_date DATE NOT NULL,
         to_date DATE NOT NULL,
@@ -92,8 +101,7 @@ const initializeDatabase = async () => {
         authorized_by VARCHAR(255),
         approved_by VARCHAR(255),
         contact_no VARCHAR(50),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -101,15 +109,14 @@ const initializeDatabase = async () => {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS attendance_reg (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
+        user_id VARCHAR(50) NOT NULL,
         punch_date DATE NOT NULL,
         actual_time VARCHAR(20),
         expected_time VARCHAR(20),
         type VARCHAR(50),
         reason TEXT,
         status VARCHAR(50) DEFAULT 'PENDING',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -135,15 +142,68 @@ app.post('/api/attendance/punch', async (req, res) => {
   }
 });
 
+// [ATTENDANCE] GET status
+app.get('/api/attendance/status/:userId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT type as lastType FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 1',
+      [req.params.userId]
+    );
+    const [history] = await pool.query(
+      'SELECT * FROM attendance WHERE user_id = ? AND DATE(client_punch_time) = CURDATE() ORDER BY client_punch_time DESC',
+      [req.params.userId]
+    );
+    res.json({
+      lastType: rows.length > 0 ? rows[0].lastType : 'NONE',
+      todayHistory: history
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// [ATTENDANCE] GET history
+app.get('/api/attendance/history/:userId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM attendance WHERE user_id = ? ORDER BY client_punch_time DESC LIMIT 50',
+      [req.params.userId]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // [VISITS] POST visit
 app.post('/api/visits', async (req, res) => {
   try {
-    const { userId, clientName, location } = req.body;
+    const { 
+      userId, clientName, location, status,
+      contactNumber, contactPerson, purpose,
+      latitude, longitude, startTime, stepInTime, endTime 
+    } = req.body;
+
     const [result] = await pool.query(
-      'INSERT INTO client_visits (user_id, client_name, location, status, sync_status) VALUES (?, ?, ?, "SCHEDULED", 1)',
-      [userId, clientName, location]
+      `INSERT INTO client_visits 
+        (user_id, client_name, contact_number, contact_person, purpose, location, latitude, longitude, start_time, step_in_time, end_time, status, sync_status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [userId, clientName, contactNumber, contactPerson, purpose, location, latitude || null, longitude || null, startTime || null, stepInTime || null, endTime || null, status || 'SCHEDULED']
     );
     res.json({ success: true, id: result.insertId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// [VISITS] GET history
+app.get('/api/visits/history/:userId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM client_visits WHERE user_id = ? ORDER BY id DESC LIMIT 50',
+      [req.params.userId]
+    );
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -164,6 +224,19 @@ app.post('/api/leaves', async (req, res) => {
   }
 });
 
+// [LEAVES] GET history
+app.get('/api/leaves/history/:userId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM leaves WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+      [req.params.userId]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // [REGULARIZATION] POST reg
 app.post('/api/regularization', async (req, res) => {
   try {
@@ -178,11 +251,45 @@ app.post('/api/regularization', async (req, res) => {
   }
 });
 
+// [REGULARIZATION] GET history
+app.get('/api/regularization/history/:userId', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM attendance_reg WHERE user_id = ? ORDER BY created_at DESC LIMIT 50',
+      [req.params.userId]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Auth endpoints
 app.post('/api/auth/login', async (req, res) => {
-  const { user_id, password } = req.body;
-  // Mock login for now or check users table
-  res.json({ success: 1, data: { user_id, employee_name: 'Test Member', designation: 'Developer' } });
+  try {
+    const { user_id, password } = req.body;
+
+    // Check if user exists in the MySQL 'users' table
+    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [user_id]);
+
+    if (rows.length > 0) {
+      const user = rows[0];
+      if (user.password === password) {
+        res.json({ success: 1, data: { user_id: user.id, employee_name: user.name, designation: 'Developer' } });
+      } else {
+        res.json({ success: 0, message: 'Invalid password' });
+      }
+    } else {
+      // Auto-create user for testing purposes so you don't need a separate signup form
+      await pool.query(
+        'INSERT INTO users (id, name, email, password) VALUES (?, ?, ?, ?)',
+        [user_id, 'Admin Member', `${user_id}@greatleap.com`, password]
+      );
+      res.json({ success: 1, data: { user_id, id: user_id, employee_name: 'Admin Member', designation: 'Developer' } });
+    }
+  } catch (error) {
+    res.status(500).json({ success: 0, error: error.message });
+  }
 });
 
 const PORT = process.env.PORT || 8080;
