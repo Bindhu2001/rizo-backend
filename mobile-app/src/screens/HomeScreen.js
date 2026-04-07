@@ -122,14 +122,12 @@ const HomeScreen = ({ navigation, route }) => {
         // 1. Only pull from server if local DB is fully synced
         // 2. ONLY overwrite if it's been > 60s since the last user action (to avoid state reversal)
         const pCnt = await getPendingCount();
-        const secondsSinceAction = (Date.now() - lastActionTime.current) / 1000;
-        
-        if (pCnt === 0 && secondsSinceAction > 60) {
+        if (pCnt === 0) {
           setStatus(response.data);
           setIsPunchedIn(response.data.lastType === 'IN');
           console.log('[Home] Server state synced successfully');
         } else {
-          console.log(`[Home] Server state ignored (Sync pending or recent action within ${Math.round(secondsSinceAction)}s)`);
+          console.log(`[Home] Server state deferred (Sync pending)`);
         }
       }
     } catch (e) {
@@ -268,6 +266,7 @@ const HomeScreen = ({ navigation, route }) => {
         {/* SWIPE ACTION */}
         <View style={styles.swipeBox}>
           <SwipeToPunch
+            key={`swipe-${isPunchedIn ? 'out' : 'in'}`} // Force re-mount on state flip
             isPunchedIn={isPunchedIn}
             loading={punching}
             onSwipeComplete={handleSwipeComplete}
