@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   ChevronLeft, Calendar as CalendarIcon, Clock, 
-  MapPin, Fingerprint, History, Info, ChevronRight, Download
+  MapPin, Fingerprint, History, Info, ChevronRight, Download, WifiOff
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import { getTodayLocalHistory, getPendingCount, initDB } from '../services/LocalDB';
@@ -21,7 +21,7 @@ const HistoryItem = ({ item, index, isLast }) => {
   const iconBg = isPunchIn ? '#E8F5E9' : '#FFF0F0';
   const iconColor = isPunchIn ? '#2ECC71' : '#EF4444';
   const statusColor = item.sync_status === 'SYNCED' ? '#10B981' : '#F59E0B';
-  const statusText = item.sync_status === 'SYNCED' ? 'Cloud' : 'Local';
+  const statusText = item.sync_status === 'SYNCED' ? 'Synced' : 'Not Synced';
 
   const [address, setAddress] = useState(item.address || null);
 
@@ -81,7 +81,8 @@ const HistoryItem = ({ item, index, isLast }) => {
       </View>
       <View style={styles.historyEnd}>
         <Text style={styles.historyTime}>{time}</Text>
-        <View style={[styles.syncBadge, { backgroundColor: statusColor + '15' }]}>
+        <View style={[styles.syncBadge, { backgroundColor: statusColor + '15', flexDirection: 'row', alignItems: 'center' }]}>
+          {item.sync_status !== 'SYNCED' && <WifiOff size={10} color={statusColor} style={{ marginRight: 4 }} />}
           <Text style={[styles.syncText, { color: statusColor }]}>{statusText}</Text>
         </View>
       </View>

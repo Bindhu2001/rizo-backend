@@ -28,49 +28,45 @@ const SwipeToPunch = ({
   const loadingRef = useRef(loading);
   const swipeWidthRef = useRef(swipeWidth);
 
+  // Always reset to left when state changes or reset is triggered
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
     maxSlideRef.current = maxSlide;
     loadingRef.current = loading;
     swipeWidthRef.current = swipeWidth;
 
-    if (swipeWidth > 0 && !loading) {
-      Animated.spring(pan, {
-        toValue: isPunchedIn ? maxSlide : 0,
+    Animated.spring(pan, {
+        toValue: 0,
         useNativeDriver: false,
         tension: 50,
         friction: 8
-      }).start();
-    }
-  }, [isPunchedIn, maxSlide, loading, resetTrigger, swipeWidth]);
+    }).start();
+  }, [isPunchedIn, resetTrigger, swipeWidth, loading]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => {
         if (loadingRef.current) return false;
-        return Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy);
+        // Only allow Rightward movement
+        return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
 
       onPanResponderMove: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
-        const startX = isPunchedInRef.current ? maxSlideRef.current : 0;
-        const clampedX = Math.max(0, Math.min(startX + gs.dx, maxSlideRef.current));
+        // Button always starts at 0 and slides to maxSlide
+        const clampedX = Math.max(0, Math.min(gs.dx, maxSlideRef.current));
         pan.setValue(clampedX);
       },
 
       onPanResponderRelease: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
         const mSlide = maxSlideRef.current;
-        const threshold = mSlide * 0.45; // Lower threshold (45%) for better UX
+        const threshold = mSlide * 0.6; 
         
-        let shouldComplete = false;
-        if (!isPunchedInRef.current && gs.dx >= threshold) shouldComplete = true; 
-        if (isPunchedInRef.current && gs.dx <= -threshold) shouldComplete = true; 
-
-        if (shouldComplete) {
+        if (gs.dx >= threshold) {
           Animated.timing(pan, {
-            toValue: isPunchedInRef.current ? 0 : mSlide,
+            toValue: mSlide,
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
@@ -78,7 +74,7 @@ const SwipeToPunch = ({
           });
         } else {
           Animated.spring(pan, {
-            toValue: isPunchedInRef.current ? mSlide : 0,
+            toValue: 0,
             useNativeDriver: false,
             tension: 40,
             friction: 7,
@@ -88,19 +84,18 @@ const SwipeToPunch = ({
 
       onPanResponderTerminate: () => {
         Animated.spring(pan, {
-          toValue: isPunchedInRef.current ? maxSlideRef.current : 0,
+          toValue: 0,
           useNativeDriver: false,
         }).start();
       },
     })
   ).current;
 
-  // Reactively shift layout styling based on sliding / current state
   const trackColor = isPunchedIn ? '#FFEBEB' : '#E8F5E9';
   const buttonColor = isPunchedIn ? COLORS.danger : '#2ECC71';
   const textColor = isPunchedIn ? COLORS.danger : '#2ECC71';
 
-  let textVal = isPunchedIn ? 'SWIPE LEFT TO OUT' : 'SWIPE RIGHT TO IN';
+  let textVal = isPunchedIn ? 'SWIPE RIGHT TO OUT' : 'SWIPE RIGHT TO IN';
   if (loading) {
     textVal = isPunchedIn ? 'Punching Out...' : 'Punching In...';
   }
