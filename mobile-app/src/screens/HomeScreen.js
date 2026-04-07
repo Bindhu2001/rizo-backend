@@ -151,36 +151,35 @@ const HomeScreen = ({ navigation, route }) => {
   // ── Punch ─────────────────────────────────────────────────────────────────
   const handleSwipeComplete = () => {
     const nextType = isPunchedIn ? 'OUT' : 'IN';
-    if (nextType === 'OUT') {
-      setShowConfirmOut(true);
-    } else {
-      processPunch('IN');
-    }
+    processPunch(nextType);
   };
 
   const processPunch = async (type) => {
     if (punching) return;
     setPunching(true);
     setShowConfirmOut(false);
-
-    const previousState = isPunchedIn;
-    lastActionTime.current = Date.now();
+    
+    console.log(`[Punch] Initiating ${type} process...`);
     const punchTime = new Date().toISOString();
 
     try {
+      // 1. Fetch location with a strict timeout for responsiveness
       let loc = { coords: { latitude: 0, longitude: 0 } };
       try {
         loc = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
         ]);
+        console.log(`[Punch] Location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
       } catch (_) {
+        console.log('[Punch] Location fallback utilized');
         try {
           const lastLoc = await Location.getLastKnownPositionAsync();
           if (lastLoc) loc = lastLoc;
         } catch(e) {}
       }
 
+      // 2. Perform the local save
       const savedId = await savePunchLocal({
         userId: user.user_id,
         type,
@@ -191,27 +190,28 @@ const HomeScreen = ({ navigation, route }) => {
       });
 
       if (!savedId) {
+        console.log(`[Punch] ${type} blocked (Duplicate sequence detected)`);
         setPunching(false);
-        fetchStatus(); // Re-sync UI state if it was a duplicate
+        await fetchStatus(); // Re-sync state with DB
         return;
       }
       
-      // Update UI state only after successful local save
+      console.log(`[Punch] ${type} saved locally: ${savedId}`);
+      
+      // 3. Update UI state and stats
       setIsPunchedIn(type === 'IN');
-
       await checkOfflinePunches();
 
+      // 4. Trigger sync and refresh
       const net = await Network.getNetworkStateAsync();
       if (net.isConnected) {
         syncOfflinePunches();
-      } else {
-        Alert.alert('📡 Offline', 'Punch saved locally. Will sync automatically.');
       }
 
-      fetchStatus();
+      await fetchStatus();
     } catch (e) {
-      console.error(e);
-      Alert.alert('❌ Error', 'Failed to save punch locally.\n\nDetails: ' + e.message);
+      console.error('[Punch] Error:', e);
+      Alert.alert('❌ Error', 'Failed to process punch.\n\n' + e.message);
     } finally {
       setPunching(false);
     }
