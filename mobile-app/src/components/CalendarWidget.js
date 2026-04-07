@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { COLORS, SHADOWS } from './Theme';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths } from 'date-fns';
 import axios from 'axios';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 
 const CalendarWidget = ({ userId }) => {
   const [events, setEvents] = useState([]);
@@ -40,6 +40,23 @@ const CalendarWidget = ({ userId }) => {
 
   const handleNextMonth = () => {
     setCurrentDate(prev => addMonths(prev, 1));
+  };
+
+  const handlePrevMonth = () => {
+    const today = new Date();
+    const prevMonth = addMonths(currentDate, -1);
+    
+    // Don't go back before the current real-world month
+    if (prevMonth.getFullYear() < today.getFullYear()) return;
+    if (prevMonth.getFullYear() === today.getFullYear() && prevMonth.getMonth() < today.getMonth()) return;
+
+    setCurrentDate(prevMonth);
+  };
+
+  const isCurrentMonth = () => {
+    const today = new Date();
+    return currentDate.getMonth() === today.getMonth() && 
+           currentDate.getFullYear() === today.getFullYear();
   };
 
   const getDaysInMonth = () => {
@@ -82,6 +99,11 @@ const CalendarWidget = ({ userId }) => {
   return (
     <View style={styles.card}>
       <View style={styles.calendarHeader}>
+        {!isCurrentMonth() && (
+          <TouchableOpacity onPress={handlePrevMonth} style={styles.prevBtn}>
+            <ChevronLeft color={COLORS.primaryDeep} size={20} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.monthTitle}>{format(currentDate, 'MMMM yyyy')}</Text>
         <TouchableOpacity onPress={handleNextMonth} style={styles.nextBtn}>
           <ChevronRight color={COLORS.primaryDeep} size={20} />
@@ -173,9 +195,10 @@ const CalendarWidget = ({ userId }) => {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 16, ...SHADOWS.light },
-  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative' },
+  calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative', width: '100%' },
   monthTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text, textAlign: 'center' },
-  nextBtn: { position: 'absolute', right: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12 },
+  prevBtn: { position: 'absolute', left: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
+  nextBtn: { position: 'absolute', right: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
   weekDayText: { fontSize: 13, color: COLORS.textLight, fontWeight: '700', width: 40, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },

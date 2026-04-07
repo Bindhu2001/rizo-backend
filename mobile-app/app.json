@@ -12,10 +12,22 @@
       "backgroundColor": "#FFFFFF"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rizo.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking even in background."
+      }
     },
     "android": {
       "package": "com.rizo.mobile",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#FFFFFF"
@@ -31,7 +43,10 @@
     },
     "owner": "bindhu_13",
     "plugins": [
-      "expo-sqlite"
+      ["expo-sqlite"],
+      ["expo-location", {
+        "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
+      }]
     ]
   }
 }

@@ -23,8 +23,8 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   const [processing, setProcessing] = useState(false);
 
   // Form State
-  const [date, setDate] = useState('29/01/2025');
-  const [actualTime, setActualTime] = useState('09:15 AM');
+  const [date, setDate] = useState(new Date().toLocaleDateString('en-GB'));
+  const [actualTime, setActualTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }));
   const [expectedTime, setExpectedTime] = useState('09:00 AM');
   const [type, setType] = useState('LATE IN');
   const [reason, setReason] = useState('');
@@ -54,10 +54,10 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       await saveRegLocal({
         userId: user.user_id,
         punchDate: date,
-        actualTime,
-        expectedTime,
-        type,
-        reason
+        actual_time: actualTime,
+        expected_time: expectedTime,
+        type: type,
+        reason: reason
       });
 
       const net = await Network.getNetworkStateAsync();

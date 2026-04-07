@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   PanResponder,
-  Dimensions,
   ActivityIndicator
 } from 'react-native';
 import { Fingerprint } from 'lucide-react-native';
@@ -16,46 +15,64 @@ const SwipeToPunch = ({
   isPunchedIn = false,
   loading = false,
   trackHeight = 68,
-  padding = 5
+  padding = 5,
+  resetTrigger = 0
 }) => {
-  const pan = useRef(new Animated.Value(0)).current;
   const [swipeWidth, setSwipeWidth] = useState(0);
   const buttonWidth = trackHeight - padding * 2;
-  const maxSlide = swipeWidth - buttonWidth - padding * 2;
+  const maxSlide = Math.max(0, swipeWidth - buttonWidth - padding * 2);
+
+  const pan = useRef(new Animated.Value(0)).current; 
+  const isPunchedInRef = useRef(isPunchedIn);
+
+  useEffect(() => {
+    isPunchedInRef.current = isPunchedIn;
+    if (swipeWidth > 0 && !loading) {
+      Animated.spring(pan, {
+        toValue: isPunchedIn ? maxSlide : 0,
+        useNativeDriver: false,
+        tension: 50,
+        friction: 8
+      }).start();
+    }
+  }, [isPunchedIn, maxSlide, loading, resetTrigger, swipeWidth]);
 
   const panResponder = useRef(
     PanResponder.create({
-      // Only activate if gesture is more horizontal than vertical
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > Math.abs(gs.dy) && Math.abs(gs.dx) > 8,
       onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gs) => {
+        // Prevent accidental scrolls / button tap clicks. Only horizontal motion triggers it.
+        return Math.abs(gs.dx) > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
+      },
 
       onPanResponderMove: (_, gs) => {
-        const clampedX = Math.max(0, Math.min(gs.dx, maxSlide));
+        if (swipeWidth === 0 || loading) return;
+        const startX = isPunchedInRef.current ? maxSlide : 0;
+        const clampedX = Math.max(0, Math.min(startX + gs.dx, maxSlide));
         pan.setValue(clampedX);
       },
 
       onPanResponderRelease: (_, gs) => {
-        const threshold = maxSlide * 0.75;
-        if (gs.dx >= threshold) {
+        if (swipeWidth === 0 || loading) return;
+        const threshold = maxSlide * 0.65; // 65% dragged required for completion
+        
+        let shouldComplete = false;
+        if (!isPunchedInRef.current && gs.dx >= threshold) shouldComplete = true; // Dragging right
+        if (isPunchedInRef.current && gs.dx <= -threshold) shouldComplete = true; // Dragging left
+
+        if (shouldComplete) {
+          // Slide to the completed side to validate the visual action
           Animated.timing(pan, {
-            toValue: maxSlide,
+            toValue: isPunchedInRef.current ? 0 : maxSlide,
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
-            onSwipeComplete();
-            setTimeout(() => {
-              Animated.spring(pan, {
-                toValue: 0,
-                useNativeDriver: false,
-                tension: 40,
-                friction: 7,
-              }).start();
-            }, 600);
+             onSwipeComplete();
           });
         } else {
+          // Snap back to the correct original side if they didn't drag it fully
           Animated.spring(pan, {
-            toValue: 0,
+            toValue: isPunchedInRef.current ? maxSlide : 0,
             useNativeDriver: false,
             tension: 40,
             friction: 7,
@@ -65,23 +82,22 @@ const SwipeToPunch = ({
 
       onPanResponderTerminate: () => {
         Animated.spring(pan, {
-          toValue: 0,
+          toValue: isPunchedInRef.current ? maxSlide : 0,
           useNativeDriver: false,
         }).start();
       },
     })
   ).current;
 
+  // Reactively shift layout styling based on sliding / current state
   const trackColor = isPunchedIn ? '#FFEBEB' : '#E8F5E9';
   const buttonColor = isPunchedIn ? COLORS.danger : '#2ECC71';
   const textColor = isPunchedIn ? COLORS.danger : '#2ECC71';
-  const textVal = loading
-    ? isPunchedIn
-      ? 'Punching Out...'
-      : 'Punching In...'
-    : isPunchedIn
-    ? '← SWIPE TO PUNCH OUT'
-    : 'SWIPE TO PUNCH IN →';
+
+  let textVal = isPunchedIn ? 'SWIPE LEFT TO OUT' : 'SWIPE RIGHT TO IN';
+  if (loading) {
+    textVal = isPunchedIn ? 'Punching Out...' : 'Punching In...';
+  }
 
   return (
     <View

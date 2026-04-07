@@ -1,8 +1,8 @@
 /**
  * LocalDB.js
  * 
- * A local SQLite database layer for offline-first operation.
- * All punches are saved here first, then synced to the Cloud.
+ * Optimized local SQLite database layer for offline-first operation.
+ * Refined to ensure maximum reliability during zero-connection states.
  */
 
 import * as SQLite from 'expo-sqlite';
@@ -11,122 +11,149 @@ let db = null;
 
 // ─── Open / Initialize ────────────────────────────────────────────────────────
 export const initDB = async () => {
-  if (db) return db; // Already open
+  try {
+    if (db) return db;
+    db = await SQLite.openDatabaseAsync('rizo_local.db');
 
-  db = await SQLite.openDatabaseAsync('rizo_local.db');
+    // Create tables individually to ensure one failure doesn't block the rest
+    await db.execAsync('PRAGMA journal_mode = WAL;');
 
-  // Create tables if they don't exist
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS attendance (
+        id          TEXT    PRIMARY KEY,
+        user_id     TEXT    NOT NULL,
+        type        TEXT    NOT NULL,
+        punch_time  TEXT    NOT NULL,
+        latitude    REAL    DEFAULT 0,
+        longitude   REAL    DEFAULT 0,
+        address     TEXT,
+        sync_status TEXT    DEFAULT 'PENDING'
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS attendance (
-      id          TEXT    PRIMARY KEY,
-      user_id     TEXT    NOT NULL,
-      type        TEXT    NOT NULL CHECK(type IN ('IN', 'OUT')),
-      punch_time  TEXT    NOT NULL,
-      latitude    REAL    DEFAULT 0,
-      longitude   REAL    DEFAULT 0,
-      address     TEXT,
-      sync_status TEXT    NOT NULL DEFAULT 'PENDING' CHECK(sync_status IN ('PENDING', 'SYNCED', 'FAILED'))
-    );
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS user_profile (
+        user_id       TEXT PRIMARY KEY,
+        employee_name TEXT,
+        department    TEXT,
+        joining_date  TEXT,
+        date_of_birth TEXT,
+        designation   TEXT,
+        profile_pic   TEXT,
+        emp_pkey      TEXT,
+        password      TEXT NOT NULL,
+        email         TEXT,
+        phone         TEXT
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS user_profile (
-      user_id       TEXT PRIMARY KEY,
-      employee_name TEXT,
-      department    TEXT,
-      joining_date  TEXT,
-      date_of_birth TEXT,
-      designation   TEXT,
-      profile_pic   TEXT,
-      emp_pkey      TEXT,
-      password      TEXT NOT NULL,
-      email         TEXT,
-      phone         TEXT
-    );
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS client_visits (
+        id              TEXT    PRIMARY KEY,
+        user_id         TEXT    NOT NULL,
+        client_name     TEXT    NOT NULL,
+        contact_number  TEXT,
+        contact_person  TEXT,
+        purpose         TEXT,
+        location        TEXT,
+        latitude        REAL,
+        longitude       REAL,
+        start_time      TEXT,
+        step_in_time    TEXT,
+        end_time        TEXT,
+        status          TEXT    DEFAULT 'SCHEDULED',
+        sync_status     TEXT    DEFAULT 'PENDING',
+        created_at      TEXT
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS client_visits (
-      id            TEXT    PRIMARY KEY,
-      user_id       TEXT    NOT NULL,
-      client_name   TEXT    NOT NULL,
-      location      TEXT,
-      latitude      REAL,
-      longitude     REAL,
-      start_time    TEXT,
-      end_time      TEXT,
-      status        TEXT    DEFAULT 'SCHEDULED',
-      sync_status   TEXT    DEFAULT 'PENDING'
-    );
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS leaves (
+        id            TEXT    PRIMARY KEY,
+        user_id       TEXT    NOT NULL,
+        leave_type    TEXT    NOT NULL,
+        from_date     TEXT    NOT NULL,
+        to_date       TEXT    NOT NULL,
+        from_half     TEXT    DEFAULT 'Full Day',
+        to_half       TEXT    DEFAULT 'Full Day',
+        status        TEXT    DEFAULT 'PENDING',
+        reason        TEXT,
+        authorized_by TEXT,
+        approved_by   TEXT,
+        contact_no    TEXT,
+        created_at    TEXT    NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS leaves (
-      id            TEXT    PRIMARY KEY,
-      user_id       TEXT    NOT NULL,
-      leave_type    TEXT    NOT NULL,
-      from_date     TEXT    NOT NULL,
-      to_date       TEXT    NOT NULL,
-      from_half     TEXT    DEFAULT 'Full Day',
-      to_half       TEXT    DEFAULT 'Full Day',
-      status        TEXT    DEFAULT 'PENDING',
-      reason        TEXT,
-      authorized_by TEXT,
-      approved_by   TEXT,
-      contact_no    TEXT,
-      created_at    TEXT    NOT NULL
-    );
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS attendance_reg (
+        id            TEXT    PRIMARY KEY,
+        user_id       TEXT    NOT NULL,
+        punch_date    TEXT    NOT NULL,
+        actual_time   TEXT,
+        expected_time TEXT,
+        type          TEXT,
+        reason        TEXT,
+        status        TEXT    DEFAULT 'PENDING',
+        created_at    TEXT    NOT NULL
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS attendance_reg (
-      id            TEXT    PRIMARY KEY,
-      user_id       TEXT    NOT NULL,
-      punch_date    TEXT    NOT NULL,
-      actual_time   TEXT,
-      expected_time TEXT,
-      type          TEXT,
-      reason        TEXT,
-      status        TEXT    DEFAULT 'PENDING',
-      created_at    TEXT    NOT NULL
-    );
-  `);
+    // ─── Migrations ───
+    // Column additions for existing tables (won't affect new installs)
+    const migrations = [
+      { table: 'attendance', cols: ['address', 'sync_status'] },
+      { table: 'user_profile', cols: ['password', 'email', 'phone', 'emp_pkey', 'designation'] },
+      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at'] },
+      { table: 'leaves', cols: ['from_half', 'to_half', 'authorized_by', 'approved_by', 'contact_no', 'created_at'] },
+      { table: 'attendance_reg', cols: ['actual_time', 'expected_time', 'reason', 'created_at'] }
+    ];
 
-  console.log('[LocalDB] Database initialized ✅');
-  return db;
+    for (const m of migrations) {
+      for (const col of m.cols) {
+        try { await db.execAsync(`ALTER TABLE ${m.table} ADD COLUMN ${col} TEXT`); } catch (_) {}
+      }
+    }
+
+    console.log('[LocalDB] Database migrations and initialization successful ✅');
+    return db;
+  } catch (error) {
+    console.error('[LocalDB] Initialization failed:', error);
+    throw error;
+  }
 };
 
-// ─── Save a new punch ─────────────────────────────────────────────────────────
+// ─── Attendance ──────────────────────────────────────────────────────────────
 export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, longitude = 0, address = null }) => {
   const database = await initDB();
+  // Ensure we don't save duplicate punches in sequence locally
   const lastTypeRow = await database.getFirstAsync(
     `SELECT type FROM attendance WHERE user_id = ? ORDER BY punch_time DESC LIMIT 1`,
     [userId]
   );
   if (lastTypeRow && lastTypeRow.type === type.toUpperCase()) {
+    console.log('[LocalDB] Duplicate punch sequence ignored');
     return null;
   }
-  const id = `${Date.now()}`;
-  await database.runAsync(
-    `INSERT INTO attendance (id, user_id, type, punch_time, latitude, longitude, address, sync_status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
-    [id, userId, type.toUpperCase(), punchTime, latitude, longitude, address]
-  );
-  return id;
+
+  const id = `att_${Date.now()}`;
+  try {
+    await database.runAsync(
+      `INSERT INTO attendance (id, user_id, type, punch_time, latitude, longitude, address, sync_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+      [id, userId, type.toUpperCase(), punchTime, latitude, longitude, address]
+    );
+    return id;
+  } catch (e) {
+    console.error('[LocalDB] Failed to insert punch:', e);
+    throw e;
+  }
 };
 
-export const getPendingPunches = async () => {
-  const database = await initDB();
-  return await database.getAllAsync(`SELECT * FROM attendance WHERE sync_status = 'PENDING' ORDER BY punch_time ASC`);
-};
-
-export const markSynced = async (id) => {
-  const database = await initDB();
-  await database.runAsync(`UPDATE attendance SET sync_status = 'SYNCED' WHERE id = ?`, [id]);
-};
-
-export const getTodayLocalHistory = async (userId) => {
-  const database = await initDB();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  return await database.getAllAsync(
-    `SELECT * FROM attendance WHERE user_id = ? AND punch_time >= ? ORDER BY punch_time DESC`,
-    [userId, todayStart.toISOString()]
-  );
+export const getPendingCount = async () => {
+    const database = await initDB();
+    const row = await database.getFirstAsync(`SELECT COUNT(*) as count FROM attendance WHERE sync_status = 'PENDING'`);
+    return row ? row.count : 0;
 };
 
 export const getLastPunchType = async (userId) => {
@@ -135,28 +162,32 @@ export const getLastPunchType = async (userId) => {
   return row ? row.type : 'NONE';
 };
 
-export const getPendingCount = async () => {
-  const database = await initDB();
-  const row = await database.getFirstAsync(`SELECT COUNT(*) as count FROM attendance WHERE sync_status = 'PENDING'`);
-  return row ? row.count : 0;
-};
-
 // ─── User Profile ────────────────────────────────────────────────────────────
 export const saveUserLocally = async (user, password) => {
   const database = await initDB();
-  await database.runAsync(
-    `INSERT OR REPLACE INTO user_profile (user_id, employee_name, department, joining_date, date_of_birth, designation, profile_pic, emp_pkey, password, email, phone) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [user.user_id, user.employee_name, user.department, user.joining_date, user.date_of_birth, user.designation, user.profile_pic, user.emp_pkey, password, user.email || '', user.phone || '']
-  );
+  try {
+    await database.runAsync(
+      `INSERT OR REPLACE INTO user_profile (user_id, employee_name, department, joining_date, date_of_birth, designation, profile_pic, emp_pkey, password, email, phone) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [user.user_id, user.employee_name, user.department, (user.joining_date || ''), (user.date_of_birth || ''), (user.designation || ''), (user.profile_pic || ''), (user.emp_pkey || ''), password, (user.email || ''), (user.phone || '')]
+    );
+  } catch (e) {
+    console.error('[LocalDB] saveUserLocally failed:', e);
+    throw e;
+  }
 };
 
 export const updateUserProfileLocal = async (userId, data) => {
   const database = await initDB();
-  await database.runAsync(
-    `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ? WHERE user_id = ?`,
-    [data.employee_name, data.department, data.designation, data.email, data.phone, userId]
-  );
+  try {
+    await database.runAsync(
+      `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ? WHERE user_id = ?`,
+      [data.employee_name, data.department, data.designation, data.email, data.phone, userId]
+    );
+  } catch (e) {
+    console.error('[LocalDB] updateUserProfileLocal failed:', e);
+    throw e;
+  }
 };
 
 export const getLocalUser = async (user_id, password) => {
@@ -173,21 +204,46 @@ export const clearUserSession = async () => {
   await database.runAsync(`DELETE FROM user_profile`);
 };
 
-// ─── Client Visits ───────────────────────────────────────────────────────────
-export const saveVisitLocal = async ({ userId, clientName, location = '' }) => {
+// ─── History & Other Methods ──────────────────────────────────────────────────
+export const getTodayLocalHistory = async (userId) => {
   const database = await initDB();
-  const id = `visit-${Date.now()}`;
-  await database.runAsync(`INSERT INTO client_visits (id, user_id, client_name, location, status, sync_status) VALUES (?, ?, ?, ?, 'SCHEDULED', 'PENDING')`, [id, userId, clientName, location]);
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  return await database.getAllAsync(
+    `SELECT * FROM attendance WHERE user_id = ? AND punch_time >= ? ORDER BY punch_time DESC`,
+    [userId, todayStart.toISOString()]
+  );
+};
+
+export const saveVisitLocal = async ({ userId, clientName, contactNumber = '', contactPerson = '', purpose = '', location = '', lat = 0, lng = 0 }) => {
+  const database = await initDB();
+  const id = `visit_${Date.now()}`;
+  await database.runAsync(
+    `INSERT INTO client_visits (id, user_id, client_name, contact_number, contact_person, purpose, location, latitude, longitude, status, sync_status, created_at) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'SCHEDULED', 'PENDING', ?)`,
+    [id, userId, clientName, contactNumber, contactPerson, purpose, location, lat, lng, new Date().toISOString()]
+  );
   return id;
 };
 
 export const updateVisitStatus = async (id, status, details = {}) => {
   const database = await initDB();
-  let query = `UPDATE client_visits SET status = ?`;
+  let query = `UPDATE client_visits SET status = ?, sync_status = 'PENDING'`;
   let params = [status];
-  if (details.startTime) { query += `, start_time = ?, latitude = ?, longitude = ?`; params.push(details.startTime, details.lat, details.lng); }
-  if (details.endTime) { query += `, end_time = ?`; params.push(details.endTime); }
-  query += ` WHERE id = ?`; params.push(id);
+  if (details.startTime) {
+    query += `, start_time = ?, latitude = ?, longitude = ?`;
+    params.push(details.startTime, details.lat || 0, details.lng || 0);
+  }
+  if (details.stepInTime) {
+    query += `, step_in_time = ?`;
+    params.push(details.stepInTime);
+  }
+  if (details.endTime) {
+    query += `, end_time = ?`;
+    params.push(details.endTime);
+  }
+  query += ` WHERE id = ?`;
+  params.push(id);
   await database.runAsync(query, params);
 };
 
@@ -196,10 +252,9 @@ export const getTodayVisits = async (userId) => {
   return await database.getAllAsync(`SELECT * FROM client_visits WHERE user_id = ? ORDER BY id DESC`, [userId]);
 };
 
-// ─── Leaves ──────────────────────────────────────────────────────────────────
 export const saveLeaveLocal = async (leave) => {
   const database = await initDB();
-  const id = `leave-${Date.now()}`;
+  const id = `leave_${Date.now()}`;
   await database.runAsync(
     `INSERT INTO leaves (id, user_id, leave_type, from_date, to_date, from_half, to_half, reason, status, authorized_by, approved_by, contact_no, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)`,
@@ -213,14 +268,13 @@ export const getLeavesLocal = async (userId) => {
   return await database.getAllAsync(`SELECT * FROM leaves WHERE user_id = ? ORDER BY created_at DESC`, [userId]);
 };
 
-// ─── Attendance Regularization ─────────────────────────────────────────────────
 export const saveRegLocal = async (reg) => {
   const database = await initDB();
-  const id = `reg-${Date.now()}`;
+  const id = `reg_${Date.now()}`;
   await database.runAsync(
     `INSERT INTO attendance_reg (id, user_id, punch_date, actual_time, expected_time, type, reason, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
-    [id, reg.userId, reg.punchDate, reg.actualTime, reg.expectedTime, reg.type, reg.reason, new Date().toISOString()]
+    [id, reg.userId, reg.punchDate, reg.actual_time, reg.expected_time, reg.type, reg.reason, new Date().toISOString()]
   );
   return id;
 };

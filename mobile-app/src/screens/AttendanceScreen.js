@@ -26,7 +26,12 @@ const HistoryItem = ({ item, index, isLast }) => {
   const [address, setAddress] = useState(item.address || null);
 
   useEffect(() => {
-    if (!address && item.latitude && item.longitude) {
+    const isInvalid = !address || 
+      address.includes('Fetching') || 
+      address.includes('attached') || 
+      (!isNaN(parseFloat(address.split(',')[0])) && address.includes('.'));
+      
+    if (isInvalid && item.latitude && item.longitude) {
       reverseGeocode();
     }
   }, [item.latitude, item.longitude]);
@@ -70,7 +75,7 @@ const HistoryItem = ({ item, index, isLast }) => {
         <View style={styles.locRow}>
           <MapPin color={COLORS.textMuted} size={10} />
           <Text style={styles.historyLoc}>
-             {address || (item.latitude ? `Lat: ${Number(item.latitude).toFixed(4)}, Lng: ${Number(item.longitude).toFixed(4)}` : date)}
+             {address || (item.latitude ? 'Loading location...' : date)}
           </Text>
         </View>
       </View>

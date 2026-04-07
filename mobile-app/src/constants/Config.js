@@ -1,7 +1,8 @@
 const BASE_URL = 'https://rizo-backend-production.up.railway.app/api'; 
+const AUTH_URL = 'https://v1.mypayrollmaster.online/api/v2qa'; 
 
 export const API_ENDPOINTS = {
-  AUTH: `${BASE_URL}/auth`,
+  AUTH: `${AUTH_URL}/login`,
   ATTENDANCE: `${BASE_URL}/attendance`,
   OFFICE: `${BASE_URL}/office`,
   VISITS: `${BASE_URL}/visits`,

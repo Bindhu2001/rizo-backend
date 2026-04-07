@@ -40,8 +40,10 @@ const HomeScreen = ({ navigation, route }) => {
   const [locationName, setLocationName] = useState('Fetching location...');
   const [showConfirmOut, setShowConfirmOut] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
+  const lastActionTime = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [cancelTrigger, setCancelTrigger] = useState(0);
 
   const toggleEvents = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -92,12 +94,12 @@ const HomeScreen = ({ navigation, route }) => {
             r.region,
           ].filter(Boolean);
           const unique = [...new Set(parts)];
-          setLocationName(unique.join(', ') || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setLocationName(unique.join(', ') || 'Location attached');
         } else {
-          setLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          setLocationName('Location attached');
         }
       } catch (_) {
-        setLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        setLocationName('Location attached');
       }
     } catch (e) {
       console.log('Loc Fetch Error', e);
@@ -116,14 +118,22 @@ const HomeScreen = ({ navigation, route }) => {
     try {
       const response = await axios.get(`${API_URL}/status/${user.user_id}`, { timeout: 6000 });
       if (response.data) {
+        // PERFECTION GUARD: 
+        // 1. Only pull from server if local DB is fully synced
+        // 2. ONLY overwrite if it's been > 60s since the last user action (to avoid state reversal)
         const pCnt = await getPendingCount();
-        if (pCnt === 0) {
+        const secondsSinceAction = (Date.now() - lastActionTime.current) / 1000;
+        
+        if (pCnt === 0 && secondsSinceAction > 60) {
           setStatus(response.data);
           setIsPunchedIn(response.data.lastType === 'IN');
+          console.log('[Home] Server state synced successfully');
+        } else {
+          console.log(`[Home] Server state ignored (Sync pending or recent action within ${Math.round(secondsSinceAction)}s)`);
         }
       }
     } catch (e) {
-      console.log('Online fetch skipped');
+      console.log('[Home] Cloud status fetch skipped (Offline/Server Unreachable)');
     }
   };
 
@@ -161,14 +171,22 @@ const HomeScreen = ({ navigation, route }) => {
     }
 
     const previousState = isPunchedIn;
-    setIsPunchedIn(type === 'IN');
+    lastActionTime.current = Date.now();
     const punchTime = new Date().toISOString();
 
     try {
       let loc = { coords: { latitude: 0, longitude: 0 } };
       try {
-        loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      } catch (_) {}
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]);
+      } catch (_) {
+        try {
+          const lastLoc = await Location.getLastKnownPositionAsync();
+          if (lastLoc) loc = lastLoc;
+        } catch(e) {}
+      }
 
       const savedId = await savePunchLocal({
         userId: user.user_id,
@@ -180,11 +198,13 @@ const HomeScreen = ({ navigation, route }) => {
       });
 
       if (!savedId) {
-        setIsPunchedIn(previousState);
         Alert.alert('Sequence Blocked', `Cannot record two ${type}s in a row.`);
         setPunching(false);
         return;
       }
+      
+      // Update UI state only after successful local save
+      setIsPunchedIn(type === 'IN');
 
       await checkOfflinePunches();
 
@@ -198,8 +218,7 @@ const HomeScreen = ({ navigation, route }) => {
       fetchStatus();
     } catch (e) {
       console.error(e);
-      setIsPunchedIn(previousState);
-      Alert.alert('❌ Error', 'Failed to save punch locally.');
+      Alert.alert('❌ Error', 'Failed to save punch locally.\n\nDetails: ' + e.message);
     } finally {
       setPunching(false);
     }
@@ -235,6 +254,11 @@ const HomeScreen = ({ navigation, route }) => {
             </View>
           </View>
           <View style={styles.headerRight}>
+            {offlineCount > 0 && (
+              <TouchableOpacity style={[styles.headerIcon, { backgroundColor: COLORS.primaryDeep, marginRight: 8 }]} onPress={syncOfflinePunches}>
+                <History color="#FFF" size={18} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate('Notifications')}>
               <Bell color={COLORS.text} size={22} />
               {offlineCount > 0 && <View style={styles.offlineDot} />}
@@ -254,6 +278,7 @@ const HomeScreen = ({ navigation, route }) => {
             isPunchedIn={isPunchedIn}
             loading={punching}
             onSwipeComplete={handleSwipeComplete}
+            resetTrigger={cancelTrigger}
           />
         </View>
 
@@ -361,7 +386,10 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.modalTitle}>Clock Out?</Text>
             <Text style={styles.modalSub}>Your working hours will end. Are you sure you want to clock out?</Text>
             <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowConfirmOut(false)}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+                setShowConfirmOut(false);
+                setCancelTrigger(prev => prev + 1);
+              }}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.logoutBtn} onPress={() => processPunch('OUT')}>

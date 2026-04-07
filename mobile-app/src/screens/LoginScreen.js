@@ -38,33 +38,25 @@ const LoginScreen = ({ navigation }) => {
           formData.append('user_id', userId);
           formData.append('password', password);
 
-          const response = await axios.post('https://v1.mypayrollmaster.online/api/v2qa/login', formData, {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-            },
-            timeout: 10000 
+          const response = await axios.post(API_URL, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            timeout: 12000 
           });
 
-          if (response.status === 200 && response.data.success === 1) {
+          if (response.data && response.data.success === 1) {
             const user = response.data.data;
-            if (user) {
+            if (user && user.user_id) {
               await saveUserLocally(user, password);
               navigation.replace('Main', { user });
               return;
             }
-          } else {
-             Alert.alert('❌ Login Failed', response.data.message || 'Invalid credentials');
-             setLoading(false);
-             return;
           }
+          const failMsg = response.data?.message || 'Invalid credentials';
+          Alert.alert('❌ Login Failed', failMsg);
+          setLoading(false);
+          return;
         } catch (error) {
-          if (error.response) {
-            const msg = error.response?.data?.message || 'Login failed';
-            Alert.alert('❌ Login Failed', msg);
-            setLoading(false);
-            return;
-          }
-          console.error("Login Error: ", error); // fallback for network errors block
+          console.log("Network/Server Error during login - falling back to cache.", error.message);
         }
       }
 

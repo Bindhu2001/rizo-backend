@@ -1,33 +1,445 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  Dimensions, TextInput, ActivityIndicator, Alert, Modal, Platform
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  TextInput, ActivityIndicator, Alert, Modal, Platform, Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  MapPin, Navigation, Clock, CheckCircle, ChevronLeft, 
-  MoreHorizontal, Search, Plus, Compass, ArrowRight, X
-} from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS } from '../components/Theme';
 import { getTodayVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import * as Network from 'expo-network';
 
-const { width } = Dimensions.get('window');
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const fmtTime = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  } catch (_) { return ''; }
+};
 
+const getAddress = async () => {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return { address: 'Location permission denied', lat: 0, lng: 0 };
+    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    const geo = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+    const g = geo?.[0] || {};
+    const parts = [g.name, g.street, g.city, g.region, g.country].filter(Boolean);
+    return { address: parts.join(', ') || 'Unknown Location', lat: loc.coords.latitude, lng: loc.coords.longitude };
+  } catch (_) { return { address: 'Unable to fetch location', lat: 0, lng: 0 }; }
+};
+
+// ─── Timeline Step Row ────────────────────────────────────────────────────────
+const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast }) => (
+  <View style={tl.row}>
+    {/* Left: dot + connector */}
+    <View style={tl.left}>
+      <View style={[tl.dot, done && tl.dotDone]}>
+        {done && <CheckCircle color="#FFF" size={10} strokeWidth={3} />}
+      </View>
+      {!isLast && <View style={tl.line} />}
+    </View>
+    {/* Right: content */}
+    <View style={tl.content}>
+      <View style={tl.topRow}>
+        <Text style={tl.time}>{time}</Text>
+        <View style={[tl.badge, { backgroundColor: labelBg }]}>
+          <Text style={[tl.badgeText, { color: labelColor }]}>{label}</Text>
+        </View>
+      </View>
+      <View style={tl.locRow}>
+        <MapPin color="#9CA3AF" size={11} />
+        <Text style={tl.loc} numberOfLines={1}>{location}</Text>
+      </View>
+    </View>
+  </View>
+);
+
+const tl = StyleSheet.create({
+  row: { flexDirection: 'row', marginBottom: 0 },
+  left: { alignItems: 'center', width: 28, marginRight: 10 },
+  dot: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#D1D5DB',
+  },
+  dotDone: { backgroundColor: '#22C55E', borderColor: '#16A34A' },
+  line: { width: 2, flex: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
+  content: { flex: 1, paddingBottom: 14 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  time: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  badgeText: { fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  locRow: { flexDirection: 'row', alignItems: 'center' },
+  loc: { fontSize: 11, color: '#9CA3AF', marginLeft: 4, flex: 1 },
+});
+
+// ─── Visit Card ───────────────────────────────────────────────────────────────
+const VisitCard = ({ visit, onAction }) => {
+  const hasStart = !!visit.start_time;
+  const hasStepIn = visit.status === 'REACHED' || visit.status === 'step_in' || visit.status === 'COMPLETED';
+  const hasStepOut = visit.status === 'COMPLETED';
+
+  const location = visit.location || 'XCGP+GP Mekkadambu, Kerala, India.';
+  const contactNo = visit.contact_number || '+91 9847118137';
+  const contactPerson = visit.contact_person || visit.client_name;
+  const date = visit.created_at ? new Date(visit.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Dec 23, 2025';
+
+  // LIVE badge shown when scheduled / active
+  const isLive = visit.status === 'SCHEDULED';
+
+  // Determine which button to show
+  let actionLabel = null;
+  let actionStyle = null;
+  if (visit.status === 'SCHEDULED') {
+    actionLabel = 'START';
+    actionStyle = { bg: '#EDE9FE', text: '#7C3AED' };
+  } else if (visit.status === 'REACHED') {
+    actionLabel = 'STEP IN';
+    actionStyle = { bg: '#DCFCE7', text: '#16A34A' };
+  } else if (visit.status === 'step_in') {
+    actionLabel = 'STEP OUT';
+    actionStyle = { bg: '#FCE4EC', text: '#C2185B' };
+  }
+
+  return (
+    <View style={cs.card}>
+      {/* Top: name + date + contact + LIVE */}
+      <View style={cs.cardHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={cs.clientName}>{visit.client_name}</Text>
+          <Text style={cs.date}>{date}</Text>
+          <View style={cs.contactRow}>
+            <Phone color="#9CA3AF" size={11} />
+            <Text style={cs.contactText}>{contactPerson} : {contactNo}</Text>
+          </View>
+        </View>
+        {isLive && (
+          <View style={cs.liveBadge}>
+            <View style={cs.liveDot} />
+            <Text style={cs.liveText}>LIVE</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Timeline */}
+      <View style={cs.timeline}>
+        {/* Step 1 – START */}
+        {hasStart && (
+          <TimelineStep
+            time={fmtTime(visit.start_time)}
+            location={location}
+            label="START"
+            labelBg="#EDE9FE"
+            labelColor="#7C3AED"
+            done={hasStart}
+            isLast={!hasStepIn}
+          />
+        )}
+        {/* Step 2 – STEP IN */}
+        {hasStepIn && (
+          <TimelineStep
+            time={fmtTime(visit.step_in_time || visit.start_time)}
+            location={location}
+            label="STEP IN"
+            labelBg="#DCFCE7"
+            labelColor="#16A34A"
+            done={hasStepIn}
+            isLast={!hasStepOut}
+          />
+        )}
+        {/* Step 3 – STEP OUT */}
+        {hasStepOut && (
+          <TimelineStep
+            time={fmtTime(visit.end_time)}
+            location={location}
+            label="STEP OUT"
+            labelBg="#FCE4EC"
+            labelColor="#C2185B"
+            done={hasStepOut}
+            isLast={true}
+          />
+        )}
+      </View>
+
+      {/* Action button if applicable */}
+      {actionLabel && (
+        <TouchableOpacity
+          style={[cs.actionBtn, { backgroundColor: actionStyle.bg }]}
+          onPress={() => onAction(visit)}
+          activeOpacity={0.8}
+        >
+          <Text style={[cs.actionBtnText, { color: actionStyle.text }]}>{actionLabel}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
+const cs = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    ...SHADOWS.medium,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
+  clientName: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
+  date: { fontSize: 12, color: '#9CA3AF', marginBottom: 4 },
+  contactRow: { flexDirection: 'row', alignItems: 'center' },
+  contactText: { fontSize: 11, color: '#9CA3AF', marginLeft: 4 },
+  liveBadge: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#FFF5F5', paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1, borderColor: '#FCA5A5'
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 },
+  liveText: { fontSize: 10, fontWeight: '800', color: '#EF4444' },
+  timeline: { marginLeft: 0, marginBottom: 4 },
+  actionBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 16, paddingVertical: 6,
+    borderRadius: 8, marginTop: 4,
+  },
+  actionBtnText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+});
+
+// Prohibited / ban-circle icon drawn with pure Views
+const BanIcon = () => (
+  <View style={cm.banOuter}>
+    <View style={cm.banDiag} />
+  </View>
+);
+
+const ConfirmModal = ({ visible, onConfirm, onCancel }) => (
+  <Modal visible={visible} transparent animationType="fade">
+    <View style={cm.overlay}>
+      <View style={cm.box}>
+        <View style={cm.iconWrap}>
+          <BanIcon />
+        </View>
+        <Text style={cm.title}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
+        <Text style={cm.desc}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
+        <View style={cm.row}>
+          <TouchableOpacity style={cm.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
+            <Text style={cm.cancelText}>No, Go back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={cm.confirmBtn} onPress={onConfirm} activeOpacity={0.8}>
+            <Text style={cm.confirmText}>Yes, Confirm</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
+const cm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 28 },
+  box: { backgroundColor: '#FFF', borderRadius: 24, padding: 28, width: '100%', alignItems: 'center' },
+  iconWrap: {
+    width: 88, height: 88, borderRadius: 44,
+    backgroundColor: '#EDE9FE', justifyContent: 'center', alignItems: 'center', marginBottom: 20
+  },
+  // Ban/prohibit circle
+  banOuter: {
+    width: 44, height: 44, borderRadius: 22,
+    borderWidth: 3.5, borderColor: '#62338B',
+    justifyContent: 'center', alignItems: 'center', overflow: 'hidden'
+  },
+  banDiag: {
+    position: 'absolute',
+    width: 3.5, height: 52,
+    backgroundColor: '#62338B',
+    transform: [{ rotate: '45deg' }]
+  },
+  title: { fontSize: 18, fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
+  desc: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+  row: { flexDirection: 'row', gap: 12, width: '100%' },
+  cancelBtn: {
+    flex: 1, paddingVertical: 15, borderRadius: 50,
+    backgroundColor: '#F3F4F6', alignItems: 'center'
+  },
+  cancelText: { fontSize: 14, fontWeight: '700', color: '#374151' },
+  confirmBtn: {
+    flex: 1, paddingVertical: 15, borderRadius: 50,
+    backgroundColor: '#62338B', alignItems: 'center'
+  },
+  confirmText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+});
+
+
+// ─── Add Visit Modal (matches 'Going to Meet' Figma screen) ───────────────────────────
+const FloatInput = ({ label, value, onChangeText, keyboardType, multiline }) => (
+  <View style={fi.wrap}>
+    <Text style={fi.label}>{label}</Text>
+    <TextInput
+      style={[fi.input, multiline && fi.multiline]}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType || 'default'}
+      multiline={multiline}
+      numberOfLines={multiline ? 3 : 1}
+      placeholderTextColor="#D1D5DB"
+    />
+  </View>
+);
+
+const fi = StyleSheet.create({
+  wrap: { marginBottom: 14, position: 'relative', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4 },
+  label: { fontSize: 11, fontWeight: '600', color: '#9CA3AF', marginBottom: 2 },
+  input: { fontSize: 15, color: '#111827', fontWeight: '500', paddingVertical: 4 },
+  multiline: { height: 72, textAlignVertical: 'top' },
+});
+
+const AddVisitModal = ({ visible, onClose, onSave, processing }) => {
+  const [company, setCompany] = useState('');
+  const [contactNo, setContactNo] = useState('');
+  const [contactPerson, setContactPerson] = useState('');
+  const [purpose, setPurpose] = useState('');
+  // Auto-fetched location state
+  const [locText, setLocText] = useState('');
+  const [locCoords, setLocCoords] = useState({ lat: 0, lng: 0 });
+  const [fetchingLoc, setFetchingLoc] = useState(false);
+
+  // Auto-fetch location every time the modal opens
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    const fetch = async () => {
+      setFetchingLoc(true);
+      setLocText('');
+      const result = await getAddress();
+      if (!cancelled) {
+        setLocText(result.address);
+        setLocCoords({ lat: result.lat, lng: result.lng });
+        setFetchingLoc(false);
+      }
+    };
+    fetch();
+    return () => { cancelled = true; };
+  }, [visible]);
+
+  const reset = () => {
+    setCompany(''); setContactNo(''); setContactPerson(''); setPurpose('');
+    setLocText(''); setLocCoords({ lat: 0, lng: 0 });
+  };
+
+  const handleSave = () => {
+    if (!company.trim()) { Alert.alert('Error', 'Please enter a company/customer name'); return; }
+    if (fetchingLoc) { Alert.alert('Please wait', 'Fetching your current location...'); return; }
+    onSave({ company, contactNo, contactPerson, purpose, locText, ...locCoords });
+    reset();
+  };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={am.overlay}>
+        <View style={am.sheet}>
+          {/* Header */}
+          <View style={am.headerRow}>
+            <TouchableOpacity onPress={handleClose} style={am.backBtn} activeOpacity={0.7}>
+              <ChevronLeft color="#111827" size={24} />
+            </TouchableOpacity>
+            <Text style={am.title}>Going to Meet</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          {/* Location chip at top — auto-detected */}
+          <View style={am.locChip}>
+            <MapPin color="#62338B" size={13} />
+            {fetchingLoc ? (
+              <>
+                <Text style={am.locChipText}>Detecting location…</Text>
+                <ActivityIndicator size="small" color="#62338B" style={{ marginLeft: 6 }} />
+              </>
+            ) : (
+              <Text style={am.locChipText} numberOfLines={1}>{locText || 'Your Current Location'}</Text>
+            )}
+          </View>
+
+          {/* Floating-label inputs */}
+          <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} />
+          <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" />
+          <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} />
+          <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline />
+
+          {/* STEP IN button */}
+          <TouchableOpacity
+            style={[am.saveBtn, (processing || fetchingLoc) && { opacity: 0.7 }]}
+            onPress={handleSave}
+            disabled={processing || fetchingLoc}
+            activeOpacity={0.85}
+          >
+            {processing ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={am.saveBtnText}>STEP IN</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+const am = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: '#FFF' },
+  sheet: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    paddingHorizontal: 20, paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, paddingVertical: 10 },
+  backBtn: { width: 44, height: 44, justifyContent: 'center' },
+  title: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  // Location chip at top
+  locChip: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F3E8FF', borderRadius: 20,
+    paddingHorizontal: 12, paddingVertical: 7,
+    marginBottom: 20, alignSelf: 'flex-start',
+    maxWidth: '90%',
+  },
+  locChipText: { fontSize: 12, fontWeight: '600', color: '#62338B', marginLeft: 5, flexShrink: 1 },
+  saveBtn: {
+    backgroundColor: '#62338B', paddingVertical: 17,
+    borderRadius: 50, alignItems: 'center', marginTop: 'auto', marginBottom: 16
+  },
+  saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 const VisitsScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100056' };
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newClient, setNewClient] = useState('');
-  const [newLocation, setNewLocation] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // Step-out confirm
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [pendingVisit, setPendingVisit] = useState(null);
+
+  // FAB pulse animation
+  const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    fetchVisits();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    initDB().then(() => fetchVisits());
   }, []);
 
   const fetchVisits = async () => {
@@ -41,336 +453,188 @@ const VisitsScreen = ({ navigation, route }) => {
     }
   };
 
-  const handleAddVisit = async () => {
-    if (!newClient.trim()) {
-      Alert.alert('Error', 'Please enter a client name');
-      return;
+
+  // Handle card action press
+  const handleAction = (visit) => {
+    if (visit.status === 'SCHEDULED') {
+      // START → go to form to fill details, then start
+      setPendingVisit(visit);
+      setShowAddModal(true);
+    } else if (visit.status === 'REACHED') {
+      // STEP IN
+      doStepIn(visit.id);
+    } else if (visit.status === 'step_in') {
+      // Show confirm before STEP OUT
+      setPendingVisit(visit);
+      setConfirmVisible(true);
     }
+  };
+
+  const doStepIn = async (visitId) => {
     setProcessing(true);
     try {
-      await saveVisitLocal({
+      const { lat, lng, address } = await getAddress();
+      await updateVisitStatus(visitId, 'step_in', {
+        stepInTime: new Date().toISOString(), lat, lng
+      });
+      await syncIfOnline();
+      fetchVisits();
+    } catch (e) { 
+      console.error(e);
+      Alert.alert('Error', 'Failed to step-in\n\n' + e.message); 
+    } finally { setProcessing(false); }
+  };
+
+  const doStepOut = async () => {
+    if (!pendingVisit) return;
+    setConfirmVisible(false);
+    setProcessing(true);
+    try {
+      await updateVisitStatus(pendingVisit.id, 'COMPLETED', { endTime: new Date().toISOString() });
+      await syncIfOnline();
+      fetchVisits();
+    } catch (_) { Alert.alert('Error', 'Failed to step-out'); }
+    finally { setProcessing(false); setPendingVisit(null); }
+  };
+
+  const handleSaveNewVisit = async ({ company, contactNo, contactPerson, purpose, locText, lat, lng }) => {
+    setProcessing(true);
+    try {
+      const id = await saveVisitLocal({
         userId: user.user_id,
-        clientName: newClient,
-        location: newLocation
+        clientName: company,
+        contactNumber: contactNo,
+        contactPerson,
+        purpose,
+        location: locText || '',
+        lat: lat || 0,
+        lng: lng || 0,
       });
-
-      const net = await Network.getNetworkStateAsync();
-      if (net.isConnected) {
-        await SyncService.syncAll();
-      }
-
+      // Immediately mark as REACHED (started)
+      await updateVisitStatus(id, 'REACHED', {
+        startTime: new Date().toISOString(), lat: lat || 0, lng: lng || 0,
+      });
+      await syncIfOnline();
       setShowAddModal(false);
-      setNewClient('');
-      setNewLocation('');
-      fetchVisits();
-    } catch (e) {
-      Alert.alert('Error', 'Failed to save visit');
-    } finally {
-      setProcessing(false);
-    }
+      setPendingVisit(null);
+      await fetchVisits();
+    } catch (e) { 
+      console.error(e);
+      Alert.alert('Error', 'Failed to save visit\n\n' + e.message); 
+    } finally { setProcessing(false); }
   };
 
-  const handleCheckIn = async (visitId) => {
-    setProcessing(true);
+  const syncIfOnline = async () => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-         Alert.alert('Permission Denied', 'Location permission is required to check-in.');
-         setProcessing(false);
-         return;
-      }
-
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      await updateVisitStatus(visitId, 'REACHED', {
-        startTime: new Date().toISOString(),
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude
-      });
-
       const net = await Network.getNetworkStateAsync();
-      if (net.isConnected) {
-        await SyncService.syncAll();
-      }
-
-      fetchVisits();
-      Alert.alert('Success', 'Checked in successfully!');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to check-in');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleComplete = async (visitId) => {
-    setProcessing(true);
-    try {
-      await updateVisitStatus(visitId, 'COMPLETED', {
-        endTime: new Date().toISOString()
-      });
-
-      const net = await Network.getNetworkStateAsync();
-      if (net.isConnected) {
-        await SyncService.syncAll();
-      }
-
-      fetchVisits();
-      Alert.alert('Success', 'Visit completed!');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to complete visit');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'COMPLETED': return '#2ECC71';
-      case 'REACHED': return '#3498DB';
-      default: return COLORS.textMuted;
-    }
+      if (net.isConnected) await SyncService.syncAll();
+    } catch (_) {}
   };
 
   if (loading) {
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={COLORS.primaryDeep} />
+      <View style={s.loader}>
+        <ActivityIndicator size="large" color="#62338B" />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+    <SafeAreaView style={s.container}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+          <ChevronLeft color="#111827" size={26} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Visits Schedule</Text>
-        <TouchableOpacity style={styles.headerIcon}>
-          <MoreHorizontal color={COLORS.text} size={24} />
-        </TouchableOpacity>
+        <Text style={s.headerTitle}>My Customer Visits</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
-        {/* Tracking Card */}
-        <LinearGradient
-           colors={['#101828', '#1F2937']}
-           start={{ x: 0, y: 0 }}
-           end={{ x: 1, y: 1 }}
-           style={styles.trackingCard}
-        >
-           <View style={styles.trackTop}>
-             <View>
-               <Text style={styles.trackLabel}>Live Tracking</Text>
-               <Text style={styles.trackValue}>On Duty</Text>
-             </View>
-             <View style={styles.pulseBox}>
-                <View style={styles.pulse} />
-                <Text style={styles.pulseText}>GPS ACTIVE</Text>
-             </View>
-           </View>
-
-           <View style={styles.locRow}>
-             <View style={styles.iconCircle}>
-               <Compass color={COLORS.primaryDeep} size={28} />
-             </View>
-             <View style={styles.locInfo}>
-               <Text style={styles.locLabel}>Status</Text>
-               <Text style={styles.locText}>{visits.filter(v => v.status === 'COMPLETED').length} Visits Completed Today</Text>
-             </View>
-           </View>
-        </LinearGradient>
-
-        {/* List Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Visit List</Text>
-          <TouchableOpacity onPress={fetchVisits}><Text style={styles.historyText}>Refresh</Text></TouchableOpacity>
-        </View>
-
-        <View style={styles.listContainer}>
-          {visits.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-              <MapPin color={COLORS.textMuted} size={40} />
-              <Text style={{ marginTop: 12, color: COLORS.textMuted, fontWeight: '600' }}>No visits scheduled for today</Text>
+      {/* ── List ── */}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        {visits.length === 0 ? (
+          <View style={s.emptyWrap}>
+            <View style={s.emptyIconBox}>
+              <MapPin color="#62338B" size={36} />
             </View>
-          ) : (
-            visits.map((visit, index) => {
-              const color = getStatusColor(visit.status);
-              return (
-                <View key={visit.id} style={[styles.visitCard, index === visits.length - 1 && { borderBottomWidth: 0 }]}>
-                    <View style={styles.cardTop}>
-                        <View style={styles.clientGroup}>
-                            <Text style={styles.clientName}>{visit.client_name}</Text>
-                            {visit.start_time && (
-                                <View style={styles.timeRow}>
-                                    <Clock color={COLORS.textLight} size={12} />
-                                    <Text style={styles.timeText}>Started: {new Date(visit.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                                </View>
-                            )}
-                        </View>
-                        <View style={[styles.statusTag, { backgroundColor: color + '15' }]}>
-                            <Text style={[styles.statusText, { color: color }]}>{visit.status}{visit.sync_status === 'PENDING' ? ' (LOCAL)' : ''}</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.locGroup}>
-                        <MapPin color={COLORS.textLight} size={14} />
-                        <Text style={styles.locSubText}>{visit.location || 'Location not specified'}</Text>
-                    </View>
-
-                    <View style={styles.cardActions}>
-                        {visit.status === 'SCHEDULED' && (
-                            <TouchableOpacity 
-                                style={[styles.actionBtn, { backgroundColor: '#3498DB' }]}
-                                onPress={() => handleCheckIn(visit.id)}
-                                disabled={processing}
-                            >
-                                <Navigation color="#FFF" size={14} />
-                                <Text style={styles.actionBtnText}>Check-In</Text>
-                            </TouchableOpacity>
-                        )}
-                        {visit.status === 'REACHED' && (
-                            <TouchableOpacity 
-                                style={[styles.actionBtn, { backgroundColor: '#2ECC71' }]}
-                                onPress={() => handleComplete(visit.id)}
-                                disabled={processing}
-                            >
-                                <CheckCircle color="#FFF" size={14} />
-                                <Text style={styles.actionBtnText}>Complete Visit</Text>
-                            </TouchableOpacity>
-                        )}
-                        {visit.status === 'COMPLETED' && (
-                             <View style={styles.completedRow}>
-                                <CheckCircle color="#2ECC71" size={16} />
-                                <Text style={styles.completedText}>
-                                    Finished at {new Date(visit.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                             </View>
-                        )}
-                    </View>
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        <View style={{ height: 100 }} />
+            <Text style={s.emptyTitle}>No Visits Today</Text>
+            <Text style={s.emptySubtitle}>Tap the + button to add a customer visit</Text>
+          </View>
+        ) : (
+          visits.map((v) => (
+            <VisitCard key={v.id} visit={v} onAction={handleAction} />
+          ))
+        )}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      <TouchableOpacity style={styles.fab} onPress={() => setShowAddModal(true)}>
-        <Plus color="#FFF" size={30} />
-      </TouchableOpacity>
+      {/* ── FAB ── */}
+      <Animated.View style={[s.fabWrap, { transform: [{ scale: pulse }] }]}>
+        <TouchableOpacity
+          style={s.fab}
+          onPress={() => { setPendingVisit(null); setShowAddModal(true); }}
+          activeOpacity={0.85}
+        >
+          <Plus color="#FFF" size={28} strokeWidth={2.5} />
+        </TouchableOpacity>
+      </Animated.View>
 
-      {/* Add Visit Modal */}
-      <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-           <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                 <Text style={styles.modalTitle}>New Client Visit</Text>
-                 <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                    <X color={COLORS.text} size={24} />
-                 </TouchableOpacity>
-              </View>
+      {/* ── Add Visit Modal ── */}
+      <AddVisitModal
+        visible={showAddModal}
+        onClose={() => { setShowAddModal(false); setPendingVisit(null); }}
+        onSave={handleSaveNewVisit}
+        processing={processing}
+      />
 
-              <View style={styles.inputBox}>
-                 <Text style={styles.inputLabel}>Client Name</Text>
-                 <TextInput 
-                    style={styles.input} 
-                    placeholder="e.g. Acme Corp" 
-                    value={newClient}
-                    onChangeText={setNewClient}
-                 />
-              </View>
-
-              <View style={styles.inputBox}>
-                 <Text style={styles.inputLabel}>Location / Landmark</Text>
-                 <TextInput 
-                    style={styles.input} 
-                    placeholder="e.g. North Plaza" 
-                    value={newLocation}
-                    onChangeText={setNewLocation}
-                 />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.saveBtn, processing && { opacity: 0.7 }]}
-                onPress={handleAddVisit}
-                disabled={processing}
-              >
-                {processing ? (
-                    <ActivityIndicator color="#FFF" />
-                ) : (
-                    <Text style={styles.saveBtnText}>Save Schedule</Text>
-                )}
-              </TouchableOpacity>
-           </View>
-        </View>
-      </Modal>
+      {/* ── Step-Out Confirm Modal ── */}
+      <ConfirmModal
+        visible={confirmVisible}
+        onConfirm={doStepOut}
+        onCancel={() => { setConfirmVisible(false); setPendingVisit(null); }}
+      />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text },
-  headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20 },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' },
 
-  // Tracking Card
-  trackingCard: { borderRadius: 30, padding: 24, marginBottom: 32, ...SHADOWS.medium },
-  trackTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  trackLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
-  trackValue: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-  pulseBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  pulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#2ECC71', marginRight: 6 },
-  pulseText: { fontSize: 10, color: '#FFF', fontWeight: '800' },
-  locRow: { flexDirection: 'row', alignItems: 'center' },
-  iconCircle: { width: 56, height: 56, borderRadius: 20, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  locLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
-  locText: { fontSize: 15, fontWeight: '800', color: '#FFF' },
+  // Header
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 8, height: 56, backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6',
+  },
+  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
 
   // List
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  historyText: { fontSize: 13, color: COLORS.primaryDeep, fontWeight: '700' },
-  listContainer: { backgroundColor: '#FFF', borderRadius: 28, padding: 8, ...SHADOWS.light },
-  visitCard: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-  clientGroup: { flex: 1 },
-  clientName: { fontSize: 16, fontWeight: '800', color: COLORS.text, marginBottom: 4 },
-  timeRow: { flexDirection: 'row', alignItems: 'center' },
-  timeText: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginLeft: 6 },
-  statusTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  statusText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
-  locGroup: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  locSubText: { fontSize: 13, color: COLORS.textLight, fontWeight: '600', marginLeft: 8, flex: 1 },
-  cardActions: { flexDirection: 'row', alignItems: 'center' },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, marginRight: 10 },
-  actionBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800', marginLeft: 8 },
-  completedRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  completedText: { color: '#2ECC71', fontSize: 12, fontWeight: '700', marginLeft: 8 },
+  scroll: { padding: 16, paddingTop: 20 },
 
-  fab: { 
-    position: 'absolute', bottom: 30, right: 30, 
-    width: 64, height: 64, borderRadius: 32, 
-    backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center',
-    ...SHADOWS.medium
+  // Empty state
+  emptyWrap: { flex: 1, alignItems: 'center', paddingTop: 80 },
+  emptyIconBox: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center', marginBottom: 16
   },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  emptySubtitle: { fontSize: 14, color: '#9CA3AF', textAlign: 'center' },
 
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 20, fontWeight: '900', color: COLORS.text },
-  inputBox: { marginBottom: 20 },
-  inputLabel: { fontSize: 13, color: COLORS.textLight, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
-  input: { backgroundColor: '#F9FAFB', borderRadius: 16, padding: 16, fontSize: 15, fontWeight: '600', color: COLORS.text, borderWidth: 1, borderColor: '#F3F4F6' },
-  saveBtn: { backgroundColor: COLORS.primaryDeep, padding: 18, borderRadius: 20, alignItems: 'center', marginTop: 8 },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' }
+  // FAB
+  fabWrap: { position: 'absolute', bottom: 32, right: 28 },
+  fab: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: '#62338B',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#62338B', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45, shadowRadius: 12, elevation: 10,
+  },
 });
 
 export default VisitsScreen;

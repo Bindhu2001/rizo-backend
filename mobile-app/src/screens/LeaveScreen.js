@@ -12,6 +12,7 @@ import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import { saveLeaveLocal, getLeavesLocal, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import * as Network from 'expo-network';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -49,10 +50,6 @@ const LeaveScreen = ({ navigation, route }) => {
   const [approvedBy, setApprovedBy] = useState('Alex Walker');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
   const fetchHistory = async () => {
     try {
       const data = await getLeavesLocal(user.user_id);
@@ -63,6 +60,13 @@ const LeaveScreen = ({ navigation, route }) => {
       setLoading(false);
     }
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      setView('DASHBOARD');
+      fetchHistory();
+    }, [])
+  );
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
@@ -92,9 +96,10 @@ const LeaveScreen = ({ navigation, route }) => {
       setView('SUCCESS');
       fetchHistory();
     } catch (e) {
-      Alert.alert('Error', 'Failed to save leave request');
+      console.error(e);
+      Alert.alert('Error', 'Failed to save leave request.\n\nDetails: ' + e.message);
     } finally {
-      setSubmitting(false);
+      setProcessing(false);
     }
   };
 
@@ -144,13 +149,23 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={styles.remainingBanner}>
         <Text style={styles.remainingText}>{selectedLeaveType} remaining : 5</Text>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView 
+         showsVerticalScrollIndicator={false} 
+         contentContainerStyle={styles.scroll}
+         keyboardShouldPersistTaps="handled"
+      >
         
         <View style={styles.row}>
           <View style={[styles.inputBox, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>From Date</Text>
-            <View style={styles.dateInput}>
-              <Text style={styles.inputValue}>{fromDate}</Text>
+            <View style={[styles.textInput, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput 
+                style={{ flex: 1, fontSize: 14, color: COLORS.text, fontWeight: '600' }}
+                value={fromDate}
+                onChangeText={setFromDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={COLORS.textMuted}
+              />
               <CalendarIcon color={COLORS.text} size={18} />
             </View>
           </View>
@@ -166,8 +181,14 @@ const LeaveScreen = ({ navigation, route }) => {
         <View style={styles.row}>
           <View style={[styles.inputBox, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>To Date</Text>
-            <View style={styles.dateInput}>
-              <Text style={styles.inputValue}>{toDate}</Text>
+            <View style={[styles.textInput, { flexDirection: 'row', alignItems: 'center' }]}>
+              <TextInput 
+                style={{ flex: 1, fontSize: 14, color: COLORS.text, fontWeight: '600' }}
+                value={toDate}
+                onChangeText={setToDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={COLORS.textMuted}
+              />
               <CalendarIcon color={COLORS.text} size={18} />
             </View>
           </View>
@@ -208,26 +229,18 @@ const LeaveScreen = ({ navigation, route }) => {
         </View>
 
         <View style={styles.inputBox}>
-          <Text style={styles.label}>Reason</Text>
-          <View style={styles.dateInput}>
-            <Text style={styles.inputValue}>Feeling unwell</Text>
-            <ChevronDown color={COLORS.text} size={18} />
-          </View>
-        </View>
-
-        <View style={styles.inputBox}>
-          <Text style={styles.label}>Remarks</Text>
+          <Text style={styles.label}>Reason Note</Text>
           <TextInput 
             style={[styles.textInput, { height: 100, textAlignVertical: 'top', paddingTop: 12 }]} 
             multiline 
             value={reason}
             onChangeText={setReason}
-            placeholder="Additional notes..." 
+            placeholder="Feeling unwell, additional notes..." 
           />
         </View>
 
         <TouchableOpacity 
-            style={[styles.submitBtn, submitting && { opacity: 0.7 }]} 
+            style={[styles.submitBtn, submitting && { opacity: 0.7 }, { marginTop: 10 }]} 
             onPress={handleSubmit}
             disabled={submitting}
         >
