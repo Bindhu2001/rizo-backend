@@ -1,9 +1,8 @@
 import axios from 'axios';
 import * as Network from 'expo-network';
-import { 
-  initDB
-} from './LocalDB';
+import { initDB } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
+import * as Location from 'expo-location';
 
 const SyncService = {
   isSyncing: false,
@@ -77,17 +76,41 @@ const SyncService = {
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       };
 
-      const login_auditor_array = items.map(item => ({
-        auditor_pkey: empPkey,
-        latitude: parseFloat(item.latitude) || 0,
-        longitude: parseFloat(item.longitude) || 0,
-        user_id: item.user_id,
-        time_check: formatTime(item.punch_time),
-        in_out: item.type, // 'IN' or 'OUT'
-        accuracy: "20",
-        loc_sourse: "fused-android",
-        locationName: item.address || "Unknown"
-      }));
+      // Transform raw pending items into the structured auditor payload with smart geocoding
+      const login_auditor_array = [];
+      for (const item of items) {
+        let finalLocName = item.address || "Location Attached";
+        
+        // Smart Re-Geocoding Check: If the saved address is a placeholder, try one last time to resolve it
+        const isPlaceholder = !finalLocName || finalLocName.includes('Fetching') || finalLocName.includes('Loading');
+        if (isPlaceholder && item.latitude && item.longitude && Math.abs(item.latitude) > 0) {
+          try {
+            const geo = await Location.reverseGeocodeAsync({ 
+                latitude: Number(item.latitude), 
+                longitude: Number(item.longitude) 
+            });
+            if (geo && geo.length > 0) {
+                const r = geo[0];
+                const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
+                finalLocName = [...new Set(parts)].join(', ');
+            }
+          } catch (e) {
+            console.log('[SyncService] Background reverse geocode failed.');
+          }
+        }
+
+        login_auditor_array.push({
+          auditor_pkey: empPkey,
+          latitude: parseFloat(item.latitude) || 0,
+          longitude: parseFloat(item.longitude) || 0,
+          user_id: item.user_id,
+          time_check: formatTime(item.punch_time),
+          in_out: item.type, // 'IN' or 'OUT'
+          accuracy: "20",
+          loc_sourse: "fused-android",
+          locationName: finalLocName
+        });
+      }
 
       try {
         await axios.post('https://v1.mypayrollmaster.online/api/v2qa/newapp/swipe', {
