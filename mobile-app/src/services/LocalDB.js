@@ -126,7 +126,8 @@ export const initDB = async () => {
 // ─── Attendance ──────────────────────────────────────────────────────────────
 export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, longitude = 0, address = null }) => {
   const database = await initDB();
-  // Ensure we don't save duplicate punches in sequence locally
+  // Duplicate punch sequence guard removed to allow better multi-punch reliability in same session
+  /*
   const lastTypeRow = await database.getFirstAsync(
     `SELECT type FROM attendance WHERE user_id = ? ORDER BY punch_time DESC LIMIT 1`,
     [userId]
@@ -135,6 +136,7 @@ export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, lo
     console.log('[LocalDB] Duplicate punch sequence ignored');
     return null;
   }
+  */
 
   const id = `att_${Date.now()}`;
   try {

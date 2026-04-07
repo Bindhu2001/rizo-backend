@@ -148,8 +148,11 @@ const HomeScreen = ({ navigation, route }) => {
 
   // ── Punch ─────────────────────────────────────────────────────────────────
   const handleSwipeComplete = () => {
-    const nextType = isPunchedIn ? 'OUT' : 'IN';
-    processPunch(nextType);
+    if (isPunchedIn) {
+      setShowConfirmOut(true);
+    } else {
+      processPunch('IN');
+    }
   };
 
   const processPunch = async (type) => {
@@ -196,17 +199,19 @@ const HomeScreen = ({ navigation, route }) => {
       
       console.log(`[Punch] ${type} saved locally: ${savedId}`);
       
-      // 3. Update UI state and stats
-      setIsPunchedIn(type === 'IN');
-      await checkOfflinePunches();
+      // 3. Update UI state immediately
+      const isNowIn = type === 'IN';
+      setIsPunchedIn(isNowIn);
+      console.log(`[Punch] UI flipped to ${isNowIn ? 'IN' : 'OUT'}`);
 
-      // 4. Trigger sync and refresh
+      // 4. Trigger background operations
+      checkOfflinePunches();
       const net = await Network.getNetworkStateAsync();
       if (net.isConnected) {
-        syncOfflinePunches();
+        SyncService.syncAll().then(() => fetchStatus());
+      } else {
+        await fetchStatus();
       }
-
-      await fetchStatus();
     } catch (e) {
       console.error('[Punch] Error:', e);
       Alert.alert('❌ Error', 'Failed to process punch.\n\n' + e.message);
