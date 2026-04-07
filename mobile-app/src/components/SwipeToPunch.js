@@ -24,9 +24,16 @@ const SwipeToPunch = ({
 
   const pan = useRef(new Animated.Value(0)).current; 
   const isPunchedInRef = useRef(isPunchedIn);
+  const maxSlideRef = useRef(maxSlide);
+  const loadingRef = useRef(loading);
+  const swipeWidthRef = useRef(swipeWidth);
 
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
+    maxSlideRef.current = maxSlide;
+    loadingRef.current = loading;
+    swipeWidthRef.current = swipeWidth;
+
     if (swipeWidth > 0 && !loading) {
       Animated.spring(pan, {
         toValue: isPunchedIn ? maxSlide : 0,
@@ -41,38 +48,37 @@ const SwipeToPunch = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => {
-        // Prevent accidental scrolls / button tap clicks. Only horizontal motion triggers it.
-        return Math.abs(gs.dx) > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
+        if (loadingRef.current) return false;
+        return Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
 
       onPanResponderMove: (_, gs) => {
-        if (swipeWidth === 0 || loading) return;
-        const startX = isPunchedInRef.current ? maxSlide : 0;
-        const clampedX = Math.max(0, Math.min(startX + gs.dx, maxSlide));
+        if (swipeWidthRef.current === 0 || loadingRef.current) return;
+        const startX = isPunchedInRef.current ? maxSlideRef.current : 0;
+        const clampedX = Math.max(0, Math.min(startX + gs.dx, maxSlideRef.current));
         pan.setValue(clampedX);
       },
 
       onPanResponderRelease: (_, gs) => {
-        if (swipeWidth === 0 || loading) return;
-        const threshold = maxSlide * 0.65; // 65% dragged required for completion
+        if (swipeWidthRef.current === 0 || loadingRef.current) return;
+        const mSlide = maxSlideRef.current;
+        const threshold = mSlide * 0.45; // Lower threshold (45%) for better UX
         
         let shouldComplete = false;
-        if (!isPunchedInRef.current && gs.dx >= threshold) shouldComplete = true; // Dragging right
-        if (isPunchedInRef.current && gs.dx <= -threshold) shouldComplete = true; // Dragging left
+        if (!isPunchedInRef.current && gs.dx >= threshold) shouldComplete = true; 
+        if (isPunchedInRef.current && gs.dx <= -threshold) shouldComplete = true; 
 
         if (shouldComplete) {
-          // Slide to the completed side to validate the visual action
           Animated.timing(pan, {
-            toValue: isPunchedInRef.current ? 0 : maxSlide,
+            toValue: isPunchedInRef.current ? 0 : mSlide,
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
              onSwipeComplete();
           });
         } else {
-          // Snap back to the correct original side if they didn't drag it fully
           Animated.spring(pan, {
-            toValue: isPunchedInRef.current ? maxSlide : 0,
+            toValue: isPunchedInRef.current ? mSlide : 0,
             useNativeDriver: false,
             tension: 40,
             friction: 7,
@@ -82,7 +88,7 @@ const SwipeToPunch = ({
 
       onPanResponderTerminate: () => {
         Animated.spring(pan, {
-          toValue: isPunchedInRef.current ? maxSlide : 0,
+          toValue: isPunchedInRef.current ? maxSlideRef.current : 0,
           useNativeDriver: false,
         }).start();
       },
