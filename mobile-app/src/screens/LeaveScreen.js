@@ -9,9 +9,7 @@ import {
   ChevronRight, CheckCircle, Clock
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
-import { saveLeaveLocal, getLeavesLocal, initDB } from '../services/LocalDB';
-import SyncService from '../services/SyncService';
-import * as Network from 'expo-network';
+import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -35,8 +33,9 @@ const headerStyles = {
 const LeaveScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100056' };
   const [view, setView] = useState('DASHBOARD');
-  const [selectedLeaveType, setSelectedLeaveType] = useState('Casual Leave');
+  const [selectedLeave, setSelectedLeave] = useState(null);
   const [leaves, setLeaves] = useState([]);
+  const [leaveBalances, setLeaveBalances] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // Form State
@@ -51,9 +50,13 @@ const LeaveScreen = ({ navigation, route }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchHistory = async () => {
+    setLoading(true);
     try {
-      const data = await getLeavesLocal(user.user_id);
-      setLeaves(data || []);
+      const hist = await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/leave_history`, { user_id: user.user_id });
+      if (hist.data?.success) setLeaves(hist.data.data || []);
+
+      const items = await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/leave_items`, { user_id: user.user_id });
+      if (items.data?.success) setLeaveBalances(items.data.data || []);
     } catch (e) {
       console.log('Fetch leaves error', e);
     } finally {
@@ -73,67 +76,70 @@ const LeaveScreen = ({ navigation, route }) => {
       Alert.alert('Error', 'Please provide a reason for leave');
       return;
     }
+    if (!selectedLeave) return;
+
     setSubmitting(true);
     try {
-      await saveLeaveLocal({
-        userId: user.user_id,
-        leaveType: selectedLeaveType,
-        fromDate,
-        toDate,
-        fromHalf,
-        toHalf,
-        reason,
-        authorizedBy: authorisedBy,
-        approvedBy: approvedBy,
-        contactNo: contactNo
+      const res = await axios.post('https://v1.mypayrollmaster.online/api/v2qa/newapp/leave', {
+        user_id: user.user_id,
+        from_date: fromDate,
+        to_date: toDate,
+        salary_head_item_fkey: parseInt(selectedLeave.leave_id, 10) || 0,
+        reason: reason,
+        from_session: fromHalf === 'Second Half' ? 2 : 1,
+        to_session: toHalf === 'First Half' ? 1 : 2,
+        contact_number: contactNo || 'N/A',
+        duties_handed_over: 'N/A',
+        authorized_by: 1, 
+        approved_by: 1
       });
-      
-      const net = await Network.getNetworkStateAsync();
-      if (net.isConnected) {
-        await SyncService.syncAll();
+
+      if (res.data?.success === 1 || res.data?.success === true || res.data?.message?.toLowerCase().includes('success')) {
+        setView('SUCCESS');
+        await fetchHistory();
+      } else {
+        Alert.alert('Notice', res.data?.message || 'Failed to submit leave.');
       }
-      
-      setView('SUCCESS');
-      fetchHistory();
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to save leave request.\n\nDetails: ' + e.message);
     } finally {
-      setProcessing(false);
+      setSubmitting(false);
     }
   };
 
-  const leaveBalances = [
-    { id: '1', type: 'Casual Leave', taken: 2, total: 5, color: COLORS.primaryDeep },
-    { id: '2', type: 'Compensatory Off', taken: 0, total: 5, color: '#FF9800' },
-    { id: '3', type: 'Sick Leave', taken: 3, total: 10, color: '#4CAF50' },
-    { id: '4', type: 'Earned Leave', taken: 3.5, total: 10, color: '#2196F3' },
-    { id: '5', type: 'Vacation Leave', taken: 0, total: 10, color: '#E91E63' },
-  ];
+
 
   const DashboardView = () => (
     <View style={{ flex: 1 }}>
       <LeaveHeader title="Leaves" onBack={() => navigation.goBack()} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {leaveBalances.map(item => (
+        {leaveBalances.map((item, index) => {
+          const colors = ['#8E24AA', '#FF9800', '#4CAF50', '#2196F3', '#E91E63', '#9C27B0'];
+          const ccolor = colors[index % colors.length];
+          const taken = parseFloat(item.leave_taken) || 0;
+          const bal = parseFloat(item.leave_balance) || 0;
+          const total = taken + bal;
+          
+          return (
           <TouchableOpacity 
-            key={item.id} 
+            key={item.leave_id} 
             style={styles.balanceCard}
             onPress={() => {
-              setSelectedLeaveType(item.type);
+              setSelectedLeave(item);
               setView('APPLY');
             }}
           >
-            <View style={[styles.typeBar, { backgroundColor: item.color }]} />
+            <View style={[styles.typeBar, { backgroundColor: ccolor }]} />
             <View style={styles.balanceContent}>
               <View>
-                <Text style={styles.balanceRatio}>{item.taken}/{item.total}</Text>
-                <Text style={styles.balanceType}>{item.type}</Text>
+                <Text style={styles.balanceRatio}>{taken}/{total}</Text>
+                <Text style={styles.balanceType}>{item.leave_name?.trim()}</Text>
               </View>
               <ChevronRight color={COLORS.textMuted} size={20} />
             </View>
           </TouchableOpacity>
-        ))}
+        )})}
         
         <TouchableOpacity style={styles.historyBtn} onPress={() => setView('HISTORY')}>
           <Text style={styles.historyBtnText}>View applied & past leaves</Text>
@@ -145,9 +151,9 @@ const LeaveScreen = ({ navigation, route }) => {
 
   const ApplyFormView = () => (
     <View style={{ flex: 1 }}>
-      <LeaveHeader title={`Apply ${selectedLeaveType}`} onBack={() => setView('DASHBOARD')} />
+      <LeaveHeader title={`Apply ${selectedLeave?.leave_name?.trim() || ''}`} onBack={() => setView('DASHBOARD')} />
       <View style={styles.remainingBanner}>
-        <Text style={styles.remainingText}>{selectedLeaveType} remaining : 5</Text>
+        <Text style={styles.remainingText}>{selectedLeave?.leave_name?.trim() || ''} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
       <ScrollView 
          showsVerticalScrollIndicator={false} 
@@ -275,19 +281,19 @@ const LeaveScreen = ({ navigation, route }) => {
                 <Text style={{ marginTop: 12, color: COLORS.textMuted, fontWeight: '600' }}>No leave history found</Text>
             </View>
         ) : (
-            leaves.map(item => (
-                <View key={item.id} style={styles.historyCard}>
-                    <View style={[styles.statusSideBar, { backgroundColor: item.status === 'APPROVED' ? '#4CAF50' : item.status === 'REJECTED' ? '#F44336' : (item.status === 'PENDING' ? '#F59E0B' : '#2196F3') }]}>
-                        <Text style={styles.sidebarText}>{item.status === 'PENDING' ? 'LOCAL' : item.status}</Text>
+            leaves.map((item, index) => (
+                <View key={item.leave_id || index.toString()} style={styles.historyCard}>
+                    <View style={[styles.statusSideBar, { backgroundColor: item.leave_status === 'Approved' ? '#4CAF50' : item.leave_status === 'Rejected' ? '#F44336' : (item.leave_status === 'Applied' ? '#2196F3' : '#F59E0B') }]}>
+                        <Text style={styles.sidebarText}>{item.leave_status}</Text>
                     </View>
                     <View style={styles.historyInfo}>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.historyTypeTitle}>{item.leave_type}</Text>
+                            <Text style={styles.historyTypeTitle}>{item.leave_name?.trim()}</Text>
                             <Text style={styles.historyDateText}>{item.from_date} to {item.to_date}</Text>
-                            <Text style={styles.historyBy}>Reason: {item.reason}</Text>
+                            {item.approved_by_person && <Text style={styles.historyBy}>Appr: {item.approved_by_person}</Text>}
                         </View>
                         <View style={styles.dayBadge}>
-                            <Text style={styles.dayNum}>?</Text>
+                            <Text style={styles.dayNum}>{item.leave_count}</Text>
                             <Text style={styles.dayLabel}>Days</Text>
                         </View>
                     </View>
@@ -300,10 +306,10 @@ const LeaveScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {view === 'DASHBOARD' && <DashboardView />}
-      {view === 'APPLY' && <ApplyFormView />}
-      {view === 'SUCCESS' && <SuccessView />}
-      {view === 'HISTORY' && <HistoryView />}
+      {view === 'DASHBOARD' && DashboardView()}
+      {view === 'APPLY' && ApplyFormView()}
+      {view === 'SUCCESS' && SuccessView()}
+      {view === 'HISTORY' && HistoryView()}
     </SafeAreaView>
   );
 };

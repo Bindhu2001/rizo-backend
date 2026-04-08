@@ -201,20 +201,61 @@ const SyncService = {
 
     for (const item of pending) {
       try {
-        await axios.post(API_ENDPOINTS.VISITS, {
-          userId: item.user_id,
-          clientName: item.client_name,
-          contactNumber: item.contact_number,
-          contactPerson: item.contact_person,
-          purpose: item.purpose,
-          location: item.location,
-          latitude: item.latitude,
-          longitude: item.longitude,
-          startTime: item.start_time,
-          stepInTime: item.step_in_time,
-          endTime: item.end_time,
-          status: item.status
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
+        let storedLat = parseFloat(item.latitude) || 0;
+        let storedLng = parseFloat(item.longitude) || 0;
+        let finalLoc = item.location;
+        
+        // Reverse Geocode if generated offline
+        if (!finalLoc || finalLoc === 'Unable to fetch location' || finalLoc === 'Unknown Location' || finalLoc.startsWith('Lat:')) {
+          if (Math.abs(storedLat) > 0.0001) {
+            try {
+              const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
+              if (geo && geo.length > 0) {
+                const r = geo[0];
+                const parts = [r.name || r.street, r.district || r.city, r.region, r.country].filter(Boolean);
+                if (parts.length > 0) {
+                  finalLoc = [...new Set(parts)].join(', ');
+                  await db.runAsync("UPDATE client_visits SET location = ? WHERE id = ?", [finalLoc, item.id]);
+                }
+              }
+            } catch (e) {
+              console.log('[SyncService] reverse geocode failed for offline visit');
+            }
+          }
+        }
+        
+        const formatSyncTime = (iso) => {
+           if (!iso) return "";
+           const d = new Date(iso);
+           const pad = (n) => n.toString().padStart(2, '0');
+           return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        };
+
+        const postVisit = async (stepType, timeStr) => {
+            const payload = {
+              stepinout: stepType,
+              customer_name: item.client_name,
+              purpose: item.purpose,
+              latitude: `${storedLat}`,
+              longitude: `${storedLng}`,
+              accuracy: 20,
+              location: finalLoc,
+              contact_person: item.contact_person,
+              contact_number: item.contact_number,
+              created_time: formatSyncTime(timeStr)
+            };
+            await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/customer_visit_sync?user_id=${item.user_id}`, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
+        };
+
+        // If it got to REACHED or beyond, we post Step In
+        if (item.step_in_time || item.start_time) {
+             await postVisit("Step In", item.step_in_time || item.start_time);
+        }
+        // If it was fully COMPLETED, we additionally post Step Out
+        if (item.status === 'COMPLETED' && item.end_time) {
+             await postVisit("Step Out", item.end_time);
+        }
+        
         await db.runAsync("UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
       } catch (e) {
         console.log(`[SyncService] Visit ${item.id} sync failed:`, e.message);

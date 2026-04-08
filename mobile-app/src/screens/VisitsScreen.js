@@ -24,11 +24,22 @@ const getAddress = async () => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return { address: 'Location permission denied', lat: 0, lng: 0 };
+    
+    // Attempt standard accurate geolocating 
     const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-    const geo = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-    const g = geo?.[0] || {};
-    const parts = [g.name, g.street, g.city, g.region, g.country].filter(Boolean);
-    return { address: parts.join(', ') || 'Unknown Location', lat: loc.coords.latitude, lng: loc.coords.longitude };
+    const lat = loc.coords.latitude;
+    const lng = loc.coords.longitude;
+    
+    let addressStr = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+    
+    try {
+      const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      const g = geo?.[0] || {};
+      const parts = [g.name, g.street, g.city, g.region, g.country].filter(Boolean);
+      if (parts.length > 0) addressStr = parts.join(', ');
+    } catch (_) {}
+    
+    return { address: addressStr, lat, lng };
   } catch (_) { return { address: 'Unable to fetch location', lat: 0, lng: 0 }; }
 };
 
