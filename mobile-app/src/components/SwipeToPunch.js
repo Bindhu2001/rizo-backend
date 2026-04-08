@@ -22,39 +22,45 @@ const SwipeToPunch = ({
   const buttonWidth = trackHeight - padding * 2;
   const maxSlide = Math.max(0, swipeWidth - buttonWidth - padding * 2);
 
-  const pan = useRef(new Animated.Value(0)).current; 
+  const pan = useRef(new Animated.Value(0)).current;
   const isPunchedInRef = useRef(isPunchedIn);
   const maxSlideRef = useRef(maxSlide);
   const loadingRef = useRef(loading);
   const swipeWidthRef = useRef(swipeWidth);
+  // Always hold the latest onSwipeComplete — panResponder closure never updates otherwise
+  const onSwipeCompleteRef = useRef(onSwipeComplete);
 
-  // Always reset to left when state changes or reset is triggered
+  // Keep all refs in sync with latest props on every render
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
     maxSlideRef.current = maxSlide;
     loadingRef.current = loading;
     swipeWidthRef.current = swipeWidth;
+    onSwipeCompleteRef.current = onSwipeComplete;
+  });
 
+  // Spring-reset the button ONLY when punch state flips or cancel is pressed
+  // (not on every loading/swipeWidth change — that causes animation conflicts)
+  useEffect(() => {
     Animated.spring(pan, {
-        toValue: 0,
-        useNativeDriver: false,
-        tension: 50,
-        friction: 8
+      toValue: 0,
+      useNativeDriver: false,
+      tension: 50,
+      friction: 8,
     }).start();
-  }, [isPunchedIn, resetTrigger, swipeWidth, loading]);
+  }, [isPunchedIn, resetTrigger]);
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => {
         if (loadingRef.current) return false;
-        // Only allow Rightward movement
+        // Only allow rightward movement
         return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
 
       onPanResponderMove: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
-        // Button always starts at 0 and slides to maxSlide
         const clampedX = Math.max(0, Math.min(gs.dx, maxSlideRef.current));
         pan.setValue(clampedX);
       },
@@ -62,15 +68,15 @@ const SwipeToPunch = ({
       onPanResponderRelease: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
         const mSlide = maxSlideRef.current;
-        const threshold = mSlide * 0.6; 
-        
+        const threshold = mSlide * 0.6;
+
         if (gs.dx >= threshold) {
           Animated.timing(pan, {
             toValue: mSlide,
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
-             onSwipeComplete();
+            onSwipeCompleteRef.current(); // Always calls the latest handler
           });
         } else {
           Animated.spring(pan, {

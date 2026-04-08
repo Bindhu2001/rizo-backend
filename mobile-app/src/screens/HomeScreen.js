@@ -272,7 +272,6 @@ const HomeScreen = ({ navigation, route }) => {
         {/* SWIPE ACTION */}
         <View style={styles.swipeBox}>
           <SwipeToPunch
-            key={`swipe-${isPunchedIn ? 'out' : 'in'}`} // Force re-mount on state flip
             isPunchedIn={isPunchedIn}
             loading={punching}
             onSwipeComplete={handleSwipeComplete}
