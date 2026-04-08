@@ -44,6 +44,7 @@ const HomeScreen = ({ navigation, route }) => {
 
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
+  const [punchMessage, setPunchMessage] = useState('');
 
   const toggleEvents = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -161,21 +162,32 @@ const HomeScreen = ({ navigation, route }) => {
     if (punching) return;
     setPunching(true);
     setShowConfirmOut(false);
-    lastActionTime.current = Date.now(); // Guard: prevent server state from overriding for 30s
+    lastActionTime.current = Date.now();
 
     console.log(`[Punch] Initiating ${type} process...`);
     const punchTime = new Date().toISOString();
 
     try {
-      // 1. Fetch GPS location for this punch
+      // 1. Check network first so we can show the right message
+      const net = await Network.getNetworkStateAsync();
+      const isOffline = !net.isConnected;
+
+      // 2. Fetch GPS location
+      //    Offline → show visible message while GPS works (can take time)
+      //    Online  → silent fetch, swipe button spinner is enough
       let loc = { coords: { latitude: 0, longitude: 0 } };
+      if (isOffline) {
+        setPunchMessage('Fetching your location...');
+      }
+
       try {
-        // 10s timeout — GPS needs time to warm up if it was just turned on
+        // 10s timeout — GPS needs warm-up time especially after being turned on
         loc = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
         ]);
         console.log(`[Punch] Location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+        if (isOffline) setPunchMessage('Location found — saving punch...');
       } catch (_) {
         // Try last-known position before giving up
         try {
@@ -183,12 +195,17 @@ const HomeScreen = ({ navigation, route }) => {
           if (lastLoc) {
             loc = lastLoc;
             console.log(`[Punch] Using last-known location: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+            if (isOffline) setPunchMessage('Using last known location — saving punch...');
+          } else {
+            if (isOffline) setPunchMessage('Saving punch (location unavailable)...');
           }
-        } catch (e) {}
+        } catch (e) {
+          if (isOffline) setPunchMessage('Saving punch (location unavailable)...');
+        }
       }
 
-      // 2. Geocode the actual punch-time coords to get address
-      // Do NOT use locationName state — it may be stale ("Location unavailable")
+      // 3. Reverse geocode the actual punch-time coords
+      //    Do NOT use locationName state — it may be stale ("Location unavailable")
       let punchAddress = 'Location Attached';
       const { latitude, longitude } = loc.coords;
       if (Math.abs(latitude) > 0.0001) {
@@ -200,12 +217,12 @@ const HomeScreen = ({ navigation, route }) => {
             punchAddress = [...new Set(parts)].join(', ') || 'Location Attached';
           }
         } catch (_) {}
-        // Also update the display location shown on screen
+        // Update the header location badge too
         setLocationName(punchAddress);
       }
       console.log(`[Punch] Address: ${punchAddress}`);
 
-      // 3. Perform the local save
+      // 4. Save punch locally
       const savedId = await savePunchLocal({
         userId: user.user_id,
         type,
@@ -218,20 +235,18 @@ const HomeScreen = ({ navigation, route }) => {
       if (!savedId) {
         console.log(`[Punch] ${type} blocked (Duplicate sequence detected)`);
         setPunching(false);
-        await fetchStatus(); // Re-sync state with DB
+        await fetchStatus();
         return;
       }
-      
+
       console.log(`[Punch] ${type} saved locally: ${savedId}`);
-      
-      // 4. Update UI state immediately
+
+      // 5. Update UI state
       const isNowIn = type === 'IN';
       setIsPunchedIn(isNowIn);
-      console.log(`[Punch] UI flipped to ${isNowIn ? 'IN' : 'OUT'}`);
 
-      // 5. Trigger background operations
+      // 6. Background sync
       checkOfflinePunches();
-      const net = await Network.getNetworkStateAsync();
       if (net.isConnected) {
         SyncService.syncAll().then(() => fetchStatus());
       } else {
@@ -239,9 +254,10 @@ const HomeScreen = ({ navigation, route }) => {
       }
     } catch (e) {
       console.error('[Punch] Error:', e);
-      Alert.alert('❌ Error', 'Failed to process punch.\n\n' + e.message);
+      Alert.alert('Error', 'Failed to process punch.\n\n' + e.message);
     } finally {
       setPunching(false);
+      setPunchMessage('');
     }
   };
 
@@ -301,6 +317,13 @@ const HomeScreen = ({ navigation, route }) => {
             onSwipeComplete={handleSwipeComplete}
             resetTrigger={cancelTrigger}
           />
+          {/* Offline location fetch status banner */}
+          {!!punchMessage && (
+            <View style={styles.punchMessageBanner}>
+              <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginRight: 8 }} />
+              <Text style={styles.punchMessageText}>{punchMessage}</Text>
+            </View>
+          )}
         </View>
 
         {/* 2×2 GRID */}
@@ -441,6 +464,23 @@ const styles = StyleSheet.create({
   avatar: { width: '100%', height: '100%' },
 
   swipeBox: { marginBottom: 24 },
+  punchMessageBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  punchMessageText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primaryDeep,
+    flexShrink: 1,
+  },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
   gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, ...SHADOWS.light },
