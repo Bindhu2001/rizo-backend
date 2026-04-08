@@ -61,6 +61,8 @@ const HomeScreen = ({ navigation, route }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
       checkOfflinePunches();
+      // Re-try location every time screen is focused (covers GPS-off-then-on scenario)
+      fetchLocation();
     });
 
     const syncTimer = setInterval(() => SyncService.syncAll(), 60000);
@@ -165,30 +167,52 @@ const HomeScreen = ({ navigation, route }) => {
     const punchTime = new Date().toISOString();
 
     try {
-      // 1. Fetch location with a strict timeout for responsiveness
+      // 1. Fetch GPS location for this punch
       let loc = { coords: { latitude: 0, longitude: 0 } };
       try {
+        // 10s timeout — GPS needs time to warm up if it was just turned on
         loc = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
         ]);
         console.log(`[Punch] Location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
       } catch (_) {
-        console.log('[Punch] Location fallback utilized');
+        // Try last-known position before giving up
         try {
           const lastLoc = await Location.getLastKnownPositionAsync();
-          if (lastLoc) loc = lastLoc;
-        } catch(e) {}
+          if (lastLoc) {
+            loc = lastLoc;
+            console.log(`[Punch] Using last-known location: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+          }
+        } catch (e) {}
       }
 
-      // 2. Perform the local save
+      // 2. Geocode the actual punch-time coords to get address
+      // Do NOT use locationName state — it may be stale ("Location unavailable")
+      let punchAddress = 'Location Attached';
+      const { latitude, longitude } = loc.coords;
+      if (Math.abs(latitude) > 0.0001) {
+        try {
+          const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (geo && geo.length > 0) {
+            const r = geo[0];
+            const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
+            punchAddress = [...new Set(parts)].join(', ') || 'Location Attached';
+          }
+        } catch (_) {}
+        // Also update the display location shown on screen
+        setLocationName(punchAddress);
+      }
+      console.log(`[Punch] Address: ${punchAddress}`);
+
+      // 3. Perform the local save
       const savedId = await savePunchLocal({
         userId: user.user_id,
         type,
         punchTime,
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-        address: locationName,
+        latitude,
+        longitude,
+        address: punchAddress,
       });
 
       if (!savedId) {
@@ -200,12 +224,12 @@ const HomeScreen = ({ navigation, route }) => {
       
       console.log(`[Punch] ${type} saved locally: ${savedId}`);
       
-      // 3. Update UI state immediately
+      // 4. Update UI state immediately
       const isNowIn = type === 'IN';
       setIsPunchedIn(isNowIn);
       console.log(`[Punch] UI flipped to ${isNowIn ? 'IN' : 'OUT'}`);
 
-      // 4. Trigger background operations
+      // 5. Trigger background operations
       checkOfflinePunches();
       const net = await Network.getNetworkStateAsync();
       if (net.isConnected) {
