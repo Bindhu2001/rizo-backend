@@ -130,7 +130,7 @@ const HomeScreen = ({ navigation, route }) => {
           setIsPunchedIn(response.data.lastType === 'IN');
           console.log('[Home] Server state synced successfully');
         } else {
-          console.log(`[Home] Server state deferred (pCnt=${pCnt}, timeSince=${Math.round(timeSinceLastAction/1000)}s)`);
+          console.log(`[Home] Server state deferred (pCnt=${pCnt}, timeSince=${Math.round(timeSinceLastAction / 1000)}s)`);
         }
       }
     } catch (e) {
@@ -216,10 +216,11 @@ const HomeScreen = ({ navigation, route }) => {
             const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
             punchAddress = [...new Set(parts)].join(', ') || 'Location Attached';
           }
-        } catch (_) {}
+        } catch (_) { }
         // Update the header location badge too
         setLocationName(punchAddress);
       }
+
       console.log(`[Punch] Address: ${punchAddress}`);
 
       // 4. Save punch locally
@@ -230,6 +231,7 @@ const HomeScreen = ({ navigation, route }) => {
         latitude,
         longitude,
         address: punchAddress,
+        isOffline,
       });
 
       if (!savedId) {
@@ -362,8 +364,8 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
         {/* CLIENT VISIT */}
-        <TouchableOpacity 
-          style={styles.visitButton} 
+        <TouchableOpacity
+          style={styles.visitButton}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Visits')}
         >
@@ -380,8 +382,8 @@ const HomeScreen = ({ navigation, route }) => {
         </TouchableOpacity>
 
         {/* REGULARIZATION */}
-        <TouchableOpacity 
-          style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]} 
+        <TouchableOpacity
+          style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('AttendanceReg')}
         >
@@ -489,9 +491,9 @@ const styles = StyleSheet.create({
   gridLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '500' },
 
   // Visit Button
-  visitButton: { 
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
-    backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 24, ...SHADOWS.light 
+  visitButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 24, ...SHADOWS.light
   },
   visitButtonLeft: { flexDirection: 'row', alignItems: 'center' },
   visitIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', marginRight: 16 },

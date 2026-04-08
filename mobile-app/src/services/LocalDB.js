@@ -27,7 +27,8 @@ export const initDB = async () => {
         latitude    REAL    DEFAULT 0,
         longitude   REAL    DEFAULT 0,
         address     TEXT,
-        sync_status TEXT    DEFAULT 'PENDING'
+        sync_status TEXT    DEFAULT 'PENDING',
+        is_offline  INTEGER DEFAULT 0
       );
     `);
 
@@ -102,7 +103,7 @@ export const initDB = async () => {
     // ─── Migrations ───
     // Column additions for existing tables (won't affect new installs)
     const migrations = [
-      { table: 'attendance', cols: ['address', 'sync_status'] },
+      { table: 'attendance', cols: ['address', 'sync_status', 'is_offline'] },
       { table: 'user_profile', cols: ['password', 'email', 'phone', 'emp_pkey', 'designation'] },
       { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at'] },
       { table: 'leaves', cols: ['from_half', 'to_half', 'authorized_by', 'approved_by', 'contact_no', 'created_at'] },
@@ -111,7 +112,7 @@ export const initDB = async () => {
 
     for (const m of migrations) {
       for (const col of m.cols) {
-        try { await db.execAsync(`ALTER TABLE ${m.table} ADD COLUMN ${col} TEXT`); } catch (_) {}
+        try { await db.execAsync(`ALTER TABLE ${m.table} ADD COLUMN ${col} TEXT`); } catch (_) { }
       }
     }
 
@@ -124,7 +125,7 @@ export const initDB = async () => {
 };
 
 // ─── Attendance ──────────────────────────────────────────────────────────────
-export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, longitude = 0, address = null }) => {
+export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, longitude = 0, address = null, isOffline = 0 }) => {
   const database = await initDB();
   // Duplicate punch sequence guard removed to allow better multi-punch reliability in same session
   /*
@@ -141,9 +142,9 @@ export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, lo
   const id = `att_${Date.now()}`;
   try {
     await database.runAsync(
-      `INSERT INTO attendance (id, user_id, type, punch_time, latitude, longitude, address, sync_status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
-      [id, userId, type.toUpperCase(), punchTime, latitude, longitude, address]
+      `INSERT INTO attendance (id, user_id, type, punch_time, latitude, longitude, address, sync_status, is_offline)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', ?)`,
+      [id, userId, type.toUpperCase(), punchTime, latitude, longitude, address, isOffline ? 1 : 0]
     );
     return id;
   } catch (e) {
@@ -153,9 +154,9 @@ export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, lo
 };
 
 export const getPendingCount = async () => {
-    const database = await initDB();
-    const row = await database.getFirstAsync(`SELECT COUNT(*) as count FROM attendance WHERE sync_status = 'PENDING'`);
-    return row ? row.count : 0;
+  const database = await initDB();
+  const row = await database.getFirstAsync(`SELECT COUNT(*) as count FROM attendance WHERE sync_status = 'PENDING'`);
+  return row ? row.count : 0;
 };
 
 export const getLastPunchType = async (userId) => {

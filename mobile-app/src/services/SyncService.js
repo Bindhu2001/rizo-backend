@@ -12,7 +12,7 @@ const SyncService = {
    */
   syncAll: async () => {
     if (SyncService.isSyncing) return;
-    
+
     const state = await Network.getNetworkStateAsync();
     if (!state.isConnected) {
       console.log('[SyncService] No internet connection, skipping sync.');
@@ -59,51 +59,79 @@ const SyncService = {
     for (const userId of Object.keys(userPunches)) {
       const items = userPunches[userId];
 
-      // --- Step 1: Check if any punch in this batch is missing location (was punched offline) ---
-      const hasOfflinePunches = items.some(
-        item => Math.abs(parseFloat(item.latitude) || 0) < 0.0001 &&
-                Math.abs(parseFloat(item.longitude) || 0) < 0.0001
-      );
+      // --- Step 1: Resolve missing locations or addresses ---
+      let freshLat = 0, freshLng = 0, freshLocName = 'Location Attached';
+      let fetchedFreshLoc = false;
 
-      // Only fetch fresh location if there are offline punches that need it
-      let freshLat = 0;
-      let freshLng = 0;
-      let freshLocName = 'Location Attached';
+      for (let item of items) {
+        let storedLat = parseFloat(item.latitude) || 0;
+        let storedLng = parseFloat(item.longitude) || 0;
+        let isMissingCoords = Math.abs(storedLat) < 0.0001 && Math.abs(storedLng) < 0.0001;
 
-      if (hasOfflinePunches) {
-        console.log(`[SyncService] Offline punch(es) detected for user ${userId} — fetching current location...`);
-        try {
-          const loc = await Promise.race([
-            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-          ]);
-          freshLat = loc.coords.latitude;
-          freshLng = loc.coords.longitude;
-          console.log(`[SyncService] Current location acquired: ${freshLat}, ${freshLng}`);
-        } catch (_) {
-          try {
-            const lastLoc = await Location.getLastKnownPositionAsync();
-            if (lastLoc) {
-              freshLat = lastLoc.coords.latitude;
-              freshLng = lastLoc.coords.longitude;
-              console.log(`[SyncService] Using last-known location: ${freshLat}, ${freshLng}`);
+        if (isMissingCoords) {
+          if (!fetchedFreshLoc) {
+            console.log(`[SyncService] Punch missing coords detected for user ${userId} — fetching current location...`);
+            try {
+              const loc = await Promise.race([
+                Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+              ]);
+              freshLat = loc.coords.latitude;
+              freshLng = loc.coords.longitude;
+              console.log(`[SyncService] Current location acquired: ${freshLat}, ${freshLng}`);
+            } catch (_) {
+              try {
+                const lastLoc = await Location.getLastKnownPositionAsync();
+                if (lastLoc) {
+                  freshLat = lastLoc.coords.latitude;
+                  freshLng = lastLoc.coords.longitude;
+                  console.log(`[SyncService] Using last-known location: ${freshLat}, ${freshLng}`);
+                }
+              } catch (e) {
+                console.log('[SyncService] Could not acquire location for offline punch.');
+              }
             }
-          } catch (e) {
-            console.log('[SyncService] Could not acquire location for offline punch.');
+
+            if (Math.abs(freshLat) > 0.0001) {
+              try {
+                const geo = await Location.reverseGeocodeAsync({ latitude: freshLat, longitude: freshLng });
+                if (geo && geo.length > 0) {
+                  const r = geo[0];
+                  const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
+                  freshLocName = [...new Set(parts)].join(', ') || 'Location Attached';
+                }
+              } catch (e) {
+                console.log('[SyncService] Reverse geocode failed for offline punch.');
+              }
+            }
+            fetchedFreshLoc = true;
           }
-        }
 
-        // Reverse geocode the fresh coords
-        if (Math.abs(freshLat) > 0.0001) {
-          try {
-            const geo = await Location.reverseGeocodeAsync({ latitude: freshLat, longitude: freshLng });
-            if (geo && geo.length > 0) {
-              const r = geo[0];
-              const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
-              freshLocName = [...new Set(parts)].join(', ') || 'Location Attached';
+          item.latitude = freshLat;
+          item.longitude = freshLng;
+          item.address = freshLocName;
+
+          // Update DB so we save the location and address for later use
+          if (Math.abs(freshLat) > 0.0001) {
+            await db.runAsync("UPDATE attendance SET latitude = ?, longitude = ?, address = ? WHERE id = ?", [freshLat, freshLng, freshLocName, item.id]);
+          }
+        } else {
+          // We have coords, but do we have a valid address generated while offline?
+          if (!item.address || item.address === 'Location Attached') {
+            try {
+              const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
+              if (geo && geo.length > 0) {
+                const r = geo[0];
+                const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
+                const newAddress = [...new Set(parts)].join(', ') || 'Location Attached';
+                item.address = newAddress;
+
+                // Save the newly resolved address in DB for later use
+                await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
+              }
+            } catch (e) {
+              console.log('[SyncService] Reverse geocode failed for offline lat/lng:', e);
             }
-          } catch (e) {
-            console.log('[SyncService] Reverse geocode failed for offline punch.');
           }
         }
       }
@@ -126,27 +154,21 @@ const SyncService = {
       };
 
       // --- Step 3: Build payload ---
-      // Online punches → use their stored location
-      // Offline punches (lat=0, lng=0) → use the fresh location fetched above
       const login_auditor_array = items.map(item => {
-        const storedLat = parseFloat(item.latitude) || 0;
-        const storedLng = parseFloat(item.longitude) || 0;
-        const isOfflinePunch = Math.abs(storedLat) < 0.0001 && Math.abs(storedLng) < 0.0001;
-
-        const lat = isOfflinePunch ? freshLat : storedLat;
-        const lng = isOfflinePunch ? freshLng : storedLng;
-        const locName = isOfflinePunch ? freshLocName : (item.address || 'Location Attached');
+        // Evaluate the flag to determine suffix exclusively for the backend payload
+        const punchTypeSuffix = parseInt(item.is_offline) === 1 ? '(Offline Punch)' : '(Online Punch)';
+        const apiLocationName = `${item.address || 'Location Attached'} ${punchTypeSuffix}`;
 
         return {
           auditor_pkey: empPkey,
-          latitude: lat,
-          longitude: lng,
+          latitude: parseFloat(item.latitude) || 0,
+          longitude: parseFloat(item.longitude) || 0,
           user_id: item.user_id,
           time_check: formatTime(item.punch_time),
           in_out: item.type, // 'IN' or 'OUT'
           accuracy: "20",
           loc_sourse: "fused-android",
-          locationName: locName
+          locationName: apiLocationName
         };
       });
 
