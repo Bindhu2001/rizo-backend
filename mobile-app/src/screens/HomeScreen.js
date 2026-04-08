@@ -118,16 +118,16 @@ const HomeScreen = ({ navigation, route }) => {
     try {
       const response = await axios.get(`${API_URL}/status/${user.user_id}`, { timeout: 6000 });
       if (response.data) {
-        // PERFECTION GUARD: 
-        // 1. Only pull from server if local DB is fully synced
-        // 2. ONLY overwrite if it's been > 60s since the last user action (to avoid state reversal)
+        // GUARD: Only use server state if local DB is fully synced
+        // AND at least 30s have passed since the last punch (prevents state reversal)
         const pCnt = await getPendingCount();
-        if (pCnt === 0) {
+        const timeSinceLastAction = Date.now() - lastActionTime.current;
+        if (pCnt === 0 && timeSinceLastAction > 30000) {
           setStatus(response.data);
           setIsPunchedIn(response.data.lastType === 'IN');
           console.log('[Home] Server state synced successfully');
         } else {
-          console.log(`[Home] Server state deferred (Sync pending)`);
+          console.log(`[Home] Server state deferred (pCnt=${pCnt}, timeSince=${Math.round(timeSinceLastAction/1000)}s)`);
         }
       }
     } catch (e) {
@@ -159,7 +159,8 @@ const HomeScreen = ({ navigation, route }) => {
     if (punching) return;
     setPunching(true);
     setShowConfirmOut(false);
-    
+    lastActionTime.current = Date.now(); // Guard: prevent server state from overriding for 30s
+
     console.log(`[Punch] Initiating ${type} process...`);
     const punchTime = new Date().toISOString();
 

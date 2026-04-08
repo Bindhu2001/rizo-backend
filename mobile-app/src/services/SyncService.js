@@ -58,8 +58,57 @@ const SyncService = {
 
     for (const userId of Object.keys(userPunches)) {
       const items = userPunches[userId];
-      
-      // Attempt to get the emp_pkey from the user profile if needed
+
+      // --- Step 1: Check if any punch in this batch is missing location (was punched offline) ---
+      const hasOfflinePunches = items.some(
+        item => Math.abs(parseFloat(item.latitude) || 0) < 0.0001 &&
+                Math.abs(parseFloat(item.longitude) || 0) < 0.0001
+      );
+
+      // Only fetch fresh location if there are offline punches that need it
+      let freshLat = 0;
+      let freshLng = 0;
+      let freshLocName = 'Location Attached';
+
+      if (hasOfflinePunches) {
+        console.log(`[SyncService] Offline punch(es) detected for user ${userId} — fetching current location...`);
+        try {
+          const loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
+          freshLat = loc.coords.latitude;
+          freshLng = loc.coords.longitude;
+          console.log(`[SyncService] Current location acquired: ${freshLat}, ${freshLng}`);
+        } catch (_) {
+          try {
+            const lastLoc = await Location.getLastKnownPositionAsync();
+            if (lastLoc) {
+              freshLat = lastLoc.coords.latitude;
+              freshLng = lastLoc.coords.longitude;
+              console.log(`[SyncService] Using last-known location: ${freshLat}, ${freshLng}`);
+            }
+          } catch (e) {
+            console.log('[SyncService] Could not acquire location for offline punch.');
+          }
+        }
+
+        // Reverse geocode the fresh coords
+        if (Math.abs(freshLat) > 0.0001) {
+          try {
+            const geo = await Location.reverseGeocodeAsync({ latitude: freshLat, longitude: freshLng });
+            if (geo && geo.length > 0) {
+              const r = geo[0];
+              const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
+              freshLocName = [...new Set(parts)].join(', ') || 'Location Attached';
+            }
+          } catch (e) {
+            console.log('[SyncService] Reverse geocode failed for offline punch.');
+          }
+        }
+      }
+
+      // --- Step 2: Fetch emp_pkey ---
       let empPkey = 0;
       try {
         const userProfile = await db.getFirstAsync("SELECT emp_pkey FROM user_profile WHERE user_id = ?", [userId]);
@@ -76,52 +125,42 @@ const SyncService = {
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       };
 
-      // Transform raw pending items into the structured auditor payload with smart geocoding
-      const login_auditor_array = [];
-      for (const item of items) {
-        let finalLocName = item.address || "Location Attached";
-        
-        // Smart Re-Geocoding Check: If the saved address is a placeholder, try one last time to resolve it
-        const isPlaceholder = !finalLocName || finalLocName.includes('Fetching') || finalLocName.includes('Loading');
-        if (isPlaceholder && item.latitude && item.longitude && Math.abs(item.latitude) > 0) {
-          try {
-            const geo = await Location.reverseGeocodeAsync({ 
-                latitude: Number(item.latitude), 
-                longitude: Number(item.longitude) 
-            });
-            if (geo && geo.length > 0) {
-                const r = geo[0];
-                const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
-                finalLocName = [...new Set(parts)].join(', ');
-            }
-          } catch (e) {
-            console.log('[SyncService] Background reverse geocode failed.');
-          }
-        }
+      // --- Step 3: Build payload ---
+      // Online punches → use their stored location
+      // Offline punches (lat=0, lng=0) → use the fresh location fetched above
+      const login_auditor_array = items.map(item => {
+        const storedLat = parseFloat(item.latitude) || 0;
+        const storedLng = parseFloat(item.longitude) || 0;
+        const isOfflinePunch = Math.abs(storedLat) < 0.0001 && Math.abs(storedLng) < 0.0001;
 
-        login_auditor_array.push({
+        const lat = isOfflinePunch ? freshLat : storedLat;
+        const lng = isOfflinePunch ? freshLng : storedLng;
+        const locName = isOfflinePunch ? freshLocName : (item.address || 'Location Attached');
+
+        return {
           auditor_pkey: empPkey,
-          latitude: parseFloat(item.latitude) || 0,
-          longitude: parseFloat(item.longitude) || 0,
+          latitude: lat,
+          longitude: lng,
           user_id: item.user_id,
           time_check: formatTime(item.punch_time),
           in_out: item.type, // 'IN' or 'OUT'
           accuracy: "20",
           loc_sourse: "fused-android",
-          locationName: finalLocName
-        });
-      }
+          locationName: locName
+        };
+      });
 
+      // --- Step 4: Call API ---
       try {
         await axios.post('https://v1.mypayrollmaster.online/api/v2qa/newapp/swipe', {
           user_id: userId,
           login_auditor: JSON.stringify(login_auditor_array)
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
-        
-        // Mark as SYNCED
+
         for (const item of items) {
           await db.runAsync("UPDATE attendance SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
         }
+        console.log(`[SyncService] Synced ${items.length} punch(es) for user ${userId}`);
       } catch (e) {
         console.log(`[SyncService] Attendance sync failed for user ${userId}:`, e.message);
       }
