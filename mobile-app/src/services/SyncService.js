@@ -78,6 +78,7 @@ const SyncService = {
               ]);
               freshLat = loc.coords.latitude;
               freshLng = loc.coords.longitude;
+              freshLocName = `Lat: ${freshLat.toFixed(5)}, Lng: ${freshLng.toFixed(5)}`;
               console.log(`[SyncService] Current location acquired: ${freshLat}, ${freshLng}`);
             } catch (_) {
               try {
@@ -85,6 +86,7 @@ const SyncService = {
                 if (lastLoc) {
                   freshLat = lastLoc.coords.latitude;
                   freshLng = lastLoc.coords.longitude;
+                  freshLocName = `Lat: ${freshLat.toFixed(5)}, Lng: ${freshLng.toFixed(5)}`;
                   console.log(`[SyncService] Using last-known location: ${freshLat}, ${freshLng}`);
                 }
               } catch (e) {
@@ -98,7 +100,9 @@ const SyncService = {
                 if (geo && geo.length > 0) {
                   const r = geo[0];
                   const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
-                  freshLocName = [...new Set(parts)].join(', ') || 'Location Attached';
+                  if (parts.length > 0) {
+                    freshLocName = [...new Set(parts)].join(', ');
+                  }
                 }
               } catch (e) {
                 console.log('[SyncService] Reverse geocode failed for offline punch.');
@@ -117,17 +121,19 @@ const SyncService = {
           }
         } else {
           // We have coords, but do we have a valid address generated while offline?
-          if (!item.address || item.address === 'Location Attached') {
+          if (!item.address || item.address === 'Location Attached' || item.address.startsWith('Lat:')) {
             try {
               const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
               if (geo && geo.length > 0) {
                 const r = geo[0];
                 const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
-                const newAddress = [...new Set(parts)].join(', ') || 'Location Attached';
-                item.address = newAddress;
+                if (parts.length > 0) {
+                  const newAddress = [...new Set(parts)].join(', ');
+                  item.address = newAddress;
 
-                // Save the newly resolved address in DB for later use
-                await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
+                  // Save the newly resolved address in DB for later use
+                  await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
+                }
               }
             } catch (e) {
               console.log('[SyncService] Reverse geocode failed for offline lat/lng:', e);

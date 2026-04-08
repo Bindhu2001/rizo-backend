@@ -206,7 +206,7 @@ const HomeScreen = ({ navigation, route }) => {
 
       // 3. Reverse geocode the actual punch-time coords
       //    Do NOT use locationName state — it may be stale ("Location unavailable")
-      let punchAddress = 'Location Attached';
+      let punchAddress = `Lat: ${loc.coords.latitude.toFixed(5)}, Lng: ${loc.coords.longitude.toFixed(5)}`;
       const { latitude, longitude } = loc.coords;
       if (Math.abs(latitude) > 0.0001) {
         try {
@@ -214,9 +214,11 @@ const HomeScreen = ({ navigation, route }) => {
           if (geo && geo.length > 0) {
             const r = geo[0];
             const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
-            punchAddress = [...new Set(parts)].join(', ') || 'Location Attached';
+            if (parts.length > 0) {
+              punchAddress = [...new Set(parts)].join(', ');
+            }
           }
-        } catch (_) { }
+        } catch (_) {}
         // Update the header location badge too
         setLocationName(punchAddress);
       }
