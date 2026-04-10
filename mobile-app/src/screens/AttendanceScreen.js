@@ -1,282 +1,219 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  ActivityIndicator, Alert, Dimensions, Platform 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Alert, Dimensions, FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
+import {
   ChevronLeft, Calendar as CalendarIcon, Clock, 
-  MapPin, Fingerprint, History, Info, ChevronRight, Download, WifiOff
+  MapPin, ChevronRight, Filter, ChevronDown
 } from 'lucide-react-native';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
-import { getTodayLocalHistory, getPendingCount, initDB } from '../services/LocalDB';
-import * as Location from 'expo-location';
+import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
-import { API_ENDPOINTS } from '../constants/Config';
+import { useFocusEffect } from '@react-navigation/native';
 
-const API_URL = API_ENDPOINTS.ATTENDANCE;
-
-const HistoryItem = ({ item, index, isLast }) => {
-  const isPunchIn = item.type === 'IN';
-  const iconBg = isPunchIn ? '#E8F5E9' : '#FFF0F0';
-  const iconColor = isPunchIn ? '#2ECC71' : '#EF4444';
-  const statusColor = item.sync_status === 'SYNCED' ? '#10B981' : '#F59E0B';
-  const statusText = item.sync_status === 'SYNCED' ? 'Synced' : 'Not Synced';
-
-  const [address, setAddress] = useState(item.address || null);
-
-  useEffect(() => {
-    const isInvalid = !address || 
-      address.includes('Fetching') || 
-      address.includes('attached') || 
-      (!isNaN(parseFloat(address.split(',')[0])) && address.includes('.'));
-      
-    if (isInvalid && item.latitude && item.longitude) {
-      reverseGeocode();
-    }
-  }, [item.latitude, item.longitude]);
-
-  const reverseGeocode = async () => {
-    try {
-      let geo = await Location.reverseGeocodeAsync({ 
-        latitude: Number(item.latitude), 
-        longitude: Number(item.longitude) 
-      });
-      if (geo && geo.length > 0) {
-        const r = geo[0];
-        const parts = [
-          r.name || r.street,
-          r.district || r.subregion || r.city,
-          r.region,
-        ].filter(Boolean);
-        const unique = [...new Set(parts)];
-        setAddress(unique.join(', '));
-      }
-    } catch (e) {
-      console.log('Geocode error', e);
-    }
-  };
-
-  // Format time properly
-  const time = new Date(item.punch_time || item.punchTime || Date.now()).toLocaleTimeString([], { 
-    hour: '2-digit', minute: '2-digit', hour12: true 
-  });
-  const date = new Date(item.punch_time || item.punchTime || Date.now()).toLocaleDateString([], {
-    day: '2-digit', month: 'short', year: 'numeric'
-  });
-
-  return (
-    <View style={[styles.historyCard, !isLast && styles.historyBorder]}>
-      <View style={[styles.historyIcon, { backgroundColor: iconBg }]}>
-        <Clock color={iconColor} size={20} strokeWidth={2.5} />
-      </View>
-      <View style={styles.historyMain}>
-        <Text style={styles.historyType}>{isPunchIn ? 'Check In' : 'Check Out'}</Text>
-        <View style={styles.locRow}>
-          <MapPin color={COLORS.textMuted} size={10} />
-          <Text style={styles.historyLoc}>
-             {address || (item.latitude ? 'Loading location...' : date)}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.historyEnd}>
-        <Text style={styles.historyTime}>{time}</Text>
-        <View style={[styles.syncBadge, { backgroundColor: statusColor + '15', flexDirection: 'row', alignItems: 'center' }]}>
-          {item.sync_status !== 'SYNCED' && <WifiOff size={10} color={statusColor} style={{ marginRight: 4 }} />}
-          <Text style={[styles.syncText, { color: statusColor }]}>{statusText}</Text>
-        </View>
-      </View>
-    </View>
-  );
-};
+const { width } = Dimensions.get('window');
 
 const AttendanceScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100056' };
+  const user = route?.params?.user || { user_id: 'GLET100015' };
   const [loading, setLoading] = useState(true);
-  const [history, setHistory] = useState([]);
-  const [offlineCount, setOfflineCount] = useState(0);
-
-  useEffect(() => {
-    fetchHistory();
-    const unsubscribe = navigation.addListener('focus', () => fetchHistory());
-    return unsubscribe;
-  }, [navigation]);
-
-  const fetchHistory = async () => {
+  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [logs, setLogs] = useState([]);
+  
+  // ─── Fetch Logs ─────────────────────────────────────────────────────────────
+  const fetchLogs = async (month) => {
+    setLoading(true);
     try {
-      const localPunches = await getTodayLocalHistory(user.user_id);
-      setHistory(localPunches);
-      
-      const count = await getPendingCount();
-      setOfflineCount(count);
-
-      // Try cloud history merge
-      const response = await axios.get(`${API_URL}/history/${user.user_id}`, { timeout: 7000 });
-      if (response.data && Array.isArray(response.data)) {
-        // Map server punches to ensure they show as SYNCED
-        const serverPunches = response.data.map(p => ({
-            ...p,
-            sync_status: 'SYNCED',
-            // Normalize time field
-            punch_time: p.punch_time || p.punchTime
-        }));
-        
-        // Merge local and server punches
-        // Rule: if a local punch exists, and it's pending, it's unique.
-        // If a local punch is synced, it's likely already in the server list.
-        // We'll deduplicate based on time (within 1 minute) and type.
-        
-        const merged = [...localPunches];
-        
-        serverPunches.forEach(srv => {
-            const srvTime = new Date(srv.punch_time).getTime();
-            const exists = localPunches.some(loc => {
-                const locTime = new Date(loc.punch_time).getTime();
-                const diff = Math.abs(srvTime - locTime);
-                return diff < 60000 && loc.type === srv.type; // 1 min threshold
-            });
-            
-            if (!exists) {
-                merged.push(srv);
-            }
-        });
-
-        const sorted = merged.sort((a, b) => {
-           const timeA = new Date(a.punch_time).getTime();
-           const timeB = new Date(b.punch_time).getTime();
-           return timeB - timeA; // Descending
-        });
-        
-        setHistory(sorted);
+      const url = `https://v1.mypayrollmaster.online/api/v2qa/newapp/attendance_logs?user_id=${user.user_id}&month=${month}`;
+      const res = await axios.post(url, {
+        user_id: user.user_id,
+        filter: 'past'
+      });
+      if (res.data?.success) {
+        setLogs(res.data.data || []);
       }
     } catch (e) {
-      console.log('History Fetch: Using local only', e.message);
+      console.log('Fetch error', e);
+      Alert.alert('Error', 'Unable to fetch attendance logs');
     } finally {
       setLoading(false);
     }
   };
 
-  let durationText = '';
-  if (history && history.length >= 2) {
-    if (history[0].type === 'OUT' && history[1].type === 'IN') {
-       const outDate = new Date(history[0].punch_time || history[0].punchTime);
-       const inDate = new Date(history[1].punch_time || history[1].punchTime);
-       const diffMs = outDate - inDate;
-       if (diffMs > 0) {
-          const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-          const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-          durationText = `${hrs}h ${mins}m`;
-       }
-    }
-  }
+  useFocusEffect(
+    useCallback(() => {
+      fetchLogs(currentMonthStr);
+    }, [currentMonthStr])
+  );
 
-  if (loading) {
+  const handleMonthChange = (direction) => {
+    const [yr, mo] = currentMonthStr.split('-').map(Number);
+    const date = new Date(yr, direction === 'prev' ? mo - 2 : mo, 1);
+    
+    // Don't allow future months
+    if (direction === 'next' && date > new Date()) return;
+    
+    const newMonthStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    setCurrentMonthStr(newMonthStr);
+  };
+
+  const getStatusStyle = (status) => {
+    if (status === 'P/P' || status?.includes('P')) return { bg: '#E8F5E9', text: '#2ECC71' };
+    if (status === 'A/A' || status?.includes('A')) return { bg: '#FFEBEE', text: '#EF4444' };
+    return { bg: '#FFF3E0', text: '#F39C12' };
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const day = d.getDate().toString().padStart(2, '0');
+    const month = d.toLocaleString('en-US', { month: 'short' });
+    const weekday = d.toLocaleString('en-US', { weekday: 'short' });
+    return { day, month, weekday };
+  };
+
+  // ─── Render Item ────────────────────────────────────────────────────────────
+  const renderLogItem = ({ item }) => {
+    const { day, month, weekday } = formatDisplayDate(item.date);
+    const ss = getStatusStyle(item.status);
+
     return (
-      <View style={styles.loader}>
-        <ActivityIndicator size="large" color={COLORS.primaryDeep} />
+      <View style={s.card}>
+        <View style={s.dateCol}>
+          <Text style={s.dayNum}>{day}</Text>
+          <Text style={s.dayMeta}>{month}, {weekday}</Text>
+        </View>
+        
+        <View style={s.contentCol}>
+          <View style={s.topRow}>
+            <Text style={s.shiftText} numberOfLines={1}>{item.shift}</Text>
+            <View style={[s.statusBadge, { backgroundColor: ss.bg }]}>
+              <Text style={[s.statusText, { color: ss.text }]}>{item.status}</Text>
+            </View>
+          </View>
+          
+          <View style={s.timesRow}>
+            <View style={s.timeBox}>
+              <Clock color="#9CA3AF" size={12} />
+              <Text style={s.timeVal}>{item.punch_in_time ? item.punch_in_time.split(' ')[1]?.slice(0, 5) : '---'}</Text>
+              <Text style={s.timeLabel}>In</Text>
+            </View>
+            <View style={s.timeBox}>
+              <Clock color="#9CA3AF" size={12} />
+              <Text style={s.timeVal}>{item.punch_out_time ? item.punch_out_time.split(' ')[1]?.slice(0, 5) : '---'}</Text>
+              <Text style={s.timeLabel}>Out</Text>
+            </View>
+          </View>
+        </View>
       </View>
     );
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+    <SafeAreaView style={s.container}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Attendance History</Text>
-        <TouchableOpacity style={styles.headerIcon}>
-          <Download color={COLORS.text} size={20} />
+        <Text style={s.headerTitle}>Attendance History</Text>
+        <TouchableOpacity style={s.backBtn}>
+           <Filter color={COLORS.text} size={22} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.syncBanner}>
-        <Text style={styles.syncBannerText}>
-          {offlineCount > 0 ? `📡 ${offlineCount} punches waiting to sync` : '✅ All punches synced'}
-        </Text>
+      {/* ── Month Selector ── */}
+      <View style={s.monthSelector}>
+        <TouchableOpacity onPress={() => handleMonthChange('prev')} style={s.arrowBtn}>
+           <ChevronLeft color={COLORS.primaryDeep} size={24} />
+        </TouchableOpacity>
+        
+        <View style={s.monthDisplay}>
+          <CalendarIcon color={COLORS.primaryDeep} size={18} />
+          <Text style={s.monthTitle}>
+            {new Date(currentMonthStr + '-01').toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+          </Text>
+          <ChevronDown color={COLORS.primaryDeep} size={14} />
+        </View>
+
+        <TouchableOpacity onPress={() => handleMonthChange('next')} style={s.arrowBtn}>
+           <ChevronRight color={COLORS.primaryDeep} size={24} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
-        {/* Stats Summary */}
-        <View style={styles.statsCard}>
-          <View style={styles.statItem}>
-            <Text style={styles.statVal}>{(history || []).length}</Text>
-            <Text style={styles.statLabel}>Total Punches</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-             <Text style={styles.statVal}>{durationText || '--'}</Text>
-             <Text style={styles.statLabel}>Current Duration</Text>
-          </View>
+      {/* ── List ── */}
+      {loading ? (
+        <View style={s.center}>
+          <ActivityIndicator size="large" color={COLORS.primaryDeep} />
+          <Text style={s.loadingText}>Fetching logs...</Text>
         </View>
-
-        {/* History List */}
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
-        <View style={styles.historyList}>
-          {history.length === 0 ? (
-            <View style={styles.empty}>
-              <History color={COLORS.textMuted} size={40} />
-              <Text style={styles.emptyText}>No history records found</Text>
-            </View>
-          ) : (
-            history.map((item, index) => (
-              <HistoryItem 
-                key={item.id || index} 
-                item={item} 
-                index={index} 
-                isLast={index === history.length - 1} 
-              />
-            ))
-          )}
+      ) : logs.length === 0 ? (
+        <View style={s.center}>
+          <Clock color="#D1D5DB" size={60} />
+          <Text style={s.emptyTitle}>No Records Found</Text>
+          <Text style={s.emptySub}>We couldn't find any attendance logs for this month.</Text>
         </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      ) : (
+        <FlatList
+          data={logs}
+          keyExtractor={(item) => item.date}
+          renderItem={renderLogItem}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text },
-  headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20 },
-
-  syncBanner: { backgroundColor: COLORS.primaryDeep, paddingVertical: 8, alignItems: 'center' },
-  syncBannerText: { color: '#FFF', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-
-  // Stats
-  statsCard: { 
-    backgroundColor: COLORS.primaryDeep, borderRadius: 24, padding: 20, 
-    flexDirection: 'row', alignItems: 'center', marginBottom: 32, ...SHADOWS.medium 
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 8, height: 60, backgroundColor: '#FFF', ...SHADOWS.light
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statVal: { fontSize: 24, fontWeight: '900', color: '#FFF' },
-  statLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginTop: 4 },
-  statDivider: { width: 1, height: 40, backgroundColor: 'rgba(255,255,255,0.2)' },
+  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
 
-  // List
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text, marginBottom: 16, marginLeft: 4 },
-  historyList: { backgroundColor: '#FFF', borderRadius: 24, padding: 8, ...SHADOWS.light },
-  historyCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  historyBorder: { borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  historyIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  historyMain: { flex: 1 },
-  historyType: { fontSize: 15, fontWeight: '800', color: COLORS.text },
-  locRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  historyLoc: { fontSize: 11, color: COLORS.textLight, fontWeight: '600', marginLeft: 4 },
-  historyEnd: { alignItems: 'flex-end' },
-  historyTime: { fontSize: 14, fontWeight: '900', color: COLORS.text, marginBottom: 4 },
-  syncBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  syncText: { fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+  monthSelector: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14, backgroundColor: '#FFF',
+    borderBottomWidth: 1, borderBottomColor: '#F3F4F6'
+  },
+  arrowBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  monthDisplay: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F3FF',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20
+  },
+  monthTitle: { fontSize: 15, fontWeight: '800', color: COLORS.primaryDeep, marginHorizontal: 10 },
 
-  empty: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { marginTop: 16, color: COLORS.textMuted, fontSize: 14, fontWeight: '600' }
+  list: { padding: 16, paddingBottom: 40 },
+  card: {
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16,
+    marginBottom: 12, padding: 16, ...SHADOWS.light,
+    borderWidth: 1, borderColor: '#F3F4F6'
+  },
+  dateCol: {
+    width: 60, alignItems: 'center', justifyContent: 'center',
+    borderRightWidth: 1, borderRightColor: '#F3F4F6', marginRight: 16
+  },
+  dayNum: { fontSize: 24, fontWeight: '900', color: COLORS.text },
+  dayMeta: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', marginTop: 2 },
+  
+  contentCol: { flex: 1 },
+  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  shiftText: { fontSize: 14, fontWeight: '700', color: COLORS.text, flex: 1 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusText: { fontSize: 11, fontWeight: '900' },
+  
+  timesRow: { flexDirection: 'row', alignItems: 'center' },
+  timeBox: { flexDirection: 'row', alignItems: 'center', marginRight: 24 },
+  timeVal: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginLeft: 6 },
+  timeLabel: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', marginLeft: 4, textTransform: 'uppercase' },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  loadingText: { marginTop: 16, fontSize: 14, color: COLORS.textLight, fontWeight: '600' },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text, marginTop: 20 },
+  emptySub: { fontSize: 14, color: '#9CA3AF', textAlign: 'center', marginTop: 8, lineHeight: 20 },
 });
 
 export default AttendanceScreen;

@@ -1,385 +1,555 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  TextInput, Dimensions, ActivityIndicator, Alert
+import React, { useState, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChevronLeft, Calendar as CalendarIcon, ChevronDown, 
-  ChevronRight, CheckCircle, Clock
+import {
+  ChevronLeft, Calendar as CalendarIcon, ChevronDown,
+  ChevronRight, CheckCircle, Clock, Paperclip, X, FileText
 } from 'lucide-react-native';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { width } = Dimensions.get('window');
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+const BASE = 'https://v1.mypayrollmaster.online/api/v2qa/newapp';
+
+const STATUS_COLORS = {
+  Approved: { bg: '#DCFCE7', text: '#16A34A', side: '#16A34A' },
+  Applied: { bg: '#DBEAFE', text: '#1D4ED8', side: '#1D4ED8' },
+  Rejected: { bg: '#FEE2E2', text: '#DC2626', side: '#DC2626' },
+  Authorised: { bg: '#F3E8FF', text: '#7C3AED', side: '#7C3AED' },
+};
+const statusColor = (s) => STATUS_COLORS[s] || { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 const LeaveHeader = ({ title, onBack }) => (
-  <View style={headerStyles.header}>
-    <TouchableOpacity onPress={onBack} style={headerStyles.backBtn}>
-      <ChevronLeft color="#FFF" size={28} />
+  <View style={h.header}>
+    <TouchableOpacity onPress={onBack} style={h.back}>
+      <ChevronLeft color={COLORS.text} size={26} />
     </TouchableOpacity>
-    <Text style={headerStyles.headerTitle}>{title}</Text>
+    <Text style={h.title}>{title}</Text>
     <View style={{ width: 44 }} />
   </View>
 );
+const h = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
+  back: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 17, fontWeight: '800', color: COLORS.text },
+});
 
-const headerStyles = {
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60, backgroundColor: COLORS.primaryDeep },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: '#FFF' },
+// ─── History Card ─────────────────────────────────────────────────────────────
+const HistoryCard = ({ item }) => {
+  const [expanded, setExpanded] = useState(false);
+  const sc = statusColor(item.leave_status);
+
+  return (
+    <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={hc.card}>
+      {/* Coloured Sidebar */}
+      <View style={[hc.sideBar, { backgroundColor: sc.side }]}>
+        <Text style={hc.sideText}>{(item.leave_status || '').toUpperCase()}</Text>
+      </View>
+
+      <View style={hc.body}>
+        {/* ── Collapsed Row ── */}
+        <View style={hc.topRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={hc.leaveName}>{item.leave_name?.trim()}</Text>
+            <Text style={hc.dateText}>{item.from_date}</Text>
+            {item.approved_by_person
+              ? <Text style={hc.approverText}>Approved By : {item.approved_by_person?.trim()}</Text>
+              : null}
+          </View>
+          <View style={hc.daysBadge}>
+            <Text style={hc.daysNum}>{item.leave_count}</Text>
+            <Text style={hc.daysLabel}>Days</Text>
+          </View>
+        </View>
+
+        {/* ── Expanded Detail ── */}
+        {expanded && (
+          <View style={hc.expandedBox}>
+            <View style={hc.divider} />
+
+            {/* Row 1: Leave Date + Applied On */}
+            <View style={hc.detailRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={hc.detailLabel}>Leave Date</Text>
+                <Text style={hc.detailValue}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={hc.detailLabel}>Applied On</Text>
+                <Text style={hc.detailValue}>{item.from_date}</Text>
+              </View>
+            </View>
+
+            {/* Row 2: Authorised By + Approved By */}
+            <View style={hc.detailRow}>
+              {item.authorized_by_person ? (
+                <View style={{ flex: 1 }}>
+                  <Text style={hc.detailLabel}>Authorised By</Text>
+                  <Text style={hc.detailValue}>{item.authorized_by_person?.trim()}</Text>
+                </View>
+              ) : null}
+              {item.approved_by_person ? (
+                <View style={{ flex: 1 }}>
+                  <Text style={hc.detailLabel}>Approved By</Text>
+                  <Text style={hc.detailValue}>{item.approved_by_person?.trim()}</Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Leave Days */}
+            <View style={hc.metaRow}>
+              <Text style={hc.metaLabel}>Leave Days :</Text>
+              <Text style={hc.metaValue}> {item.leave_count} Days</Text>
+            </View>
+
+            {/* Status Tag */}
+            <View style={[hc.statusTag, { backgroundColor: sc.bg }]}>
+              <Text style={[hc.statusTagText, { color: sc.text }]}>{item.leave_status}</Text>
+            </View>
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
 };
 
+const hc = StyleSheet.create({
+  card: {
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16,
+    marginBottom: 12, overflow: 'hidden', ...SHADOWS.light,
+    borderWidth: 1, borderColor: '#F3F4F6',
+  },
+  sideBar: { width: 36, justifyContent: 'center', alignItems: 'center' },
+  sideText: {
+    color: '#FFF', fontSize: 8, fontWeight: '900', letterSpacing: 1,
+    transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center',
+  },
+  body: { flex: 1, padding: 14 },
+  topRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  leaveName: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 3 },
+  dateText: { fontSize: 12, color: '#6B7280', marginBottom: 3 },
+  approverText: { fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
+  daysBadge: { alignItems: 'flex-end', marginLeft: 8, justifyContent: 'center' },
+  daysNum: { fontSize: 28, fontWeight: '900', color: COLORS.primaryDeep, lineHeight: 30 },
+  daysLabel: { fontSize: 10, color: '#9CA3AF', fontWeight: '700', textAlign: 'right' },
+  // Expanded
+  expandedBox: { marginTop: 14 },
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 14 },
+  detailRow: { flexDirection: 'row', marginBottom: 14 },
+  detailLabel: { fontSize: 10, color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailValue: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  metaLabel: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
+  metaValue: { fontSize: 13, color: '#111827', fontWeight: '700' },
+  statusTag: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+  statusTagText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+});
+
+// ─── File Thumbnail ───────────────────────────────────────────────────────────
+const FileThumbnail = ({ file, onRemove }) => {
+  const isPDF = file.mimeType === 'application/pdf' || file.name?.endsWith('.pdf');
+  return (
+    <View style={ft.wrap}>
+      <View style={[ft.thumb, isPDF && { backgroundColor: '#FEE2E2' }]}>
+        {isPDF ? <FileText color="#DC2626" size={22} /> : <Text style={ft.ext}>{file.name?.split('.').pop()?.toUpperCase()}</Text>}
+      </View>
+      <Text style={ft.name} numberOfLines={1}>{file.name}</Text>
+      <TouchableOpacity style={ft.remove} onPress={onRemove}>
+        <X color="#FFF" size={10} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+const ft = StyleSheet.create({
+  wrap: { width: 72, marginRight: 10, alignItems: 'center', position: 'relative' },
+  thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+  ext: { fontSize: 11, fontWeight: '900', color: '#1D4ED8' },
+  name: { fontSize: 9, color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
+  remove: { position: 'absolute', top: -4, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+});
+
+// ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100056' };
-  const [view, setView] = useState('DASHBOARD');
+
+  const [view, setView] = useState('DASHBOARD'); // DASHBOARD | APPLY | HISTORY | SUCCESS
   const [selectedLeave, setSelectedLeave] = useState(null);
-  const [leaves, setLeaves] = useState([]);
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
+  // History state
+  const [histFilter, setHistFilter] = useState('all'); // all | upcoming | past
+  const [histLoading, setHistLoading] = useState(false);
+  const [histLeaves, setHistLeaves] = useState([]);
+
+  // Approvers from API
+  const [authorizedById, setAuthorizedById] = useState('');
+  const [authorizedByName, setAuthorizedByName] = useState('');
+  const [approvedById, setApprovedById] = useState('');
+  const [approvedByOptions, setApprovedByOptions] = useState([]);
+  const [approvedByName, setApprovedByName] = useState('');
+  const [showApproverDropdown, setShowApproverDropdown] = useState(false);
+
   // Form State
-  const [fromDate, setFromDate] = useState('2025-01-29');
-  const [toDate, setToDate] = useState('2025-02-02');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [fromHalf, setFromHalf] = useState('Full Day');
   const [toHalf, setToHalf] = useState('Full Day');
   const [reason, setReason] = useState('');
   const [contactNo, setContactNo] = useState('');
-  const [authorisedBy, setAuthorisedBy] = useState('John Doe');
-  const [approvedBy, setApprovedBy] = useState('Alex Walker');
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchHistory = async () => {
+  // ── Fetch ────────────────────────────────────────────────────────────────────
+  const fetchAll = async () => {
     setLoading(true);
     try {
-      const hist = await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/leave_history`, { user_id: user.user_id });
-      if (hist.data?.success) setLeaves(hist.data.data || []);
+      const items = await axios.post(`${BASE}/leave_items`, { user_id: user.user_id });
+      if (items.data?.success) {
+        const d = items.data.data;
+        setLeaveBalances(d.leave_types || []);
+        setAuthorizedById(d.authorized_by || '');
+        setAuthorizedByName(d.authorized_by_person || '');
+        const approvedIds = (d.approved_by || '').split(',').map(s => s.trim()).filter(Boolean);
+        const approvedNames = (d.approved_by_person || '').split(',').map(s => s.trim()).filter(Boolean);
+        const opts = approvedIds.map((id, i) => ({ id, name: approvedNames[i] || id }));
+        setApprovedByOptions(opts);
+        if (opts.length > 0) { setApprovedById(opts[0].id); setApprovedByName(opts[0].name); }
+      }
+    } catch (e) { console.log('leave_items error', e.message); }
+    finally { setLoading(false); }
+  };
 
-      const items = await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/leave_items`, { user_id: user.user_id });
-      if (items.data?.success) setLeaveBalances(items.data.data || []);
-    } catch (e) {
-      console.log('Fetch leaves error', e);
-    } finally {
-      setLoading(false);
-    }
+  const fetchHistory = async (filter) => {
+    setHistLoading(true);
+    try {
+      const url = `${BASE}/leave_history?user_id=${user.user_id}${filter !== 'all' ? `&filter=${filter}` : ''}`;
+      const res = await axios.post(url, { user_id: user.user_id, filter: filter !== 'all' ? filter : undefined });
+      if (res.data?.success) setHistLeaves(res.data.data || []);
+    } catch (e) { console.log('leave_history error', e.message); }
+    finally { setHistLoading(false); }
   };
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       setView('DASHBOARD');
-      fetchHistory();
+      fetchAll();
     }, [])
   );
 
-  const handleSubmit = async () => {
-    if (!reason.trim()) {
-      Alert.alert('Error', 'Please provide a reason for leave');
-      return;
-    }
-    if (!selectedLeave) return;
-
-    setSubmitting(true);
+  // ── File Picker ──────────────────────────────────────────────────────────────
+  const pickFile = async () => {
     try {
-      const res = await axios.post('https://v1.mypayrollmaster.online/api/v2qa/newapp/leave', {
-        user_id: user.user_id,
-        from_date: fromDate,
-        to_date: toDate,
-        salary_head_item_fkey: parseInt(selectedLeave.leave_id, 10) || 0,
-        reason: reason,
-        from_session: fromHalf === 'Second Half' ? 2 : 1,
-        to_session: toHalf === 'First Half' ? 1 : 2,
-        contact_number: contactNo || 'N/A',
-        duties_handed_over: 'N/A',
-        authorized_by: 1, 
-        approved_by: 1
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/jpeg', 'image/jpg', 'application/pdf'],
+        multiple: true,
+        copyToCacheDirectory: true,
       });
-
-      if (res.data?.success === 1 || res.data?.success === true || res.data?.message?.toLowerCase().includes('success')) {
-        setView('SUCCESS');
-        await fetchHistory();
-      } else {
-        Alert.alert('Notice', res.data?.message || 'Failed to submit leave.');
+      if (!result.canceled && result.assets?.length > 0) {
+        const valid = result.assets.filter(f => {
+          const ext = f.name?.split('.').pop()?.toLowerCase();
+          return ['jpg', 'jpeg', 'pdf'].includes(ext);
+        });
+        if (valid.length < result.assets.length)
+          Alert.alert('Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
+        setAttachedFiles(prev => [...prev, ...valid]);
       }
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Failed to save leave request.\n\nDetails: ' + e.message);
-    } finally {
-      setSubmitting(false);
-    }
+    } catch (e) { Alert.alert('Error', 'Could not open file picker.'); }
   };
 
+  // ── Submit ───────────────────────────────────────────────────────────────────
+  const handleSubmit = async () => {
+    if (!reason.trim()) { Alert.alert('Error', 'Please provide a reason'); return; }
+    if (!fromDate.trim()) { Alert.alert('Error', 'Please enter a From Date'); return; }
+    if (!selectedLeave) return;
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('user_id', user.user_id);
+      formData.append('from_date', fromDate);
+      formData.append('to_date', toDate || fromDate);
+      formData.append('salary_head_item_fkey', selectedLeave.leave_id);
+      formData.append('reason', reason);
+      formData.append('from_session', fromHalf === 'Second Half' ? '2' : '1');
+      formData.append('to_session', toHalf === 'First Half' ? '1' : '2');
+      formData.append('contact_number', contactNo || 'N/A');
+      formData.append('duties_handed_over', 'N/A');
+      formData.append('authorized_by', authorizedById || '0');
+      formData.append('approved_by', approvedById || '0');
+      attachedFiles.forEach((f, i) => {
+        formData.append(`file_${i}`, { uri: f.uri, type: f.mimeType || 'application/octet-stream', name: f.name });
+      });
+      const res = await axios.post(`${BASE}/leave`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (res.data?.success === 1 || res.data?.success === true || res.data?.message?.toLowerCase().includes('success')) {
+        setView('SUCCESS');
+        setAttachedFiles([]);
+        setReason(''); setContactNo(''); setFromDate(''); setToDate('');
+      } else {
+        Alert.alert('Notice', res.data?.message || 'Submission failed.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Failed to submit leave.\n' + e.message);
+    } finally { setSubmitting(false); }
+  };
 
-
+  // ─── VIEWS ────────────────────────────────────────────────────────────────────
   const DashboardView = () => (
     <View style={{ flex: 1 }}>
       <LeaveHeader title="Leaves" onBack={() => navigation.goBack()} />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {leaveBalances.map((item, index) => {
-          const colors = ['#8E24AA', '#FF9800', '#4CAF50', '#2196F3', '#E91E63', '#9C27B0'];
-          const ccolor = colors[index % colors.length];
-          const taken = parseFloat(item.leave_taken) || 0;
-          const bal = parseFloat(item.leave_balance) || 0;
-          const total = taken + bal;
-          
-          return (
-          <TouchableOpacity 
-            key={item.leave_id} 
-            style={styles.balanceCard}
-            onPress={() => {
-              setSelectedLeave(item);
-              setView('APPLY');
-            }}
-          >
-            <View style={[styles.typeBar, { backgroundColor: ccolor }]} />
-            <View style={styles.balanceContent}>
-              <View>
-                <Text style={styles.balanceRatio}>{taken}/{total}</Text>
-                <Text style={styles.balanceType}>{item.leave_name?.trim()}</Text>
-              </View>
-              <ChevronRight color={COLORS.textMuted} size={20} />
-            </View>
+      {loading ? (
+        <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
+      ) : (
+        <ScrollView contentContainerStyle={s.scroll}>
+          {leaveBalances.map((item, idx) => {
+            const colors = ['#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6'];
+            const taken = parseFloat(item.leave_taken) || 0;
+            const bal = parseFloat(item.leave_balance) || 0;
+            const total = taken + bal;
+            return (
+              <TouchableOpacity key={item.leave_id} style={s.balCard} onPress={() => { setSelectedLeave(item); setView('APPLY'); }}>
+                <View style={[s.balBar, { backgroundColor: colors[idx % colors.length] }]} />
+                <View style={s.balBody}>
+                  <View>
+                    <Text style={s.balRatio}>{taken}/{total}</Text>
+                    <Text style={s.balType}>{item.leave_name?.trim()}</Text>
+                  </View>
+                  <ChevronRight color="#9CA3AF" size={20} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity style={s.histBtn} onPress={() => { fetchHistory('all'); setHistFilter('all'); setView('HISTORY'); }}>
+            <Text style={s.histBtnText}>View applied & past leaves</Text>
+            <ChevronRight color={COLORS.primaryDeep} size={18} />
           </TouchableOpacity>
-        )})}
-        
-        <TouchableOpacity style={styles.historyBtn} onPress={() => setView('HISTORY')}>
-          <Text style={styles.historyBtnText}>View applied & past leaves</Text>
-          <ChevronRight color={COLORS.primaryDeep} size={18} />
-        </TouchableOpacity>
-      </ScrollView>
+        </ScrollView>
+      )}
     </View>
   );
 
-  const ApplyFormView = () => (
+  const ApplyView = () => (
     <View style={{ flex: 1 }}>
       <LeaveHeader title={`Apply ${selectedLeave?.leave_name?.trim() || ''}`} onBack={() => setView('DASHBOARD')} />
-      <View style={styles.remainingBanner}>
-        <Text style={styles.remainingText}>{selectedLeave?.leave_name?.trim() || ''} remaining : {selectedLeave?.leave_balance || 0}</Text>
+      <View style={s.remBanner}>
+        <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <ScrollView 
-         showsVerticalScrollIndicator={false} 
-         contentContainerStyle={styles.scroll}
-         keyboardShouldPersistTaps="handled"
-      >
-        
-        <View style={styles.row}>
-          <View style={[styles.inputBox, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>From Date</Text>
-            <View style={[styles.textInput, { flexDirection: 'row', alignItems: 'center' }]}>
-              <TextInput 
-                style={{ flex: 1, fontSize: 14, color: COLORS.text, fontWeight: '600' }}
-                value={fromDate}
-                onChangeText={setFromDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.textMuted}
-              />
-              <CalendarIcon color={COLORS.text} size={18} />
+      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+
+        {/* From/To Row */}
+        {[['From Date', fromDate, setFromDate, fromHalf, setFromHalf], ['To Date', toDate, setToDate, toHalf, setToHalf]].map(([label, date, setDate, half, setHalf]) => (
+          <View key={label} style={s.dateRow}>
+            <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
+              <Text style={s.label}>{label}</Text>
+              <View style={s.inputRow}>
+                <TextInput style={s.dateText} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor="#D1D5DB" />
+                <CalendarIcon color="#9CA3AF" size={16} />
+              </View>
+            </View>
+            <View style={[s.inputBox, { flex: 1 }]}>
+              <Text style={s.label}> </Text>
+              <TouchableOpacity style={s.inputRow}>
+                <Text style={s.inputVal}>{half}</Text>
+                <ChevronDown color="#9CA3AF" size={16} />
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={[styles.inputBox, { flex: 1 }]}>
-            <Text style={styles.label}>&nbsp;</Text>
-            <View style={styles.dateInput}>
-              <Text style={styles.inputValue}>{fromHalf}</Text>
-              <ChevronDown color={COLORS.text} size={18} />
+        ))}
+
+        {/* Authorised By */}
+        <View style={s.inputBox}>
+          <Text style={s.label}>Authorised By</Text>
+          <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
+            <Text style={[s.inputVal, { color: '#6B7280' }]}>{authorizedByName || '...'}</Text>
+          </View>
+        </View>
+
+        {/* Approved By */}
+        <View style={s.inputBox}>
+          <Text style={s.label}>Approved By</Text>
+          {approvedByOptions.length > 1 ? (
+            <TouchableOpacity style={s.inputRow} onPress={() => setShowApproverDropdown(true)}>
+              <Text style={s.inputVal}>{approvedByName}</Text>
+              <ChevronDown color="#9CA3AF" size={16} />
+            </TouchableOpacity>
+          ) : (
+            <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
+              <Text style={[s.inputVal, { color: '#6B7280' }]}>{approvedByName || '...'}</Text>
             </View>
-          </View>
+          )}
         </View>
 
-        <View style={styles.row}>
-          <View style={[styles.inputBox, { flex: 1, marginRight: 8 }]}>
-            <Text style={styles.label}>To Date</Text>
-            <View style={[styles.textInput, { flexDirection: 'row', alignItems: 'center' }]}>
-              <TextInput 
-                style={{ flex: 1, fontSize: 14, color: COLORS.text, fontWeight: '600' }}
-                value={toDate}
-                onChangeText={setToDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={COLORS.textMuted}
-              />
-              <CalendarIcon color={COLORS.text} size={18} />
-            </View>
-          </View>
-          <View style={[styles.inputBox, { flex: 1 }]}>
-            <Text style={styles.label}>&nbsp;</Text>
-            <View style={styles.dateInput}>
-              <Text style={styles.inputValue}>{toHalf}</Text>
-              <ChevronDown color={COLORS.text} size={18} />
-            </View>
-          </View>
+        {/* Contact Number */}
+        <View style={s.inputBox}>
+          <Text style={s.label}>Contact Number</Text>
+          <TextInput style={s.inputRow} value={contactNo} onChangeText={setContactNo} placeholder="+91 0000000000" keyboardType="phone-pad" placeholderTextColor="#D1D5DB" />
         </View>
 
-        <View style={styles.inputBox}>
-          <Text style={styles.label}>Authorised By</Text>
-          <View style={styles.dateInput}>
-            <Text style={styles.inputValue}>{authorisedBy}</Text>
-            <ChevronDown color={COLORS.text} size={18} />
-          </View>
+        {/* Reason */}
+        <View style={s.inputBox}>
+          <Text style={s.label}>Reason</Text>
+          <TextInput style={[s.inputRow, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]} value={reason} onChangeText={setReason} multiline placeholder="Enter reason..." placeholderTextColor="#D1D5DB" />
         </View>
 
-        <View style={styles.inputBox}>
-          <Text style={styles.label}>Approved By</Text>
-          <View style={styles.dateInput}>
-            <Text style={styles.inputValue}>{approvedBy}</Text>
-            <ChevronDown color={COLORS.text} size={18} />
-          </View>
-        </View>
-
-        <View style={styles.inputBox}>
-          <Text style={styles.label}>Contact Number</Text>
-          <TextInput 
-            style={styles.textInput} 
-            value={contactNo} 
-            onChangeText={setContactNo}
-            placeholder="+91 0000000000" 
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        <View style={styles.inputBox}>
-          <Text style={styles.label}>Reason Note</Text>
-          <TextInput 
-            style={[styles.textInput, { height: 100, textAlignVertical: 'top', paddingTop: 12 }]} 
-            multiline 
-            value={reason}
-            onChangeText={setReason}
-            placeholder="Feeling unwell, additional notes..." 
-          />
-        </View>
-
-        <TouchableOpacity 
-            style={[styles.submitBtn, submitting && { opacity: 0.7 }, { marginTop: 10 }]} 
-            onPress={handleSubmit}
-            disabled={submitting}
-        >
-          {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitText}>APPLY</Text>}
+        {/* File attachments */}
+        <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
+          <Paperclip color={COLORS.primaryDeep} size={14} />
+          <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
         </TouchableOpacity>
+        {attachedFiles.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+            {attachedFiles.map((f, i) => (
+              <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
+            ))}
+            <TouchableOpacity style={s.addMoreThumb} onPress={pickFile}>
+              <Text style={s.addMorePlus}>+</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
 
+        <TouchableOpacity style={[s.submitBtn, submitting && { opacity: 0.7 }]} onPress={handleSubmit} disabled={submitting}>
+          {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* Approver Dropdown Modal */}
+      <Modal transparent visible={showApproverDropdown} animationType="fade" onRequestClose={() => setShowApproverDropdown(false)}>
+        <TouchableOpacity style={s.ddOverlay} activeOpacity={1} onPress={() => setShowApproverDropdown(false)}>
+          <View style={s.ddBox}>
+            <Text style={s.ddTitle}>Select Approver</Text>
+            {approvedByOptions.map(opt => (
+              <TouchableOpacity key={opt.id} style={s.ddItem} onPress={() => { setApprovedById(opt.id); setApprovedByName(opt.name); setShowApproverDropdown(false); }}>
+                <Text style={[s.ddItemText, approvedById === opt.id && { color: COLORS.primaryDeep, fontWeight: '800' }]}>{opt.name}</Text>
+                {approvedById === opt.id && <CheckCircle color={COLORS.primaryDeep} size={16} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 
-  const SuccessView = () => (
-    <View style={styles.successContainer}>
-      <View style={styles.successCircle}>
-        <CheckCircle color="#2ECC71" size={80} strokeWidth={2} />
+  const HistoryView = () => {
+    const tabs = [
+      { key: 'all', label: 'All' },
+      { key: 'upcoming', label: 'Upcoming' },
+      { key: 'past', label: 'Past' },
+    ];
+    return (
+      <View style={{ flex: 1 }}>
+        <LeaveHeader title="Leave History" onBack={() => setView('DASHBOARD')} />
+        {/* Tab Bar */}
+        <View style={s.tabBar}>
+          {tabs.map(t => (
+            <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive]} onPress={() => { setHistFilter(t.key); fetchHistory(t.key); }}>
+              <Text style={[s.tabText, histFilter === t.key && s.tabTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {histLoading ? (
+          <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
+        ) : histLeaves.length === 0 ? (
+          <View style={s.emptyWrap}>
+            <Clock color="#D1D5DB" size={48} />
+            <Text style={s.emptyText}>No leaves found</Text>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={s.scroll}>
+            {histLeaves.map((item, idx) => <HistoryCard key={item.leave_id || idx} item={item} />)}
+          </ScrollView>
+        )}
       </View>
-      <Text style={styles.successTitle}>Leave Request Sent Successfully!</Text>
-      <Text style={styles.successSub}>Your leave request has been sent successfully. We will get back to you shortly!</Text>
-      
-      <TouchableOpacity style={styles.goHomeBtn} onPress={() => setView('DASHBOARD')}>
-        <Text style={styles.goHomeText}>Go back to dashboard</Text>
+    );
+  };
+
+  const SuccessView = () => (
+    <View style={s.successWrap}>
+      <View style={s.successCircle}><CheckCircle color="#22C55E" size={80} strokeWidth={1.5} /></View>
+      <Text style={s.successTitle}>Request Sent Successfully!</Text>
+      <Text style={s.successSub}>Your leave request has been sent successfully. We will get back to you shortly!</Text>
+      <TouchableOpacity style={s.goHomeBtn} onPress={() => { setView('DASHBOARD'); fetchAll(); }}>
+        <Text style={s.goHomeText}>Go Back Home</Text>
       </TouchableOpacity>
     </View>
   );
 
-  const HistoryView = () => (
-    <View style={{ flex: 1 }}>
-      <LeaveHeader title="Leave History" onBack={() => setView('DASHBOARD')} />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {leaves.length === 0 ? (
-            <View style={{ padding: 40, alignItems: 'center' }}>
-                <Clock color={COLORS.textMuted} size={40} />
-                <Text style={{ marginTop: 12, color: COLORS.textMuted, fontWeight: '600' }}>No leave history found</Text>
-            </View>
-        ) : (
-            leaves.map((item, index) => (
-                <View key={item.leave_id || index.toString()} style={styles.historyCard}>
-                    <View style={[styles.statusSideBar, { backgroundColor: item.leave_status === 'Approved' ? '#4CAF50' : item.leave_status === 'Rejected' ? '#F44336' : (item.leave_status === 'Applied' ? '#2196F3' : '#F59E0B') }]}>
-                        <Text style={styles.sidebarText}>{item.leave_status}</Text>
-                    </View>
-                    <View style={styles.historyInfo}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.historyTypeTitle}>{item.leave_name?.trim()}</Text>
-                            <Text style={styles.historyDateText}>{item.from_date} to {item.to_date}</Text>
-                            {item.approved_by_person && <Text style={styles.historyBy}>Appr: {item.approved_by_person}</Text>}
-                        </View>
-                        <View style={styles.dayBadge}>
-                            <Text style={styles.dayNum}>{item.leave_count}</Text>
-                            <Text style={styles.dayLabel}>Days</Text>
-                        </View>
-                    </View>
-                </View>
-            ))
-        )}
-      </ScrollView>
-    </View>
-  );
-
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={s.container}>
       {view === 'DASHBOARD' && DashboardView()}
-      {view === 'APPLY' && ApplyFormView()}
-      {view === 'SUCCESS' && SuccessView()}
+      {view === 'APPLY' && ApplyView()}
       {view === 'HISTORY' && HistoryView()}
+      {view === 'SUCCESS' && SuccessView()}
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
-  scroll: { padding: 20 },
-  balanceCard: { 
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, 
-    marginBottom: 12, overflow: 'hidden', height: 74,
-    ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6'
-  },
-  typeBar: { width: 6, height: '100%' },
-  balanceContent: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  balanceRatio: { fontSize: 18, fontWeight: '900', color: COLORS.text },
-  balanceType: { fontSize: 13, color: COLORS.textLight, fontWeight: '500' },
-  historyBtn: { 
-    backgroundColor: '#F3E5F5', padding: 16, borderRadius: 16, 
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    marginTop: 20
-  },
-  historyBtnText: { color: COLORS.primaryDeep, fontWeight: '700', marginRight: 8, fontSize: 13 },
-  remainingBanner: { backgroundColor: '#F3E5F5', padding: 12, alignItems: 'center' },
-  remainingText: { color: COLORS.primaryDeep, fontSize: 12, fontWeight: '600', textTransform: 'lowercase' },
-  row: { flexDirection: 'row', marginBottom: 16 },
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  scroll: { padding: 20, paddingBottom: 40 },
+
+  // Balance cards
+  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden', height: 72, ...SHADOWS.light },
+  balBar: { width: 5 },
+  balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  balRatio: { fontSize: 18, fontWeight: '900', color: COLORS.text },
+  balType: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  histBtn: { backgroundColor: '#F5F3FF', padding: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
+  histBtnText: { color: COLORS.primaryDeep, fontWeight: '700', marginRight: 8 },
+
+  // Apply form
+  remBanner: { backgroundColor: '#F5F3FF', paddingVertical: 10, alignItems: 'center' },
+  remText: { color: COLORS.primaryDeep, fontSize: 12, fontWeight: '600' },
+  dateRow: { flexDirection: 'row', marginBottom: 16 },
   inputBox: { marginBottom: 16 },
-  label: { fontSize: 12, color: COLORS.textLight, marginBottom: 8, fontWeight: '600' },
-  dateInput: { 
+  label: { fontSize: 11, fontWeight: '600', color: '#9CA3AF', marginBottom: 6, marginLeft: 2 },
+  inputRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 14, paddingHorizontal: 16, height: 50
+    borderRadius: 12, paddingHorizontal: 14, height: 48,
   },
-  inputValue: { fontSize: 14, color: COLORS.text, fontWeight: '600' },
-  textInput: {
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 14, paddingHorizontal: 16, height: 50, fontSize: 14, fontWeight: '600'
-  },
-  submitBtn: { backgroundColor: COLORS.primaryDeep, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
-  submitText: { color: '#FFF', fontWeight: '900', fontSize: 13, letterSpacing: 1 },
-  successContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  successCircle: {
-    width: 140, height: 140, borderRadius: 70, backgroundColor: '#FFF',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 40,
-    ...SHADOWS.medium, borderWidth: 1, borderColor: '#F0FDF4',
-  },
-  successTitle: { fontSize: 22, fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 16 },
-  successSub: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', lineHeight: 22, marginBottom: 60 },
-  goHomeBtn: { 
-    width: '100%', height: 60, borderRadius: 30, 
-    borderWidth: 1, borderColor: '#E5E7EB', 
-    justifyContent: 'center', alignItems: 'center' 
-  },
+  inputVal: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },
+  dateText: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },
+
+  // Files
+  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, marginBottom: 12 },
+  addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: 13 },
+  addMoreThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
+  addMorePlus: { fontSize: 24, color: '#9CA3AF', fontWeight: '300' },
+
+  submitBtn: { backgroundColor: COLORS.primaryDeep, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  submitText: { color: '#FFF', fontWeight: '900', fontSize: 13, letterSpacing: 1.5 },
+
+  // Approver Dropdown
+  ddOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 32 },
+  ddBox: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, ...SHADOWS.medium },
+  ddTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text, marginBottom: 16 },
+  ddItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  ddItemText: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+
+  // History Tabs
+  tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: COLORS.primaryDeep },
+  tabText: { fontSize: 13, fontWeight: '700', color: '#9CA3AF' },
+  tabTextActive: { color: COLORS.primaryDeep },
+
+  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 60 },
+  emptyText: { fontSize: 14, color: '#9CA3AF', fontWeight: '600', marginTop: 12 },
+
+  // Success
+  successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#FFF' },
+  successCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
+  successTitle: { fontSize: 22, fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 14 },
+  successSub: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 50 },
+  goHomeBtn: { width: '100%', height: 54, borderRadius: 30, borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
   goHomeText: { color: COLORS.text, fontWeight: '800' },
-  historyCard: { 
-    backgroundColor: '#FFF', borderRadius: 20, marginBottom: 16, 
-    flexDirection: 'row', overflow: 'hidden', ...SHADOWS.light,
-    borderWidth: 1, borderColor: '#F3F4F6'
-  },
-  statusSideBar: { width: 44, justifyContent: 'center', alignItems: 'center' },
-  sidebarText: { 
-    transform: [{ rotate: '-90deg' }], color: '#FFF', width: 100,
-    fontSize: 10, fontWeight: '900', textAlign: 'center' 
-  },
-  historyInfo: { flex: 1, padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  historyTypeTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  historyDateText: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-  historyBy: { fontSize: 11, color: COLORS.textMuted, marginTop: 4 },
-  dayBadge: { alignItems: 'center' },
-  dayNum: { fontSize: 22, fontWeight: '900', color: COLORS.text },
-  dayLabel: { fontSize: 10, color: COLORS.textLight, fontWeight: '700' }
 });
 
 export default LeaveScreen;
