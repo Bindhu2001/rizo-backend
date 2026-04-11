@@ -146,9 +146,13 @@ const LogCard = ({ item, regMap, onRegularise }) => {
       <View style={lc.header}>
         <View style={{ flex: 1 }}>
           <Text style={lc.date}>{fmtDisplayDate(item.date)}</Text>
-          <Text style={lc.shift}>{item.shift ? item.shift.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'General Shift'} (9:30 AM- 6:30PM)</Text>
+          <Text style={lc.shift}>
+            {item.shift ? item.shift.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'General Shift'} (9:30 AM - 6:30 PM)
+          </Text>
         </View>
-        <View style={lc.woBadge}><Text style={lc.woText}>WO</Text></View>
+        {(item.status?.includes('WO') || item.status === 'WEEKLY_OFF') && (
+          <View style={lc.woBadge}><Text style={lc.woText}>WO</Text></View>
+        )}
       </View>
 
       {/* Punches section with connecting line */}
@@ -158,50 +162,57 @@ const LogCard = ({ item, regMap, onRegularise }) => {
         {/* Clock In */}
         <TouchableOpacity 
           style={lc.punchRow} 
-          disabled={!missingIn || regsForDate.length > 0} 
+          disabled={!missingIn || regsForDate.some(r => r.direction === 'IN' || r.type === 'IN')} 
           onPress={() => onRegularise(item, 'IN')}
           activeOpacity={0.7}
         >
           <View style={lc.iconWrap}>
-            {missingIn ? <TargetIcon color="#EF4444" /> : <CheckCircle color="#10B981" size={20} />}
+            {missingIn ? <TargetIcon color="#F44336" /> : <View style={lc.dotGreen} />}
           </View>
           <View style={lc.punchInfo}>
             {missingIn ? (
-              <Text style={lc.missingTitle}>Clock In <Text style={lc.missingText}>MISSING</Text></Text>
+              <View style={lc.missingRow}>
+                <Text style={lc.missingTitle}>Clock In{'\n'}<Text style={lc.missingText}>MISSING</Text></Text>
+                <View style={lc.regBtn}><Text style={lc.regBtnText}>REGULARISE</Text></View>
+              </View>
             ) : (
-              <>
-                <Text style={lc.timeText}>{punchIn}</Text>
-                <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
-              </>
+              <View style={lc.filledRow}>
+                <View>
+                  <Text style={lc.timeText}>{punchIn?.split(' ')[1] || punchIn}</Text>
+                  <Text style={lc.locText}>Location: {item.location || 'Office Premises'}</Text>
+                </View>
+                <View style={[lc.roleBadge]}><Text style={lc.roleText}>Clock In</Text></View>
+              </View>
             )}
           </View>
-          {!missingIn && (
-            <View style={lc.clockBtn}><Text style={lc.clockBtnText}>Clock IN</Text></View>
-          )}
         </TouchableOpacity>
 
         {/* Clock Out */}
         <TouchableOpacity 
           style={[lc.punchRow, { marginTop: 24 }]} 
-          disabled={!missingOut || regsForDate.length > 0}
+          disabled={!missingOut || regsForDate.some(r => r.direction === 'OUT' || r.type === 'OUT')}
           onPress={() => onRegularise(item, 'OUT')}
           activeOpacity={0.7}
         >
           <View style={lc.iconWrap}>
-            {missingOut ? <TargetIcon color="#EF4444" /> : <CheckCircle color="#10B981" size={20} />}
+            {missingOut ? <TargetIcon color="#F44336" /> : <View style={[lc.dotGreen, { backgroundColor: '#F48FB1', borderColor: '#F48FB1' }]} />}
           </View>
           <View style={lc.punchInfo}>
             {missingOut ? (
-              <Text style={lc.missingTitle}>Clock Out{'\n'}<Text style={lc.missingText}>MISSING</Text></Text>
+              <View style={lc.missingRow}>
+                <Text style={lc.missingTitle}>Clock Out{'\n'}<Text style={lc.missingText}>MISSING</Text></Text>
+                <View style={lc.regBtn}><Text style={lc.regBtnText}>REGULARISE</Text></View>
+              </View>
             ) : (
-              <>
-                <Text style={lc.timeText}>{punchOut}</Text>
-              </>
+              <View style={lc.filledRow}>
+                <View>
+                  <Text style={lc.timeText}>{punchOut?.split(' ')[1] || punchOut}</Text>
+                  <Text style={lc.locText}>Location: {item.location || 'Office Premises'}</Text>
+                </View>
+                <View style={[lc.roleBadge, { backgroundColor: '#FCE4EC' }]}><Text style={[lc.roleText, { color: '#E91E63' }]}>Clock Out</Text></View>
+              </View>
             )}
           </View>
-          {!missingOut && (
-            <View style={lc.clockBtn}><Text style={lc.clockBtnText}>Clock Out</Text></View>
-          )}
         </TouchableOpacity>
       </View>
 
@@ -229,28 +240,43 @@ const LogCard = ({ item, regMap, onRegularise }) => {
 };
 
 const lc = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 16, ...SHADOWS.light },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 16 },
-  date: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  shift: { fontSize: 11, color: '#6B7280', marginTop: 4 },
-  woBadge: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  woText: { fontSize: 10, color: '#9CA3AF', fontWeight: '700' },
-  punchContainer: { position: 'relative' },
-  punchLine: { position: 'absolute', top: 22, bottom: 22, left: 9.5, width: 1, backgroundColor: '#D1D5DB', borderStyle: 'dashed' },
+  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, ...SHADOWS.light },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  date: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  shift: { fontSize: 12, color: '#9CA3AF', marginTop: 3, fontWeight: '600' },
+  woBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  woText: { fontSize: 10, color: '#9CA3AF', fontWeight: '800' },
+
+  punchContainer: { position: 'relative', marginTop: 8 },
+  punchLine: { 
+    position: 'absolute', 
+    top: 14, bottom: 20, left: 8, 
+    width: 2, 
+    backgroundColor: '#F3F4F6',
+    zIndex: -1
+  },
   punchRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  iconWrap: { width: 20, alignItems: 'center' },
-  punchInfo: { flex: 1, marginLeft: 12 },
-  timeText: { fontSize: 14, fontWeight: '600', color: '#111827' },
-  locText: { fontSize: 11, color: '#6B7280', marginTop: 4, lineHeight: 16, paddingRight: 8 },
-  missingTitle: { fontSize: 12, color: '#111827', fontWeight: '500' },
-  missingText: { fontWeight: '800', color: '#EF4444' },
-  clockBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  clockBtnText: { fontSize: 11, color: '#4F46E5', fontWeight: '700' },
-  regBox: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 16, padding: 12, borderRadius: 12 },
-  regTitle: { fontSize: 12, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  regMsg: { fontSize: 11, color: '#6B7280', lineHeight: 16, paddingRight: 8 },
-  regBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  regBadgeText: { fontSize: 11, fontWeight: '700' },
+  iconWrap: { width: 18, alignItems: 'center', marginTop: 2, backgroundColor: '#FFF' },
+  dotGreen: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#2ECC71', borderWidth: 3.5, borderColor: '#DCFCE7' },
+  
+  punchInfo: { flex: 1, marginLeft: 16 },
+  missingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  missingTitle: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
+  missingText: { fontSize: 11, fontWeight: '800', color: '#F44336', textTransform: 'uppercase' },
+  regBtn: { backgroundColor: '#D32F2F', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
+  regBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+
+  filledRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  timeText: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  locText: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontWeight: '500' },
+  roleBadge: { backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
+  roleText: { fontSize: 10, fontWeight: '900', color: '#1976D2' },
+
+  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 16, padding: 14, borderRadius: 16, backgroundColor: '#F9FAFB' },
+  regTitle: { fontSize: 13, fontWeight: '800', color: '#111827', marginBottom: 2 },
+  regMsg: { fontSize: 11, color: '#6B7280', fontWeight: '500', lineHeight: 16 },
+  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: '#FFF', ...SHADOWS.light },
+  regBadgeText: { fontSize: 10, fontWeight: '900' },
 });
 
 // Analog Time Picker Modal
@@ -415,7 +441,7 @@ const rp = StyleSheet.create({
 const AttendanceRegScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100056' };
 
-  const [tab, setTab] = useState('LOG');
+  const [tab, setTab] = useState(route?.params?.initialTab || 'LOG');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
   const [attLogs, setAttLogs] = useState([]);
@@ -433,6 +459,12 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showReasonPicker, setShowReasonPicker] = useState(false);
+
+  useEffect(() => {
+    if (route?.params?.initialTab) {
+      setTab(route.params.initialTab);
+    }
+  }, [route?.params?.initialTab]);
 
   const regMap = {};
   regLogs.forEach(r => {
@@ -498,7 +530,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   // ─── Views ────────────────────────────────────────────────────────
   if (view === 'FORM') {
-    const isSubmitActive = !!remarks.trim();
+    const isSubmitActive = !!remarks.trim() || !!reason;
     
     return (
       <SafeAreaView style={s.container}>
@@ -606,17 +638,29 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={s.monthSelector}
-          onPress={() => {
-            const d = new Date(selectedMonth);
-            d.setMonth(d.getMonth() - 1);
-            setSelectedMonth(d);
-          }}
-        >
+        <View style={s.monthSelector}>
+          <TouchableOpacity
+            onPress={() => {
+              const d = new Date(selectedMonth);
+              d.setMonth(d.getMonth() - 1);
+              setSelectedMonth(d);
+            }}
+            style={{ padding: 8 }}
+          >
+            <ChevronLeft color="#111827" size={16} />
+          </TouchableOpacity>
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
-          <ChevronDown color="#111827" size={16} style={{ marginLeft: 6 }} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              const d = new Date(selectedMonth);
+              d.setMonth(d.getMonth() + 1);
+              setSelectedMonth(d);
+            }}
+            style={{ padding: 8 }}
+          >
+            <ChevronRight color="#111827" size={16} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (

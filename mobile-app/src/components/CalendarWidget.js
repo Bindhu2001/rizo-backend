@@ -157,7 +157,7 @@ const CalendarWidget = ({ userId }) => {
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#FF9800' }]} /><Text style={styles.legendText}>Holiday</Text></View>
       </View>
 
-      <Modal visible={!!selectedEvent} transparent animationType="fade">
+      <Modal visible={!!selectedEvent} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalDate}>

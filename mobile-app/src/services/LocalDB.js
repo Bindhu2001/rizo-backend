@@ -8,12 +8,16 @@
 import * as SQLite from 'expo-sqlite';
 
 let db = null;
+let initPromise = null;
 
 // ─── Open / Initialize ────────────────────────────────────────────────────────
 export const initDB = async () => {
-  try {
-    if (db) return db;
-    db = await SQLite.openDatabaseAsync('rizo_local.db');
+  if (db) return db;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
+      db = await SQLite.openDatabaseAsync('rizo_local.db');
 
     // Create tables individually to ensure one failure doesn't block the rest
     await db.execAsync('PRAGMA journal_mode = WAL;');
@@ -120,8 +124,13 @@ export const initDB = async () => {
     return db;
   } catch (error) {
     console.error('[LocalDB] Initialization failed:', error);
+    db = null;
+    initPromise = null;
     throw error;
   }
+  })();
+
+  return initPromise;
 };
 
 // ─── Attendance ──────────────────────────────────────────────────────────────

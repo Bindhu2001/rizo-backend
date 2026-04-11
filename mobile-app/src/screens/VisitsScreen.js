@@ -435,6 +435,9 @@ const VisitsScreen = ({ navigation, route }) => {
   const handleSaveNewVisit = async (details) => {
     setProcessing(true);
     try {
+      // Ensure DB ready
+      await initDB(); 
+
       const id = await saveVisitLocal({
         userId: user.user_id,
         clientName: details.company,
@@ -449,11 +452,12 @@ const VisitsScreen = ({ navigation, route }) => {
       await updateVisitStatus(id, 'REACHED', {
         startTime: new Date().toISOString(), lat: details.lat || 0, lng: details.lng || 0,
       });
-      await syncIfOnline();
+      syncIfOnline(); // Fire and forget sync
       setShowStartScreen(false);
-      await fetchVisits();
+      fetchVisits();
     } catch (e) {
-      Alert.alert('Error', 'Failed to save visit');
+      console.error('Visit Save Error:', e);
+      Alert.alert('Error', 'Failed to save visit record. Please try again.');
     } finally { setProcessing(false); }
   };
 

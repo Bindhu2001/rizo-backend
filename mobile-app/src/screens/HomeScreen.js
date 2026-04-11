@@ -296,12 +296,15 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* TOP BAR */}
         <View style={styles.topBar}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.greetingHeader}>{getGreeting()}</Text>
-            <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
-            <View style={styles.locationBadge}>
-              <MapPin color={COLORS.textLight} size={12} />
-              <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
+          <View style={styles.logoAndGreeting}>
+            <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+            <View>
+              <Text style={styles.greetingHeader}>{getGreeting()}</Text>
+              <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
+              <View style={styles.locationBadge}>
+                <MapPin color={COLORS.textLight} size={12} />
+                <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
+              </View>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -366,7 +369,7 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* 2×2 GRID */}
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('HistoryTab')}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('AttendanceReg', { initialTab: 'LOG' })}>
             <View style={[styles.gridIcon, { backgroundColor: '#E8F5E9' }]}>
               <Fingerprint color="#2ECC71" size={20} />
             </View>
@@ -421,7 +424,7 @@ const HomeScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('AttendanceReg')}
+          onPress={() => navigation.navigate('AttendanceReg', { initialTab: 'REGULARISED' })}
         >
           <View style={styles.visitButtonLeft}>
             <View style={[styles.visitIconBox, { backgroundColor: '#FF9800' }]}>
@@ -490,7 +493,9 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: 20 },
 
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerLogo: { width: 44, height: 44, marginRight: 12, borderRadius: 22 },
   greetingHeader: { fontSize: 13, color: COLORS.textLight, fontWeight: '600' },
   userNameHeader: { fontSize: 24, fontWeight: '900', color: COLORS.text, letterSpacing: -0.5 },
   locationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
