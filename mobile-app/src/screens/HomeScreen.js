@@ -6,9 +6,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
-  ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation
+  ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff
 } from 'lucide-react-native';
 import axios from 'axios';
+import { format } from 'date-fns';
 import * as Location from 'expo-location';
 import * as Network from 'expo-network';
 
@@ -45,6 +46,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const toggleEvents = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -52,6 +54,14 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   // ── Initialization ────────────────────────────────────────────────────────
+  useEffect(() => {
+    let timerId;
+    if (isPunchedIn) {
+      timerId = setInterval(() => setCurrentTime(new Date()), 1000);
+    }
+    return () => clearInterval(timerId);
+  }, [isPunchedIn]);
+
   useEffect(() => {
     initDB().then(() => {
       fetchStatus();
@@ -313,14 +323,38 @@ const HomeScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* SWIPE ACTION */}
+        {/* SWIPE / TIMER ACTION */}
         <View style={styles.swipeBox}>
-          <SwipeToPunch
-            isPunchedIn={isPunchedIn}
-            loading={punching}
-            onSwipeComplete={handleSwipeComplete}
-            resetTrigger={cancelTrigger}
-          />
+          {isPunchedIn ? (
+            <View style={styles.punchedInCard}>
+              <View style={styles.punchedInLeft}>
+                {offlineCount > 0 ? (
+                  <CloudOff color={COLORS.danger} size={20} />
+                ) : (
+                  <MapPin color={COLORS.danger} size={20} />
+                )}
+                <View style={styles.punchedInTextStack}>
+                  <Text style={styles.punchedInTime}>{format(currentTime, 'hh:mm:ss a, dd MMM yyyy')}</Text>
+                  <Text style={styles.punchedInLoc} numberOfLines={1}>{locationName}</Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.clockOutBtn} 
+                onPress={() => setShowConfirmOut(true)}
+                disabled={punching}
+              >
+                {punching ? <ActivityIndicator color={COLORS.danger} size="small" /> : <Power color={COLORS.danger} size={20} strokeWidth={2.5} />}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <SwipeToPunch
+              isPunchedIn={false}
+              loading={punching}
+              onSwipeComplete={handleSwipeComplete}
+              resetTrigger={cancelTrigger}
+            />
+          )}
+
           {/* Offline location fetch status banner */}
           {!!punchMessage && (
             <View style={styles.punchMessageBanner}>
@@ -425,7 +459,7 @@ const HomeScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* CLOCK OUT MODAL */}
-      <Modal visible={showConfirmOut} transparent animationType="fade">
+      <Modal visible={showConfirmOut} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalPowerCircle}>
@@ -485,6 +519,13 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDeep,
     flexShrink: 1,
   },
+
+  punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, ...SHADOWS.light },
+  punchedInLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingLeft: 12 },
+  punchedInTextStack: { marginLeft: 12, flex: 1, marginRight: 8 },
+  punchedInTime: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 1 },
+  punchedInLoc: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  clockOutBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFD1D1', justifyContent: 'center', alignItems: 'center' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
   gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, ...SHADOWS.light },

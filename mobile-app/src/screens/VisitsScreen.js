@@ -96,6 +96,20 @@ const tl = StyleSheet.create({
 const VisitCard = ({ visit, onStepIn, onStepOut }) => {
   const isLive = visit.status === 'REACHED' || visit.status === 'step_in';
 
+  // Own pulse animation for the live dot
+  const pulse = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!isLive) return;
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [isLive]);
+
   if (isLive) {
     return (
       <View style={[cs.card, { borderColor: '#E5E7EB', borderWidth: 1 }]}>
@@ -402,15 +416,6 @@ const VisitsScreen = ({ navigation, route }) => {
 
   const [pendingVisit, setPendingVisit] = useState(null);
 
-  const pulse = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
 
   useEffect(() => {
     initDB().then(() => fetchVisits());
@@ -519,11 +524,11 @@ const VisitsScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* FAB */}
-      <Animated.View style={[s.fabWrap, { transform: [{ scale: pulse }] }]}>
+      <View style={s.fabWrap}>
         <TouchableOpacity style={s.fab} onPress={() => setShowStartScreen(true)}>
           <Plus color="#FFF" size={28} strokeWidth={2.5} />
         </TouchableOpacity>
-      </Animated.View>
+      </View>
 
       <StartVisitScreen
         visible={showStartScreen}

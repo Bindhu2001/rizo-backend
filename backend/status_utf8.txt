@@ -1,0 +1,19 @@
+﻿[dotenv@17.3.1] injecting env (0) from .env -- tip: ≡ƒ¢á∩╕Å  run anywhere with `dotenvx run -- yourcommand`
+Γ£à DATABASE CONNECTED SUCCESSFULLY!
+--- Users Table ---
+- id (int(11))
+- name (varchar(255))
+- created_at (timestamp)
+- email (varchar(255))
+- password (varchar(255))
+
+--- Attendance Table ---
+- id (int(11))
+- user_id (int(11))
+- type (varchar(50))
+- latitude (decimal(10,8))
+- longitude (decimal(11,8))
+- client_punch_time (timestamp)
+- sync_status (tinyint(4))
+- server_punch_time (timestamp)
+

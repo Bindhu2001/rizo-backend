@@ -13,8 +13,6 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 
-const { width } = Dimensions.get('window');
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 const BASE = 'https://v1.mypayrollmaster.online/api/v2qa/newapp';
 
@@ -175,6 +173,104 @@ const ft = StyleSheet.create({
   remove: { position: 'absolute', top: -4, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
 });
 
+// ─── Calendar Modal ──────────────────────────────────────────────────────────
+const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
+  const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
+
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const firstDayIndex = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
+
+  const days = [];
+  for (let i = 0; i < firstDayIndex; i++) days.push(null);
+  for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+
+  const handleSelect = (d) => {
+    const yyyy = currentMonth.getFullYear();
+    const mm = String(currentMonth.getMonth() + 1).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    onConfirm(`${yyyy}-${mm}-${dd}`);
+  };
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={cal.overlay} activeOpacity={1} onPress={onClose}>
+        <View style={cal.box}>
+          <View style={cal.header}>
+             <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24}/></TouchableOpacity>
+             <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
+             <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24}/></TouchableOpacity>
+          </View>
+          <View style={cal.daysHeader}>
+             {['Su','Mo','Tu','We','Th','Fr','Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
+          </View>
+          <View style={cal.grid}>
+             {days.map((d, i) => {
+                const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` === selectedDate;
+                return (
+                  <TouchableOpacity 
+                    key={i} 
+                    style={[cal.cell, isSelected && cal.cellSelected]} 
+                    onPress={() => d && handleSelect(d)}
+                    disabled={!d}
+                  >
+                    <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                  </TouchableOpacity>
+                );
+             })}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+const cal = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  box: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.medium },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  arrowBtn: { padding: 4 },
+  daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 10, marginBottom: 10 },
+  dhText: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '700', color: '#6B7280' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
+  cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: 20 },
+  cellText: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  cellTextSelected: { color: '#FFF', fontWeight: '800' }
+});
+
+// ─── Half Picker Modal ───────────────────────────────────────────────────────
+const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title }) => (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <TouchableOpacity style={sm.overlay} activeOpacity={1} onPress={onClose}>
+      <View style={sm.sheet}>
+        <View style={sm.handle} />
+        {title && <Text style={sm.title}>{title}</Text>}
+        {options.map(opt => (
+          <TouchableOpacity key={opt} style={sm.item} onPress={() => { onSelect(opt); onClose(); }}>
+            <Text style={[sm.itemText, opt === selectedValue && sm.itemTextActive]}>{opt}</Text>
+            {opt === selectedValue && <CheckCircle color={COLORS.primaryDeep} size={20} />}
+          </TouchableOpacity>
+        ))}
+      </View>
+    </TouchableOpacity>
+  </Modal>
+);
+
+const sm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
+  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  title: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16 },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  itemText: { fontSize: 15, color: '#4B5563' },
+  itemTextActive: { color: '#111827', fontWeight: '600' },
+});
+
 // ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100056' };
@@ -192,14 +288,14 @@ const LeaveScreen = ({ navigation, route }) => {
   // Approvers from API
   const [authorizedById, setAuthorizedById] = useState('');
   const [authorizedByName, setAuthorizedByName] = useState('');
-  const [approvedById, setApprovedById] = useState('');
-  const [approvedByOptions, setApprovedByOptions] = useState([]);
+  const [approvedByIds, setApprovedByIds] = useState('');
   const [approvedByName, setApprovedByName] = useState('');
-  const [showApproverDropdown, setShowApproverDropdown] = useState(false);
 
   // Form State
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [calendarTarget, setCalendarTarget] = useState(null); // 'FROM' or 'TO'
+  const [halfTarget, setHalfTarget] = useState(null); // 'FROM' or 'TO'
   const [fromHalf, setFromHalf] = useState('Full Day');
   const [toHalf, setToHalf] = useState('Full Day');
   const [reason, setReason] = useState('');
@@ -215,13 +311,12 @@ const LeaveScreen = ({ navigation, route }) => {
       if (items.data?.success) {
         const d = items.data.data;
         setLeaveBalances(d.leave_types || []);
+        
         setAuthorizedById(d.authorized_by || '');
-        setAuthorizedByName(d.authorized_by_person || '');
-        const approvedIds = (d.approved_by || '').split(',').map(s => s.trim()).filter(Boolean);
-        const approvedNames = (d.approved_by_person || '').split(',').map(s => s.trim()).filter(Boolean);
-        const opts = approvedIds.map((id, i) => ({ id, name: approvedNames[i] || id }));
-        setApprovedByOptions(opts);
-        if (opts.length > 0) { setApprovedById(opts[0].id); setApprovedByName(opts[0].name); }
+        setAuthorizedByName(d.authorized_by_person?.trim() || 'Not Defined');
+
+        setApprovedByIds(d.approved_by || '');
+        setApprovedByName(d.approved_by_person?.trim() || 'Not Defined');
       }
     } catch (e) { console.log('leave_items error', e.message); }
     finally { setLoading(false); }
@@ -282,7 +377,7 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('contact_number', contactNo || 'N/A');
       formData.append('duties_handed_over', 'N/A');
       formData.append('authorized_by', authorizedById || '0');
-      formData.append('approved_by', approvedById || '0');
+      formData.append('approved_by', approvedByIds || '0');
       attachedFiles.forEach((f, i) => {
         formData.append(`file_${i}`, { uri: f.uri, type: f.mimeType || 'application/octet-stream', name: f.name });
       });
@@ -342,47 +437,56 @@ const LeaveScreen = ({ navigation, route }) => {
       </View>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
-        {/* From/To Row */}
-        {[['From Date', fromDate, setFromDate, fromHalf, setFromHalf], ['To Date', toDate, setToDate, toHalf, setToHalf]].map(([label, date, setDate, half, setHalf]) => (
-          <View key={label} style={s.dateRow}>
-            <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
-              <Text style={s.label}>{label}</Text>
-              <View style={s.inputRow}>
-                <TextInput style={s.dateText} value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor="#D1D5DB" />
-                <CalendarIcon color="#9CA3AF" size={16} />
-              </View>
-            </View>
-            <View style={[s.inputBox, { flex: 1 }]}>
-              <Text style={s.label}> </Text>
-              <TouchableOpacity style={s.inputRow}>
-                <Text style={s.inputVal}>{half}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
-              </TouchableOpacity>
-            </View>
+        {/* From Row */}
+        <View style={s.dateRow}>
+          <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
+            <Text style={s.label}>From Date</Text>
+            <TouchableOpacity style={s.inputRow} onPress={() => setCalendarTarget('FROM')}>
+              <Text style={[s.dateText, !fromDate && { color: '#9CA3AF' }]}>{fromDate || 'YYYY-MM-DD'}</Text>
+              <CalendarIcon color="#9CA3AF" size={16} />
+            </TouchableOpacity>
           </View>
-        ))}
+          <View style={[s.inputBox, { flex: 1 }]}>
+            <Text style={s.label}> </Text>
+            <TouchableOpacity style={s.inputRow} onPress={() => setHalfTarget('FROM')}>
+              <Text style={s.inputVal}>{fromHalf}</Text>
+              <ChevronDown color="#9CA3AF" size={16} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* To Row */}
+        <View style={s.dateRow}>
+          <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
+            <Text style={s.label}>To Date</Text>
+            <TouchableOpacity style={s.inputRow} onPress={() => setCalendarTarget('TO')}>
+              <Text style={[s.dateText, !toDate && { color: '#9CA3AF' }]}>{toDate || 'YYYY-MM-DD'}</Text>
+              <CalendarIcon color="#9CA3AF" size={16} />
+            </TouchableOpacity>
+          </View>
+          <View style={[s.inputBox, { flex: 1 }]}>
+            <Text style={s.label}> </Text>
+            <TouchableOpacity style={s.inputRow} onPress={() => setHalfTarget('TO')}>
+              <Text style={s.inputVal}>{toHalf}</Text>
+              <ChevronDown color="#9CA3AF" size={16} />
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Authorised By */}
         <View style={s.inputBox}>
           <Text style={s.label}>Authorised By</Text>
           <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
-            <Text style={[s.inputVal, { color: '#6B7280' }]}>{authorizedByName || '...'}</Text>
+            <Text style={[s.inputVal, { color: '#6B7280' }]}>{authorizedByName}</Text>
           </View>
         </View>
 
         {/* Approved By */}
         <View style={s.inputBox}>
           <Text style={s.label}>Approved By</Text>
-          {approvedByOptions.length > 1 ? (
-            <TouchableOpacity style={s.inputRow} onPress={() => setShowApproverDropdown(true)}>
-              <Text style={s.inputVal}>{approvedByName}</Text>
-              <ChevronDown color="#9CA3AF" size={16} />
-            </TouchableOpacity>
-          ) : (
-            <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
-              <Text style={[s.inputVal, { color: '#6B7280' }]}>{approvedByName || '...'}</Text>
-            </View>
-          )}
+          <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
+            <Text style={[s.inputVal, { color: '#6B7280' }]}>{approvedByName}</Text>
+          </View>
         </View>
 
         {/* Contact Number */}
@@ -418,20 +522,32 @@ const LeaveScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Approver Dropdown Modal */}
-      <Modal transparent visible={showApproverDropdown} animationType="fade" onRequestClose={() => setShowApproverDropdown(false)}>
-        <TouchableOpacity style={s.ddOverlay} activeOpacity={1} onPress={() => setShowApproverDropdown(false)}>
-          <View style={s.ddBox}>
-            <Text style={s.ddTitle}>Select Approver</Text>
-            {approvedByOptions.map(opt => (
-              <TouchableOpacity key={opt.id} style={s.ddItem} onPress={() => { setApprovedById(opt.id); setApprovedByName(opt.name); setShowApproverDropdown(false); }}>
-                <Text style={[s.ddItemText, approvedById === opt.id && { color: COLORS.primaryDeep, fontWeight: '800' }]}>{opt.name}</Text>
-                {approvedById === opt.id && <CheckCircle color={COLORS.primaryDeep} size={16} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+      <CalendarModal 
+        visible={!!calendarTarget} 
+        selectedDate={calendarTarget === 'FROM' ? fromDate : toDate}
+        onClose={() => setCalendarTarget(null)}
+        onConfirm={(val) => {
+          if (calendarTarget === 'FROM') {
+            setFromDate(val);
+            if (!toDate) setToDate(val);
+          } else {
+            setToDate(val);
+          }
+          setCalendarTarget(null);
+        }}
+      />
+      
+      <SelectionModal 
+        visible={!!halfTarget}
+        title={`Select ${halfTarget === 'FROM' ? 'From' : 'To'} Half`}
+        options={['Full Day', 'First Half', 'Second Half']}
+        selectedValue={halfTarget === 'FROM' ? fromHalf : toHalf}
+        onClose={() => setHalfTarget(null)}
+        onSelect={(val) => {
+          if (halfTarget === 'FROM') setFromHalf(val);
+          else setToHalf(val);
+        }}
+      />
     </View>
   );
 
@@ -492,7 +608,7 @@ const LeaveScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { padding: 20, paddingBottom: 40 },
+  scroll: { padding: 20, paddingBottom: 120 },
 
   // Balance cards
   balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden', height: 72, ...SHADOWS.light },

@@ -1,0 +1,53 @@
+﻿[
+  {
+    "id": "4e5ace60-c99f-421e-886c-b13f4ed01e76",
+    "status": "FINISHED",
+    "platform": "ANDROID",
+    "artifacts": {
+      "buildUrl": "https://expo.dev/artifacts/eas/aFbCyxxwrnQvSfa3zgRqdE.apk",
+      "applicationArchiveUrl": "https://expo.dev/artifacts/eas/aFbCyxxwrnQvSfa3zgRqdE.apk"
+    },
+    "fingerprint": {
+      "id": "019d0607-41d3-76e3-88c0-a80333873643",
+      "hash": "9e76a519178fdf325545e5444c32344d53cec8e0"
+    },
+    "initiatingActor": {
+      "id": "31cab5a4-3a3e-4594-9f2b-fa8d50e7cada",
+      "displayName": "bindu_01"
+    },
+    "logFiles": [
+      "https://job-logs.eascdn.net/production/4e5ace60-c99f-421e-886c-b13f4ed01e76/1773980481086-40904347-803a-4213-a5f1-7a05591b08c3.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260320%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260320T053038Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=e4d2a9034937b5509c1c3cdb023ceb27b99210d5099ee7f13f3ed5972a2e7a66f9849ac99e341e078d666fb397a23c77d5a206a8e90622097b420ba93692ef8833a8ccce112ebd2b95e1c1cc0835b7e71a84449ab8da65dc0c56053c85bc3a5a4c4c439d95d5c3ba21c67e90a03e87110e712dd7339caa747d988f698e4cf78a466fd58114ab4d68991ee9d68d5612b51065c06a263d2f834a1b584a6231e717ea1811bb61c04e2db1907650b423551a7d2bb88a1981d7682c47beb47a9b87d74d0f77195da42fca20f750afcdeea4cde84d01029d1242e62e794d35e27e3488e4ee3742ead0c7c565fe7884d6cfa9900e37fe6a014a1276c3cf2c145eeb52c1",
+      "https://job-logs.eascdn.net/production/4e5ace60-c99f-421e-886c-b13f4ed01e76/1773980487052-d421b0de-101a-41b0-b617-782e49604c39.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260320%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260320T053038Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=832326d2b475da6dc7efc8732e6cd353eb3b27209c7f9e0713464a57aedd72f34b8c6f62ed3c999f8b62434f4b225a7f34a1532571f6a4e93cf44b8b1696b912bed131d35aadf4579d40ba2b2828d75a96ab76ae4d74a1e52aad1fe12d1b9de878563fab52bde9a8bf5577ecae2693af456905ffd7c65334719561d45fa8b47d699e89706d17aa28b1aa2e70a8a061f3089521405352542ced4fee480cea42dac0be34be188213dfe21f5d2a3bee724ba68af6cd143624c7e68abc76be62e4d2723bb5ce4ea9817ac624c58d0822b09e892cee617161b8fd49c6e09f8e80b6d6b2ba469e645095cc312378f3a25a8a3232625fca14703386e05ebeaea20109f2",
+      "https://job-logs.eascdn.net/production/4e5ace60-c99f-421e-886c-b13f4ed01e76/1773980487289-1894674c-6366-45e1-b7bb-d72d7fb34023.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260320%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260320T053038Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=48c0d54f1ce284f3ad0c068c264a69dc429df2511a471acf83df39c621513aca1e8fc140db51e29939908f858430b7b5a9bb5fc1dc3dfe929943fc1339d582ac1cd78d7b08c011c14f71b6a3e155e02ffd7616ef7c7dd198a86f1b89549b8c273dfc9edcd48c26f1f2eb384cd5665f4b15b297389c8228e7c227a1c476f27cd9f5b25d94ec34c13ddecbe404b6119163a800c37bf88353f254fb0d16deda637c324af225723dcdf27e756b44ee9bc0f1cd68c0cd86e2e6d8efee8f962708d51a435103fce8a5378ac6d9931bdf7852c4c8d8bd5a0cc917cb1ad8fcffd5871cf2e5353bb44c4c6af0981b10de92182b717f2caa750c229863fdc4c2dae31cbd5c",
+      "https://job-logs.eascdn.net/production/4e5ace60-c99f-421e-886c-b13f4ed01e76/1773980487501-e2dc3662-6b2c-4263-b972-3268eb937724.txt?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=www-production%40exponentjs.iam.gserviceaccount.com%2F20260320%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260320T053038Z&X-Goog-Expires=900&X-Goog-SignedHeaders=host&X-Goog-Signature=f07e9e41701b598ff35176b05632ce76563e6118b13941119cb979f054187a87de93ab554012a978c0b11198609f71a6433ccf17d50b64f5ba561d0716b5719ce5d2748a76b18bc8f6957ae16d013bbaf139788a889c9cc06fe1354cdd1099311fe53d5523d9cac083b7dadc7d38f0f7eb5b55025be908e0eccb03acbb97f72cc7df51c7c0caa53815054c39c020e9757df557dc6e7268a930596c74d06f21cb700c4891e6239cdda47faee6a967c6008c1eddbb4d97dc19da2fc009ca4622cf658ddaf9c6ee133becca05f64cafe2769815d3053774c6bbf344ee01a0ce769e65a068dcd414f53773f0c562833dbbe6fcec1e7e9999dbcc319f0149f4948825"
+    ],
+    "project": {
+      "id": "d3f39bb8-c1f6-493d-b92b-b6ea74095646",
+      "name": "mobile-app",
+      "slug": "mobile-app",
+      "ownerAccount": {
+        "id": "a733fccf-8d66-40b7-9c6e-aef73834a6c0",
+        "name": "bindu_01"
+      }
+    },
+    "distribution": "STORE",
+    "buildProfile": "apk",
+    "sdkVersion": "54.0.0",
+    "appVersion": "1.0.0",
+    "appBuildVersion": "1",
+    "gitCommitHash": "280d82bcb10f5f25fee5f566420104c2bb2287bb",
+    "gitCommitMessage": "chore: update network error messages",
+    "priority": "NORMAL",
+    "createdAt": "2026-03-20T04:21:20.871Z",
+    "updatedAt": "2026-03-20T04:29:19.787Z",
+    "completedAt": "2026-03-20T04:29:10.928Z",
+    "expirationDate": "2026-04-19T04:21:20.909Z",
+    "isForIosSimulator": false,
+    "metrics": {
+      "buildWaitTime": 113,
+      "buildQueueTime": 50254,
+      "buildDuration": 419249
+    }
+  }
+]
+
