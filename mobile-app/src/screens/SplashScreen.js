@@ -22,8 +22,11 @@ const SplashScreen = ({ navigation }) => {
   // Animation values
   const progress = useRef(new Animated.Value(0)).current; // 0 to 1
   const rOp = useRef(new Animated.Value(0)).current;
+  const rY = useRef(new Animated.Value(20)).current;
   const iOp = useRef(new Animated.Value(0)).current;
+  const iY = useRef(new Animated.Value(20)).current;
   const zOp = useRef(new Animated.Value(0)).current;
+  const zY = useRef(new Animated.Value(20)).current;
   const oRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -67,15 +70,29 @@ const SplashScreen = ({ navigation }) => {
       z: (GEOMETRY[2].x + GEOMETRY[2].w / 2) / ORIGINAL_CANVAS_WIDTH,
     };
 
+    const hasRevealed = { r: false, i: false, z: false };
+
     const listenerId = progress.addListener(({ value }) => {
-      if (value >= thresholds.r) {
-        Animated.timing(rOp, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      if (value >= thresholds.r && !hasRevealed.r) {
+        hasRevealed.r = true;
+        Animated.parallel([
+          Animated.timing(rOp, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.spring(rY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+        ]).start();
       }
-      if (value >= thresholds.i) {
-        Animated.timing(iOp, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      if (value >= thresholds.i && !hasRevealed.i) {
+        hasRevealed.i = true;
+        Animated.parallel([
+          Animated.timing(iOp, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.spring(iY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+        ]).start();
       }
-      if (value >= thresholds.z) {
-        Animated.timing(zOp, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      if (value >= thresholds.z && !hasRevealed.z) {
+        hasRevealed.z = true;
+        Animated.parallel([
+          Animated.timing(zOp, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.spring(zY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+        ]).start();
       }
     });
 
@@ -108,7 +125,7 @@ const SplashScreen = ({ navigation }) => {
     outputRange: ['0deg', '1080deg'],
   });
 
-  const renderLetter = (index, opacity) => {
+  const renderLetter = (index, opacity, translateY) => {
     const item = GEOMETRY[index];
     const source = [
       require('../../assets/letter_r.png'),
@@ -128,6 +145,7 @@ const SplashScreen = ({ navigation }) => {
             width: item.w * SCALE,
             height: item.h * SCALE,
             opacity,
+            transform: [{ translateY }]
           },
         ]}
         resizeMode="contain"
@@ -141,9 +159,9 @@ const SplashScreen = ({ navigation }) => {
       <View style={[styles.canvas, { width: LOGO_ASSEMBLY_WIDTH, height: 600 * SCALE }]}>
         
         {/* r, i, z */}
-        {renderLetter(0, rOp)}
-        {renderLetter(1, iOp)}
-        {renderLetter(2, zOp)}
+        {renderLetter(0, rOp, rY)}
+        {renderLetter(1, iOp, iY)}
+        {renderLetter(2, zOp, zY)}
 
         {/* Rolling O */}
         <Animated.View
