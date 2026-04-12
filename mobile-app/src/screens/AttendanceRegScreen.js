@@ -393,7 +393,15 @@ const rp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AttendanceRegScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100408' };
+  const user = route?.params?.user;
+
+  useEffect(() => {
+    if (!user) {
+       navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user) return null;
 
   const [tab, setTab] = useState(route?.params?.initialTab || 'LOG');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -432,12 +440,10 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     setLoading(true);
     const mk = monthKey(selectedMonth);
     try {
-      const [attRes, regRes] = await Promise.all([
-        axios.get(API_ENDPOINTS.ATTENDANCE_LOGS, { params: { user_id: user.user_id, month: mk }, timeout: 10000 }),
-        axios.get(API_ENDPOINTS.REGULARISATION_LOGS, { params: { user_id: user.user_id, month: mk }, timeout: 10000 }),
-      ]);
-      setAttLogs(attRes.data?.data || []);
-      setRegLogs(regRes.data?.data || []);
+      const resp = await axios.get(API_ENDPOINTS.ATTENDANCE_LOGS, { params: { user_id: user.user_id, month: mk }, timeout: 10000 });
+      const data = resp.data?.data || [];
+      setAttLogs(data);
+      setRegLogs(data); // Using the same data source as requested
     } catch (e) {
       console.log('Error', e);
     } finally {

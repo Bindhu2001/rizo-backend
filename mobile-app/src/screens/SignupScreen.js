@@ -48,8 +48,6 @@ const SignupScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FDF2F8', '#F3E5F5']} style={styles.bgGradient} />
-      
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -139,7 +137,6 @@ const SignupScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
-  bgGradient: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   safeArea: { flex: 1 },
   content: { flex: 1, padding: 24 },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginBottom: 20 },

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { COLORS, SHADOWS } from './Theme';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths } from 'date-fns';
 import axios from 'axios';
 import { ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { API_ENDPOINTS } from '../constants/Config';
 
 const CalendarWidget = ({ userId }) => {
   const [events, setEvents] = useState([]);
@@ -19,7 +20,7 @@ const CalendarWidget = ({ userId }) => {
     setLoading(true);
     try {
       const monthStr = format(date, 'MM'); // "04"
-      const url = `https://v1.mypayrollmaster.online/api/v2qa/upcoming_events_list?user_id=${userId}&month=${monthStr}`;
+      const url = `${API_ENDPOINTS.UPCOMING_EVENTS}?user_id=${userId}&month=${monthStr}`;
       const resp = await axios.get(url);
       
       console.log('[Calendar] Fetching for month:', monthStr);
@@ -78,22 +79,28 @@ const CalendarWidget = ({ userId }) => {
     const dayMonthName = format(day, 'MMMM');
     const dayMonthShort = format(day, 'MMM');
     
-    return events.filter(e => {
-        if (!e.date_month) return false;
+    try {
+      return events.filter(e => {
+        if (!e || !e.date_month) return false;
         
-        if (e.date_month.includes('-')) {
-            const parts = e.date_month.split('-');
+        const dm = String(e.date_month);
+        if (dm.includes('-')) {
+            const parts = dm.split('-');
             if (parts.length === 2) {
                const evMonth = parts[0];
                const evDay = parseInt(parts[1], 10);
                return (evMonth === dayMonthName || evMonth === dayMonthShort) && evDay === dayNumber;
             } else if (parts.length === 3) {
-               return isSameDay(new Date(e.date_month), day);
+               return isSameDay(new Date(dm), day);
             }
         }
         
-        return parseInt(e.date_month, 10) === dayNumber;
-    });
+        return parseInt(dm, 10) === dayNumber;
+      });
+    } catch (err) {
+      console.error('[Calendar] Filter error', err);
+      return [];
+    }
   };
 
   return (

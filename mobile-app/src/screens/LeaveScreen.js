@@ -14,7 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const BASE = 'https://v1.mypayrollmaster.online/api/v2qa/newapp';
+import { API_ENDPOINTS } from '../constants/Config';
 
 const STATUS_COLORS = {
   Approved: { bg: '#DCFCE7', text: '#16A34A', side: '#16A34A' },
@@ -273,7 +273,15 @@ const sm = StyleSheet.create({
 
 // ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100056' };
+  const user = route?.params?.user;
+  
+  useEffect(() => {
+    if (!user || !user.user_id) {
+      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user || !user.user_id) return null;
 
   const [view, setView] = useState('DASHBOARD'); // DASHBOARD | APPLY | HISTORY | SUCCESS
   const [selectedLeave, setSelectedLeave] = useState(null);
@@ -307,7 +315,7 @@ const LeaveScreen = ({ navigation, route }) => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const items = await axios.post(`${BASE}/leave_items`, { user_id: user.user_id });
+      const items = await axios.post(API_ENDPOINTS.LEAVE_ITEMS, { user_id: user.user_id });
       if (items.data?.success) {
         const d = items.data.data;
         setLeaveBalances(d.leave_types || []);
@@ -325,7 +333,7 @@ const LeaveScreen = ({ navigation, route }) => {
   const fetchHistory = async (filter) => {
     setHistLoading(true);
     try {
-      const url = `${BASE}/leave_history?user_id=${user.user_id}${filter !== 'all' ? `&filter=${filter}` : ''}`;
+      const url = `${API_ENDPOINTS.LEAVE_HISTORY}?user_id=${user.user_id}${filter !== 'all' ? `&filter=${filter}` : ''}`;
       const res = await axios.post(url, { user_id: user.user_id, filter: filter !== 'all' ? filter : undefined });
       if (res.data?.success) setHistLeaves(res.data.data || []);
     } catch (e) { console.log('leave_history error', e.message); }
@@ -381,7 +389,7 @@ const LeaveScreen = ({ navigation, route }) => {
       attachedFiles.forEach((f, i) => {
         formData.append(`file_${i}`, { uri: f.uri, type: f.mimeType || 'application/octet-stream', name: f.name });
       });
-      const res = await axios.post(`${BASE}/leave`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await axios.post(API_ENDPOINTS.LEAVES, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (res.data?.success === 1 || res.data?.success === true || res.data?.message?.toLowerCase().includes('success')) {
         setView('SUCCESS');
         setAttachedFiles([]);

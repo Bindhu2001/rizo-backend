@@ -405,7 +405,15 @@ const sm = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const VisitsScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100056' };
+  const user = route?.params?.user;
+  
+  useEffect(() => {
+    if (!user || !user.user_id) {
+      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user || !user.user_id) return null;
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState([]);
   const [processing, setProcessing] = useState(false);

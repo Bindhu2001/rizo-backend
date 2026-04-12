@@ -12,9 +12,18 @@ import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRawPunchesForMonth } from '../services/LocalDB';
+import { API_ENDPOINTS } from '../constants/Config';
 
 const AttendanceScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100408' };
+  const user = route?.params?.user;
+
+  useEffect(() => {
+    if (!user) {
+      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user) return null;
   const [loading, setLoading] = useState(true);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [logs, setLogs] = useState([]);
@@ -24,7 +33,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const attUrl = `https://v1.mypayrollmaster.online/api/v2qa/newapp/attendance_logs?user_id=${user.user_id}&month=${month}`;
+      const attUrl = `${API_ENDPOINTS.ATTENDANCE_LOGS}?user_id=${user.user_id}&month=${month}`;
       const attRes = await axios.get(attUrl); 
       if (attRes.data?.success) {
         setLogs(attRes.data.data || []);

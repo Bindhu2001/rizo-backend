@@ -187,7 +187,7 @@ const SyncService = {
 
       // --- Step 4: Call API ---
       try {
-        await axios.post('https://v1.mypayrollmaster.online/api/v2qa/newapp/swipe', {
+        await axios.post(API_ENDPOINTS.SWIPE, {
           user_id: userId,
           login_auditor: JSON.stringify(login_auditor_array)
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
@@ -261,7 +261,11 @@ const SyncService = {
               contact_number: item.contact_number,
               created_time: formatSyncTime(timeStr)
             };
-            await axios.post(`https://v1.mypayrollmaster.online/api/v2qa/newapp/customer_visit_sync?user_id=${item.user_id}`, payload, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
+            const url = `${API_ENDPOINTS.VISIT_SYNC}?user_id=${item.user_id}`;
+            await axios.post(url, payload, { 
+              headers: { 'Content-Type': 'application/json' }, 
+              timeout: 10000 
+            });
         };
 
         // If it got to REACHED or beyond, we post Step In

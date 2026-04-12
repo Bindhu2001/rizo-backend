@@ -32,7 +32,15 @@ const API_URL = API_ENDPOINTS.ATTENDANCE;
 const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 
 const HomeScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { employee_name: 'User', user_id: 'GLET100408' };
+  const user = route?.params?.user;
+
+  useEffect(() => {
+    if (!user) {
+      navigation.replace('Splash');
+    }
+  }, [user, navigation]);
+
+  if (!user) return null;
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -49,7 +57,6 @@ const HomeScreen = ({ navigation, route }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const toggleEvents = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setEventsOpen(!eventsOpen);
   };
 

@@ -216,6 +216,15 @@ export const clearUserSession = async () => {
   await database.runAsync(`DELETE FROM user_profile`);
 };
 
+export const getLoggedUser = async () => {
+  const database = await initDB();
+  try {
+    return await database.getFirstAsync(`SELECT * FROM user_profile LIMIT 1`);
+  } catch (e) {
+    return null;
+  }
+};
+
 // ─── History & Other Methods ──────────────────────────────────────────────────
 export const getRawPunchesForMonth = async (userId, monthStr) => {
   const database = await initDB();

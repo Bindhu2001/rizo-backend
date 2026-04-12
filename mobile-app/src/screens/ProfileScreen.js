@@ -12,15 +12,15 @@ import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import { clearUserSession, updateUserProfileLocal, getLocalUser } from '../services/LocalDB';
 
 const ProfileScreen = ({ navigation, route }) => {
-  const [user, setUser] = useState(route?.params?.user || {
-    employee_name: 'Tahaniya',
-    designation: 'Senior Associate',
-    user_id: 'GLET100056',
-    department: 'Operations',
-    joining_date: '2024-01-01',
-    email: 'tahaniya@greatleap.tech',
-    phone: '+91 9876543210'
-  });
+  const [user, setUser] = useState(route?.params?.user);
+
+  useEffect(() => {
+    if (!user || !user.user_id) {
+      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user || !user.user_id) return null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);

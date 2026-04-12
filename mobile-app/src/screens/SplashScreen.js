@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Dimensions, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { getLoggedUser } from '../services/LocalDB';
 
 const { width } = Dimensions.get('window');
 
@@ -38,10 +39,20 @@ const SplashScreen = ({ navigation }) => {
         Animated.delay(100),
         Animated.timing(zAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
       ])
-    ]).start(() => {
-        setTimeout(() => {
-            navigation.replace('Main');
-        }, 800);
+    ]).start(async () => {
+        // Logic to check session and navigate
+        try {
+          const user = await getLoggedUser();
+          setTimeout(() => {
+            if (user && user.user_id) {
+                navigation.replace('Main', { user });
+            } else {
+                navigation.replace('Login');
+            }
+          }, 800);
+        } catch (e) {
+          navigation.replace('Login');
+        }
     });
   }, []);
 
