@@ -93,15 +93,19 @@ const SplashScreen = ({ navigation }) => {
     outputRange: [oLeftStart, oTargetX],
   });
 
-  const rollO = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '720deg'], // roll twice
-  });
-
-  // Infinite spin for when it stops
-  const infiniteSpin = oRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+  // Raw numeric addition for rotation
+  const combinedRotation = Animated.add(
+    progress.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 720], // Degrees as numbers
+    }),
+    oRotate.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 360], // Degrees as numbers
+    })
+  ).interpolate({
+    inputRange: [0, 1080],
+    outputRange: ['0deg', '1080deg'],
   });
 
   const renderLetter = (index, opacity) => {
@@ -152,7 +156,7 @@ const SplashScreen = ({ navigation }) => {
               top: GEOMETRY[3].y * SCALE,
               transform: [
                 { translateX: moveO },
-                { rotate: Animated.add(rollO, infiniteSpin) }
+                { rotate: combinedRotation }
               ],
             },
           ]}
