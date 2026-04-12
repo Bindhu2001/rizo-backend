@@ -13,7 +13,7 @@ const WelcomeScreen = ({ navigation }) => {
         {/* TOP LOGO (The Ring) */}
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/rizo logo.png')} 
+            source={require('../../assets/logo.png')} 
             style={styles.logoO}
             resizeMode="contain"
           />

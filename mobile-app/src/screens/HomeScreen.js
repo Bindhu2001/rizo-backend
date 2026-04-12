@@ -305,7 +305,7 @@ const HomeScreen = ({ navigation, route }) => {
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>
-            <Image source={require('../../assets/rizo logo.png')} style={styles.headerLogo} resizeMode="contain" />
+            <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
             <View>
               <Text style={styles.greetingHeader}>{getGreeting()}</Text>
               <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>

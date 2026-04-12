@@ -80,7 +80,7 @@ const SplashScreen = ({ navigation }) => {
           }
         ]}>
           <Image 
-            source={require('../../assets/rizo logo.png')} 
+            source={require('../../assets/logo.png')} 
             style={styles.oImage}
             resizeMode="contain"
           />
