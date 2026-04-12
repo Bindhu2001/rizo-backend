@@ -13,31 +13,35 @@ const SplashScreen = ({ navigation }) => {
 
   useEffect(() => {
     // Stage 1: O rolls in from left to center-right
+    // While rolling, R, I, Z appear one by one
     Animated.parallel([
+      // O Movement
       Animated.timing(oMove, {
-        toValue: 50, // Final position (adjustment needed for center)
-        duration: 1200,
-        easing: Easing.out(Easing.back(1)),
-        useNativeDriver: true,
-      }),
-      Animated.timing(oRotate, {
-        toValue: 1, // 2 full rotations
-        duration: 1200,
+        toValue: 50, 
+        duration: 1500,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
-      })
-    ]).start(() => {
-      // Stage 2: Letters appear one by one
+      }),
+      // O Rotation
+      Animated.timing(oRotate, {
+        toValue: 1, 
+        duration: 1500,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      // Letter Apparition Sequence (overlapping with the roll)
       Animated.sequence([
-        Animated.timing(rAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(400),
+        Animated.timing(rAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.delay(100),
-        Animated.timing(iAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(iAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
         Animated.delay(100),
-        Animated.timing(zAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.delay(1000), // Delay before navigation
-      ]).start(() => {
-        navigation.replace('MainTabs');
-      });
+        Animated.timing(zAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
+      ])
+    ]).start(() => {
+        setTimeout(() => {
+            navigation.replace('MainTabs');
+        }, 800);
     });
   }, []);
 
