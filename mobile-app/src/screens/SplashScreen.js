@@ -47,7 +47,7 @@ const SplashScreen = ({ navigation }) => {
         })
       ).start();
 
-      // 3. Navigate away after a short delay
+      // 3. Navigate away after a short delay (Increased for better "settling" feel)
       setTimeout(async () => {
         try {
           const user = await getLoggedUser();
@@ -59,7 +59,7 @@ const SplashScreen = ({ navigation }) => {
         } catch (e) {
           navigation.replace('Login');
         }
-      }, 800);
+      }, 2000);
     });
 
     // Calculate precisely when the center of the rolling O matches the X position of the letters
