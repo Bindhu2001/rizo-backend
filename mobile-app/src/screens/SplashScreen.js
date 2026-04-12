@@ -6,59 +6,68 @@ import { getLoggedUser } from '../services/LocalDB';
 const { width } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
-  const oMove = useRef(new Animated.Value(-width * 0.5)).current; // Start off-screen left
-  const oRotate = useRef(new Animated.Value(0)).current; 
-  const rAlpha = useRef(new Animated.Value(0)).current;
-  const iAlpha = useRef(new Animated.Value(0)).current;
-  const zAlpha = useRef(new Animated.Value(0)).current;
+  const rY = useRef(new Animated.Value(50)).current;
+  const rOp = useRef(new Animated.Value(0)).current;
+
+  const iY = useRef(new Animated.Value(50)).current;
+  const iOp = useRef(new Animated.Value(0)).current;
+
+  const zY = useRef(new Animated.Value(50)).current;
+  const zOp = useRef(new Animated.Value(0)).current;
+
+  const oScale = useRef(new Animated.Value(0.5)).current;
+  const oRotate = useRef(new Animated.Value(-180)).current;
+  const oOp = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Stage 1: O rolls in from left to center-right
-    // While rolling, R, I, Z appear one by one
+    // r (delay 300ms, duration 800ms)
     Animated.parallel([
-      // O Movement
-      Animated.timing(oMove, {
-        toValue: 50, 
-        duration: 1500,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      // O Rotation
-      Animated.timing(oRotate, {
-        toValue: 1, 
-        duration: 1500,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      // Letter Apparition Sequence (overlapping with the roll)
-      Animated.sequence([
-        Animated.delay(400),
-        Animated.timing(rAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.delay(100),
-        Animated.timing(iAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.delay(100),
-        Animated.timing(zAlpha, { toValue: 1, duration: 400, useNativeDriver: true }),
-      ])
-    ]).start(async () => {
-        // Logic to check session and navigate
+      Animated.timing(rY, { toValue: 0, delay: 300, duration: 800, useNativeDriver: true }),
+      Animated.timing(rOp, { toValue: 1, delay: 300, duration: 800, useNativeDriver: true }),
+    ]).start();
+
+    // i (delay 800ms, duration 800ms)
+    Animated.parallel([
+      Animated.timing(iY, { toValue: 0, delay: 800, duration: 800, useNativeDriver: true }),
+      Animated.timing(iOp, { toValue: 1, delay: 800, duration: 800, useNativeDriver: true }),
+    ]).start();
+
+    // z (delay 1300ms, duration 800ms)
+    Animated.parallel([
+      Animated.timing(zY, { toValue: 0, delay: 1300, duration: 800, useNativeDriver: true }),
+      Animated.timing(zOp, { toValue: 1, delay: 1300, duration: 800, useNativeDriver: true }),
+    ]).start();
+
+    // O (delay 1800ms, duration 1500ms)
+    Animated.parallel([
+      Animated.timing(oScale, { toValue: 1, delay: 1800, duration: 1500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(oRotate, { toValue: 0, delay: 1800, duration: 1500, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(oOp, { toValue: 1, delay: 1800, duration: 1500, useNativeDriver: true }),
+    ]).start(() => {
+      // Endless spin
+      Animated.loop(
+        Animated.timing(oRotate, { toValue: 360, duration: 6000, easing: Easing.linear, useNativeDriver: true })
+      ).start();
+
+      // Navigation check after animation finishes
+      setTimeout(async () => {
         try {
           const user = await getLoggedUser();
-          setTimeout(() => {
-            if (user && user.user_id) {
-                navigation.replace('Main', { user });
-            } else {
-                navigation.replace('Login');
-            }
-          }, 800);
+          if (user && user.user_id) {
+            navigation.replace('Main', { user });
+          } else {
+            navigation.replace('Login');
+          }
         } catch (e) {
           navigation.replace('Login');
         }
+      }, 500); 
     });
   }, []);
 
   const spin = oRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '720deg']
+    inputRange: [-180, 0, 360],
+    outputRange: ['-180deg', '0deg', '360deg']
   });
 
   return (
@@ -66,15 +75,16 @@ const SplashScreen = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
       <View style={styles.logoRow}>
         <View style={styles.rizContainer}>
-          <Animated.Text style={[styles.letter, { opacity: rAlpha }]}>R</Animated.Text>
-          <Animated.Text style={[styles.letter, { opacity: iAlpha }]}>I</Animated.Text>
-          <Animated.Text style={[styles.letter, { opacity: zAlpha }]}>Z</Animated.Text>
+          <Animated.Text style={[styles.letter, { opacity: rOp, transform: [{ translateY: rY }] }]}>r</Animated.Text>
+          <Animated.Text style={[styles.letter, { opacity: iOp, transform: [{ translateY: iY }] }]}>i</Animated.Text>
+          <Animated.Text style={[styles.letter, { opacity: zOp, transform: [{ translateY: zY }] }]}>z</Animated.Text>
         </View>
         <Animated.View style={[
           styles.oContainer, 
           { 
+            opacity: oOp,
             transform: [
-              { translateX: oMove },
+              { scale: oScale },
               { rotate: spin }
             ]
           }
@@ -101,24 +111,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
+    gap: 4,
   },
   rizContainer: {
     flexDirection: 'row',
-    position: 'absolute',
-    left: width * 0.5 - 65, // Adjust based on total logo width
   },
   letter: {
-    fontSize: 50,
+    fontSize: 80,
     fontWeight: '900',
     color: '#000',
-    letterSpacing: -2,
   },
   oContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
     overflow: 'hidden',
+    marginTop: 8,
+    marginLeft: 6,
   },
   oImage: {
     width: '100%',

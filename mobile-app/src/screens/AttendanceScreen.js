@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar
+  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar, Modal, Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -26,23 +26,44 @@ const AttendanceScreen = ({ navigation, route }) => {
   if (!user) return null;
   const [loading, setLoading] = useState(true);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [logs, setLogs] = useState([]);
   const [rawPunches, setRawPunches] = useState([]);
   const [expandedDate, setExpandedDate] = useState(null);
-  
+
+  // Generate last 12 months for picker
+  const pastMonths = [];
+  const currentDate = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    pastMonths.push({
+      label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      value: `${yr}-${mo}`
+    });
+  }
+
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const attUrl = `${API_ENDPOINTS.ATTENDANCE_LOGS}?user_id=${user.user_id}&month=${month}`;
-      const attRes = await axios.get(attUrl); 
-      if (attRes.data?.success) {
-        setLogs(attRes.data.data || []);
+      const attRes = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
+        user_id: user.user_id, month
+      }, { timeout: 10000 });
+      const resData = attRes.data;
+      if (resData && Array.isArray(resData.data)) {
+        setLogs(resData.data);
+      } else if (Array.isArray(resData)) {
+        setLogs(resData);
+      } else {
+        setLogs([]);
       }
       
       const localPunches = await getRawPunchesForMonth(user.user_id, month);
       setRawPunches(localPunches || []);
     } catch (e) {
       console.log('Fetch error', e);
+      setLogs([]);
     } finally {
       setLoading(false);
     }
@@ -92,7 +113,7 @@ const AttendanceScreen = ({ navigation, route }) => {
             <Text style={s.shiftTitle} numberOfLines={1}>
               {item.shift ? item.shift.replace(/_/g, ' ') : 'Flexible Office'} - 0930AM - 0530PM
             </Text>
-            <View style={s.timeRow}>
+            <View style={s.punchRow}>
               <View style={s.punchItem}>
                 <Clock size={14} color="#9CA3AF" />
                 <Text style={s.timeValue}>{punchIn} <Text style={s.timeType}>IN</Text></Text>
@@ -165,10 +186,7 @@ const AttendanceScreen = ({ navigation, route }) => {
         <TouchableOpacity 
           style={s.monthDropdown} 
           activeOpacity={0.7}
-          onPress={() => {
-            // Dropdown logic would go here, currently it just cycles for demo if needed
-            // but the user wants primarily the selection to happen via dropdown interaction.
-          }}
+          onPress={() => setShowMonthPicker(true)}
         >
            <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
            <Text style={s.monthText}>{getMonthDisplayText()}</Text>
@@ -200,6 +218,33 @@ const AttendanceScreen = ({ navigation, route }) => {
             />
         )}
       </View>
+
+      {/* ── Month Picker Modal ── */}
+      <Modal visible={showMonthPicker} transparent animationType="slide" onRequestClose={() => setShowMonthPicker(false)} statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPicker(false)}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Select Month</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {pastMonths.map((m) => {
+                const isActive = m.value === currentMonthStr;
+                return (
+                  <TouchableOpacity 
+                    key={m.value} 
+                    style={s.monthItem} 
+                    onPress={() => {
+                      setCurrentMonthStr(m.value);
+                      setShowMonthPicker(false);
+                    }}
+                  >
+                    <Text style={[s.monthItemText, isActive && s.monthItemTextActive]}>{m.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -283,6 +328,14 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 20, ...SHADOWS.light },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
+  modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
+  monthItemText: { fontSize: 15, color: '#4B5563', fontWeight: '500' },
+  monthItemTextActive: { color: '#6C5CE7', fontWeight: '800' },
 });
 
 export default AttendanceScreen;

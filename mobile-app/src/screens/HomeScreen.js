@@ -305,7 +305,6 @@ const HomeScreen = ({ navigation, route }) => {
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>
-            <Image source={require('../../assets/logo_with_margin.png')} style={styles.headerLogo} resizeMode="contain" />
             <View>
               <Text style={styles.greetingHeader}>{getGreeting()}</Text>
               <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
@@ -432,7 +431,7 @@ const HomeScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('AttendanceReg', { user, initialTab: 'REGULARISED' })}
+          onPress={() => navigation.navigate('AttendanceReg', { user, initialTab: 'LOG' })}
         >
           <View style={styles.visitButtonLeft}>
             <View style={[styles.visitIconBox, { backgroundColor: '#FF9800' }]}>

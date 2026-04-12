@@ -10,7 +10,7 @@ export const API_ENDPOINTS = {
   LEAVES: `${BASE_URL}/leaves`,
   REGULARIZATION: `${BASE_URL}/regularization`,
   ATTENDANCE_LOGS: `${NEWAPP_URL}/attendance_logs`,
-  REGULARISATION_LOGS: `${NEWAPP_URL}/attendance_logs`,
+  REGULARISATION_LOGS: `${NEWAPP_URL}/regularisation_logs`,
   REGULARISE: `${NEWAPP_URL}/regularise`,
   SWIPE: `${NEWAPP_URL}/swipe`,
   UPCOMING_EVENTS: `${AUTH_URL}/upcoming_events_list`,

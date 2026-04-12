@@ -132,74 +132,103 @@ const ci = StyleSheet.create({
 });
 
 
-// Attendance Log Card matching the premium history design + Reg Status
-const LogCard = ({ item, regMap, onRegularise }) => {
-  const punchIn = item.punch_in_time ? (item.punch_in_time.split(' ')[1]?.slice(0, 5) || item.punch_in_time) : '---';
-  const punchOut = item.punch_out_time ? (item.punch_out_time.split(' ')[1]?.slice(0, 5) || item.punch_out_time) : '---';
+const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
+  const punchInRaw = item.punch_in_time?.split(' ')[1] || item.punch_in_time;
+  const punchOutRaw = item.punch_out_time?.split(' ')[1] || item.punch_out_time;
   
-  const d = new Date(item.date);
-  const dateNum = d.getDate().toString().padStart(2, '0');
-  
-  // Robust month/day construction
-  const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-  const monthName = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-  const displayMonthDay = `${monthName}, ${dayName}`;
+  const d = new Date(item.date || new Date().toISOString());
+  const displayMonthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  const isPresent = item.punch_in_time && item.punch_out_time;
-  const statusLabel = isPresent ? 'P/P' : (item.status === 'WEEKLY_OFF' ? 'WO' : 'A/A');
-  const statusColor = isPresent ? '#2ECC71' : (item.status === 'WEEKLY_OFF' ? '#9CA3AF' : '#E91E63');
-  const statusBg = isPresent ? '#E8F5E9' : (item.status === 'WEEKLY_OFF' ? '#F3F4F6' : '#FCE4EC');
-
-  const regsForDate = regMap[item.date] || [];
+  const hasPunchIn = !!item.punch_in_time;
+  const hasPunchOut = !!item.punch_out_time;
 
   return (
     <View style={lc.card}>
-      <TouchableOpacity 
-        style={lc.mainRow} 
-        activeOpacity={0.8}
-        onPress={() => !item.punch_in_time ? onRegularise(item, 'IN') : (!item.punch_out_time ? onRegularise(item, 'OUT') : null)}
-      >
-        <View style={lc.dateBox}>
-          <Text style={lc.dateNum}>{dateNum}</Text>
-          <Text style={lc.monthDay}>{displayMonthDay}</Text>
+      <View style={lc.headerRow}>
+        <View>
+          <Text style={lc.dateTitle}>{displayMonthDay}</Text>
+          <Text style={lc.shiftText}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
         </View>
+        <View style={lc.badgeWo}>
+          <Text style={lc.badgeWoText}>{item.status || 'WO'}</Text>
+        </View>
+      </View>
 
-        <View style={lc.infoCol}>
-          <Text style={lc.shiftTitle} numberOfLines={1}>
-            {item.shift ? item.shift.replace(/_/g, ' ') : 'Flexible Office'} - 09:30 AM - 05:30 PM
-          </Text>
-          <View style={lc.punchRow}>
-            <View style={lc.punchItem}>
-              <ClockIcon />
-              <Text style={lc.punchTime}>{punchIn} <Text style={lc.punchType}>IN</Text></Text>
-            </View>
-            <View style={[lc.punchItem, { marginLeft: 16 }]}>
-              <ClockIcon />
-              <Text style={lc.punchTime}>{punchOut} <Text style={lc.punchType}>OUT</Text></Text>
-            </View>
+      <View style={lc.punchContainer}>
+        <View style={lc.trackLine} />
+        
+        {/* IN */}
+        <View style={lc.punchRowBox}>
+          <View style={lc.iconCol}>
+            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <TargetIcon color="#DC2626" />}
+          </View>
+          <View style={lc.timeCol}>
+            {hasPunchIn ? (
+              <>
+                <Text style={lc.timeVal}>{punchInRaw}</Text>
+                <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={lc.missingHdr}>Clock In</Text>
+                <Text style={lc.missingVal}>MISSING</Text>
+                {!isRegularisedTab && (
+                  <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, 'IN')}>
+                    <Text style={lc.regBtnActionText}>REGULARISE</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+          <View style={lc.chipCol}>
+            <View style={lc.chipBg}><Text style={lc.chipText}>Clock IN</Text></View>
           </View>
         </View>
 
-        <View style={[lc.badge, { backgroundColor: statusBg }]}>
-          <Text style={[lc.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+        {/* OUT */}
+        <View style={[lc.punchRowBox, { marginTop: 32 }]}>
+          <View style={[lc.iconCol, { backgroundColor: '#FFF' }]}>
+            {hasPunchOut ? <CheckCircle color="#16A34A" size={18} /> : <TargetIcon color="#DC2626" />}
+          </View>
+          <View style={lc.timeCol}>
+            {hasPunchOut ? (
+              <>
+                <Text style={lc.timeVal}>{punchOutRaw}</Text>
+                <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={lc.missingHdr}>Clock Out</Text>
+                <Text style={lc.missingVal}>MISSING</Text>
+                {!isRegularisedTab && (
+                  <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, 'OUT')}>
+                    <Text style={lc.regBtnActionText}>REGULARISE</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
+          <View style={lc.chipCol}>
+            <View style={lc.chipBg}><Text style={lc.chipText}>Clock Out</Text></View>
+          </View>
         </View>
-      </TouchableOpacity>
+      </View>
 
-      {/* Reg Status Boxes */}
-      {regsForDate.map((reg, idx) => {
-        const s = reg.status?.toLowerCase() || 'pending';
-        let bg = '#FEF3C7', textColor = '#D97706', msg = reg.remarks;
-        if (s === 'approved') { bg = '#DCFCE7'; textColor = '#16A34A'; }
-        if (s === 'rejected') { bg = '#FEE2E2'; textColor = '#DC2626'; }
+      {/* Reg Statuses */}
+      {isRegularisedTab && (regsForDate || []).map((reg, idx) => {
+        const s = reg.reg_status?.toLowerCase() || 'p';
+        let bgStyle = { backgroundColor: '#FFF3E0' }, textStyle = { color: '#F97316' }, statusString = 'Pending';
+        if (s === 'a') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
+        if (s === 'r') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
 
         return (
-          <View key={idx} style={[lc.regBox, { backgroundColor: bg }]}>
+          <View key={idx} style={[lc.regBox, bgStyle]}>
             <View style={{ flex: 1 }}>
               <Text style={lc.regTitle}>Regularisation Status</Text>
-              <Text style={lc.regMsg}>{msg || (s === 'pending' ? 'Processing...' : 'Request processed')}</Text>
+              <Text style={lc.regMsg}>{reg.remarks || 'HR team is still reviewing your request'}</Text>
             </View>
-            <View style={lc.regBadge}>
-              <Text style={[lc.regBadgeText, { color: textColor }]}>{reg.status || 'Pending'}</Text>
+            <View style={[lc.regBadge, { backgroundColor: textStyle.color + '20' }]}>
+              <Text style={[lc.regBadgeText, textStyle]}>{statusString}</Text>
             </View>
           </View>
         );
@@ -209,27 +238,36 @@ const LogCard = ({ item, regMap, onRegularise }) => {
 };
 
 const lc = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 15, marginBottom: 15, ...SHADOWS.light },
-  mainRow: { flexDirection: 'row', alignItems: 'center' },
-  dateBox: { alignItems: 'center', paddingRight: 15, borderRightWidth: 1, borderRightColor: '#F3F4F6', width: 70 },
-  dateNum: { fontSize: 28, fontWeight: '900', color: '#111827' },
-  monthDay: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
+  card: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  dateTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
+  shiftText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  badgeWo: { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeWoText: { fontSize: 10, fontWeight: '800', color: '#9CA3AF' },
+  
+  punchContainer: { position: 'relative', paddingLeft: 8, marginTop: 10 },
+  trackLine: { position: 'absolute', left: 16.5, top: 20, bottom: 20, width: 2, backgroundColor: '#E5E7EB', borderStyle: 'dotted', zIndex: 0 },
+  
+  punchRowBox: { flexDirection: 'row', alignItems: 'flex-start', zIndex: 1 },
+  iconCol: { width: 20, alignItems: 'center', backgroundColor: '#FFF', marginTop: 0 },
+  timeCol: { flex: 1, paddingLeft: 16, paddingTop: 1 },
+  timeVal: { fontSize: 14, fontWeight: '800', color: '#111827' },
+  locText: { fontSize: 10, color: '#6B7280', marginTop: 4, lineHeight: 14, paddingRight: 10 },
+  
+  missingHdr: { fontSize: 12, color: '#4B5563', fontWeight: '500' },
+  missingVal: { fontSize: 13, fontWeight: '900', color: '#DC2626', marginTop: 2 },
+  regBtnAction: { backgroundColor: '#DC2626', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
+  regBtnActionText: { color: '#FFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  
+  chipCol: { marginLeft: 10 },
+  chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  chipText: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
 
-  infoCol: { flex: 1, paddingLeft: 15 },
-  shiftTitle: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 8 },
-  punchRow: { flexDirection: 'row', alignItems: 'center' },
-  punchItem: { flexDirection: 'row', alignItems: 'center' },
-  punchTime: { fontSize: 13, fontWeight: '900', color: '#111827', marginLeft: 6 },
-  punchType: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
-
-  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, minWidth: 45, alignItems: 'center' },
-  badgeText: { fontSize: 11, fontWeight: '900' },
-
-  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 12, padding: 12, borderRadius: 12 },
-  regTitle: { fontSize: 12, fontWeight: '900', color: '#111827' },
-  regMsg: { fontSize: 10, color: '#4B5563', marginTop: 1, fontWeight: '700' },
-  regBadge: { backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginLeft: 10 },
-  regBadgeText: { fontSize: 10, fontWeight: '900' },
+  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 14, borderRadius: 12 },
+  regTitle: { fontSize: 13, fontWeight: '800', color: '#111827' },
+  regMsg: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '500', lineHeight: 16 },
+  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginLeft: 10 },
+  regBadgeText: { fontSize: 11, fontWeight: '800' },
 });
 
 // Analog Time Picker Modal
@@ -421,6 +459,19 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showReasonPicker, setShowReasonPicker] = useState(false);
+  const [showMonthPickerMain, setShowMonthPickerMain] = useState(false);
+
+  // Generate last 12 months for picker
+  const pastMonthsInfo = [];
+  const currentDate = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    pastMonthsInfo.push({
+      label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      date: d,
+      key: `${d.getFullYear()}-${d.getMonth()}`
+    });
+  }
 
   useEffect(() => {
     if (route?.params?.initialTab) {
@@ -440,12 +491,24 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     setLoading(true);
     const mk = monthKey(selectedMonth);
     try {
-      const resp = await axios.get(API_ENDPOINTS.ATTENDANCE_LOGS, { params: { user_id: user.user_id, month: mk }, timeout: 10000 });
-      const data = resp.data?.data || [];
-      setAttLogs(data);
-      setRegLogs(data); // Using the same data source as requested
+      const [attResp, regResp] = await Promise.all([
+        axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, { user_id: user.user_id, month: mk }, { timeout: 10000 }).catch(() => null),
+        axios.post(API_ENDPOINTS.REGULARISATION_LOGS, { user_id: user.user_id, month: mk }, { timeout: 10000 }).catch(() => null)
+      ]);
+
+      const getSafeArray = (resp) => {
+        if (!resp || !resp.data) return [];
+        if (Array.isArray(resp.data.data)) return resp.data.data;
+        if (Array.isArray(resp.data)) return resp.data;
+        return [];
+      };
+      
+      setAttLogs(getSafeArray(attResp));
+      setRegLogs(getSafeArray(regResp));
     } catch (e) {
       console.log('Error', e);
+      setAttLogs([]);
+      setRegLogs([]);
     } finally {
       setLoading(false);
     }
@@ -507,9 +570,8 @@ const AttendanceRegScreen = ({ navigation, route }) => {
             <FloatingInput
               label="Reason"
               value={reason}
-              onChangeText={setReason}
-              editable={true}
-              onIconPress={() => setShowReasonPicker(true)}
+              editable={false}
+              onPress={() => setShowReasonPicker(true)}
               icon={<ChevronDown color="#9CA3AF" size={20} />}
             />
 
@@ -517,6 +579,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               label="Enter Time"
               value={logTime}
               onPress={() => setShowTimePicker(true)}
+              editable={false}
               icon={<ClockIcon />}
             />
 
@@ -526,7 +589,6 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               onChangeText={setRemarks}
               multiline
               active={true}
-              placeholder="Type your remarks..."
             />
 
             <TouchableOpacity
@@ -601,9 +663,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         <TouchableOpacity 
           style={s.monthDropdown}
           activeOpacity={0.7}
-          onPress={() => {
-            // Dropdown selection logic
-          }}
+          onPress={() => setShowMonthPickerMain(true)}
         >
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
           <ChevronDown color={COLORS.primary} size={15} style={{ marginLeft: 4 }} />
@@ -615,18 +675,44 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       ) : (
         <ScrollView contentContainerStyle={s.listScroll}>
           {tab === 'LOG' && attLogs.map((item, i) => (
-            <LogCard key={item.date || i} item={item} regMap={regMap} onRegularise={openRegForm} />
+            <LogCard key={item.date || i} item={item} isRegularisedTab={false} onRegularise={openRegForm} />
           ))}
-          {/* Note: REGULARISED tab re-renders Logs that have a regularisation array mapped to them */}
           {tab === 'REGULARISED' && regLogs.length === 0 ? (
              <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#9CA3AF' }}>No regularised logs found.</Text></View>
           ) : (
              tab === 'REGULARISED' && attLogs.filter(a => (regMap[a.date] || []).length > 0).map((item, i) => (
-               <LogCard key={`reg-${i}`} item={item} regMap={regMap} onRegularise={openRegForm} />
+               <LogCard key={`reg-${i}`} item={item} isRegularisedTab={true} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
              ))
           )}
         </ScrollView>
       )}
+
+      {/* ── Month Picker Modal for Regularisation Screen ── */}
+      <Modal visible={showMonthPickerMain} transparent animationType="slide" onRequestClose={() => setShowMonthPickerMain(false)} statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPickerMain(false)}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Select Month</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {pastMonthsInfo.map((m) => {
+                const isActive = m.key === `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
+                return (
+                  <TouchableOpacity 
+                    key={m.key} 
+                    style={s.monthItem} 
+                    onPress={() => {
+                      setSelectedMonth(m.date);
+                      setShowMonthPickerMain(false);
+                    }}
+                  >
+                    <Text style={[s.monthItemText, isActive && s.monthItemTextActive]}>{m.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -662,6 +748,14 @@ const s = StyleSheet.create({
   successDesc: { fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 40, paddingHorizontal: 10 },
   homeBtn: { width: '100%', paddingVertical: 16, borderRadius: 50, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', backgroundColor: '#FFF' },
   homeBtnText: { fontSize: 15, fontWeight: '700', color: '#111827' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
+  modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
+  monthItemText: { fontSize: 15, color: '#4B5563', fontWeight: '500' },
+  monthItemTextActive: { color: '#E91E63', fontWeight: '800' },
 });
 
 export default AttendanceRegScreen;
