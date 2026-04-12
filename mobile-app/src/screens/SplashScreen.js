@@ -40,7 +40,7 @@ const SplashScreen = ({ navigation }) => {
       ])
     ]).start(() => {
         setTimeout(() => {
-            navigation.replace('MainTabs');
+            navigation.replace('Main');
         }, 800);
     });
   }, []);
