@@ -30,10 +30,10 @@ const SplashScreen = ({ navigation }) => {
   const oRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Play the main rolling animation (Slightly slower for better visibility)
+    // 1. Play the main rolling animation (Slower for a smoother "reveal" effect)
     Animated.timing(progress, {
       toValue: 1,
-      duration: 3500,
+      duration: 4500,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: true,
     }).start(() => {
@@ -62,12 +62,17 @@ const SplashScreen = ({ navigation }) => {
       }, 800);
     });
 
-    // Reveal thresholds based on the trailing edge of the rolling O
-    // We want them to pop up one by one as the O passes over their start positions
+    // Calculate precisely when the center of the rolling O matches the X position of the letters
+    // formula: progress = (target_screen_x - start_screen_x) / (total_traveldir)
+    const oHalfWidth = (GEOMETRY[3].w * SCALE) / 2;
+    const oLeftStart = -200;
+    const oTargetX = GEOMETRY[3].x * SCALE;
+    const totalTravel = oTargetX - oLeftStart;
+
     const thresholds = {
-      r: (GEOMETRY[0].x) / ORIGINAL_CANVAS_WIDTH,
-      i: (GEOMETRY[1].x) / ORIGINAL_CANVAS_WIDTH,
-      z: (GEOMETRY[2].x) / ORIGINAL_CANVAS_WIDTH,
+      r: (((GEOMETRY[0].x + GEOMETRY[0].w / 2) * SCALE) - oLeftStart) / totalTravel,
+      i: (((GEOMETRY[1].x + GEOMETRY[1].w / 2) * SCALE) - oLeftStart) / totalTravel,
+      z: (((GEOMETRY[2].x + GEOMETRY[2].w / 2) * SCALE) - oLeftStart) / totalTravel,
     };
 
     const hasRevealed = { r: false, i: false, z: false };
