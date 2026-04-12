@@ -130,29 +130,57 @@ const HomeScreen = ({ navigation, route }) => {
 
   // ── Status ────────────────────────────────────────────────────────────────
   const fetchStatus = async () => {
+    // 1. Instantly load from Local DB to prevent UI flicker
+    let localType = 'NONE';
     try {
-      const localType = await getLastPunchType(user.user_id);
+      localType = await getLastPunchType(user.user_id);
       setIsPunchedIn(localType === 'IN');
       setStatus(prev => ({ ...prev, lastType: localType }));
-    } catch (e) { } finally { setLoading(false); }
+    } catch (e) {
+      console.log('[Home] Local status fetch error:', e);
+    } finally {
+      setLoading(false);
+    }
 
+    // 2. Cross-verify with Cloud using the reliable POST logs endpoint
+    // We fetch today's logs specifically to determine current status
     try {
-      const response = await axios.get(`${API_URL}/status/${user.user_id}`, { timeout: 6000 });
-      if (response.data) {
-        // GUARD: Only use server state if local DB is fully synced
-        // AND at least 30s have passed since the last punch (prevents state reversal)
+      const today = format(new Date(), 'yyyy-MM');
+      const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
+        user_id: user.user_id,
+        month: today
+      }, { timeout: 8000 });
+
+      const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
+      
+      if (logs.length > 0) {
+        // The first log is the latest for that month (if DESC)
+        // Check if logs[0] is from TODAY
+        const latest = logs[0];
+        const serverType = latest.in_out ? latest.in_out.toUpperCase() : 'NONE';
+        
+        // State Synchronization Logic:
         const pCnt = await getPendingCount();
-        const timeSinceLastAction = Date.now() - lastActionTime.current;
-        if (pCnt === 0 && timeSinceLastAction > 30000) {
-          setStatus(response.data);
-          setIsPunchedIn(response.data.lastType === 'IN');
-          console.log('[Home] Server state synced successfully');
-        } else {
-          console.log(`[Home] Server state deferred (pCnt=${pCnt}, timeSince=${Math.round(timeSinceLastAction / 1000)}s)`);
+        if (pCnt === 0) {
+          // If no pending local work, we can align UI with server
+          setIsPunchedIn(serverType === 'IN');
+          setStatus({
+            lastType: serverType,
+            todayHistory: logs.filter(l => l.punch_date === format(new Date(), 'yyyy-MM-dd'))
+          });
+          console.log('[Home] Cloud status synced via Logs ✅');
         }
       }
     } catch (e) {
-      console.log('[Home] Cloud status fetch skipped (Offline/Server Unreachable)');
+      console.log('[Home] Cloud status fetch skipped (Offline/Server Error)');
+      // Re-fallback to old status endpoint if logs fail (optional, but keep it quiet)
+      try {
+        const alt = await axios.get(`${API_URL}/status/${user.user_id}`, { timeout: 4000 });
+        if (alt.data && (await getPendingCount()) === 0) {
+           setIsPunchedIn(alt.data.lastType === 'IN');
+           setStatus(alt.data);
+        }
+      } catch (e2) {}
     }
   };
 
