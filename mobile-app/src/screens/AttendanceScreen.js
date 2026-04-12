@@ -95,7 +95,21 @@ const AttendanceScreen = ({ navigation, route }) => {
     const punchOut = item.punch_out_time ? (item.punch_out_time.split(' ')[1]?.slice(0, 5) || item.punch_out_time) : '---';
 
     const isExpanded = expandedDate === item.date;
-    const dayPunches = rawPunches.filter(rp => rp.punch_time.startsWith(item.date));
+    
+    // Sort day punches: Most recent first (DESC)
+    const dayPunches = rawPunches
+      .filter(rp => rp.punch_time.includes(item.date))
+      .sort((a, b) => new Date(b.punch_time) - new Date(a.punch_time));
+
+    const formatPunchTime = (isoOrFull) => {
+      try {
+        const d = new Date(isoOrFull.replace(' ', 'T'));
+        if (isNaN(d.getTime())) return isoOrFull.split(' ')[1] || isoOrFull;
+        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      } catch (e) {
+        return isoOrFull;
+      }
+    };
 
     return (
       <View style={s.cardWrapper}>
@@ -140,9 +154,9 @@ const AttendanceScreen = ({ navigation, route }) => {
               <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
             ) : (
               dayPunches.map((p, idx) => (
-                <View key={p.id} style={s.punchDetailRow}>
+                <View key={p.id || idx} style={s.punchDetailRow}>
                   <View style={s.punchTimeBox}>
-                    <Text style={s.punchTimeVal}>{p.punch_time.split('T')[1]?.slice(0, 8) || p.punch_time.split(' ')[1]}</Text>
+                    <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
                     <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
                       <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
                     </View>
