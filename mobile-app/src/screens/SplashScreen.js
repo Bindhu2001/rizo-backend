@@ -22,18 +22,18 @@ const SplashScreen = ({ navigation }) => {
   // Animation values
   const progress = useRef(new Animated.Value(0)).current; // 0 to 1
   const rOp = useRef(new Animated.Value(0)).current;
-  const rY = useRef(new Animated.Value(20)).current;
+  const rY = useRef(new Animated.Value(40)).current;
   const iOp = useRef(new Animated.Value(0)).current;
-  const iY = useRef(new Animated.Value(20)).current;
+  const iY = useRef(new Animated.Value(40)).current;
   const zOp = useRef(new Animated.Value(0)).current;
-  const zY = useRef(new Animated.Value(20)).current;
+  const zY = useRef(new Animated.Value(40)).current;
   const oRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Play the main rolling animation
+    // 1. Play the main rolling animation (Slightly slower for better visibility)
     Animated.timing(progress, {
       toValue: 1,
-      duration: 2500,
+      duration: 3500,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: true,
     }).start(() => {
@@ -62,36 +62,39 @@ const SplashScreen = ({ navigation }) => {
       }, 800);
     });
 
-    // Listeners to trigger letter reveals as O passes them
-    // Thresholds based on GEOMETRY relative X positions
+    // Reveal thresholds based on the trailing edge of the rolling O
+    // We want them to pop up one by one as the O passes over their start positions
     const thresholds = {
-      r: (GEOMETRY[0].x + GEOMETRY[0].w / 2) / ORIGINAL_CANVAS_WIDTH,
-      i: (GEOMETRY[1].x + GEOMETRY[1].w / 2) / ORIGINAL_CANVAS_WIDTH,
-      z: (GEOMETRY[2].x + GEOMETRY[2].w / 2) / ORIGINAL_CANVAS_WIDTH,
+      r: (GEOMETRY[0].x) / ORIGINAL_CANVAS_WIDTH,
+      i: (GEOMETRY[1].x) / ORIGINAL_CANVAS_WIDTH,
+      z: (GEOMETRY[2].x) / ORIGINAL_CANVAS_WIDTH,
     };
 
     const hasRevealed = { r: false, i: false, z: false };
 
     const listenerId = progress.addListener(({ value }) => {
+      // reveal 'r'
       if (value >= thresholds.r && !hasRevealed.r) {
         hasRevealed.r = true;
         Animated.parallel([
-          Animated.timing(rOp, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.spring(rY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+          Animated.timing(rOp, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.spring(rY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
+      // reveal 'i'
       if (value >= thresholds.i && !hasRevealed.i) {
         hasRevealed.i = true;
         Animated.parallel([
-          Animated.timing(iOp, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.spring(iY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+          Animated.timing(iOp, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.spring(iY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
+      // reveal 'z'
       if (value >= thresholds.z && !hasRevealed.z) {
         hasRevealed.z = true;
         Animated.parallel([
-          Animated.timing(zOp, { toValue: 1, duration: 400, useNativeDriver: true }),
-          Animated.spring(zY, { toValue: 0, tension: 50, friction: 7, useNativeDriver: true })
+          Animated.timing(zOp, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.spring(zY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
     });
