@@ -7,7 +7,7 @@ export const API_ENDPOINTS = {
   ATTENDANCE: `${AUTH_URL}/attendance`,
   OFFICE: `${BASE_URL}/office`,
   VISITS: `${BASE_URL}/visits`,
-  LEAVES: `${NEWAPP_URL}/leave_apply`,
+  LEAVES: `${NEWAPP_URL}/leave`,
   REGULARIZATION: `${BASE_URL}/regularization`,
   ATTENDANCE_LOGS: `${NEWAPP_URL}/attendance_logs`,
   REGULARISATION_LOGS: `${NEWAPP_URL}/regularisation_logs`,
