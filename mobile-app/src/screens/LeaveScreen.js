@@ -308,6 +308,7 @@ const LeaveScreen = ({ navigation, route }) => {
   const [toHalf, setToHalf] = useState('Full Day');
   const [reason, setReason] = useState('');
   const [contactNo, setContactNo] = useState('');
+  const [handoverTo, setHandoverTo] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -383,7 +384,7 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('from_session', fromHalf === 'Second Half' ? '2' : '1');
       formData.append('to_session', toHalf === 'First Half' ? '1' : '2');
       formData.append('contact_number', contactNo || 'N/A');
-      formData.append('duties_handed_over', 'N/A');
+      formData.append('duties_handed_over', handoverTo || 'N/A');
       formData.append('authorized_by', authorizedById || '0');
       formData.append('approved_by', approvedByIds || '0');
       attachedFiles.forEach((f, i) => {
@@ -501,6 +502,12 @@ const LeaveScreen = ({ navigation, route }) => {
         <View style={s.inputBox}>
           <Text style={s.label}>Contact Number</Text>
           <TextInput style={s.inputRow} value={contactNo} onChangeText={setContactNo} placeholder="+91 0000000000" keyboardType="phone-pad" placeholderTextColor="#D1D5DB" />
+        </View>
+
+        {/* Duties Handed Over */}
+        <View style={s.inputBox}>
+          <Text style={s.label}>Duties Handed Over To</Text>
+          <TextInput style={s.inputRow} value={handoverTo} onChangeText={setHandoverTo} placeholder="e.g. Handed over to Team Lead" placeholderTextColor="#D1D5DB" />
         </View>
 
         {/* Reason */}
