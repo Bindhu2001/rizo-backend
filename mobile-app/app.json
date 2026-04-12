@@ -4,10 +4,10 @@
     "slug": "rizo-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/logo_with_margin.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/logo_with_margin.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -31,12 +31,12 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
+        "foregroundImage": "./assets/logo_with_margin.png",
         "backgroundColor": "#FFFFFF"
       }
     },
     "web": {
-      "favicon": "./assets/logo.png"
+      "favicon": "./assets/logo_with_margin.png"
     },
     "plugins": [
       [

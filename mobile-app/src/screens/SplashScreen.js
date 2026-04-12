@@ -80,7 +80,7 @@ const SplashScreen = ({ navigation }) => {
           }
         ]}>
           <Image 
-            source={require('../../assets/logo.png')} 
+            source={require('../../assets/logo_with_margin.png')} 
             style={styles.oImage}
             resizeMode="contain"
           />
@@ -117,6 +117,8 @@ const styles = StyleSheet.create({
   oContainer: {
     width: 60,
     height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
   },
   oImage: {
     width: '100%',

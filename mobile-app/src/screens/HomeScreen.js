@@ -305,7 +305,7 @@ const HomeScreen = ({ navigation, route }) => {
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>
-            <Image source={require('../../assets/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+            <Image source={require('../../assets/logo_with_margin.png')} style={styles.headerLogo} resizeMode="contain" />
             <View>
               <Text style={styles.greetingHeader}>{getGreeting()}</Text>
               <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
@@ -377,7 +377,7 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* 2×2 GRID */}
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance')}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#E8F5E9' }]}>
               <Fingerprint color="#2ECC71" size={20} />
             </View>
@@ -385,7 +385,7 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.gridLabel}>View History</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Salary')}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Salary', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#FFF9C4' }]}>
               <DollarSign color="#F1C40F" size={20} />
             </View>
@@ -393,7 +393,7 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.gridLabel}>Check Payroll</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveTab')}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Leave', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#F3E5F5' }]}>
               <Briefcase color={COLORS.primaryDeep} size={20} />
             </View>
@@ -401,7 +401,7 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.gridLabel}>Apply / View</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Expense')}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Expense', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#FFEBEE' }]}>
               <FileText color="#E91E63" size={20} />
             </View>
@@ -414,7 +414,7 @@ const HomeScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.visitButton}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('Visits')}
+          onPress={() => navigation.navigate('Visits', { user })}
         >
           <View style={styles.visitButtonLeft}>
             <View style={styles.visitIconBox}>
@@ -432,7 +432,7 @@ const HomeScreen = ({ navigation, route }) => {
         <TouchableOpacity
           style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('AttendanceReg', { initialTab: 'REGULARISED' })}
+          onPress={() => navigation.navigate('AttendanceReg', { user, initialTab: 'REGULARISED' })}
         >
           <View style={styles.visitButtonLeft}>
             <View style={[styles.visitIconBox, { backgroundColor: '#FF9800' }]}>
@@ -503,7 +503,7 @@ const styles = StyleSheet.create({
 
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  headerLogo: { width: 44, height: 44, marginRight: 12, borderRadius: 22 },
+  headerLogo: { width: 44, height: 44, marginRight: 16, marginLeft: 4 },
   greetingHeader: { fontSize: 13, color: COLORS.textLight, fontWeight: '600' },
   userNameHeader: { fontSize: 24, fontWeight: '900', color: COLORS.text, letterSpacing: -0.5 },
   locationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },

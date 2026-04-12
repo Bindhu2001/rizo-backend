@@ -13,7 +13,7 @@ const WelcomeScreen = ({ navigation }) => {
         {/* TOP LOGO (The Ring) */}
         <View style={styles.logoContainer}>
           <Image 
-            source={require('../../assets/logo.png')} 
+            source={require('../../assets/logo_with_margin.png')} 
             style={styles.logoO}
             resizeMode="contain"
           />
@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
     height: 120,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 10,
     marginBottom: 20,
   },
   logoO: {
