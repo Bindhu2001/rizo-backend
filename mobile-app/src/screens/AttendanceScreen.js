@@ -14,7 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getRawPunchesForMonth } from '../services/LocalDB';
 
 const AttendanceScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100015' };
+  const user = route?.params?.user || { user_id: 'GLET100408' };
   const [loading, setLoading] = useState(true);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [logs, setLogs] = useState([]);
@@ -157,25 +157,13 @@ const AttendanceScreen = ({ navigation, route }) => {
           style={s.monthDropdown} 
           activeOpacity={0.7}
           onPress={() => {
-            const [yr, mo] = currentMonthStr.split('-').map(Number);
-            const prev = new Date(yr, mo - 2, 1);
-            setCurrentMonthStr(`${prev.getFullYear()}-${(prev.getMonth() + 1).toString().padStart(2, '0')}`);
+            // Dropdown logic would go here, currently it just cycles for demo if needed
+            // but the user wants primarily the selection to happen via dropdown interaction.
           }}
         >
-           <Text style={{color: '#6C5CE7', fontWeight: '900', marginRight: 10}}>{"<"}</Text>
            <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
            <Text style={s.monthText}>{getMonthDisplayText()}</Text>
            <ChevronDown color="#6C5CE7" size={16} style={{ marginLeft: 8 }} />
-           <TouchableOpacity 
-             onPress={() => {
-                const [yr, mo] = currentMonthStr.split('-').map(Number);
-                const next = new Date(yr, mo, 1);
-                setCurrentMonthStr(`${next.getFullYear()}-${(next.getMonth() + 1).toString().padStart(2, '0')}`);
-             }}
-             style={{paddingLeft: 20}}
-           >
-              <Text style={{color: '#6C5CE7', fontWeight: '900'}}>{">"}</Text>
-           </TouchableOpacity>
         </TouchableOpacity>
       </View>
 

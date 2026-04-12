@@ -139,8 +139,11 @@ const LogCard = ({ item, regMap, onRegularise }) => {
   
   const d = new Date(item.date);
   const dateNum = d.getDate().toString().padStart(2, '0');
-  const mDay = d.toLocaleDateString('en-US', { month: 'short', weekday: 'short' }).toUpperCase().split(' ');
-  const displayMonthDay = `${mDay[0]}, ${mDay[1]}`;
+  
+  // Robust month/day construction
+  const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const monthName = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const displayMonthDay = `${monthName}, ${dayName}`;
 
   const isPresent = item.punch_in_time && item.punch_out_time;
   const statusLabel = isPresent ? 'P/P' : (item.status === 'WEEKLY_OFF' ? 'WO' : 'A/A');
@@ -250,6 +253,7 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 
   const rCenter = 100;
   const radius = 80;
+
 
   const getPos = (num) => {
     const angle = (num * 30) * (Math.PI / 180);
@@ -389,7 +393,7 @@ const rp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AttendanceRegScreen = ({ navigation, route }) => {
-  const user = route?.params?.user || { user_id: 'GLET100056' };
+  const user = route?.params?.user || { user_id: 'GLET100408' };
 
   const [tab, setTab] = useState(route?.params?.initialTab || 'LOG');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -592,22 +596,11 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           style={s.monthDropdown}
           activeOpacity={0.7}
           onPress={() => {
-            const d = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1);
-            setSelectedMonth(d);
+            // Dropdown selection logic
           }}
         >
-          <Text style={{color: COLORS.primary, fontWeight: '900', marginRight: 10}}>{"<"}</Text>
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
           <ChevronDown color={COLORS.primary} size={15} style={{ marginLeft: 4 }} />
-          <TouchableOpacity 
-             onPress={() => {
-                const d = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
-                setSelectedMonth(d);
-             }}
-             style={{paddingLeft: 20}}
-          >
-             <Text style={{color: COLORS.primary, fontWeight: '900'}}>{">"}</Text>
-          </TouchableOpacity>
         </TouchableOpacity>
       </View>
 

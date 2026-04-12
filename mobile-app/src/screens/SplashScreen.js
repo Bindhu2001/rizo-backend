@@ -1,57 +1,44 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Text, Dimensions } from 'react-native';
-import { initDB } from '../services/LocalDB';
-import * as SQLite from 'expo-sqlite';
-import { COLORS } from '../components/Theme';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions, StatusBar, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+const { width } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
-  const letters = ['R', 'I', 'Z'];
-  const animations = useRef(letters.map(() => new Animated.Value(0))).current;
-  const oOpacity = useRef(new Animated.Value(0)).current;
-  const oRotate = useRef(new Animated.Value(0)).current;
-  const oTranslateX = useRef(new Animated.Value(50)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const oMove = useRef(new Animated.Value(-width * 0.5)).current; // Start off-screen left
+  const oRotate = useRef(new Animated.Value(0)).current; 
+  const rAlpha = useRef(new Animated.Value(0)).current;
+  const iAlpha = useRef(new Animated.Value(0)).current;
+  const zAlpha = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Database & Auth Verification
-    const checkAuth = async () => {
-      try {
-        await initDB();
-        const db = await SQLite.openDatabaseAsync('rizo_local.db');
-        const row = await db.getFirstAsync(`SELECT * FROM user_profile LIMIT 1`);
-        
-        setTimeout(() => {
-          if (row && row.user_id) {
-            navigation.replace('Main', { user: row });
-          } else {
-            navigation.replace('Welcome');
-          }
-        }, 3500); 
-      } catch (e) {
-        setTimeout(() => navigation.replace('Welcome'), 3000);
-      }
-    };
-    checkAuth();
-
-    // 2. Animation Sequence
-    const animSequence = letters.map((_, i) => 
-      Animated.spring(animations[i], { toValue: 1, tension: 40, friction: 7, useNativeDriver: true })
-    );
-
-    Animated.sequence([
-      Animated.delay(300),
-      Animated.stagger(150, animSequence),
-      Animated.parallel([
-        Animated.timing(oOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.spring(oTranslateX, { toValue: 0, tension: 20, friction: 6, useNativeDriver: true }),
-        Animated.timing(oRotate, { toValue: 1, duration: 1000, useNativeDriver: true })
-      ]),
-      Animated.parallel([
-        Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.spring(logoScale, { toValue: 1, tension: 50, useNativeDriver: true })
-      ])
-    ]).start();
+    // Stage 1: O rolls in from left to center-right
+    Animated.parallel([
+      Animated.timing(oMove, {
+        toValue: 50, // Final position (adjustment needed for center)
+        duration: 1200,
+        easing: Easing.out(Easing.back(1)),
+        useNativeDriver: true,
+      }),
+      Animated.timing(oRotate, {
+        toValue: 1, // 2 full rotations
+        duration: 1200,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      // Stage 2: Letters appear one by one
+      Animated.sequence([
+        Animated.timing(rAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(100),
+        Animated.timing(iAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(100),
+        Animated.timing(zAlpha, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.delay(1000), // Delay before navigation
+      ]).start(() => {
+        navigation.replace('MainTabs');
+      });
+    });
   }, []);
 
   const spin = oRotate.interpolate({
@@ -60,88 +47,65 @@ const SplashScreen = ({ navigation }) => {
   });
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.textRow}>
-          {letters.map((char, i) => (
-            <Animated.Text 
-              key={i} 
-              style={[
-                styles.letter, 
-                { 
-                  opacity: animations[i],
-                  transform: [{ translateY: animations[i].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] 
-                }
-              ]}
-            >
-              {char}
-            </Animated.Text>
-          ))}
-          
-          <Animated.View style={[
-            styles.oContainer, 
-            { 
-              opacity: oOpacity, 
-              transform: [
-                { translateX: oTranslateX },
-                { rotate: spin }
-              ] 
-            }
-          ]}>
-            <View style={styles.oBox}>
-                <View style={[styles.oSegment, { backgroundColor: '#42A5F5', top: 0, left: 0 }]} />
-                <View style={[styles.oSegment, { backgroundColor: '#66BB6A', top: 0, right: 0 }]} />
-                <View style={[styles.oSegment, { backgroundColor: '#EC407A', bottom: 0, left: 0 }]} />
-                <View style={[styles.oSegment, { backgroundColor: '#FFA726', bottom: 0, right: 0 }]} />
-                <View style={styles.oInnerWhite} />
-            </View>
-          </Animated.View>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      <View style={styles.logoRow}>
+        <View style={styles.rizContainer}>
+          <Animated.Text style={[styles.letter, { opacity: rAlpha }]}>R</Animated.Text>
+          <Animated.Text style={[styles.letter, { opacity: iAlpha }]}>I</Animated.Text>
+          <Animated.Text style={[styles.letter, { opacity: zAlpha }]}>Z</Animated.Text>
         </View>
+        <Animated.View style={[
+          styles.oContainer, 
+          { 
+            transform: [
+              { translateX: oMove },
+              { rotate: spin }
+            ]
+          }
+        ]}>
+          <Image 
+            source={require('../../assets/rizo logo.png')} 
+            style={styles.oImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
-  content: { flexDirection: 'row', alignItems: 'center' },
-  textRow: { flexDirection: 'row', alignItems: 'center' },
-  letter: {
-    fontSize: 70,
-    fontWeight: '900',
-    color: '#000',
-    marginRight: 2,
-    letterSpacing: -2,
-  },
-  oContainer: {
-    width: 54,
-    height: 54,
-    marginLeft: 2,
+  container: {
+    flex: 1,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  oBox: {
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  rizContainer: {
+    flexDirection: 'row',
+    position: 'absolute',
+    left: width * 0.5 - 65, // Adjust based on total logo width
+  },
+  letter: {
+    fontSize: 50,
+    fontWeight: '900',
+    color: '#000',
+    letterSpacing: -2,
+  },
+  oContainer: {
     width: 60,
     height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
-    position: 'relative',
-    borderWidth: 0,
   },
-  oSegment: {
-    position: 'absolute',
-    width: '50%',
-    height: '50%',
-  },
-  oInnerWhite: {
-    position: 'absolute',
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#FFF',
-    top: 15,
-    left: 15,
-    zIndex: 10,
+  oImage: {
+    width: '100%',
+    height: '100%',
   }
 });
 
