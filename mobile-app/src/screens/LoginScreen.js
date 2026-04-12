@@ -90,7 +90,7 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.headerGroup}>
               <View style={styles.logoContainer}>
                 <Image 
-                  source={require('../../assets/logo.png')} 
+                  source={require('../../assets/rizo logo.png')} 
                   style={styles.logoImage} 
                 />
               </View>

@@ -23,7 +23,7 @@ const WelcomeScreen = ({ navigation }) => {
               style={styles.logoBox}
             >
                <Image 
-                 source={require('../../assets/logo.png')} 
+                 source={require('../../assets/rizo logo.png')} 
                  style={{ width: 100, height: 100, resizeMode: 'contain' }}
                />
             </LinearGradient>
