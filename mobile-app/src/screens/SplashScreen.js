@@ -75,7 +75,7 @@ const SplashScreen = ({ navigation }) => {
     const thresholds = {
       r: (((GEOMETRY[0].x - 20) * SCALE) - oLeftStart) / totalTravel,
       i: (((GEOMETRY[1].x - 20) * SCALE) - oLeftStart) / totalTravel,
-      z: (((GEOMETRY[2].x + 40) * SCALE) - oLeftStart) / totalTravel, // Delayed trigger
+      z: (((GEOMETRY[2].x + 180) * SCALE) - oLeftStart) / totalTravel, // Higher threshold for later reveal
     };
 
     const hasRevealed = { r: false, i: false, z: false };
@@ -97,12 +97,12 @@ const SplashScreen = ({ navigation }) => {
           Animated.spring(iY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
-      // reveal 'z' (with extra delay after O passes)
+      // reveal 'z' (Much heavier delay to ensure 'o' has cleared more space)
       if (value >= thresholds.z && !hasRevealed.z) {
         hasRevealed.z = true;
         Animated.parallel([
-          Animated.timing(zOp, { toValue: 1, delay: 200, duration: 600, useNativeDriver: true }),
-          Animated.spring(zY, { toValue: 0, delay: 200, tension: 40, friction: 6, useNativeDriver: true })
+          Animated.timing(zOp, { toValue: 1, delay: 500, duration: 800, useNativeDriver: true }),
+          Animated.spring(zY, { toValue: 0, delay: 500, tension: 35, friction: 6, useNativeDriver: true })
         ]).start();
       }
     });
