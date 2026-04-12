@@ -108,25 +108,16 @@ const AttendanceScreen = ({ navigation, route }) => {
 
     const isExpanded = expandedDate === item.date;
     
-    // Sort day punches: Most recent first (DESC)
-    const dayPunches = rawPunches
-      .filter(rp => rp.punch_time && rp.punch_time.includes(item.date))
+    // Sort day punches: Most recent first (DESC) with ultra-safety
+    const dayPunches = (rawPunches || [])
+      .filter(rp => rp && rp.punch_time && item.date && rp.punch_time.includes(item.date))
       .sort((a, b) => {
-        const da = new Date(a.punch_time.replace(' ', 'T'));
-        const db = new Date(b.punch_time.replace(' ', 'T'));
-        return db - da;
+        try {
+          const tA = new Date(a.punch_time.replace(' ', 'T')).getTime();
+          const tB = new Date(b.punch_time.replace(' ', 'T')).getTime();
+          return (tB || 0) - (tA || 0);
+        } catch (_) { return 0; }
       });
-
-    const formatPunchTime = (isoOrFull) => {
-      if (!isoOrFull || isoOrFull === '---') return '---';
-      try {
-        const d = new Date(isoOrFull.replace(' ', 'T'));
-        if (isNaN(d.getTime())) return isoOrFull.split(' ')[1]?.slice(0, 5) || isoOrFull;
-        return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-      } catch (e) {
-        return isoOrFull;
-      }
-    };
 
     return (
       <View style={s.cardWrapper}>

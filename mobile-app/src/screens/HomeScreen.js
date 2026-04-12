@@ -12,6 +12,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import * as Location from 'expo-location';
 import * as Network from 'expo-network';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
@@ -136,6 +137,10 @@ const HomeScreen = ({ navigation, route }) => {
       localType = await getLastPunchType(user.user_id);
       setIsPunchedIn(localType === 'IN');
       setStatus(prev => ({ ...prev, lastType: localType }));
+
+      // Load persistent action time
+      const lastStored = await AsyncStorage.getItem(`LAST_ACTION_${user.user_id}`);
+      if (lastStored) lastActionTime.current = parseInt(lastStored, 10);
     } catch (e) {
       console.log('[Home] Local status fetch error:', e);
     } finally {
@@ -162,14 +167,15 @@ const HomeScreen = ({ navigation, route }) => {
         const pCnt = await getPendingCount();
         const timeSinceLastAction = Date.now() - lastActionTime.current;
         
-        if (pCnt === 0 && timeSinceLastAction > 300000) {
+        // Extended reversal guard: 10 minutes to be absolutely sure server has processed 'logs'
+        if (pCnt === 0 && timeSinceLastAction > 600000) {
           setIsPunchedIn(serverType === 'IN');
           setStatus({
             lastType: serverType,
             todayHistory: logs.filter(l => l.punch_date === format(new Date(), 'yyyy-MM-dd'))
           });
         } else {
-          console.log(`[Home] Cloud sync deferred: pCnt=${pCnt}, wait=${Math.round((300000 - timeSinceLastAction)/1000)}s`);
+          console.log(`[Home] Cloud sync deferred: pCnt=${pCnt}, wait=${Math.round((600000 - timeSinceLastAction)/1000)}s`);
         }
       }
     } catch (e) {
@@ -201,7 +207,9 @@ const HomeScreen = ({ navigation, route }) => {
     if (punching) return;
     setPunching(true);
     setShowConfirmOut(false);
-    lastActionTime.current = Date.now();
+    const now = Date.now();
+    lastActionTime.current = now;
+    await AsyncStorage.setItem(`LAST_ACTION_${user.user_id}`, now.toString());
 
     console.log(`[Punch] Initiating ${type} process...`);
     const punchTime = new Date().toISOString();
