@@ -69,10 +69,13 @@ const SplashScreen = ({ navigation }) => {
     const oTargetX = GEOMETRY[3].x * SCALE;
     const totalTravel = oTargetX - oLeftStart;
 
+    // Trigger pop-up tightly behind the rolling O
+    // By triggering slightly before the O's left edge aligns with the letter,
+    // the letter bursts up while securely masked behind the thick body of the O.
     const thresholds = {
-      r: (((GEOMETRY[0].x + GEOMETRY[0].w / 2) * SCALE) - oLeftStart) / totalTravel,
-      i: (((GEOMETRY[1].x + GEOMETRY[1].w / 2) * SCALE) - oLeftStart) / totalTravel,
-      z: (((GEOMETRY[2].x + GEOMETRY[2].w / 2) * SCALE) - oLeftStart) / totalTravel,
+      r: (((GEOMETRY[0].x - 20) * SCALE) - oLeftStart) / totalTravel,
+      i: (((GEOMETRY[1].x - 20) * SCALE) - oLeftStart) / totalTravel,
+      z: (((GEOMETRY[2].x + 40) * SCALE) - oLeftStart) / totalTravel, // Delayed trigger
     };
 
     const hasRevealed = { r: false, i: false, z: false };
@@ -94,12 +97,12 @@ const SplashScreen = ({ navigation }) => {
           Animated.spring(iY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
-      // reveal 'z'
+      // reveal 'z' (with extra delay after O passes)
       if (value >= thresholds.z && !hasRevealed.z) {
         hasRevealed.z = true;
         Animated.parallel([
-          Animated.timing(zOp, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.spring(zY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
+          Animated.timing(zOp, { toValue: 1, delay: 200, duration: 600, useNativeDriver: true }),
+          Animated.spring(zY, { toValue: 0, delay: 200, tension: 40, friction: 6, useNativeDriver: true })
         ]).start();
       }
     });
@@ -153,7 +156,8 @@ const SplashScreen = ({ navigation }) => {
             width: item.w * SCALE,
             height: item.h * SCALE,
             opacity,
-            transform: [{ translateY }]
+            transform: [{ translateY }],
+            zIndex: 1, // Keep behind O
           },
         ]}
         resizeMode="contain"
