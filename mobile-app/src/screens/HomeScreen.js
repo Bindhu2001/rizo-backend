@@ -142,8 +142,7 @@ const HomeScreen = ({ navigation, route }) => {
       setLoading(false);
     }
 
-    // 2. Cross-verify with Cloud using the reliable POST logs endpoint
-    // We fetch today's logs specifically to determine current status
+    // 2. Cross-verify with Cloud
     try {
       const today = format(new Date(), 'yyyy-MM');
       const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
@@ -154,33 +153,27 @@ const HomeScreen = ({ navigation, route }) => {
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
       
       if (logs.length > 0) {
-        // The first log is the latest for that month (if DESC)
-        // Check if logs[0] is from TODAY
         const latest = logs[0];
         const serverType = latest.in_out ? latest.in_out.toUpperCase() : 'NONE';
         
-        // State Synchronization Logic:
+        // REVERSAL GUARD: 
+        // Sync items must be zero AND at least 5 minutes must have passed since the last LOCAL punch.
+        // This gives the server enough time to process the 'swipe' and return it correctly in 'logs'.
         const pCnt = await getPendingCount();
-        if (pCnt === 0) {
-          // If no pending local work, we can align UI with server
+        const timeSinceLastAction = Date.now() - lastActionTime.current;
+        
+        if (pCnt === 0 && timeSinceLastAction > 300000) {
           setIsPunchedIn(serverType === 'IN');
           setStatus({
             lastType: serverType,
             todayHistory: logs.filter(l => l.punch_date === format(new Date(), 'yyyy-MM-dd'))
           });
-          console.log('[Home] Cloud status synced via Logs ✅');
+        } else {
+          console.log(`[Home] Cloud sync deferred: pCnt=${pCnt}, wait=${Math.round((300000 - timeSinceLastAction)/1000)}s`);
         }
       }
     } catch (e) {
-      console.log('[Home] Cloud status fetch skipped (Offline/Server Error)');
-      // Re-fallback to old status endpoint if logs fail (optional, but keep it quiet)
-      try {
-        const alt = await axios.get(`${API_URL}/status/${user.user_id}`, { timeout: 4000 });
-        if (alt.data && (await getPendingCount()) === 0) {
-           setIsPunchedIn(alt.data.lastType === 'IN');
-           setStatus(alt.data);
-        }
-      } catch (e2) {}
+      console.log('[Home] Cloud sync skipped', e.message);
     }
   };
 

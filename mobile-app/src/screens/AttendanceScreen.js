@@ -110,8 +110,12 @@ const AttendanceScreen = ({ navigation, route }) => {
     
     // Sort day punches: Most recent first (DESC)
     const dayPunches = rawPunches
-      .filter(rp => rp.punch_time.includes(item.date))
-      .sort((a, b) => new Date(b.punch_time) - new Date(a.punch_time));
+      .filter(rp => rp.punch_time && rp.punch_time.includes(item.date))
+      .sort((a, b) => {
+        const da = new Date(a.punch_time.replace(' ', 'T'));
+        const db = new Date(b.punch_time.replace(' ', 'T'));
+        return db - da;
+      });
 
     const formatPunchTime = (isoOrFull) => {
       if (!isoOrFull || isoOrFull === '---') return '---';
