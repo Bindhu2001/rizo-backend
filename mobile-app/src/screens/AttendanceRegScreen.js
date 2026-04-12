@@ -12,6 +12,18 @@ import {
 import axios from 'axios';
 import { COLORS, SHADOWS } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
+import { format } from 'date-fns';
+
+const formatPunchTime = (isoOrFull) => {
+  if (!isoOrFull || isoOrFull === '---') return '---';
+  try {
+    const d = new Date(isoOrFull.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return isoOrFull.split(' ')[1]?.slice(0, 5) || isoOrFull;
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch (e) {
+    return isoOrFull;
+  }
+};
 
 const { width } = Dimensions.get('window');
 
@@ -133,8 +145,8 @@ const ci = StyleSheet.create({
 
 
 const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
-  const punchInRaw = item.punch_in_time?.split(' ')[1] || item.punch_in_time;
-  const punchOutRaw = item.punch_out_time?.split(' ')[1] || item.punch_out_time;
+  const punchInRaw = formatPunchTime(item.punch_in_time);
+  const punchOutRaw = formatPunchTime(item.punch_out_time);
   
   const d = new Date(item.date || new Date().toISOString());
   const displayMonthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

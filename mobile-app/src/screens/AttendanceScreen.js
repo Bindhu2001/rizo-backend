@@ -13,6 +13,18 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { getRawPunchesForMonth } from '../services/LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
+import { format } from 'date-fns';
+
+const formatPunchTime = (isoOrFull) => {
+  if (!isoOrFull || isoOrFull === '---') return '---';
+  try {
+    const d = new Date(isoOrFull.replace(' ', 'T'));
+    if (isNaN(d.getTime())) return isoOrFull.split(' ')[1]?.slice(0, 5) || isoOrFull;
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch (e) {
+    return isoOrFull;
+  }
+};
 
 const AttendanceScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
@@ -91,8 +103,8 @@ const AttendanceScreen = ({ navigation, route }) => {
     const statusColor = isPresent ? '#2ECC71' : (item.status?.includes('WO') ? '#9CA3AF' : '#E91E63');
     const statusBg = isPresent ? '#E8F5E9' : (item.status?.includes('WO') ? '#F3F4F6' : '#FCE4EC');
 
-    const punchIn = item.punch_in_time ? (item.punch_in_time.split(' ')[1]?.slice(0, 5) || item.punch_in_time) : '---';
-    const punchOut = item.punch_out_time ? (item.punch_out_time.split(' ')[1]?.slice(0, 5) || item.punch_out_time) : '---';
+    const punchIn = formatPunchTime(item.punch_in_time);
+    const punchOut = formatPunchTime(item.punch_out_time);
 
     const isExpanded = expandedDate === item.date;
     
@@ -102,9 +114,10 @@ const AttendanceScreen = ({ navigation, route }) => {
       .sort((a, b) => new Date(b.punch_time) - new Date(a.punch_time));
 
     const formatPunchTime = (isoOrFull) => {
+      if (!isoOrFull || isoOrFull === '---') return '---';
       try {
         const d = new Date(isoOrFull.replace(' ', 'T'));
-        if (isNaN(d.getTime())) return isoOrFull.split(' ')[1] || isoOrFull;
+        if (isNaN(d.getTime())) return isoOrFull.split(' ')[1]?.slice(0, 5) || isoOrFull;
         return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
       } catch (e) {
         return isoOrFull;
