@@ -6,49 +6,34 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft, Calendar as CalendarIcon, Clock, 
-  MapPin, ChevronRight, Filter, ChevronDown, CheckCircle2, AlertCircle
+  ChevronDown, Filter, Cloud, CloudOff, ChevronUp
 } from 'lucide-react-native';
 import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
-
-const { width } = Dimensions.get('window');
+import { getRawPunchesForMonth } from '../services/LocalDB';
 
 const AttendanceScreen = ({ navigation, route }) => {
   const user = route?.params?.user || { user_id: 'GLET100015' };
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Log'); // 'Log' or 'Regularised'
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
   const [logs, setLogs] = useState([]);
-  const [regLogs, setRegLogs] = useState([]);
+  const [rawPunches, setRawPunches] = useState([]);
+  const [expandedDate, setExpandedDate] = useState(null);
   
-  // ─── Fetch Data ─────────────────────────────────────────────────────────────
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      // 1. Fetch Attendance Logs
       const attUrl = `https://v1.mypayrollmaster.online/api/v2qa/newapp/attendance_logs?user_id=${user.user_id}&month=${month}`;
       const attRes = await axios.get(attUrl); 
       if (attRes.data?.success) {
         setLogs(attRes.data.data || []);
       }
-
-      // 2. Fetch Regularisation Logs
-      const regUrl = `https://v1.mypayrollmaster.online/api/v2qa/newapp/regularisation_logs?user_id=${user.user_id}&month=${month}`;
-      const regRes = await axios.get(regUrl);
-      if (regRes.data?.success) {
-        setRegLogs(regRes.data.data || []);
-      }
+      
+      const localPunches = await getRawPunchesForMonth(user.user_id, month);
+      setRawPunches(localPunches || []);
     } catch (e) {
       console.log('Fetch error', e);
-      // Fallback
-      try {
-        const attUrl = `https://v1.mypayrollmaster.online/api/v2qa/newapp/attendance_logs?user_id=${user.user_id}&month=${month}`;
-        const attRes = await axios.post(attUrl, { user_id: user.user_id, filter: 'past' });
-        if (attRes.data?.success) setLogs(attRes.data.data || []);
-      } catch(e2) {
-        Alert.alert('Error', 'Unable to fetch logs');
-      }
     } finally {
       setLoading(false);
     }
@@ -60,133 +45,95 @@ const AttendanceScreen = ({ navigation, route }) => {
     }, [currentMonthStr])
   );
 
-  const handleMonthChange = (direction) => {
-    const [yr, mo] = currentMonthStr.split('-').map(Number);
-    const date = new Date(yr, direction === 'prev' ? mo - 2 : mo, 1);
-    const newMonthStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-    setCurrentMonthStr(newMonthStr);
+  const getMonthDisplayText = () => {
+    const d = new Date(currentMonthStr + '-01');
+    return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const formatDisplayDate = (dateStr) => {
-    const d = new Date(dateStr);
-    const options = { day: 'numeric', month: 'short', year: 'numeric' };
-    return d.toLocaleDateString('en-US', options);
-  };
-
-  // ─── Render Log Item ────────────────────────────────────────────────────────
   const renderLogItem = ({ item }) => {
-    const isMissingIn = item.punch_in_time === null;
-    const isMissingOut = item.punch_out_time === null && !item.status?.includes('WO');
+    const d = new Date(item.date);
+    const dateNum = d.getDate().toString().padStart(2, '0');
+    const monthDay = d.toLocaleDateString('en-US', { month: 'short', weekday: 'short' }).toUpperCase();
     
-    return (
-      <View style={s.card}>
-        <View style={s.cardTop}>
-             <View>
-                <Text style={s.cardDate}>{formatDisplayDate(item.date)}</Text>
-                <Text style={s.cardShift}>{item.shift || 'General Shift (9:30 AM - 6:30 PM)'}</Text>
-             </View>
-             {item.status?.includes('WO') && (
-                <View style={s.woBadge}><Text style={s.woText}>WO</Text></View>
-             )}
-        </View>
+    // Status Badge Logic
+    const isPresent = item.punch_in_time && item.punch_out_time;
+    const statusLabel = isPresent ? 'P/P' : (item.status?.includes('WO') ? 'WO' : 'A/A');
+    const statusColor = isPresent ? '#2ECC71' : (item.status?.includes('WO') ? '#9CA3AF' : '#E91E63');
+    const statusBg = isPresent ? '#E8F5E9' : (item.status?.includes('WO') ? '#F3F4F6' : '#FCE4EC');
 
-        <View style={s.punchList}>
-            <View style={s.punchRow}>
-                <View style={s.punchIconCol}>
-                    <View style={[s.dot, !isMissingIn ? s.dotGreen : s.dotRed]} />
-                    <View style={s.verticalLine} />
-                </View>
-                <View style={s.punchContent}>
-                    {isMissingIn ? (
-                        <View style={s.missingRow}>
-                            <Text style={s.missingText}>Clock In{"\n"}<Text style={s.missingSub}>MISSING</Text></Text>
-                            <TouchableOpacity 
-                                style={s.regBtn} 
-                                onPress={() => navigation.navigate('AttendanceReg', { date: item.date, direction: 'IN' })}
-                            >
-                                <Text style={s.regBtnText}>REGULARISE</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <View style={s.filledRow}>
-                            <View>
-                                <Text style={s.punchTime}>{item.punch_in_time?.split(' ')[1] || item.punch_in_time}</Text>
-                                <Text style={s.punchLoc} numberOfLines={1}>Location: Office Premises</Text>
-                            </View>
-                            <View style={s.roleBadge}><Text style={s.roleText}>Clock In</Text></View>
-                        </View>
-                    )}
-                </View>
-            </View>
+    const punchIn = item.punch_in_time ? (item.punch_in_time.split(' ')[1]?.slice(0, 5) || item.punch_in_time) : '---';
+    const punchOut = item.punch_out_time ? (item.punch_out_time.split(' ')[1]?.slice(0, 5) || item.punch_out_time) : '---';
 
-            <View style={s.punchRow}>
-                <View style={s.punchIconCol}>
-                    <View style={[s.dot, !isMissingOut ? s.dotGreen : s.dotRed]} />
-                </View>
-                <View style={s.punchContent}>
-                    {isMissingOut ? (
-                        <View style={s.missingRow}>
-                            <Text style={s.missingText}>Clock Out{"\n"}<Text style={s.missingSub}>MISSING</Text></Text>
-                            <TouchableOpacity 
-                                style={s.regBtn}
-                                onPress={() => navigation.navigate('AttendanceReg', { date: item.date, direction: 'OUT' })}
-                            >
-                                <Text style={s.regBtnText}>REGULARISE</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        item.punch_out_time ? (
-                            <View style={s.filledRow}>
-                                <View>
-                                    <Text style={s.punchTime}>{item.punch_out_time?.split(' ')[1] || item.punch_out_time}</Text>
-                                    <Text style={s.punchLoc} numberOfLines={1}>Location: Office Premises</Text>
-                                </View>
-                                <View style={[s.roleBadge, { backgroundColor: '#FCE4EC' }]}><Text style={[s.roleText, { color: COLORS.primary }]}>Clock Out</Text></View>
-                            </View>
-                        ) : null
-                    )}
-                </View>
-            </View>
-        </View>
-      </View>
-    );
-  };
-
-  // ─── Render Regularised Item ────────────────────────────────────────────────
-  const renderRegItem = ({ item }) => {
-    const statusColor = item.status === 'Approved' ? '#2ECC71' : (item.status === 'Rejected' ? '#F44336' : '#F39C12');
-    const statusBg = item.status === 'Approved' ? '#E8F5E9' : (item.status === 'Rejected' ? '#FFEBEE' : '#FFF3E0');
+    const isExpanded = expandedDate === item.date;
+    const dayPunches = rawPunches.filter(rp => rp.punch_time.startsWith(item.date));
 
     return (
-      <View style={s.card}>
-        <View style={s.cardTop}>
-             <View>
-                <Text style={s.cardDate}>{formatDisplayDate(item.date)}</Text>
-                <Text style={s.cardShift}>{item.shift || 'General Shift (9:30 AM - 6:30 PM)'}</Text>
-             </View>
-             <View style={s.woBadge}><Text style={s.woText}>WO</Text></View>
-        </View>
+      <View style={s.cardWrapper}>
+        <TouchableOpacity 
+          style={[s.card, isExpanded && s.cardExpanded]} 
+          activeOpacity={0.9}
+          onPress={() => setExpandedDate(isExpanded ? null : item.date)}
+        >
+          <View style={s.dateBox}>
+            <Text style={s.dateNum}>{dateNum}</Text>
+            <Text style={s.monthDayText}>{monthDay}</Text>
+          </View>
 
-        <View style={s.regDetail}>
-            <View style={s.punchIconCol}>
-                <View style={[s.dot, { borderColor: statusColor, backgroundColor: '#FFF' }]}>
-                   <View style={[s.dotInner, { backgroundColor: statusColor }]} />
+          <View style={s.infoCol}>
+            <Text style={s.shiftTitle} numberOfLines={1}>
+              {item.shift ? item.shift.replace(/_/g, ' ') : 'Flexible Office'} - 0930AM - 0530PM
+            </Text>
+            <View style={s.timeRow}>
+              <View style={s.punchItem}>
+                <Clock size={14} color="#9CA3AF" />
+                <Text style={s.timeValue}>{punchIn} <Text style={s.timeType}>IN</Text></Text>
+              </View>
+              <View style={[s.punchItem, { marginLeft: 16 }]}>
+                <Clock size={14} color="#9CA3AF" />
+                <Text style={s.timeValue}>{punchOut} <Text style={s.timeType}>OUT</Text></Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={s.statusGroup}>
+            <View style={[s.badge, { backgroundColor: statusBg }]}>
+              <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+            {isExpanded ? <ChevronUp size={16} color="#9CA3AF" /> : <ChevronDown size={16} color="#9CA3AF" />}
+          </View>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={s.detailSection}>
+            <Text style={s.detailTitle}>Detailed Punch History</Text>
+            {dayPunches.length === 0 ? (
+              <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
+            ) : (
+              dayPunches.map((p, idx) => (
+                <View key={p.id} style={s.punchDetailRow}>
+                  <View style={s.punchTimeBox}>
+                    <Text style={s.punchTimeVal}>{p.punch_time.split('T')[1]?.slice(0, 8) || p.punch_time.split(' ')[1]}</Text>
+                    <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
+                      <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={s.punchAddressBox}>
+                    <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
+                  </View>
+
+                  <View style={s.syncBox}>
+                    {p.sync_status === 'SYNCED' ? (
+                      <Cloud size={16} color="#2ECC71" />
+                    ) : (
+                      <CloudOff size={16} color="#E91E63" />
+                    )}
+                  </View>
                 </View>
-            </View>
-            <View style={s.punchContent}>
-                 <Text style={s.missingText}>Clock {item.direction || 'Out'}{"\n"}<Text style={[s.missingSub, { color: statusColor }]}>{item.time || '18:45:33'}</Text></Text>
-            </View>
-        </View>
-
-        <View style={[s.statusFooter, { backgroundColor: statusBg }]}>
-            <View style={{ flex: 1 }}>
-                <Text style={s.footerLabel}>Regularisation Status</Text>
-                <Text style={s.footerSub} numberOfLines={2}>{item.remarks || (item.status === 'Approved' ? '1 Sick leave is been adjusted.' : 'HR team is still reviewing your request')}</Text>
-            </View>
-            <View style={[s.statusTag, { backgroundColor: '#FFF' }]}>
-                <Text style={[s.statusTagText, { color: statusColor }]}>{item.status || 'Pending'}</Text>
-            </View>
-        </View>
+              ))
+            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -200,48 +147,57 @@ const AttendanceScreen = ({ navigation, route }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Attendance</Text>
-        <View style={s.monthPick}>
-           <Text style={s.monthPickText}>
-             {new Date(currentMonthStr + '-01').toLocaleString('en-US', { month: 'short' })} '{new Date(currentMonthStr + '-01').getFullYear().toString().slice(-2)}
-           </Text>
-           <ChevronDown color={COLORS.text} size={16} />
-        </View>
+        <Text style={s.headerTitle}>Attendance History</Text>
+        <View style={{ width: 44 }} />
       </View>
 
-      {/* ── Tabs ── */}
-      <View style={s.tabBar}>
-        {['Log', 'Regularised'].map(tab => (
-            <TouchableOpacity 
-                key={tab} 
-                onPress={() => setActiveTab(tab)}
-                style={[s.tab, activeTab === tab && s.activeTab]}
-            >
-                <Text style={[s.tabText, activeTab === tab && s.activeTabText]}>{tab}</Text>
-            </TouchableOpacity>
-        ))}
+      {/* ── Month Selector ── */}
+      <View style={s.monthBar}>
+        <TouchableOpacity 
+          style={s.monthDropdown} 
+          activeOpacity={0.7}
+          onPress={() => {
+            const [yr, mo] = currentMonthStr.split('-').map(Number);
+            const prev = new Date(yr, mo - 2, 1);
+            setCurrentMonthStr(`${prev.getFullYear()}-${(prev.getMonth() + 1).toString().padStart(2, '0')}`);
+          }}
+        >
+           <Text style={{color: '#6C5CE7', fontWeight: '900', marginRight: 10}}>{"<"}</Text>
+           <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
+           <Text style={s.monthText}>{getMonthDisplayText()}</Text>
+           <ChevronDown color="#6C5CE7" size={16} style={{ marginLeft: 8 }} />
+           <TouchableOpacity 
+             onPress={() => {
+                const [yr, mo] = currentMonthStr.split('-').map(Number);
+                const next = new Date(yr, mo, 1);
+                setCurrentMonthStr(`${next.getFullYear()}-${(next.getMonth() + 1).toString().padStart(2, '0')}`);
+             }}
+             style={{paddingLeft: 20}}
+           >
+              <Text style={{color: '#6C5CE7', fontWeight: '900'}}>{">"}</Text>
+           </TouchableOpacity>
+        </TouchableOpacity>
       </View>
 
       {/* ── List ── */}
       <View style={s.listContainer}>
         {loading ? (
             <View style={s.center}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color="#6C5CE7" />
             </View>
         ) : (
             <FlatList
-                data={activeTab === 'Log' ? logs : regLogs}
+                data={logs}
                 keyExtractor={(item, index) => item.date + index}
-                renderItem={activeTab === 'Log' ? renderLogItem : renderRegItem}
+                renderItem={renderLogItem}
                 contentContainerStyle={s.listContents}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={
                     <View style={s.center}>
                         <View style={s.emptyCircle}>
-                            <Clock color={COLORS.textMuted} size={40} />
+                            <Clock color="#9CA3AF" size={40} />
                         </View>
-                        <Text style={s.emptyTitle}>No {activeTab} Found</Text>
-                        <Text style={s.emptySub}>There are no logs available for this month.</Text>
+                        <Text style={s.emptyTitle}>No History Found</Text>
                     </View>
                 }
             />
@@ -257,61 +213,79 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, height: 60, backgroundColor: '#FFF'
   },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'flex-start' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  monthPick: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  monthPickText: { fontSize: 13, fontWeight: '700', marginRight: 4, color: COLORS.text },
-
-  tabBar: { flexDirection: 'row', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6', backgroundColor: '#FFF' },
-  tab: { paddingVertical: 14, marginRight: 24, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  activeTab: { borderBottomColor: COLORS.primary },
-  tabText: { fontSize: 15, fontWeight: '600', color: COLORS.textMuted },
-  activeTabText: { color: COLORS.primary },
+  backBtn: { width: 44, height: 44, justifyContent: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text },
+  
+  monthBar: { paddingVertical: 15, alignItems: 'center', backgroundColor: '#FFF' },
+  monthDropdown: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF', 
+    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25 
+  },
+  monthText: { fontSize: 16, fontWeight: '700', color: '#6C5CE7' },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
   listContents: { padding: 16, paddingBottom: 40 },
   
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 16, marginBottom: 16, ...SHADOWS.light },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  cardDate: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  cardShift: { fontSize: 12, color: COLORS.textLight, marginTop: 2, fontWeight: '500' },
-  woBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  woText: { fontSize: 10, color: COLORS.textMuted, fontWeight: '700' },
+  card: { 
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20, 
+    padding: 16, marginBottom: 16, alignItems: 'center', ...SHADOWS.light 
+  },
+  dateBox: { 
+    alignItems: 'center', paddingRight: 16, borderRightWidth: 1, 
+    borderRightColor: '#F3F4F6', width: 75 
+  },
+  dateNum: { fontSize: 28, fontWeight: '900', color: '#111827' },
+  monthDayText: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
 
-  punchList: { marginTop: 0 },
-  punchRow: { flexDirection: 'row' },
-  punchIconCol: { width: 20, alignItems: 'center', marginRight: 12 },
-  dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#DDD', zIndex: 2 },
-  dotGreen: { borderColor: '#2ECC71', backgroundColor: '#2ECC71' },
-  dotRed: { borderColor: '#F44336', backgroundColor: '#FFF' },
-  verticalLine: { width: 2, flex: 1, backgroundColor: '#F3F4F6', marginVertical: -4 },
+  infoCol: { flex: 1, paddingLeft: 16 },
+  shiftTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  punchRow: { flexDirection: 'row', alignItems: 'center' },
+  punchItem: { flexDirection: 'row', alignItems: 'center' },
+  timeValue: { fontSize: 14, fontWeight: '900', color: '#111827', marginLeft: 6 },
+  timeType: { fontSize: 11, fontWeight: '700', color: '#9CA3AF' },
+
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, minWidth: 45, alignItems: 'center' },
+  badgeText: { fontSize: 12, fontWeight: '900' },
+
+  cardWrapper: { marginBottom: 16 },
+  cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
+  statusGroup: { alignItems: 'center', minWidth: 50 },
+
+  detailSection: { 
+    backgroundColor: '#F9FAFB', 
+    borderBottomLeftRadius: 20, 
+    borderBottomRightRadius: 20, 
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: '#F3F4F6',
+    padding: 16,
+    paddingTop: 8,
+    ...SHADOWS.light 
+  },
+  detailTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  punchDetailRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF', 
+    padding: 10, 
+    borderRadius: 12, 
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#F3F4F6'
+  },
+  punchTimeBox: { width: 85, borderRightWidth: 1, borderRightColor: '#F3F4F6', paddingRight: 8 },
+  punchTimeVal: { fontSize: 13, fontWeight: '800', color: '#111827' },
+  pBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
+  pBadgeText: { fontSize: 10, fontWeight: '900' },
   
-  punchContent: { flex: 1, paddingBottom: 20 },
-  missingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  missingText: { fontSize: 14, fontWeight: '700', color: COLORS.text, lineHeight: 18 },
-  missingSub: { fontSize: 11, fontWeight: '800', color: '#F44336', textTransform: 'uppercase' },
-  regBtn: { backgroundColor: '#D32F2F', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10 },
-  regBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
-
-  filledRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  punchTime: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  punchLoc: { fontSize: 11, color: COLORS.textLight, marginTop: 2 },
-  roleBadge: { backgroundColor: '#F0F7FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  roleText: { fontSize: 10, fontWeight: '800', color: '#2196F3' },
-
-  // Regularised Tab styles
-  regDetail: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  dotInner: { width: 6, height: 6, borderRadius: 3 },
-  statusFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderRadius: 12, marginTop: 8 },
-  footerLabel: { fontSize: 12, fontWeight: '800', color: COLORS.text },
-  footerSub: { fontSize: 10, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
-  statusTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, ...SHADOWS.light },
-  statusTagText: { fontSize: 10, fontWeight: '900' },
+  punchAddressBox: { flex: 1, paddingHorizontal: 12 },
+  addressText: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
+  syncBox: { width: 24, alignItems: 'center' },
+  noDetailText: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 20, ...SHADOWS.light },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
-  emptySub: { fontSize: 14, color: COLORS.textMuted, textAlign: 'center', marginTop: 8, lineHeight: 20 },
 });
 
 export default AttendanceScreen;

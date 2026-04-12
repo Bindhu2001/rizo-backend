@@ -65,15 +65,7 @@ function TabNavigator({ route }) {
           tabBarIcon: ({ color }) => <Home color={color} size={24} strokeWidth={2.5} />,
         }}
       />
-      <Tab.Screen
-        name="HistoryTab"
-        component={AttendanceRegScreen}
-        initialParams={{ user: route.params?.user, initialTab: 'LOG' }}
-        options={{
-          tabBarLabel: 'History',
-          tabBarIcon: ({ color }) => <Clock color={color} size={24} strokeWidth={2.5} />,
-        }}
-      />
+
       <Tab.Screen
         name="LeaveTab"
         component={LeaveScreen}

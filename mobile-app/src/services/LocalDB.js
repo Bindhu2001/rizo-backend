@@ -217,6 +217,14 @@ export const clearUserSession = async () => {
 };
 
 // ─── History & Other Methods ──────────────────────────────────────────────────
+export const getRawPunchesForMonth = async (userId, monthStr) => {
+  const database = await initDB();
+  return await database.getAllAsync(
+    `SELECT * FROM attendance WHERE user_id = ? AND punch_time LIKE ? ORDER BY punch_time DESC`,
+    [userId, `${monthStr}%`]
+  );
+};
+
 export const getTodayLocalHistory = async (userId) => {
   const database = await initDB();
   const todayStart = new Date();

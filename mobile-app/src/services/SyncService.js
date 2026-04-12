@@ -126,17 +126,24 @@ const SyncService = {
               const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
               if (geo && geo.length > 0) {
                 const r = geo[0];
-                const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
+                const parts = [
+                  r.name, 
+                  r.street, 
+                  r.district || r.subregion,
+                  r.city || r.locality, 
+                  r.region, 
+                  r.postalCode
+                ].filter(Boolean);
+                
                 if (parts.length > 0) {
                   const newAddress = [...new Set(parts)].join(', ');
                   item.address = newAddress;
-
                   // Save the newly resolved address in DB for later use
                   await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
                 }
               }
             } catch (e) {
-              console.log('[SyncService] Reverse geocode failed for offline lat/lng:', e);
+              console.log('[SyncService] Reverse geocode failed for attendance sync:', e.message);
             }
           }
         }
@@ -205,21 +212,31 @@ const SyncService = {
         let storedLng = parseFloat(item.longitude) || 0;
         let finalLoc = item.location;
         
-        // Reverse Geocode if generated offline
+        // Resolve human-readable address if it was saved as Lat/Lng while offline
         if (!finalLoc || finalLoc === 'Unable to fetch location' || finalLoc === 'Unknown Location' || finalLoc.startsWith('Lat:')) {
-          if (Math.abs(storedLat) > 0.0001) {
+          if (Math.abs(storedLat) > 0.01) {
             try {
               const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
               if (geo && geo.length > 0) {
                 const r = geo[0];
-                const parts = [r.name || r.street, r.district || r.city, r.region, r.country].filter(Boolean);
+                // Unified comprehensive address parts
+                const parts = [
+                  r.name, 
+                  r.street, 
+                  r.district || r.subregion,
+                  r.city || r.locality, 
+                  r.region, 
+                  r.postalCode
+                ].filter(Boolean);
+                
                 if (parts.length > 0) {
                   finalLoc = [...new Set(parts)].join(', ');
+                  // Update local DB so UI reflects the resolved address too
                   await db.runAsync("UPDATE client_visits SET location = ? WHERE id = ?", [finalLoc, item.id]);
                 }
               }
             } catch (e) {
-              console.log('[SyncService] reverse geocode failed for offline visit');
+              console.log('[SyncService] Reverse geocode failed during sync:', e.message);
             }
           }
         }

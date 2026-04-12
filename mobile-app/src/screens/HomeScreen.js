@@ -66,8 +66,9 @@ const HomeScreen = ({ navigation, route }) => {
     initDB().then(() => {
       fetchStatus();
       checkOfflinePunches();
+      // Delay location permission slightly to avoid layout jumps during initial render
+      setTimeout(fetchLocation, 1000);
     });
-    fetchLocation();
 
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
@@ -369,7 +370,7 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* 2×2 GRID */}
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('AttendanceReg', { initialTab: 'LOG' })}>
+          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance')}>
             <View style={[styles.gridIcon, { backgroundColor: '#E8F5E9' }]}>
               <Fingerprint color="#2ECC71" size={20} />
             </View>
@@ -489,9 +490,9 @@ const HomeScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20 },
+  container: { flex: 1, backgroundColor: '#F9FAFB', overflow: 'hidden' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
+  scroll: { flexGrow: 1, padding: 20 },
 
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },

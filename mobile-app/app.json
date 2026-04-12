@@ -26,7 +26,9 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
@@ -36,17 +38,22 @@
     "web": {
       "favicon": "./assets/logo.png"
     },
+    "plugins": [
+      [
+        "expo-sqlite"
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
+        }
+      ]
+    ],
     "extra": {
       "eas": {
-        "projectId": "df684a97-24e9-442d-81bc-d777f776a570"
+        "projectId": "beed38ea-7f0d-4ffe-8cbe-85e070b8b4a1"
       }
     },
-    "owner": "bindhu_13",
-    "plugins": [
-      ["expo-sqlite"],
-      ["expo-location", {
-        "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
-      }]
-    ]
+    "owner": "bindu_01"
   }
 }

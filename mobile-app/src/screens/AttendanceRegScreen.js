@@ -239,43 +239,100 @@ const LogCard = ({ item, regMap, onRegularise }) => {
   );
 };
 
-const lc = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, ...SHADOWS.light },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  date: { fontSize: 16, fontWeight: '800', color: '#111827' },
-  shift: { fontSize: 12, color: '#9CA3AF', marginTop: 3, fontWeight: '600' },
-  woBadge: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  woText: { fontSize: 10, color: '#9CA3AF', fontWeight: '800' },
-
-  punchContainer: { position: 'relative', marginTop: 8 },
-  punchLine: { 
-    position: 'absolute', 
-    top: 14, bottom: 20, left: 8, 
-    width: 2, 
-    backgroundColor: '#F3F4F6',
-    zIndex: -1
-  },
-  punchRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  iconWrap: { width: 18, alignItems: 'center', marginTop: 2, backgroundColor: '#FFF' },
-  dotGreen: { width: 16, height: 16, borderRadius: 8, backgroundColor: '#2ECC71', borderWidth: 3.5, borderColor: '#DCFCE7' },
+// Attendance Log Card matching the premium history design + Reg Status
+const LogCard = ({ item, regMap, onRegularise }) => {
+  const punchIn = item.punch_in_time ? (item.punch_in_time.split(' ')[1]?.slice(0, 5) || item.punch_in_time) : '---';
+  const punchOut = item.punch_out_time ? (item.punch_out_time.split(' ')[1]?.slice(0, 5) || item.punch_out_time) : '---';
   
-  punchInfo: { flex: 1, marginLeft: 16 },
-  missingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  missingTitle: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
-  missingText: { fontSize: 11, fontWeight: '800', color: '#F44336', textTransform: 'uppercase' },
-  regBtn: { backgroundColor: '#D32F2F', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
-  regBtnText: { color: '#FFF', fontSize: 10, fontWeight: '900' },
+  const d = new Date(item.date);
+  const dateNum = d.getDate().toString().padStart(2, '0');
+  const mDay = d.toLocaleDateString('en-US', { month: 'short', weekday: 'short' }).toUpperCase().split(' ');
+  const displayMonthDay = `${mDay[0]}, ${mDay[1]}`;
 
-  filledRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeText: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  locText: { fontSize: 11, color: '#9CA3AF', marginTop: 2, fontWeight: '500' },
-  roleBadge: { backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  roleText: { fontSize: 10, fontWeight: '900', color: '#1976D2' },
+  const isPresent = item.punch_in_time && item.punch_out_time;
+  const statusLabel = isPresent ? 'P/P' : (item.status === 'WEEKLY_OFF' ? 'WO' : 'A/A');
+  const statusColor = isPresent ? '#2ECC71' : (item.status === 'WEEKLY_OFF' ? '#9CA3AF' : '#E91E63');
+  const statusBg = isPresent ? '#E8F5E9' : (item.status === 'WEEKLY_OFF' ? '#F3F4F6' : '#FCE4EC');
 
-  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 16, padding: 14, borderRadius: 16, backgroundColor: '#F9FAFB' },
-  regTitle: { fontSize: 13, fontWeight: '800', color: '#111827', marginBottom: 2 },
-  regMsg: { fontSize: 11, color: '#6B7280', fontWeight: '500', lineHeight: 16 },
-  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: '#FFF', ...SHADOWS.light },
+  const regsForDate = regMap[item.date] || [];
+
+  return (
+    <View style={lc.card}>
+      <TouchableOpacity 
+        style={lc.mainRow} 
+        activeOpacity={0.8}
+        onPress={() => !item.punch_in_time ? onRegularise(item, 'IN') : (!item.punch_out_time ? onRegularise(item, 'OUT') : null)}
+      >
+        <View style={lc.dateBox}>
+          <Text style={lc.dateNum}>{dateNum}</Text>
+          <Text style={lc.monthDay}>{displayMonthDay}</Text>
+        </View>
+
+        <View style={lc.infoCol}>
+          <Text style={lc.shiftTitle} numberOfLines={1}>
+            {item.shift ? item.shift.replace(/_/g, ' ') : 'Flexible Office'} - 09:30 AM - 05:30 PM
+          </Text>
+          <View style={lc.punchRow}>
+            <View style={lc.punchItem}>
+              <ClockIcon />
+              <Text style={lc.punchTime}>{punchIn} <Text style={lc.punchType}>IN</Text></Text>
+            </View>
+            <View style={[lc.punchItem, { marginLeft: 16 }]}>
+              <ClockIcon />
+              <Text style={lc.punchTime}>{punchOut} <Text style={lc.punchType}>OUT</Text></Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={[lc.badge, { backgroundColor: statusBg }]}>
+          <Text style={[lc.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* Reg Status Boxes */}
+      {regsForDate.map((reg, idx) => {
+        const s = reg.status?.toLowerCase() || 'pending';
+        let bg = '#FEF3C7', textColor = '#D97706', msg = reg.remarks;
+        if (s === 'approved') { bg = '#DCFCE7'; textColor = '#16A34A'; }
+        if (s === 'rejected') { bg = '#FEE2E2'; textColor = '#DC2626'; }
+
+        return (
+          <View key={idx} style={[lc.regBox, { backgroundColor: bg }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={lc.regTitle}>Regularisation Status</Text>
+              <Text style={lc.regMsg}>{msg || (s === 'pending' ? 'Processing...' : 'Request processed')}</Text>
+            </View>
+            <View style={lc.regBadge}>
+              <Text style={[lc.regBadgeText, { color: textColor }]}>{reg.status || 'Pending'}</Text>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+const lc = StyleSheet.create({
+  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 15, marginBottom: 15, ...SHADOWS.light },
+  mainRow: { flexDirection: 'row', alignItems: 'center' },
+  dateBox: { alignItems: 'center', paddingRight: 15, borderRightWidth: 1, borderRightColor: '#F3F4F6', width: 70 },
+  dateNum: { fontSize: 28, fontWeight: '900', color: '#111827' },
+  monthDay: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
+
+  infoCol: { flex: 1, paddingLeft: 15 },
+  shiftTitle: { fontSize: 14, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  punchRow: { flexDirection: 'row', alignItems: 'center' },
+  punchItem: { flexDirection: 'row', alignItems: 'center' },
+  punchTime: { fontSize: 13, fontWeight: '900', color: '#111827', marginLeft: 6 },
+  punchType: { fontSize: 10, fontWeight: '700', color: '#9CA3AF' },
+
+  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, minWidth: 45, alignItems: 'center' },
+  badgeText: { fontSize: 11, fontWeight: '900' },
+
+  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 12, padding: 12, borderRadius: 12 },
+  regTitle: { fontSize: 12, fontWeight: '900', color: '#111827' },
+  regMsg: { fontSize: 10, color: '#4B5563', marginTop: 1, fontWeight: '700' },
+  regBadge: { backgroundColor: '#FFF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginLeft: 10 },
   regBadgeText: { fontSize: 10, fontWeight: '900' },
 });
 
@@ -638,29 +695,27 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        <View style={s.monthSelector}>
-          <TouchableOpacity
-            onPress={() => {
-              const d = new Date(selectedMonth);
-              d.setMonth(d.getMonth() - 1);
-              setSelectedMonth(d);
-            }}
-            style={{ padding: 8 }}
-          >
-            <ChevronLeft color="#111827" size={16} />
-          </TouchableOpacity>
+        <TouchableOpacity 
+          style={s.monthDropdown}
+          activeOpacity={0.7}
+          onPress={() => {
+            const d = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() - 1, 1);
+            setSelectedMonth(d);
+          }}
+        >
+          <Text style={{color: COLORS.primary, fontWeight: '900', marginRight: 10}}>{"<"}</Text>
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
-          <TouchableOpacity
-            onPress={() => {
-              const d = new Date(selectedMonth);
-              d.setMonth(d.getMonth() + 1);
-              setSelectedMonth(d);
-            }}
-            style={{ padding: 8 }}
+          <ChevronDown color={COLORS.primary} size={15} style={{ marginLeft: 4 }} />
+          <TouchableOpacity 
+             onPress={() => {
+                const d = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+                setSelectedMonth(d);
+             }}
+             style={{paddingLeft: 20}}
           >
-            <ChevronRight color="#111827" size={16} />
+             <Text style={{color: COLORS.primary, fontWeight: '900'}}>{">"}</Text>
           </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -696,8 +751,8 @@ const s = StyleSheet.create({
   tabLabel: { fontSize: 14, fontWeight: '500', color: '#9CA3AF' },
   tabLabelActive: { color: '#E91E63', fontWeight: '700' },
   tabLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 3, backgroundColor: '#E91E63', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
-  monthSelector: { flexDirection: 'row', alignItems: 'center', paddingBottom: 14 },
-  monthText: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, marginBottom: 10, alignSelf: 'center' },
+  monthText: { fontSize: 13, fontWeight: '700', color: '#111827' },
 
   listScroll: { padding: 16, paddingBottom: 120 },
 
