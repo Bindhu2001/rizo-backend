@@ -32,21 +32,42 @@ const getAddress = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return { address: 'Location permission denied', lat: 0, lng: 0 };
 
-    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+    let loc = null;
+    try {
+      // Primary attempt: high accuracy with timeout
+      loc = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+      ]);
+    } catch (e) {
+      console.log('[Visits] High accuracy timeout/error, trying last known...');
+      loc = await Location.getLastKnownPositionAsync();
+    }
+
+    if (!loc) return { address: 'Location unavailable', lat: 0, lng: 0 };
+
     const lat = loc.coords.latitude;
     const lng = loc.coords.longitude;
-
     let addressStr = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
 
     try {
-      const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-      const g = geo?.[0] || {};
-      const parts = [g.name, g.street, g.city, g.region, g.country].filter(Boolean);
-      if (parts.length > 0) addressStr = parts.join(', ');
+      // Reverse geocode only if online
+      const net = await Network.getNetworkStateAsync();
+      if (net.isConnected) {
+        const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        if (geo && geo.length > 0) {
+          const g = geo[0];
+          const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
+          if (parts.length > 0) addressStr = [...new Set(parts)].join(', ');
+        }
+      }
     } catch (_) { }
 
     return { address: addressStr, lat, lng };
-  } catch (_) { return { address: 'Unable to fetch location', lat: 0, lng: 0 }; }
+  } catch (e) { 
+    console.log('[Visits] getAddress Error:', e);
+    return { address: 'Location check failed', lat: 0, lng: 0 }; 
+  }
 };
 
 // ─── Timeline Step Row (For Completed Visits) ─────────────────────────

@@ -24,6 +24,8 @@ export const API_ENDPOINTS = {
   GET_EXPENSE_TYPES: `${NEWAPP_URL}/get_expense_types`,
   GET_COUNTRIES: `${NEWAPP_URL}/countries`,
   UPDATE_PROFILE: `${NEWAPP_URL}/update_profile`,
+  SALARY_SLIP: `${NEWAPP_URL}/get_salary_slip`,
+  MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,
 };
 
 export default BASE_URL;

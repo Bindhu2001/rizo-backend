@@ -158,31 +158,38 @@ const HomeScreen = ({ navigation, route }) => {
 
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
       
-        if (logs.length > 0) {
-          const latest = logs[0];
-          // Robust check: If we have an IN time but no OUT time for the latest log entry, we are Punched In.
-          const serverType = (latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---')) ? 'IN' : 'NONE';
+      if (logs.length > 0) {
+        // Sort logs descending to ensure logs[0] is the most recent
+        const sortedLogs = [...logs].sort((a, b) => new Date(b.date + 'T' + (b.punch_in_time?.split(' ')[1] || '00:00:00')) - new Date(a.date + 'T' + (a.punch_in_time?.split(' ')[1] || '00:00:00')));
+        const latest = sortedLogs[0];
         
-        // REVERSAL GUARD: 
-        // Sync items must be zero AND at least 5 minutes must have passed since the last LOCAL punch.
-        // This gives the server enough time to process the 'swipe' and return it correctly in 'logs'.
+        // Robust check: If we have an IN time but no OUT time for the latest log entry, we are Punched In.
+        const serverType = (latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---')) ? 'IN' : 'NONE';
+        
         const pCnt = await getPendingCount();
         const timeSinceLastAction = Date.now() - lastActionTime.current;
         
-        // Extended reversal guard: 10 minutes to be absolutely sure server has processed 'logs'
-        if (pCnt === 0 && timeSinceLastAction > 600000) {
-          const finalType = serverType === 'IN' ? 'IN' : 'NONE';
-          setIsPunchedIn(finalType === 'IN');
-          setStatus({
-            lastType: finalType,
-            todayHistory: logs.filter(l => l.punch_date === format(new Date(), 'yyyy-MM-dd'))
-          });
+        // REVERSAL GUARD: Trust local SQLite as the primary source of truth for today's state
+        // because ATTENDANCE_LOGS groups by day and may parse as 'NONE' if there are multiple punches.
+        if (pCnt === 0 || timeSinceLastAction > 900000) { // 15 mins
+          
+          let finalType = localType === 'IN' ? 'IN' : 'NONE';
+          
+          // If server explicitly says we are logged in, but local doesn't know (e.g. fresh install or logged in from another device), honor it
+          if (serverType === 'IN' && localType !== 'IN') {
+             finalType = 'IN';
+          }
+          
+          // Only update if it's different to prevent layout jumps
+          if (finalType !== isPunchedIn) {
+             setIsPunchedIn(finalType === 'IN');
+             setStatus(prev => ({ ...prev, lastType: finalType }));
+          }
 
-          if (finalType === 'IN' && latest.punch_in_time) {
+          // Update punch time string if available and missing locally
+          if (finalType === 'IN' && latest.punch_in_time && !punchInTime) {
             setPunchInTime(new Date(latest.punch_in_time.replace(' ', 'T')));
           }
-        } else {
-          console.log(`[Home] Cloud sync deferred: pCnt=${pCnt}, wait=${Math.round((600000 - timeSinceLastAction)/1000)}s`);
         }
       }
     } catch (e) {

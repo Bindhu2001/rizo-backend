@@ -252,10 +252,8 @@ const ProfileScreen = ({ navigation, route }) => {
       />
     </View>
   );
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { isEditing ? attemptDiscard() : navigation.goBack() }} style={styles.backBtn}>
           <ChevronLeft color={COLORS.text} size={28} />
@@ -436,33 +434,35 @@ const ProfileScreen = ({ navigation, route }) => {
         onSelect={setEditCountry}
       />
 
-      {/* Discard Modal Form */}
-      {showDiscardModal && (
-        <Modal visible transparent animationType="fade" statusBarTranslucent>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <View style={styles.modalCircleOuter}>
-                <View style={styles.modalCircleInner}>
-                  <X color="#DC2626" size={32} strokeWidth={2.5} />
-                </View>
-              </View>
-              <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
-              <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
-
-              <View style={styles.modalActionRow}>
-                <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
-                  <Text style={styles.modalBtnNoText}>No, Go back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
-                  <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
-                </TouchableOpacity>
+  {/* Discard Modal Form */ }
+  {
+    showDiscardModal && (
+      <Modal visible transparent animationType="fade" statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalCircleOuter}>
+              <View style={styles.modalCircleInner}>
+                <X color="#DC2626" size={32} strokeWidth={2.5} />
               </View>
             </View>
-          </View>
-        </Modal>
-      )}
+            <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
+            <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
 
-    </SafeAreaView>
+            <View style={styles.modalActionRow}>
+              <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
+                <Text style={styles.modalBtnNoText}>No, Go back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
+                <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    )
+  }
+
+    </SafeAreaView >
   );
 };
 

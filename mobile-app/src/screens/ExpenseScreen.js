@@ -216,8 +216,10 @@ const ExpenseScreen = ({ navigation, route }) => {
         axios.get(`${API_ENDPOINTS.GET_EXPENSE_TYPES}?user_id=${user.user_id}`).catch(() => null)
       ]);
 
-      if (expRes?.data?.success && expRes?.data?.data) {
-        setExpenses(expRes.data.data);
+      if (expRes?.data?.success && Array.isArray(expRes?.data?.data)) {
+        setExpenses(expRes.data.data.filter(Boolean));
+      } else {
+        setExpenses([]);
       }
 
       if (typeRes?.data?.success && typeRes?.data?.data) {
@@ -309,7 +311,7 @@ const ExpenseScreen = ({ navigation, route }) => {
               <Text style={c.remarks} numberOfLines={1}>Remarks : {item.remarks || 'None'}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
-              <Text style={c.amount}>₹{parseFloat(item.expenses_amount || 0).toFixed(2)}</Text>
+              <Text style={c.amount}>₹{(!isNaN(parseFloat(item.expenses_amount)) ? parseFloat(item.expenses_amount) : 0).toFixed(2)}</Text>
             </View>
           </View>
         </View>
@@ -472,7 +474,7 @@ const ExpenseScreen = ({ navigation, route }) => {
                   </View>
                 )}
 
-                <Text style={dm.amountLabel}>Claimed Amount: <Text style={{ color: '#111827' }}>₹{parseFloat(detailModal.expenses_amount || 0).toFixed(2)}</Text></Text>
+                <Text style={dm.amountLabel}>Claimed Amount: <Text style={{ color: '#111827' }}>₹{(!isNaN(parseFloat(detailModal.expenses_amount)) ? parseFloat(detailModal.expenses_amount) : 0).toFixed(2)}</Text></Text>
               </View>
             </View>
           </TouchableOpacity>

@@ -1,22 +1,189 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
-  DollarSign, ChevronLeft, MoreHorizontal, FileText, 
-  TrendingUp, Calendar, Download, Landmark, ShieldCheck, 
-  ChevronRight, ArrowUpRight, Wallet
+  ChevronLeft, MoreHorizontal, FileText, 
+  Calendar, Download, Landmark, ShieldCheck, 
+  ArrowUpRight, Wallet
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS } from '../components/Theme';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../constants/Config';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 const { width } = Dimensions.get('window');
 
-const SalaryScreen = ({ navigation }) => {
-  const salarySlips = [
-    { id: '1', month: 'January 2025', amount: '₹42,500.00', date: '01 Feb 2025', status: 'CREDITED' },
-    { id: '2', month: 'December 2024', amount: '₹42,500.00', date: '01 Jan 2025', status: 'CREDITED' },
-    { id: '3', month: 'November 2024', amount: '₹40,000.00', date: '01 Dec 2024', status: 'CREDITED' },
-  ];
+const SalaryScreen = ({ navigation, route }) => {
+  const user = route?.params?.user;
+  const [loading, setLoading] = useState(true);
+  const [salarySlips, setSalarySlips] = useState([]);
+  const [grossSalary, setGrossSalary] = useState(0);
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  useEffect(() => {
+    if (user && user.user_id) {
+      fetchSalaryData();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchSalaryData = async () => {
+    try {
+      setLoading(true);
+      // Fetch Monthly Gross
+      const grossRes = await axios.post(API_ENDPOINTS.MONTHLY_GROSS, { user_id: user.user_id }, { timeout: 10000 });
+      if (grossRes.data?.success && grossRes.data?.data?.gross_salary) {
+        setGrossSalary(grossRes.data.data.gross_salary);
+      }
+
+      // Fetch Salary Slips
+      const slipRes = await axios.post(API_ENDPOINTS.SALARY_SLIP, { user_id: user.user_id }, { timeout: 10000 });
+      if (slipRes.data?.success && Array.isArray(slipRes.data?.data)) {
+        setSalarySlips(slipRes.data.data);
+      }
+    } catch (e) {
+      console.log('Error fetching salary data', e.message);
+      // Fallback data for showcase if API fails
+      if (salarySlips.length === 0) {
+        // Alert.alert('Error', 'Unable to fetch salary details at the moment.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadPdf = async (slip) => {
+    if (downloadingId) return;
+    setDownloadingId(slip.month);
+
+    try {
+      const monthStr = formatMonth(slip.month);
+      let htmlContent = `
+        <html>
+        <head>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #581C87; padding-bottom: 20px; }
+            .title { font-size: 28px; font-weight: bold; color: #581C87; margin: 0; }
+            .subtitle { font-size: 16px; color: #666; margin-top: 5px; }
+            .emp-details { margin-bottom: 30px; }
+            .emp-details table { width: 100%; }
+            .emp-details td { padding: 5px 0; }
+            .section-title { font-size: 18px; font-weight: bold; color: #581C87; margin-top: 20px; margin-bottom: 10px; background: #F3E8FF; padding: 10px; border-radius: 5px; }
+            table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            table.data-table th, table.data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            table.data-table th { background-color: #F9FAFB; font-weight: bold; }
+            .right-align { text-align: right !important; }
+            .amt-col { width: 120px; }
+            .total-row { font-weight: bold; background-color: #F3E8FF !important; }
+            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #999; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <p class="title">Salary Slip</p>
+            <p class="subtitle">For the month of ${monthStr}</p>
+          </div>
+          
+          <div class="emp-details">
+            <table>
+              <tr>
+                <td><strong>Employee Name:</strong> ${user?.employee_name || 'N/A'}</td>
+                <td><strong>Employee ID:</strong> ${user?.emp_pkey || user?.user_id || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td><strong>Designation:</strong> ${user?.designation || 'N/A'}</td>
+                <td><strong>Department:</strong> ${user?.department || 'N/A'}</td>
+              </tr>
+            </table>
+          </div>
+      `;
+
+      let totalAdditions = 0;
+      let totalDeductions = 0;
+
+      if (slip.heads && Array.isArray(slip.heads)) {
+        slip.heads.forEach(head => {
+          htmlContent += `<div class="section-title">${head.head_desc}</div>`;
+          htmlContent += `
+            <table class="data-table">
+              <tr>
+                <th>Description</th>
+                <th class="amt-col right-align">Amount (₹)</th>
+              </tr>
+          `;
+          
+          if (head.items && Array.isArray(head.items)) {
+            head.items.forEach(item => {
+              const amt = Math.abs(parseFloat(item.amount) || 0);
+              if (item.operator === 'Addition') totalAdditions += amt;
+              else if (item.operator === 'Deduction') totalDeductions += amt;
+              
+              htmlContent += `
+                <tr>
+                  <td>${item.item_desc}</td>
+                  <td class="right-align">${amt.toFixed(2)}</td>
+                </tr>
+              `;
+            });
+          }
+          htmlContent += `</table>`;
+        });
+      }
+
+      const netSalary = totalAdditions - totalDeductions;
+
+      htmlContent += `
+          <table class="data-table">
+            <tr class="total-row">
+              <td>Gross Additions</td>
+              <td class="right-align amt-col">₹${totalAdditions.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row">
+              <td>Total Deductions</td>
+              <td class="right-align amt-col">₹${totalDeductions.toFixed(2)}</td>
+            </tr>
+            <tr class="total-row" style="background-color: #EDE9FE !important; font-size: 18px;">
+              <td><strong>NET SALARY PAYABLE</strong></td>
+              <td class="right-align amt-col"><strong>₹${netSalary.toFixed(2)}</strong></td>
+            </tr>
+          </table>
+          
+          <div class="footer">
+            <p>This is a computer generated document and does not require a physical signature.</p>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      
+      const isSharingAvailable = await Sharing.isAvailableAsync();
+      if (isSharingAvailable) {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Salary_Slip_${monthStr}.pdf` });
+      } else {
+        Alert.alert('Error', 'Sharing/Downloading is not available on this device');
+      }
+
+    } catch (e) {
+      console.error(e);
+      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const formatMonth = (str) => {
+    if (!str) return '';
+    try {
+      const [year, month] = str.split('-');
+      const d = new Date(year, parseInt(month) - 1, 1);
+      return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    } catch(e) { return str; }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -31,97 +198,129 @@ const SalaryScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        
-        {/* Salary Card */}
-        <LinearGradient
-           colors={[COLORS.primaryDeep, '#4527A0']}
-           start={{ x: 0, y: 0 }}
-           end={{ x: 1, y: 1 }}
-           style={styles.salaryCard}
-        >
-           <View style={styles.cardTop}>
-             <View>
-              <Text style={styles.cardLabel}>Next Payout</Text>
-              <Text style={styles.amount}>₹42,500.00</Text>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primaryDeep} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+          
+          {/* Salary Card */}
+          <LinearGradient
+             colors={[COLORS.primaryDeep, '#4527A0']}
+             start={{ x: 0, y: 0 }}
+             end={{ x: 1, y: 1 }}
+             style={styles.salaryCard}
+          >
+             <View style={styles.cardTop}>
+               <View>
+                <Text style={styles.cardLabel}>Monthly Gross Salary</Text>
+                <Text style={styles.amount}>₹{grossSalary ? grossSalary.toLocaleString('en-IN') : '---'}</Text>
+               </View>
+               <View style={styles.statusBadge}>
+                 <Text style={styles.statusText}>ACTIVE</Text>
+               </View>
              </View>
-             <View style={styles.statusBadge}>
-               <Text style={styles.statusText}>ACTIVE</Text>
+             
+             <View style={styles.cardBottom}>
+               <View style={styles.nextPayRow}>
+                  <Calendar color="rgba(255,255,255,0.7)" size={14} />
+                  <Text style={styles.nextPayText}>{user?.department || 'Employee'}</Text>
+               </View>
+               <TouchableOpacity style={styles.slipBtn}>
+                 <Wallet color={COLORS.primaryDeep} size={16} />
+                 <Text style={styles.slipBtnText}>View Breakdown</Text>
+               </TouchableOpacity>
              </View>
-           </View>
-           
-           <View style={styles.cardBottom}>
-             <View style={styles.nextPayRow}>
-                <Calendar color="rgba(255,255,255,0.7)" size={14} />
-                <Text style={styles.nextPayText}>Pate Date: 01 March 2025</Text>
-             </View>
-             <TouchableOpacity style={styles.slipBtn}>
-               <FileText color={COLORS.primaryDeep} size={16} />
-               <Text style={styles.slipBtnText}>Current Slip</Text>
-             </TouchableOpacity>
-           </View>
-        </LinearGradient>
+          </LinearGradient>
 
-        {/* Bank Details */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Bank Details</Text>
-        </View>
-        <View style={styles.bankCard}>
-          <View style={styles.bankIcon}>
-            <Landmark color={COLORS.primaryDeep} size={24} />
+          {/* Bank Details */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Bank Details</Text>
           </View>
-          <View style={styles.bankInfo}>
-            <Text style={styles.bankName}>Chase Bank (Salary)</Text>
-            <Text style={styles.accNo}>**** **** 4290</Text>
+          <View style={styles.bankCard}>
+            <View style={styles.bankIcon}>
+              <Landmark color={COLORS.primaryDeep} size={24} />
+            </View>
+            <View style={styles.bankInfo}>
+              <Text style={styles.bankName}>Direct Deposit (Salary)</Text>
+              <Text style={styles.accNo}>Linked to Account</Text>
+            </View>
+            <View style={styles.verifiedBadge}>
+              <ShieldCheck color="#2ECC71" size={18} />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
           </View>
-          <View style={styles.verifiedBadge}>
-            <ShieldCheck color="#2ECC71" size={18} />
-            <Text style={styles.verifiedText}>Verified</Text>
-          </View>
-        </View>
 
-        {/* Quick Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E1F5FE' }]}><Wallet color="#039BE5" size={18} /></View>
-            <Text style={styles.statVal}>₹5.1L</Text>
-            <Text style={styles.statLabel}>Annual CTC</Text>
+          {/* Quick Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: '#E1F5FE' }]}><Wallet color="#039BE5" size={18} /></View>
+              <Text style={styles.statVal}>₹{(grossSalary * 12).toLocaleString('en-IN') || '---'}</Text>
+              <Text style={styles.statLabel}>Annual CTC Configured</Text>
+            </View>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}><ArrowUpRight color="#2ECC71" size={18} /></View>
+              <Text style={styles.statVal}>{salarySlips.length}</Text>
+              <Text style={styles.statLabel}>Slips Generated</Text>
+            </View>
           </View>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}><ArrowUpRight color="#2ECC71" size={18} /></View>
-            <Text style={styles.statVal}>₹3,500</Text>
-            <Text style={styles.statLabel}>Bonus</Text>
+
+          {/* Payout History */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Payout History</Text>
+            <TouchableOpacity onPress={fetchSalaryData}><Text style={styles.seeAll}>Refresh</Text></TouchableOpacity>
           </View>
-        </View>
 
-        {/* Payout History */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Payout History</Text>
-          <TouchableOpacity><Text style={styles.seeAll}>Download Slips</Text></TouchableOpacity>
-        </View>
-
-        <View style={styles.listCard}>
-          {salarySlips.map((slip, index) => (
-            <TouchableOpacity key={slip.id} style={[styles.slipItem, index === salarySlips.length -1 && { borderBottomWidth: 0 }]}>
-              <View style={styles.slipIcon}>
-                <FileText color={COLORS.textLight} size={20} />
+          <View style={styles.listCard}>
+            {salarySlips.length === 0 ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: COLORS.textLight }}>No salary slips found</Text>
               </View>
-              <View style={styles.slipMain}>
-                <Text style={styles.slipMonth}>{slip.month}</Text>
-                <Text style={styles.slipDate}>Paid on {slip.date}</Text>
-              </View>
-              <View style={styles.slipEnd}>
-                <Text style={styles.slipAmount}>{slip.amount}</Text>
-                <View style={styles.downloadBtn}>
-                   <Download color={COLORS.textMuted} size={14} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ) : salarySlips.map((slip, index) => {
+              // Calculate rough amount for display if possible
+              let dispAmountStr = '---';
+              if (slip.heads) {
+                 let tAdd = 0, tDed = 0;
+                 slip.heads.forEach(h => {
+                    if(h.items) {
+                       h.items.forEach(i => {
+                          const val = Math.abs(parseFloat(i.amount) || 0);
+                          if (i.operator === 'Addition') tAdd += val;
+                          if (i.operator === 'Deduction') tDed += val;
+                       });
+                    }
+                 });
+                 dispAmountStr = (tAdd - tDed).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+              }
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+              return (
+                <TouchableOpacity onPress={() => handleDownloadPdf(slip)} key={slip.month || index} style={[styles.slipItem, index === salarySlips.length -1 && { borderBottomWidth: 0 }]}>
+                  <View style={styles.slipIcon}>
+                    <FileText color={COLORS.textLight} size={20} />
+                  </View>
+                  <View style={styles.slipMain}>
+                    <Text style={styles.slipMonth}>{formatMonth(slip.month)}</Text>
+                    <Text style={styles.slipDate}>Slip available</Text>
+                  </View>
+                  <View style={styles.slipEnd}>
+                    <Text style={styles.slipAmount}>₹{dispAmountStr}</Text>
+                    <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownloadPdf(slip)} disabled={downloadingId === slip.month}>
+                       {downloadingId === slip.month ? (
+                          <ActivityIndicator size="small" color={COLORS.primaryDeep} />
+                       ) : (
+                          <Download color={COLORS.textMuted} size={14} />
+                       )}
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 };
