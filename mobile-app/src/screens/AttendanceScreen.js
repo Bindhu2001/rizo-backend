@@ -42,6 +42,8 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [logs, setLogs] = useState([]);
   const [rawPunches, setRawPunches] = useState([]);
   const [expandedDate, setExpandedDate] = useState(null);
+  const [devicePunches, setDevicePunches] = useState({});
+  const [fetchingDevicePunches, setFetchingDevicePunches] = useState(false);
 
   // Generate last 12 months for picker
   const pastMonths = [];
@@ -59,13 +61,14 @@ const AttendanceScreen = ({ navigation, route }) => {
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const attRes = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
-        user_id: user.user_id, month
-      }, { timeout: 10000 });
+      const attRes = await axios.get(API_ENDPOINTS.ATTENDANCE_PUNCHES, {
+        params: { user_id: user.user_id, month },
+        timeout: 10000 
+      });
       const resData = attRes.data;
       if (resData && Array.isArray(resData.data)) {
         setLogs(resData.data);
-      } else if (Array.isArray(resData)) {
+      } else if (resData && Array.isArray(resData)) {
         setLogs(resData);
       } else {
         setLogs([]);
@@ -78,6 +81,24 @@ const AttendanceScreen = ({ navigation, route }) => {
       setLogs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDevicePunches = async (date) => {
+    if (devicePunches[date]) return;
+    setFetchingDevicePunches(true);
+    try {
+      const res = await axios.get(API_ENDPOINTS.DEVICE_ATTENDANCE, {
+        params: { user_id: user.user_id, date },
+        timeout: 10000 
+      });
+      if (res.data && res.data.success === 1) {
+        setDevicePunches(prev => ({ ...prev, [date]: res.data.data || [] }));
+      }
+    } catch (e) {
+      console.log('Device punch fetch error', e);
+    } finally {
+      setFetchingDevicePunches(false);
     }
   };
 
@@ -108,8 +129,18 @@ const AttendanceScreen = ({ navigation, route }) => {
 
     const isExpanded = expandedDate === item.date;
     
-    // Sort day punches: Most recent first (DESC) with ultra-safety
-    const dayPunches = (rawPunches || [])
+    const handleExpandToggle = () => {
+      const nextDate = isExpanded ? null : item.date;
+      setExpandedDate(nextDate);
+      if (nextDate) fetchDevicePunches(item.date); 
+    };
+
+    // Use fetched device punches if available, otherwise fallback to local ones
+    const currentDevicePunches = devicePunches[item.date] || [];
+    const hasDevicePunches = currentDevicePunches.length > 0;
+
+    // ultra-safety for dayPunches (legacy/local fallback)
+    const localDayPunches = (rawPunches || [])
       .filter(rp => rp && rp.punch_time && item.date && rp.punch_time.includes(item.date))
       .sort((a, b) => {
         try {
@@ -124,7 +155,7 @@ const AttendanceScreen = ({ navigation, route }) => {
         <TouchableOpacity 
           style={[s.card, isExpanded && s.cardExpanded]} 
           activeOpacity={0.9}
-          onPress={() => setExpandedDate(isExpanded ? null : item.date)}
+          onPress={handleExpandToggle}
         >
           <View style={s.dateBox}>
             <Text style={s.dateNum}>{dateNum}</Text>
@@ -132,9 +163,6 @@ const AttendanceScreen = ({ navigation, route }) => {
           </View>
 
           <View style={s.infoCol}>
-            <Text style={s.shiftTitle} numberOfLines={1}>
-              {item.shift ? item.shift.replace(/_/g, ' ') : 'Flexible Office'} - 0930AM - 0530PM
-            </Text>
             <View style={s.punchRow}>
               <View style={s.punchItem}>
                 <Clock size={14} color="#9CA3AF" />
@@ -158,31 +186,47 @@ const AttendanceScreen = ({ navigation, route }) => {
         {isExpanded && (
           <View style={s.detailSection}>
             <Text style={s.detailTitle}>Detailed Punch History</Text>
-            {dayPunches.length === 0 ? (
-              <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
+            {fetchingDevicePunches && !hasDevicePunches ? (
+              <ActivityIndicator size="small" color="#6C5CE7" style={{ marginVertical: 10 }} />
             ) : (
-              dayPunches.map((p, idx) => (
-                <View key={p.id || idx} style={s.punchDetailRow}>
-                  <View style={s.punchTimeBox}>
-                    <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
-                    <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
-                      <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={s.punchAddressBox}>
-                    <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
-                  </View>
-
-                  <View style={s.syncBox}>
-                    {p.sync_status === 'SYNCED' ? (
-                      <Cloud size={16} color="#2ECC71" />
+                <>
+                {hasDevicePunches ? (
+                    currentDevicePunches.map((p, idx) => (
+                        <View key={idx} style={s.punchDetailRow}>
+                            <View style={s.punchTimeBox}>
+                                <Text style={s.punchTimeVal}>{formatPunchTime(p.LOGDATE)}</Text>
+                                <View style={[s.pBadge, { backgroundColor: p.C1?.toUpperCase() === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
+                                    <Text style={[s.pBadgeText, { color: p.C1?.toUpperCase() === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.C1?.toUpperCase()}</Text>
+                                </View>
+                            </View>
+                            
+                            <View style={s.punchAddressBox}>
+                                <Text style={s.shiftBadgeText} numberOfLines={1}>{p.day_time_desc}</Text>
+                                <Text style={s.addressText} numberOfLines={2}>{p.C3 || 'Location Attached'}</Text>
+                            </View>
+                        </View>
+                    ))
+                ) : (
+                    localDayPunches.length === 0 ? (
+                        <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
                     ) : (
-                      <CloudOff size={16} color="#E91E63" />
-                    )}
-                  </View>
-                </View>
-              ))
+                        localDayPunches.map((p, idx) => (
+                            <View key={p.id || idx} style={s.punchDetailRow}>
+                                <View style={s.punchTimeBox}>
+                                    <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
+                                    <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
+                                        <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
+                                    </View>
+                                </View>
+                                
+                                <View style={s.punchAddressBox}>
+                                    <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
+                                </View>
+                            </View>
+                        ))
+                    )
+                )}
+                </>
             )}
           </View>
         )}
@@ -343,6 +387,7 @@ const s = StyleSheet.create({
   pBadgeText: { fontSize: 10, fontWeight: '900' },
   
   punchAddressBox: { flex: 1, paddingHorizontal: 12 },
+  shiftBadgeText: { fontSize: 10, fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
   addressText: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
   syncBox: { width: 24, alignItems: 'center' },
   noDetailText: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },

@@ -248,15 +248,15 @@ const SyncService = {
            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         };
 
-        const postVisit = async (stepType, timeStr) => {
+        const postVisit = async (stepType, timeStr, lat, lng, addr) => {
             const payload = {
               stepinout: stepType,
               customer_name: item.client_name,
               purpose: item.purpose,
-              latitude: `${storedLat}`,
-              longitude: `${storedLng}`,
+              latitude: `${lat || 0}`,
+              longitude: `${lng || 0}`,
               accuracy: 20,
-              location: finalLoc,
+              location: addr || finalLoc,
               contact_person: item.contact_person,
               contact_number: item.contact_number,
               created_time: formatSyncTime(timeStr)
@@ -270,11 +270,17 @@ const SyncService = {
 
         // If it got to REACHED or beyond, we post Step In
         if (item.step_in_time || item.start_time) {
-             await postVisit("Step In", item.step_in_time || item.start_time);
+             const sLat = item.step_in_lat || item.latitude || 0;
+             const sLng = item.step_in_lng || item.longitude || 0;
+             const sAddr = item.step_in_address || item.location;
+             await postVisit("Step In", item.step_in_time || item.start_time, sLat, sLng, sAddr);
         }
         // If it was fully COMPLETED, we additionally post Step Out
         if (item.status === 'COMPLETED' && item.end_time) {
-             await postVisit("Step Out", item.end_time);
+             const eLat = item.end_lat || item.latitude || 0;
+             const eLng = item.end_lng || item.longitude || 0;
+             const eAddr = item.end_address || item.location;
+             await postVisit("Step Out", item.end_time, eLat, eLng, eAddr);
         }
         
         await db.runAsync("UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);

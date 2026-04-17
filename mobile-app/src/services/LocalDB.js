@@ -65,7 +65,13 @@ export const initDB = async () => {
         longitude       REAL,
         start_time      TEXT,
         step_in_time    TEXT,
+        step_in_lat     REAL,
+        step_in_lng     REAL,
+        step_in_address TEXT,
         end_time        TEXT,
+        end_lat         REAL,
+        end_lng         REAL,
+        end_address     TEXT,
         status          TEXT    DEFAULT 'SCHEDULED',
         sync_status     TEXT    DEFAULT 'PENDING',
         created_at      TEXT
@@ -104,12 +110,25 @@ export const initDB = async () => {
       );
     `);
 
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id          TEXT    PRIMARY KEY,
+        user_id     TEXT    NOT NULL,
+        title       TEXT    NOT NULL,
+        message     TEXT    NOT NULL,
+        type        TEXT    NOT NULL,
+        is_read     INTEGER DEFAULT 0,
+        sync_status TEXT    DEFAULT 'SYNCED',
+        created_at  TEXT    NOT NULL
+      );
+    `);
+
     // ─── Migrations ───
     // Column additions for existing tables (won't affect new installs)
     const migrations = [
       { table: 'attendance', cols: ['address', 'sync_status', 'is_offline'] },
       { table: 'user_profile', cols: ['password', 'email', 'phone', 'emp_pkey', 'designation'] },
-      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at'] },
+      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at', 'step_in_lat', 'step_in_lng', 'end_lat', 'end_lng', 'step_in_address', 'end_address'] },
       { table: 'leaves', cols: ['from_half', 'to_half', 'authorized_by', 'approved_by', 'contact_no', 'created_at'] },
       { table: 'attendance_reg', cols: ['actual_time', 'expected_time', 'reason', 'created_at'] }
     ];
@@ -193,8 +212,8 @@ export const updateUserProfileLocal = async (userId, data) => {
   const database = await initDB();
   try {
     await database.runAsync(
-      `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ? WHERE user_id = ?`,
-      [data.employee_name, data.department, data.designation, data.email, data.phone, userId]
+      `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ?, profile_pic = ?, date_of_birth = ? WHERE user_id = ?`,
+      [data.employee_name, data.department, data.designation, data.email, data.phone, data.profile_pic, data.date_of_birth, userId]
     );
   } catch (e) {
     console.error('[LocalDB] updateUserProfileLocal failed:', e);
@@ -264,12 +283,12 @@ export const updateVisitStatus = async (id, status, details = {}) => {
     params.push(details.startTime, details.lat || 0, details.lng || 0);
   }
   if (details.stepInTime) {
-    query += `, step_in_time = ?`;
-    params.push(details.stepInTime);
+    query += `, step_in_time = ?, step_in_lat = ?, step_in_lng = ?, step_in_address = ?`;
+    params.push(details.stepInTime, details.lat || 0, details.lng || 0, details.address || '');
   }
   if (details.endTime) {
-    query += `, end_time = ?`;
-    params.push(details.endTime);
+    query += `, end_time = ?, end_lat = ?, end_lng = ?, end_address = ?`;
+    params.push(details.endTime, details.lat || 0, details.lng || 0, details.address || '');
   }
   query += ` WHERE id = ?`;
   params.push(id);
@@ -312,3 +331,31 @@ export const getRegsLocal = async (userId) => {
   const database = await initDB();
   return await database.getAllAsync(`SELECT * FROM attendance_reg WHERE user_id = ? ORDER BY created_at DESC`, [userId]);
 };
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const saveNotificationLocal = async (notif) => {
+  const database = await initDB();
+  const id = `notif_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  await database.runAsync(
+    `INSERT INTO notifications (id, user_id, title, message, type, is_read, sync_status, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, 'SYNCED', ?)`,
+    [id, notif.userId, notif.title, notif.message, notif.type, new Date().toISOString()]
+  );
+  return id;
+};
+
+export const getNotificationsLocal = async (userId) => {
+  const database = await initDB();
+  return await database.getAllAsync(`SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC`, [userId]);
+};
+
+export const markNotificationsAsReadLocal = async (userId, id = null) => {
+  const database = await initDB();
+  if (id) {
+    await database.runAsync(`UPDATE notifications SET is_read = 1 WHERE id = ?`, [id]);
+  } else {
+    await database.runAsync(`UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`, [userId]);
+  }
+};
+

@@ -102,7 +102,7 @@ const SplashScreen = ({ navigation }) => {
         hasRevealed.z = true;
         Animated.parallel([
           Animated.timing(zOp, { toValue: 1, delay: 500, duration: 800, useNativeDriver: true }),
-          Animated.spring(zY, { toValue: 0, delay: 500, tension: 35, friction: 6, useNativeDriver: true })
+          Animated.spring(zY, { toValue: 0, delay: 400, tension: 35, friction: 6, useNativeDriver: true })
         ]).start();
       }
     });

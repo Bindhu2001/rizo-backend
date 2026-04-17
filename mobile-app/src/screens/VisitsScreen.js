@@ -154,13 +154,13 @@ const VisitCard = ({ visit, onStepIn, onStepOut }) => {
 
       <View style={cs.timeline}>
         {hasStart && (
-          <TimelineStep time={fmtTime(visit.start_time)} location={location} label="START" labelBg="#EDE9FE" labelColor="#7C3AED" done={hasStart} isLast={!hasStepIn} />
+          <TimelineStep time={fmtTime(visit.start_time)} location={visit.location || location} label="START" labelBg="#EDE9FE" labelColor="#7C3AED" done={hasStart} isLast={!hasStepIn} />
         )}
         {hasStepIn && (
-          <TimelineStep time={fmtTime(visit.step_in_time)} location={location} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
+          <TimelineStep time={fmtTime(visit.step_in_time)} location={visit.step_in_address || location} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
         )}
         {hasStepOut && (
-          <TimelineStep time={fmtTime(visit.end_time)} location={location} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
+          <TimelineStep time={fmtTime(visit.end_time)} location={visit.end_address || location} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
         )}
       </View>
     </View>
@@ -477,9 +477,9 @@ const VisitsScreen = ({ navigation, route }) => {
   const handleConfirmStepIn = async (details) => {
     setProcessing(true);
     try {
-      const { lat, lng } = await getAddress();
+      const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'step_in', {
-        stepInTime: new Date().toISOString(), lat, lng
+        stepInTime: new Date().toISOString(), lat, lng, address
       });
       await syncIfOnline();
       setShowStepInModal(false);
@@ -499,7 +499,11 @@ const VisitsScreen = ({ navigation, route }) => {
     setConfirmVisible(false);
     setProcessing(true);
     try {
-      await updateVisitStatus(pendingVisit.id, 'COMPLETED', { endTime: new Date().toISOString() });
+      const { lat, lng, address } = await getAddress();
+      await updateVisitStatus(pendingVisit.id, 'COMPLETED', { 
+        endTime: new Date().toISOString(),
+        lat, lng, address
+      });
       await syncIfOnline();
       fetchVisits();
     } catch (_) { Alert.alert('Error', 'Failed to step-out'); }

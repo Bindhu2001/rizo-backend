@@ -24,6 +24,7 @@ import AttendanceRegScreen from './src/screens/AttendanceRegScreen';
 import { COLORS, SHADOWS } from './src/components/Theme';
 import { initDB } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
+import NotificationManager from './src/services/NotificationManager';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -90,6 +91,10 @@ function TabNavigator({ route }) {
 
 // ─── Root App ──────────────────────────────────────────────────────────────
 export default function App() {
+  useEffect(() => {
+    NotificationManager.setup();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <NavigationContainer>

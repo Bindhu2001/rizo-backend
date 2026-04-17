@@ -179,6 +179,11 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
               <>
                 <Text style={lc.timeVal}>{punchInRaw}</Text>
                 <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+                {!isRegularisedTab && (
+                  <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, 'IN')}>
+                    <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
+                  </TouchableOpacity>
+                )}
               </>
             ) : (
               <>
@@ -207,6 +212,11 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
               <>
                 <Text style={lc.timeVal}>{punchOutRaw}</Text>
                 <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+                {!isRegularisedTab && (
+                  <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, 'OUT')}>
+                    <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
+                  </TouchableOpacity>
+                )}
               </>
             ) : (
               <>
@@ -228,10 +238,10 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 
       {/* Reg Statuses */}
       {isRegularisedTab && (regsForDate || []).map((reg, idx) => {
-        const s = reg.reg_status?.toLowerCase() || 'p';
+        const s = (reg.reg_status || reg.status || 'p').toLowerCase();
         let bgStyle = { backgroundColor: '#FFF3E0' }, textStyle = { color: '#F97316' }, statusString = 'Pending';
-        if (s === 'a') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
-        if (s === 'r') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
+        if (s === 'a' || s === 'approved') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
+        else if (s === 'r' || s === 'rejected') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
 
         return (
           <View key={idx} style={[lc.regBox, bgStyle]}>
@@ -270,6 +280,8 @@ const lc = StyleSheet.create({
   missingVal: { fontSize: 13, fontWeight: '900', color: '#DC2626', marginTop: 2 },
   regBtnAction: { backgroundColor: '#DC2626', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
   regBtnActionText: { color: '#FFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  regBtnActionSecondary: { backgroundColor: '#F3F4F6', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  regBtnActionTextSecondary: { color: '#4B5563', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   
   chipCol: { marginLeft: 10 },
   chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },

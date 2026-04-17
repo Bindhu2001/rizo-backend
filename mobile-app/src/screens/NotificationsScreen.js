@@ -1,67 +1,101 @@
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Bell, CheckCircle, Calendar, FileText, AlertCircle,
   ChevronLeft, MoreHorizontal, Circle, ArrowRight
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { getLoggedUser, getNotificationsLocal, markNotificationsAsReadLocal } from '../services/LocalDB';
+import NotificationManager from '../services/NotificationManager';
 
 const NotificationsScreen = ({ navigation }) => {
-  const notifications = [
-    {
-      id: '1',
-      title: 'Leave Approved',
-      message: 'Your Sick Leave for 12 Feb has been approved by HR.',
-      time: '10 mins ago',
-      icon: <CheckCircle color="#2ECC71" size={20} />,
-      bgColor: '#E8F5E9',
-      isUnread: true,
-    },
-    {
-      id: '2',
-      title: 'Missed Punch Out',
-      message: 'You missed your punch out yesterday. Please request regularization.',
-      time: '2 hours ago',
-      icon: <AlertCircle color="#F44336" size={20} />,
-      bgColor: '#FFF0F0',
-      isUnread: true,
-    },
-    {
-      id: '3',
-      title: 'Expense Claim Updated',
-      message: 'Your travel claim #EX102 was updated to Processing.',
-      time: 'Yesterday',
-      icon: <FileText color="#3498DB" size={20} />,
-      bgColor: '#E3F2FD',
-      isUnread: false,
-    },
-    {
-      id: '4',
-      title: 'System Maintenance',
-      message: 'The HRMS portal will be down for maintenance this weekend.',
-      time: '2 days ago',
-      icon: <Bell color="#FF9800" size={20} />,
-      bgColor: '#FFF3E0',
-      isUnread: false,
-    },
-  ];
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity style={[styles.notifCard, item.isUnread && styles.unreadNotif]} activeOpacity={0.7}>
-      <View style={[styles.iconBox, { backgroundColor: item.bgColor }]}>
-        {item.icon}
-      </View>
-      <View style={styles.notifMain}>
-        <View style={styles.notifTop}>
-          <Text style={[styles.notifTitle, item.isUnread && styles.unreadTitle]}>{item.title}</Text>
-          <Text style={styles.notifTime}>{item.time}</Text>
+  useEffect(() => {
+    loadData();
+    // Also trigger a background check when screen opens
+    NotificationManager.checkStatusChanges().then(() => loadData());
+  }, []);
+
+  const loadData = async () => {
+    const u = await getLoggedUser();
+    if (u) {
+      setUser(u);
+      const notifs = await getNotificationsLocal(u.user_id);
+      setNotifications(notifs);
+    }
+    setLoading(false);
+  };
+
+  const handleMarkAllRead = async () => {
+    if (user) {
+      await markNotificationsAsReadLocal(user.user_id);
+      loadData();
+    }
+  };
+
+  const handleNotifClick = async (item) => {
+    if (user && item.is_read === 0) {
+      await markNotificationsAsReadLocal(user.user_id, item.id);
+      loadData();
+    }
+  };
+
+  const getIconForType = (message) => {
+    const msg = message.toLowerCase();
+    if (msg.includes('approve')) return <CheckCircle color="#2ECC71" size={20} />;
+    if (msg.includes('reject')) return <AlertCircle color="#F44336" size={20} />;
+    if (msg.includes('expense')) return <FileText color="#3498DB" size={20} />;
+    return <Bell color="#FF9800" size={20} />;
+  };
+
+  const getBgColorForType = (message) => {
+    const msg = message.toLowerCase();
+    if (msg.includes('approve')) return '#E8F5E9';
+    if (msg.includes('reject')) return '#FFF0F0';
+    if (msg.includes('expense')) return '#E3F2FD';
+    return '#FFF3E0';
+  };
+
+  const formatTime = (isoString) => {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins || 1} mins ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return `Yesterday`;
+    return `${diffDays} days ago`;
+  };
+
+  const renderItem = ({ item }) => {
+    const isUnread = item.is_read === 0;
+    return (
+      <TouchableOpacity 
+        style={[styles.notifCard, isUnread && styles.unreadNotif]} 
+        activeOpacity={0.7}
+        onPress={() => handleNotifClick(item)}
+      >
+        <View style={[styles.iconBox, { backgroundColor: getBgColorForType(item.message) }]}>
+          {getIconForType(item.message)}
         </View>
-        <Text style={styles.notifSub} numberOfLines={2}>{item.message}</Text>
-      </View>
-      {item.isUnread && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
-  );
+        <View style={styles.notifMain}>
+          <View style={styles.notifTop}>
+            <Text style={[styles.notifTitle, isUnread && styles.unreadTitle]}>{item.title}</Text>
+            <Text style={styles.notifTime}>{formatTime(item.created_at)}</Text>
+          </View>
+          <Text style={styles.notifSub} numberOfLines={2}>{item.message}</Text>
+        </View>
+        {isUnread && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -77,24 +111,34 @@ const NotificationsScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.summaryBar}>
-        <Text style={styles.summaryText}>{notifications.filter(n => n.isUnread).length} Unread Notifications</Text>
-        <TouchableOpacity><Text style={styles.markAll}>Mark all as read</Text></TouchableOpacity>
+        <Text style={styles.summaryText}>
+          {notifications.filter(n => n.is_read === 0).length} Unread Notifications
+        </Text>
+        <TouchableOpacity onPress={handleMarkAllRead}>
+          <Text style={styles.markAll}>Mark all as read</Text>
+        </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={notifications}
-        renderItem={renderItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={(
-          <View style={styles.emptyGroup}>
-             <Bell color={COLORS.textMuted} size={60} style={{ marginBottom: 20 }} />
-             <Text style={styles.emptyTitle}>All caught up!</Text>
-             <Text style={styles.emptySub}>No new notifications for you</Text>
-          </View>
-        )}
-      />
+      {loading ? (
+        <View style={styles.emptyGroup}>
+          <ActivityIndicator size="large" color={COLORS.primaryDeep} />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={(
+            <View style={styles.emptyGroup}>
+              <Bell color={COLORS.textMuted} size={60} style={{ marginBottom: 20 }} />
+              <Text style={styles.emptyTitle}>All caught up!</Text>
+              <Text style={styles.emptySub}>No new notifications for you</Text>
+            </View>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 };

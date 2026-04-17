@@ -23,6 +23,7 @@ import {
   getPendingCount, initDB
 } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
+import NotificationManager from '../services/NotificationManager';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -55,20 +56,14 @@ const HomeScreen = ({ navigation, route }) => {
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [punchInTime, setPunchInTime] = useState(null);
 
   const toggleEvents = () => {
     setEventsOpen(!eventsOpen);
   };
 
   // ── Initialization ────────────────────────────────────────────────────────
-  useEffect(() => {
-    let timerId;
-    if (isPunchedIn) {
-      timerId = setInterval(() => setCurrentTime(new Date()), 1000);
-    }
-    return () => clearInterval(timerId);
-  }, [isPunchedIn]);
+  // Removed running timer to show static punch-in time as requested
 
   useEffect(() => {
     initDB().then(() => {
@@ -76,6 +71,7 @@ const HomeScreen = ({ navigation, route }) => {
       checkOfflinePunches();
       // Delay location permission slightly to avoid layout jumps during initial render
       setTimeout(fetchLocation, 1000);
+      NotificationManager.checkStatusChanges();
     });
 
     const unsubscribe = navigation.addListener('focus', () => {
@@ -138,6 +134,11 @@ const HomeScreen = ({ navigation, route }) => {
       setIsPunchedIn(localType === 'IN');
       setStatus(prev => ({ ...prev, lastType: localType }));
 
+      const localLogs = await getTodayLocalHistory(user.user_id);
+      if (localLogs && localLogs.length > 0) {
+        setPunchInTime(new Date(localLogs[0].punch_time));
+      }
+
       // Load persistent action time
       const lastStored = await AsyncStorage.getItem(`LAST_ACTION_${user.user_id}`);
       if (lastStored) lastActionTime.current = parseInt(lastStored, 10);
@@ -157,9 +158,10 @@ const HomeScreen = ({ navigation, route }) => {
 
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
       
-      if (logs.length > 0) {
-        const latest = logs[0];
-        const serverType = latest.in_out ? latest.in_out.toUpperCase() : 'NONE';
+        if (logs.length > 0) {
+          const latest = logs[0];
+          // Robust check: If we have an IN time but no OUT time for the latest log entry, we are Punched In.
+          const serverType = (latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---')) ? 'IN' : 'NONE';
         
         // REVERSAL GUARD: 
         // Sync items must be zero AND at least 5 minutes must have passed since the last LOCAL punch.
@@ -169,11 +171,16 @@ const HomeScreen = ({ navigation, route }) => {
         
         // Extended reversal guard: 10 minutes to be absolutely sure server has processed 'logs'
         if (pCnt === 0 && timeSinceLastAction > 600000) {
-          setIsPunchedIn(serverType === 'IN');
+          const finalType = serverType === 'IN' ? 'IN' : 'NONE';
+          setIsPunchedIn(finalType === 'IN');
           setStatus({
-            lastType: serverType,
+            lastType: finalType,
             todayHistory: logs.filter(l => l.punch_date === format(new Date(), 'yyyy-MM-dd'))
           });
+
+          if (finalType === 'IN' && latest.punch_in_time) {
+            setPunchInTime(new Date(latest.punch_in_time.replace(' ', 'T')));
+          }
         } else {
           console.log(`[Home] Cloud sync deferred: pCnt=${pCnt}, wait=${Math.round((600000 - timeSinceLastAction)/1000)}s`);
         }
@@ -295,6 +302,8 @@ const HomeScreen = ({ navigation, route }) => {
       // 5. Update UI state
       const isNowIn = type === 'IN';
       setIsPunchedIn(isNowIn);
+      if (isNowIn) setPunchInTime(new Date(punchTime));
+      else setPunchInTime(null);
 
       // 6. Background sync
       checkOfflinePunches();
@@ -373,7 +382,9 @@ const HomeScreen = ({ navigation, route }) => {
                   <MapPin color={COLORS.danger} size={20} />
                 )}
                 <View style={styles.punchedInTextStack}>
-                  <Text style={styles.punchedInTime}>{format(currentTime, 'hh:mm:ss a, dd MMM yyyy')}</Text>
+                  <Text style={styles.punchedInTime}>
+                    {punchInTime ? format(punchInTime, 'hh:mm:ss a, dd MMM yyyy') : '--:--:--'}
+                  </Text>
                   <Text style={styles.punchedInLoc} numberOfLines={1}>{locationName}</Text>
                 </View>
               </View>
