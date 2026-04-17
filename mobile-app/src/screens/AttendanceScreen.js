@@ -66,18 +66,24 @@ const AttendanceScreen = ({ navigation, route }) => {
         timeout: 10000 
       });
       const resData = attRes.data;
-      if (resData && Array.isArray(resData.data)) {
-        setLogs(resData.data);
-      } else if (resData && Array.isArray(resData)) {
-        setLogs(resData);
-      } else {
-        setLogs([]);
+      let parsed = [];
+      if (resData && resData.success === 1 && Array.isArray(resData.data)) {
+        parsed = resData.data;
+      } else if (resData && Array.isArray(resData.data)) {
+        parsed = resData.data;
+      } else if (Array.isArray(resData)) {
+        parsed = resData;
+      } else if (resData && resData.data && typeof resData.data === 'object') {
+        // Sometimes data is a keyed object — convert to array
+        parsed = Object.values(resData.data);
       }
+      console.log('[AttendanceScreen] Fetched', parsed.length, 'records for', month);
+      setLogs(parsed);
       
       const localPunches = await getRawPunchesForMonth(user.user_id, month);
       setRawPunches(localPunches || []);
     } catch (e) {
-      console.log('Fetch error', e);
+      console.log('Fetch error', e?.response?.data || e.message);
       setLogs([]);
     } finally {
       setLoading(false);
@@ -85,7 +91,6 @@ const AttendanceScreen = ({ navigation, route }) => {
   };
 
   const fetchDevicePunches = async (date) => {
-    if (devicePunches[date]) return;
     setFetchingDevicePunches(true);
     try {
       const res = await axios.get(API_ENDPOINTS.DEVICE_ATTENDANCE, {
@@ -93,10 +98,16 @@ const AttendanceScreen = ({ navigation, route }) => {
         timeout: 10000 
       });
       if (res.data && res.data.success === 1) {
-        setDevicePunches(prev => ({ ...prev, [date]: res.data.data || [] }));
+        const punches = Array.isArray(res.data.data) ? res.data.data : 
+                        (res.data.data ? Object.values(res.data.data) : []);
+        console.log('[AttendanceScreen] Device punches for', date, ':', punches.length);
+        setDevicePunches(prev => ({ ...prev, [date]: punches }));
+      } else {
+        setDevicePunches(prev => ({ ...prev, [date]: [] }));
       }
     } catch (e) {
-      console.log('Device punch fetch error', e);
+      console.log('Device punch fetch error', e?.response?.data || e.message);
+      setDevicePunches(prev => ({ ...prev, [date]: [] }));
     } finally {
       setFetchingDevicePunches(false);
     }
@@ -132,7 +143,7 @@ const AttendanceScreen = ({ navigation, route }) => {
     const handleExpandToggle = () => {
       const nextDate = isExpanded ? null : item.date;
       setExpandedDate(nextDate);
-      if (nextDate) fetchDevicePunches(item.date); 
+      if (nextDate) fetchDevicePunches(nextDate); // always re-fetch on expand
     };
 
     // Use fetched device punches if available, otherwise fallback to local ones
