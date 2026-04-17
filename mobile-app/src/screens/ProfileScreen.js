@@ -47,6 +47,32 @@ const sm = StyleSheet.create({
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
 
+// ─── Sub-Components (Declared outside to prevent re-mounting) ──
+const MenuItem = ({ icon, title, subtitle, onPress }) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+    <View style={styles.menuIconContainer}>
+      {icon}
+    </View>
+    <View style={styles.menuTextContainer}>
+      <Text style={styles.menuTitle}>{title}</Text>
+      {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+    </View>
+    <ChevronRight color={COLORS.textMuted} size={18} />
+  </TouchableOpacity>
+);
+
+const EditField = ({ label, value, onChangeText, keyboardType = 'default' }) => (
+  <View style={styles.editInputBox}>
+    <Text style={styles.editLabel}>{label}</Text>
+    <TextInput
+      style={styles.textInput}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+    />
+  </View>
+);
+
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 const ProfileScreen = ({ navigation, route }) => {
   const [user, setUser] = useState(route?.params?.user);
@@ -131,8 +157,9 @@ const ProfileScreen = ({ navigation, route }) => {
     }
     setLoading(true);
     try {
-      const fName = editName.trim();
-      const lName = '';
+      const nameParts = editName.trim().split(/\s+/);
+      const fName = nameParts[0] || '';
+      const lName = nameParts.slice(1).join(' ');
 
       const formData = new FormData();
       formData.append('user_id', user.user_id);
@@ -228,30 +255,6 @@ const ProfileScreen = ({ navigation, route }) => {
     ]);
   };
 
-  const MenuItem = ({ icon, title, subtitle, onPress }) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-      <View style={styles.menuIconContainer}>
-        {icon}
-      </View>
-      <View style={styles.menuTextContainer}>
-        <Text style={styles.menuTitle}>{title}</Text>
-        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
-      </View>
-      <ChevronRight color={COLORS.textMuted} size={18} />
-    </TouchableOpacity>
-  );
-
-  const EditField = ({ label, value, onChangeText, keyboardType = 'default' }) => (
-    <View style={styles.editInputBox}>
-      <Text style={styles.editLabel}>{label}</Text>
-      <TextInput
-        style={styles.textInput}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-      />
-    </View>
-  );
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -284,13 +287,7 @@ const ProfileScreen = ({ navigation, route }) => {
             <EditField label="Contact Number" value={editPhone} onChangeText={setEditPhone} keyboardType="phone-pad" />
             <EditField label="City" value={editCity} onChangeText={setEditCity} />
 
-            <View style={styles.editInputBox}>
-              <Text style={styles.editLabel}>State</Text>
-              <View style={styles.inputPickerRow}>
-                <TextInput style={styles.inputInner} value={editState} onChangeText={setEditState} />
-                <ChevronDown color={COLORS.textMuted} size={18} />
-              </View>
-            </View>
+            <EditField label="State" value={editState} onChangeText={setEditState} />
 
             <View style={styles.editInputBox}>
               <Text style={styles.editLabel}>Country</Text>

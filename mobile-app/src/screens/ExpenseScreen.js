@@ -211,9 +211,12 @@ const ExpenseScreen = ({ navigation, route }) => {
   const fetchExpenses = async () => {
     setLoading(true);
     try {
+      const fd = new FormData();
+      fd.append('user_id', user.user_id);
+      
       const [expRes, typeRes] = await Promise.all([
-        axios.get(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}?user_id=${user.user_id}`).catch(() => null),
-        axios.get(`${API_ENDPOINTS.GET_EXPENSE_TYPES}?user_id=${user.user_id}`).catch(() => null)
+        axios.post(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => null),
+        axios.post(`${API_ENDPOINTS.GET_EXPENSE_TYPES}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => null)
       ]);
 
       if (expRes?.data?.success && Array.isArray(expRes?.data?.data)) {
@@ -222,7 +225,7 @@ const ExpenseScreen = ({ navigation, route }) => {
         setExpenses([]);
       }
 
-      if (typeRes?.data?.success && typeRes?.data?.data) {
+      if (typeRes?.data?.success && Array.isArray(typeRes?.data?.data)) {
         const mappedTypes = typeRes.data.data.map(t => ({
           id: t.expense_type_pkey,
           name: t.expense_type_name
