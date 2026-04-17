@@ -91,17 +91,15 @@ class NotificationManager {
         // A simpler logic is: if a leave has status "Approved" or "Rejected", check if it exists in Notifications DB.
         
         for (const sLeave of serverLeaves) {
-            const serverStatus = sLeave.status?.toUpperCase() || 'PENDING';
-            if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED') {
-                const title = `Leave ${serverStatus === 'APPROVED' ? 'Approved' : 'Rejected'}`;
-                const reasonText = sLeave.reason ? ` (${sLeave.reason})` : '';
+            const serverStatus = (sLeave.leave_status || sLeave.status || '').toUpperCase();
+            const leaveId = sLeave.leave_id || sLeave.id;
+            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED') && leaveId) {
+                const title = `Leave ${serverStatus === 'APPROVED' ? 'Approved ✅' : 'Rejected ❌'}`;
                 const dateText = sLeave.from_date || 'your request';
-                const message = `Your leave request for ${dateText} was ${serverStatus.toLowerCase()}${reasonText}.`;
+                const message = `Your leave (${sLeave.leave_name || 'request'}) for ${dateText} was ${serverStatus.toLowerCase()}.`;
                 
-                // We use sLeave.id from PHP server as unique identifier for this event to avoid duplicate notifications
-                const uniqueNotifIdRef = `leave_${sLeave.id}_${serverStatus}`;
+                const uniqueNotifIdRef = `leave_${leaveId}_${serverStatus}`;
 
-                // Check if this specific event has been notified already
                 const { initDB } = require('./LocalDB');
                 const db = await initDB();
                 const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [uniqueNotifIdRef]);
