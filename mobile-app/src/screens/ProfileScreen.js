@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, Alert, Switch, TextInput, ActivityIndicator, Modal, Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  User, Shield, Bell, LogOut, ChevronRight, ChevronLeft, 
+import {
+  User, Shield, Bell, LogOut, ChevronRight, ChevronLeft,
   Mail, Phone, Briefcase, Camera, Edit2, Check, Calendar, ChevronDown, X
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -107,7 +107,7 @@ const ProfileScreen = ({ navigation, route }) => {
         // For country, we try to map if dbUser.country_id exists, 
         // fallback to setting it when we receive it
         if (dbUser.country_id) {
-           setEditCountry({ id: dbUser.country_id, country_name: dbUser.country_name || 'Selected' });
+          setEditCountry({ id: dbUser.country_id, country_name: dbUser.country_name || 'Selected' });
         }
         setEditIntlWorker(dbUser.international_worker === 'Y');
         setEditHandicap(dbUser.physical_handicap === 'Y');
@@ -120,8 +120,8 @@ const ProfileScreen = ({ navigation, route }) => {
   // Helper to sync country selection once we load countries
   useEffect(() => {
     if (countries.length > 0 && user?.country_id && !editCountry) {
-       const fd = countries.find(c => c.id == user.country_id);
-       if (fd) setEditCountry(fd);
+      const fd = countries.find(c => c.id == user.country_id);
+      if (fd) setEditCountry(fd);
     }
   }, [countries]);
 
@@ -147,9 +147,9 @@ const ProfileScreen = ({ navigation, route }) => {
       formData.append('physical_handicap', editHandicap ? 'Y' : 'N');
 
       if (editPicLocalUri) {
-         formData.append('profile_pic', { uri: editPicLocalUri, type: 'image/jpeg', name: 'profile.jpg' });
+        formData.append('profile_pic', { uri: editPicLocalUri, type: 'image/jpeg', name: 'profile.jpg' });
       } else {
-         formData.append('profile_pic', editPic || '');
+        formData.append('profile_pic', editPic || '');
       }
 
       // API Call
@@ -217,13 +217,13 @@ const ProfileScreen = ({ navigation, route }) => {
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Logout', 
-        style: 'destructive', 
+      {
+        text: 'Logout',
+        style: 'destructive',
         onPress: async () => {
           await clearUserSession();
           navigation.replace('Welcome');
-        } 
+        }
       }
     ]);
   };
@@ -244,7 +244,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const EditField = ({ label, value, onChangeText, keyboardType = 'default' }) => (
     <View style={styles.editInputBox}>
       <Text style={styles.editLabel}>{label}</Text>
-      <TextInput 
+      <TextInput
         style={styles.textInput}
         value={value}
         onChangeText={onChangeText}
@@ -265,15 +265,15 @@ const ProfileScreen = ({ navigation, route }) => {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-        
+
         {/* Profile Card / Edit Mode */}
         {isEditing ? (
           <View style={styles.formWrapper}>
             <View style={styles.profileSection}>
               <View style={styles.avatarWrapper}>
-                <Image 
-                  source={{ uri: editPic || user.profile_pic || `https://i.pravatar.cc/150?u=${user.user_id}` }} 
-                  style={styles.avatar} 
+                <Image
+                  source={{ uri: editPic || user.profile_pic || `https://i.pravatar.cc/150?u=${user.user_id}` }}
+                  style={styles.avatar}
                 />
                 <TouchableOpacity style={styles.editPencilBtn} onPress={handlePickImage} activeOpacity={0.8}>
                   <Edit2 color="#111827" size={14} />
@@ -304,9 +304,9 @@ const ProfileScreen = ({ navigation, route }) => {
 
             <View style={styles.switchRow}>
               <Text style={styles.switchLabel}>International Worker</Text>
-              <Switch 
-                value={editIntlWorker} 
-                onValueChange={setEditIntlWorker} 
+              <Switch
+                value={editIntlWorker}
+                onValueChange={setEditIntlWorker}
                 trackColor={{ false: '#E5E7EB', true: '#FCE7F3' }}
                 thumbColor={editIntlWorker ? '#E91E63' : '#FFF'}
               />
@@ -314,9 +314,9 @@ const ProfileScreen = ({ navigation, route }) => {
 
             <View style={styles.switchRow}>
               <Text style={styles.switchLabel}>Physically Handicapped</Text>
-              <Switch 
-                value={editHandicap} 
-                onValueChange={setEditHandicap} 
+              <Switch
+                value={editHandicap}
+                onValueChange={setEditHandicap}
                 trackColor={{ false: '#E5E7EB', true: '#FCE7F3' }}
                 thumbColor={editHandicap ? '#E91E63' : '#FFF'}
               />
@@ -336,15 +336,15 @@ const ProfileScreen = ({ navigation, route }) => {
         ) : (
           <View style={styles.profileSection}>
             <View style={styles.avatarWrapper}>
-              <Image 
-                source={{ uri: editPic || user.profile_pic || `https://i.pravatar.cc/150?u=${user.user_id}` }} 
-                style={styles.avatar} 
+              <Image
+                source={{ uri: editPic || user.profile_pic || `https://i.pravatar.cc/150?u=${user.user_id}` }}
+                style={styles.avatar}
               />
             </View>
 
             <Text style={styles.userName}>{user.employee_name}</Text>
             <Text style={styles.userRole}>{user.designation}</Text>
-            
+
             <View style={styles.statusBadge}>
               <View style={styles.dot} />
               <Text style={styles.statusText}>ACTIVE</Text>
@@ -369,7 +369,7 @@ const ProfileScreen = ({ navigation, route }) => {
               </View>
               <View style={styles.divider} />
               {user.email && (
-                 <>
+                <>
                   <View style={styles.infoRow}>
                     <View style={[styles.iconBox, { backgroundColor: '#FFF3E0' }]}><Mail color="#FF9800" size={18} /></View>
                     <View>
@@ -378,10 +378,10 @@ const ProfileScreen = ({ navigation, route }) => {
                     </View>
                   </View>
                   <View style={styles.divider} />
-                 </>
+                </>
               )}
               {user.phone && (
-                 <>
+                <>
                   <View style={styles.infoRow}>
                     <View style={[styles.iconBox, { backgroundColor: '#E0F2F1' }]}><Phone color="#009688" size={18} /></View>
                     <View>
@@ -390,7 +390,7 @@ const ProfileScreen = ({ navigation, route }) => {
                     </View>
                   </View>
                   <View style={styles.divider} />
-                 </>
+                </>
               )}
               <View style={styles.infoRow}>
                 <View style={[styles.iconBox, { backgroundColor: '#F3E5F5' }]}><Bell color={COLORS.primaryDeep} size={18} /></View>
@@ -403,17 +403,17 @@ const ProfileScreen = ({ navigation, route }) => {
 
             <Text style={styles.sectionTitle}>Account Settings</Text>
             <View style={styles.menuContainer}>
-              <MenuItem 
-                icon={<User color={COLORS.text} size={20} />} 
-                title="Personal Information" 
+              <MenuItem
+                icon={<User color={COLORS.text} size={20} />}
+                title="Personal Information"
                 subtitle="Change your avatar and name"
                 onPress={() => setIsEditing(true)}
               />
-              <MenuItem 
-                icon={<Shield color={COLORS.text} size={20} />} 
-                title="Privacy & Security" 
+              <MenuItem
+                icon={<Shield color={COLORS.text} size={20} />}
+                title="Privacy & Security"
                 subtitle="Password and biometric lock"
-                onPress={() => {}}
+                onPress={() => { }}
               />
             </View>
 
@@ -427,38 +427,38 @@ const ProfileScreen = ({ navigation, route }) => {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <SelectionModal 
-        visible={showCountryPicker} 
-        title="Select Country" 
-        options={countries} 
-        selectedValue={editCountry?.id} 
-        onClose={() => setShowCountryPicker(false)} 
-        onSelect={setEditCountry} 
+      <SelectionModal
+        visible={showCountryPicker}
+        title="Select Country"
+        options={countries}
+        selectedValue={editCountry?.id}
+        onClose={() => setShowCountryPicker(false)}
+        onSelect={setEditCountry}
       />
 
       {/* Discard Modal Form */}
       {showDiscardModal && (
         <Modal visible transparent animationType="fade" statusBarTranslucent>
-           <View style={styles.modalOverlay}>
-              <View style={styles.modalCard}>
-                <View style={styles.modalCircleOuter}>
-                   <View style={styles.modalCircleInner}>
-                     <X color="#DC2626" size={32} strokeWidth={2.5}/>
-                   </View>
-                </View>
-                <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
-                <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
-
-                <View style={styles.modalActionRow}>
-                  <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
-                    <Text style={styles.modalBtnNoText}>No, Go back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
-                    <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
-                  </TouchableOpacity>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalCircleOuter}>
+                <View style={styles.modalCircleInner}>
+                  <X color="#DC2626" size={32} strokeWidth={2.5} />
                 </View>
               </View>
-           </View>
+              <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
+              <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
+
+              <View style={styles.modalActionRow}>
+                <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
+                  <Text style={styles.modalBtnNoText}>No, Go back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
+                  <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </Modal>
       )}
 
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   profileSection: { alignItems: 'center', marginBottom: 32, width: '100%' },
   avatarWrapper: { position: 'relative', marginBottom: 24, marginTop: 10 },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FFF', ...SHADOWS.light },
-  
+
   // Custom Pencil for Mockup Edit
   editPencilBtn: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#FFF', width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
@@ -499,15 +499,15 @@ const styles = StyleSheet.create({
   // Edit Mode Specifics
   formWrapper: { width: '100%' },
   editInputBox: { marginBottom: 16, width: '100%' },
-  
+
   // For standard TextInput layout shown in mockup
   editLabel: { position: 'absolute', top: -8, left: 14, backgroundColor: '#F9FAFB', zIndex: 2, paddingHorizontal: 4, fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
-  textInput: { 
+  textInput: {
     backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 54,
     fontSize: 14, fontWeight: '600', color: COLORS.text,
     borderWidth: 1, borderColor: '#E5E7EB'
   },
-  
+
   inputPickerRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 54, borderWidth: 1, borderColor: '#E5E7EB', zIndex: 1
   },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   menuSubtitle: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
 
   // Logout
-  logoutBtn: { 
+  logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFF', paddingVertical: 18, borderRadius: 24,
     borderWidth: 1, borderColor: '#FEE2E2', ...SHADOWS.light, width: '100%'

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
-  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, Pressable 
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, Pressable
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChevronLeft, Plus, Calendar as CalendarIcon, ChevronDown, 
+import {
+  ChevronLeft, Plus, Calendar as CalendarIcon, ChevronDown,
   CheckCircle, FileText, X, Paperclip, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
@@ -98,22 +98,22 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
       <TouchableOpacity style={cal.overlay} activeOpacity={1} onPress={onClose}>
         <View style={cal.box}>
           <View style={cal.header}>
-             <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24}/></TouchableOpacity>
-             <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
-             <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24}/></TouchableOpacity>
+            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24} /></TouchableOpacity>
+            <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
+            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24} /></TouchableOpacity>
           </View>
           <View style={cal.daysHeader}>
-             {['Su','Mo','Tu','We','Th','Fr','Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
           </View>
           <View style={cal.grid}>
-             {days.map((d, i) => {
-                const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` === selectedDate;
-                return (
-                  <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected]} onPress={() => d && handleSelect(d)} disabled={!d}>
-                    <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
-                  </TouchableOpacity>
-                );
-             })}
+            {days.map((d, i) => {
+              const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` === selectedDate;
+              return (
+                <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected]} onPress={() => d && handleSelect(d)} disabled={!d}>
+                  <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </TouchableOpacity>
@@ -172,7 +172,7 @@ const sm = StyleSheet.create({
 // ─── ExpenseScreen ─────────────────────────────────────────────────────────────
 const ExpenseScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
-  
+
   useEffect(() => {
     if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
   }, [user, navigation]);
@@ -192,13 +192,13 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [purpose, setPurpose] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-  
+
   // Modals for form
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAuthPicker, setShowAuthPicker] = useState(false);
   const [showAppPicker, setShowAppPicker] = useState(false);
-  
+
   // Temp Mocks for Authorizers
   const [authBy, setAuthBy] = useState('John Doe');
   const [appBy, setAppBy] = useState('Ajil Walker');
@@ -215,11 +215,11 @@ const ExpenseScreen = ({ navigation, route }) => {
         axios.get(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}?user_id=${user.user_id}`).catch(() => null),
         axios.get(`${API_ENDPOINTS.GET_EXPENSE_TYPES}?user_id=${user.user_id}`).catch(() => null)
       ]);
-      
+
       if (expRes?.data?.success && expRes?.data?.data) {
         setExpenses(expRes.data.data);
       }
-      
+
       if (typeRes?.data?.success && typeRes?.data?.data) {
         const mappedTypes = typeRes.data.data.map(t => ({
           id: t.expense_type_pkey,
@@ -326,19 +326,19 @@ const ExpenseScreen = ({ navigation, route }) => {
             <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
           ) : (
             <ScrollView contentContainerStyle={s.scroll}>
-               {expenses.length === 0 ? (
-                 <View style={s.emptyWrap}>
-                   <FileText color="#D1D5DB" size={48} style={{ marginBottom: 16 }} />
-                   <Text style={{ color: '#9CA3AF', fontWeight: '600' }}>No expenses submitted yet</Text>
-                 </View>
-               ) : (
-                 expenses.map((exp, idx) => <ExpenseCard key={exp.emp_expenses_pkey || String(idx)} item={exp} />)
-               )}
+              {expenses.length === 0 ? (
+                <View style={s.emptyWrap}>
+                  <FileText color="#D1D5DB" size={48} style={{ marginBottom: 16 }} />
+                  <Text style={{ color: '#9CA3AF', fontWeight: '600' }}>No expenses submitted yet</Text>
+                </View>
+              ) : (
+                expenses.map((exp, idx) => <ExpenseCard key={exp.emp_expenses_pkey || String(idx)} item={exp} />)
+              )}
             </ScrollView>
           )}
-          
+
           <TouchableOpacity style={s.fab} activeOpacity={0.8} onPress={() => setView('APPLY')}>
-             <Plus color="#FFF" size={28} />
+            <Plus color="#FFF" size={28} />
           </TouchableOpacity>
         </View>
       )}
@@ -347,7 +347,7 @@ const ExpenseScreen = ({ navigation, route }) => {
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} />
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-            
+
             {/* Expense Type */}
             <View style={s.inputBox}>
               <Text style={s.label}>Expense Type</Text>
@@ -408,7 +408,7 @@ const ExpenseScreen = ({ navigation, route }) => {
                 <Paperclip color={COLORS.primaryDeep} size={14} />
                 <Text style={s.addFilesText}> Add files</Text>
               </TouchableOpacity>
-              
+
               {attachedFiles.length > 0 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
                   {attachedFiles.map((f, i) => (
@@ -424,7 +424,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             <TouchableOpacity style={[s.submitBtn, submitting && { opacity: 0.7 }]} onPress={submitExpense} disabled={submitting}>
               {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
             </TouchableOpacity>
-            <View style={{ height: 20 }}/>
+            <View style={{ height: 20 }} />
 
           </ScrollView>
         </View>
@@ -445,7 +445,7 @@ const ExpenseScreen = ({ navigation, route }) => {
       <SelectionModal visible={showTypePicker} title="Select Expense Type" options={expenseTypes} selectedValue={expenseType?.id} labelKey="name" valueKey="id" onClose={() => setShowTypePicker(false)} onSelect={(t) => setExpenseType(t)} />
       <SelectionModal visible={showAuthPicker} title="Authorised By" options={tempAuths} selectedValue={authBy} onClose={() => setShowAuthPicker(false)} onSelect={setAuthBy} />
       <SelectionModal visible={showAppPicker} title="Approved By" options={tempApps} selectedValue={appBy} onClose={() => setShowAppPicker(false)} onSelect={setAppBy} />
-      
+
       <CalendarModal visible={showDatePicker} selectedDate={expenseDate} onClose={() => setShowDatePicker(false)} onConfirm={(d) => { setExpenseDate(d); setShowDatePicker(false); }} />
 
       {/* Detail Expanding Modal */}
@@ -459,17 +459,17 @@ const ExpenseScreen = ({ navigation, route }) => {
               <View style={dm.body}>
                 <Text style={dm.title}>{detailModal.expense_type_name}</Text>
                 <Text style={dm.date}>{detailModal.expense_date}</Text>
-                
+
                 <Text style={dm.info}>Authorised By : {detailModal.authorized_by || 'John Doe'}</Text>
                 <Text style={dm.info}>Approved By : {detailModal.approved_by || 'Ajil'}</Text>
                 <Text style={dm.info}>Remarks : {detailModal.remarks}</Text>
 
                 {/* Example files if present. API returned `image:""` so let's check it */}
                 {!!detailModal.image && (
-                   <View style={dm.fileChip}>
-                     <FileText color="#DC2626" size={14} style={{ marginRight: 6 }} />
-                     <Text style={dm.fileChipText}>Attachment</Text>
-                   </View>
+                  <View style={dm.fileChip}>
+                    <FileText color="#DC2626" size={14} style={{ marginRight: 6 }} />
+                    <Text style={dm.fileChipText}>Attachment</Text>
+                  </View>
                 )}
 
                 <Text style={dm.amountLabel}>Claimed Amount: <Text style={{ color: '#111827' }}>₹{parseFloat(detailModal.expenses_amount || 0).toFixed(2)}</Text></Text>
@@ -488,14 +488,14 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   scroll: { padding: 20, paddingBottom: 100 },
   fab: { position: 'absolute', bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: '#4C1D95', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
-  
+
   // Inputs
   inputBox: { marginBottom: 16 },
   label: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', marginBottom: 8, marginLeft: 6 },
   inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, height: 50 },
   inputVal: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },
   textArea: { height: 100, textAlignVertical: 'top', paddingTop: 16, borderStyle: 'solid' }, // If it's active field we could tint border
-  
+
   fileBox: { marginBottom: 24, paddingHorizontal: 4 },
   addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
   addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: 13 },
