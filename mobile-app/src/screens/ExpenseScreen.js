@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, Plus, Calendar as CalendarIcon, ChevronDown,
+  ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, ChevronDown,
   CheckCircle, FileText, X, Paperclip, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
