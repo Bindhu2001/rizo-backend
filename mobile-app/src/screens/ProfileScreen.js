@@ -161,27 +161,25 @@ const ProfileScreen = ({ navigation, route }) => {
       const fName = nameParts[0] || '';
       const lName = nameParts.slice(1).join(' ');
 
-      const formData = new FormData();
-      formData.append('user_id', user.user_id);
-      formData.append('first_name', fName);
-      formData.append('last_name', lName);
-      formData.append('email', editEmail);
-      formData.append('mobile_no', editPhone);
-      formData.append('city', editCity);
-      formData.append('state', editState);
-      formData.append('country', editCountry?.id || '1');
-      formData.append('international_worker', editIntlWorker ? 'Y' : 'N');
-      formData.append('physical_handicap', editHandicap ? 'Y' : 'N');
+      // Construct JSON payload
+      const payload = {
+        user_id: user.user_id,
+        first_name: fName,
+        last_name: lName,
+        email: editEmail,
+        mobile_no: editPhone,
+        city: editCity,
+        state: editState,
+        country: parseInt(editCountry?.id || '1', 10),
+        international_worker: editIntlWorker ? 'Y' : 'N',
+        physical_handicap: editHandicap ? 'Y' : 'N',
+        profile_pic: editPicLocalUri ? '' : (editPic || '') 
+      };
 
-      if (editPicLocalUri) {
-        formData.append('profile_pic', { uri: editPicLocalUri, type: 'image/jpeg', name: 'profile.jpg' });
-      } else {
-        formData.append('profile_pic', editPic || '');
-      }
-
-      // API Call
-      const res = await axios.post(API_ENDPOINTS.UPDATE_PROFILE, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      // API Call with JSON
+      const url = `${API_ENDPOINTS.UPDATE_PROFILE}?user_id=${user.user_id}`;
+      const res = await axios.post(url, payload, {
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (res.data?.success) {
