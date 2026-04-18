@@ -211,12 +211,9 @@ const ExpenseScreen = ({ navigation, route }) => {
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const fd = new FormData();
-      fd.append('user_id', user.user_id);
-      
       const [expRes, typeRes] = await Promise.all([
-        axios.post(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => null),
-        axios.post(`${API_ENDPOINTS.GET_EXPENSE_TYPES}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }).catch(() => null)
+        axios.post(API_ENDPOINTS.GET_SUBMITTED_EXPENSES, { user_id: user.user_id }).catch(() => null),
+        axios.post(API_ENDPOINTS.GET_EXPENSE_TYPES, { user_id: user.user_id }).catch(() => null)
       ]);
 
       if (expRes?.data?.success && Array.isArray(expRes?.data?.data)) {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ChevronLeft, MoreHorizontal, FileText, 
-  Calendar, Download, Landmark, ShieldCheck, 
+import {
+  ChevronLeft, MoreHorizontal, FileText,
+  Calendar, Download, Landmark, ShieldCheck,
   ArrowUpRight, Wallet
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -115,13 +115,13 @@ const SalaryScreen = ({ navigation, route }) => {
                 <th class="amt-col right-align">Amount (₹)</th>
               </tr>
           `;
-          
+
           if (head.items && Array.isArray(head.items)) {
             head.items.forEach(item => {
               const amt = Math.abs(parseFloat(item.amount) || 0);
               if (item.operator === 'Addition') totalAdditions += amt;
               else if (item.operator === 'Deduction') totalDeductions += amt;
-              
+
               htmlContent += `
                 <tr>
                   <td>${item.item_desc}</td>
@@ -160,7 +160,7 @@ const SalaryScreen = ({ navigation, route }) => {
       `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      
+
       const isSharingAvailable = await Sharing.isAvailableAsync();
       if (isSharingAvailable) {
         await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Salary_Slip_${monthStr}.pdf` });
@@ -182,7 +182,7 @@ const SalaryScreen = ({ navigation, route }) => {
       const [year, month] = str.split('-');
       const d = new Date(year, parseInt(month) - 1, 1);
       return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    } catch(e) { return str; }
+    } catch (e) { return str; }
   };
 
   return (
@@ -194,7 +194,7 @@ const SalaryScreen = ({ navigation, route }) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Salary Slip</Text>
         <TouchableOpacity style={styles.headerIcon}>
-           <MoreHorizontal color={COLORS.text} size={24} />
+          <MoreHorizontal color={COLORS.text} size={24} />
         </TouchableOpacity>
       </View>
 
@@ -204,53 +204,24 @@ const SalaryScreen = ({ navigation, route }) => {
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          
+
           {/* Salary Card */}
           <LinearGradient
-             colors={[COLORS.primaryDeep, '#4527A0']}
-             start={{ x: 0, y: 0 }}
-             end={{ x: 1, y: 1 }}
-             style={styles.salaryCard}
+            colors={[COLORS.primaryDeep, '#4527A0']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.salaryCard}
           >
-             <View style={styles.cardTop}>
-               <View>
+            <View style={styles.cardTop}>
+              <View>
                 <Text style={styles.cardLabel}>Monthly Gross Salary</Text>
                 <Text style={styles.amount}>₹{grossSalary ? grossSalary.toLocaleString('en-IN') : '---'}</Text>
-               </View>
-               <View style={styles.statusBadge}>
-                 <Text style={styles.statusText}>ACTIVE</Text>
-               </View>
-             </View>
-             
-             <View style={styles.cardBottom}>
-               <View style={styles.nextPayRow}>
-                  <Calendar color="rgba(255,255,255,0.7)" size={14} />
-                  <Text style={styles.nextPayText}>{user?.department || 'Employee'}</Text>
-               </View>
-               <TouchableOpacity style={styles.slipBtn}>
-                 <Wallet color={COLORS.primaryDeep} size={16} />
-                 <Text style={styles.slipBtnText}>View Breakdown</Text>
-               </TouchableOpacity>
-             </View>
+              </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>ACTIVE</Text>
+              </View>
+            </View>
           </LinearGradient>
-
-          {/* Bank Details */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Bank Details</Text>
-          </View>
-          <View style={styles.bankCard}>
-            <View style={styles.bankIcon}>
-              <Landmark color={COLORS.primaryDeep} size={24} />
-            </View>
-            <View style={styles.bankInfo}>
-              <Text style={styles.bankName}>Direct Deposit (Salary)</Text>
-              <Text style={styles.accNo}>Linked to Account</Text>
-            </View>
-            <View style={styles.verifiedBadge}>
-              <ShieldCheck color="#2ECC71" size={18} />
-              <Text style={styles.verifiedText}>Verified</Text>
-            </View>
-          </View>
 
           {/* Quick Stats */}
           <View style={styles.statsRow}>
@@ -281,21 +252,21 @@ const SalaryScreen = ({ navigation, route }) => {
               // Calculate rough amount for display if possible
               let dispAmountStr = '---';
               if (slip.heads) {
-                 let tAdd = 0, tDed = 0;
-                 slip.heads.forEach(h => {
-                    if(h.items) {
-                       h.items.forEach(i => {
-                          const val = Math.abs(parseFloat(i.amount) || 0);
-                          if (i.operator === 'Addition') tAdd += val;
-                          if (i.operator === 'Deduction') tDed += val;
-                       });
-                    }
-                 });
-                 dispAmountStr = (tAdd - tDed).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+                let tAdd = 0, tDed = 0;
+                slip.heads.forEach(h => {
+                  if (h.items) {
+                    h.items.forEach(i => {
+                      const val = Math.abs(parseFloat(i.amount) || 0);
+                      if (i.operator === 'Addition') tAdd += val;
+                      if (i.operator === 'Deduction') tDed += val;
+                    });
+                  }
+                });
+                dispAmountStr = (tAdd - tDed).toLocaleString('en-IN', { minimumFractionDigits: 2 });
               }
 
               return (
-                <TouchableOpacity onPress={() => handleDownloadPdf(slip)} key={slip.month || index} style={[styles.slipItem, index === salarySlips.length -1 && { borderBottomWidth: 0 }]}>
+                <TouchableOpacity onPress={() => handleDownloadPdf(slip)} key={slip.month || index} style={[styles.slipItem, index === salarySlips.length - 1 && { borderBottomWidth: 0 }]}>
                   <View style={styles.slipIcon}>
                     <FileText color={COLORS.textLight} size={20} />
                   </View>
@@ -306,11 +277,11 @@ const SalaryScreen = ({ navigation, route }) => {
                   <View style={styles.slipEnd}>
                     <Text style={styles.slipAmount}>₹{dispAmountStr}</Text>
                     <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownloadPdf(slip)} disabled={downloadingId === slip.month}>
-                       {downloadingId === slip.month ? (
-                          <ActivityIndicator size="small" color={COLORS.primaryDeep} />
-                       ) : (
-                          <Download color={COLORS.textMuted} size={14} />
-                       )}
+                      {downloadingId === slip.month ? (
+                        <ActivityIndicator size="small" color={COLORS.primaryDeep} />
+                      ) : (
+                        <Download color={COLORS.textMuted} size={14} />
+                      )}
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>
