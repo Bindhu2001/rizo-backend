@@ -275,35 +275,21 @@ const sm = StyleSheet.create({
 const LeaveScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
   
-  useEffect(() => {
-    if (!user || !user.user_id) {
-      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
-    }
-  }, [user, navigation]);
-
-  if (!user || !user.user_id) return null;
-
-  const [view, setView] = useState('DASHBOARD'); // DASHBOARD | APPLY | HISTORY | SUCCESS
+  const [view, setView] = useState('DASHBOARD');
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [leaveBalances, setLeaveBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // History state
-  const [histFilter, setHistFilter] = useState('all'); // all | upcoming | past
+  const [histFilter, setHistFilter] = useState('all');
   const [histLoading, setHistLoading] = useState(false);
   const [histLeaves, setHistLeaves] = useState([]);
-
-  // Approvers from API
   const [authorizedById, setAuthorizedById] = useState('');
   const [authorizedByName, setAuthorizedByName] = useState('');
   const [approvedByIds, setApprovedByIds] = useState('');
   const [approvedByName, setApprovedByName] = useState('');
-
-  // Form State
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [calendarTarget, setCalendarTarget] = useState(null); // 'FROM' or 'TO'
-  const [halfTarget, setHalfTarget] = useState(null); // 'FROM' or 'TO'
+  const [calendarTarget, setCalendarTarget] = useState(null);
+  const [halfTarget, setHalfTarget] = useState(null);
   const [fromHalf, setFromHalf] = useState('Full Day');
   const [toHalf, setToHalf] = useState('Full Day');
   const [reason, setReason] = useState('');
@@ -311,6 +297,14 @@ const LeaveScreen = ({ navigation, route }) => {
   const [handoverTo, setHandoverTo] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!user || !user.user_id) {
+      navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+    }
+  }, [user, navigation]);
+
+  if (!user || !user.user_id) return null;
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
   const fetchAll = async () => {
@@ -537,15 +531,19 @@ const LeaveScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </ScrollView>
 
-      <CalendarModal 
-        visible={!!calendarTarget} 
+      <CalendarModal
+        visible={!!calendarTarget}
         selectedDate={calendarTarget === 'FROM' ? fromDate : toDate}
         onClose={() => setCalendarTarget(null)}
         onConfirm={(val) => {
           if (calendarTarget === 'FROM') {
             setFromDate(val);
-            if (!toDate) setToDate(val);
+            if (!toDate || toDate < val) setToDate(val);
           } else {
+            if (fromDate && val < fromDate) {
+              Alert.alert('Invalid Date', 'End date cannot be before the start date.');
+              return;
+            }
             setToDate(val);
           }
           setCalendarTarget(null);

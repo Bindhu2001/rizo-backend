@@ -301,6 +301,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
   const handleSave = () => {
     if (!company.trim()) { Alert.alert('Error', 'Please enter Company name'); return; }
+    if (!contactPerson.trim()) { Alert.alert('Error', 'Please enter Contact Person'); return; }
     if (fetchingLoc) { Alert.alert('Please wait', 'Fetching location...'); return; }
     onSave({ company, contactNo, contactPerson, purpose, locText, ...locCoords });
     reset();
@@ -342,11 +343,11 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
         <View style={sv.footer}>
           <TouchableOpacity
-            style={[sv.startBtn, (!company.trim() || processing) && { backgroundColor: '#F3F4F6' }]}
+            style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: '#F3F4F6' }]}
             onPress={handleSave}
-            disabled={fetchingLoc || processing || !company.trim()}
+            disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
           >
-            {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim()) && { color: '#9CA3AF' }]}>START</Text>}
+            {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: '#9CA3AF' }]}>START</Text>}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -427,26 +428,24 @@ const sm = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const VisitsScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
-  
+
+  // All hooks must be declared before any conditional return
+  const [loading, setLoading] = useState(true);
+  const [visits, setVisits] = useState([]);
+  const [processing, setProcessing] = useState(false);
+  const [showStartScreen, setShowStartScreen] = useState(false);
+  const [showStepInModal, setShowStepInModal] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [pendingVisit, setPendingVisit] = useState(null);
+
   useEffect(() => {
     if (!user || !user.user_id) {
       navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
     }
   }, [user, navigation]);
 
-  if (!user || !user.user_id) return null;
-  const [loading, setLoading] = useState(true);
-  const [visits, setVisits] = useState([]);
-  const [processing, setProcessing] = useState(false);
-
-  const [showStartScreen, setShowStartScreen] = useState(false);
-  const [showStepInModal, setShowStepInModal] = useState(false);
-  const [confirmVisible, setConfirmVisible] = useState(false);
-
-  const [pendingVisit, setPendingVisit] = useState(null);
-
-
   useEffect(() => {
+    if (!user || !user.user_id) return;
     initDB().then(() => fetchVisits());
   }, []);
 
@@ -502,7 +501,7 @@ const VisitsScreen = ({ navigation, route }) => {
       await updateVisitStatus(pendingVisit.id, 'step_in', {
         stepInTime: new Date().toISOString(), lat, lng, address
       });
-      await syncIfOnline();
+      syncIfOnline(); // fire-and-forget — UI updates instantly
       setShowStepInModal(false);
       setPendingVisit(null);
       fetchVisits();
@@ -521,11 +520,11 @@ const VisitsScreen = ({ navigation, route }) => {
     setProcessing(true);
     try {
       const { lat, lng, address } = await getAddress();
-      await updateVisitStatus(pendingVisit.id, 'COMPLETED', { 
+      await updateVisitStatus(pendingVisit.id, 'COMPLETED', {
         endTime: new Date().toISOString(),
         lat, lng, address
       });
-      await syncIfOnline();
+      syncIfOnline(); // fire-and-forget — UI updates instantly
       fetchVisits();
     } catch (_) { Alert.alert('Error', 'Failed to step-out'); }
     finally { setProcessing(false); setPendingVisit(null); }
@@ -548,21 +547,37 @@ const VisitsScreen = ({ navigation, route }) => {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView contentContainerStyle={s.scroll}>
-        {visits.map((v) => (
-          <VisitCard
-            key={v.id}
-            visit={v}
-            onStepIn={onStepInClick}
-            onStepOut={onStepOutClick}
-          />
-        ))}
-        <View style={{ height: 120 }} />
-      </ScrollView>
+      {loading ? (
+        <View style={s.loadingWrap}>
+          <ActivityIndicator size="large" color="#62338B" />
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={s.scroll}>
+          {visits.map((v) => (
+            <VisitCard
+              key={v.id}
+              visit={v}
+              onStepIn={onStepInClick}
+              onStepOut={onStepOutClick}
+            />
+          ))}
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      )}
 
       {/* FAB */}
       <View style={s.fabWrap}>
-        <TouchableOpacity style={s.fab} onPress={() => setShowStartScreen(true)}>
+        <TouchableOpacity
+          style={s.fab}
+          onPress={() => {
+            const hasActive = visits.some(v => v.status === 'REACHED' || v.status === 'step_in');
+            if (hasActive) {
+              Alert.alert('Visit In Progress', 'Please complete the current visit before starting a new one.');
+              return;
+            }
+            setShowStartScreen(true);
+          }}
+        >
           <Plus color="#FFF" size={28} strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
@@ -596,6 +611,7 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
   scroll: { padding: 16, paddingTop: 20 },
 
+  loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fabWrap: { position: 'absolute', bottom: 30, right: 20, zIndex: 99 },
   fab: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 });

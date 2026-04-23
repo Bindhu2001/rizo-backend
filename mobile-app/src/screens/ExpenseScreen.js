@@ -173,18 +173,10 @@ const sm = StyleSheet.create({
 const ExpenseScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
 
-  useEffect(() => {
-    if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
-  }, [user, navigation]);
-
-  if (!user) return null;
-
-  const [view, setView] = useState('LIST'); // LIST | APPLY | SUCCESS
+  const [view, setView] = useState('LIST');
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Form State
-  const [expenseType, setExpenseType] = useState(null); // object { id, name }
+  const [expenseType, setExpenseType] = useState(null);
   const [expenseTypes, setExpenseTypes] = useState([]);
   const [expenseDate, setExpenseDate] = useState('');
   const [amount, setAmount] = useState('');
@@ -192,21 +184,22 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [purpose, setPurpose] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
-
-  // Modals for form
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAuthPicker, setShowAuthPicker] = useState(false);
   const [showAppPicker, setShowAppPicker] = useState(false);
-
-  // Temp Mocks for Authorizers
   const [authBy, setAuthBy] = useState('John Doe');
   const [appBy, setAppBy] = useState('Ajil Walker');
+  const [detailModal, setDetailModal] = useState(null);
+
+  useEffect(() => {
+    if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+  }, [user, navigation]);
+
+  if (!user) return null;
+
   const tempAuths = ['John Doe', 'Sarah Miller', 'Alex Walker'];
   const tempApps = ['Ajil Walker', 'Michael Smith', 'HR Dept'];
-
-  // Detail Modal
-  const [detailModal, setDetailModal] = useState(null);
 
   const fetchExpenses = async () => {
     setLoading(true);

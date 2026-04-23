@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
   UPDATE_PROFILE: `${NEWAPP_URL}/update_profile`,
   SALARY_SLIP: `${NEWAPP_URL}/get_salary_slip`,
   MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,
+  REGISTER_PUSH_TOKEN: `${NEWAPP_URL}/register_push_token`,
 };
 
 export default BASE_URL;

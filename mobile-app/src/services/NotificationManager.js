@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
 import axios from 'axios';
@@ -15,6 +16,8 @@ Notifications.setNotificationHandler({
 
 class NotificationManager {
   static isChecking = false;
+  static lastCheckTime = 0;
+  static CHECK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
   static async setup() {
     if (Platform.OS === 'android') {
@@ -51,6 +54,7 @@ class NotificationManager {
 
   static async checkStatusChanges() {
     if (this.isChecking) return;
+    if (Date.now() - this.lastCheckTime < this.CHECK_COOLDOWN_MS) return;
     this.isChecking = true;
 
     try {
@@ -68,10 +72,26 @@ class NotificationManager {
 
       // Check Expense Status
       await this.checkExpenseDiff(user);
+
+      this.lastCheckTime = Date.now();
     } catch (e) {
       console.log('[NotificationManager] Error checking status:', e);
     } finally {
       this.isChecking = false;
+    }
+  }
+
+  static async registerAndSendToken(userId) {
+    try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+      const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+      const token = tokenData?.data;
+      if (token && userId) {
+        await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 5000 });
+        console.log('[NotificationManager] Push token registered');
+      }
+    } catch (e) {
+      console.log('[NotificationManager] Push token registration skipped:', e.message);
     }
   }
 

@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
-  ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff
+  ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
+  CheckCircle, ClipboardList
 } from 'lucide-react-native';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -36,14 +37,6 @@ const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 const HomeScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
 
-  useEffect(() => {
-    if (!user) {
-      navigation.replace('Splash');
-    }
-  }, [user, navigation]);
-
-  if (!user) return null;
-
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
   const [isPunchedIn, setIsPunchedIn] = useState(false);
@@ -52,33 +45,36 @@ const HomeScreen = ({ navigation, route }) => {
   const [showConfirmOut, setShowConfirmOut] = useState(false);
   const [offlineCount, setOfflineCount] = useState(0);
   const lastActionTime = useRef(0);
+  const lastLocationFetch = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
   const [punchInTime, setPunchInTime] = useState(null);
 
-  const toggleEvents = () => {
-    setEventsOpen(!eventsOpen);
-  };
-
-  // ── Initialization ────────────────────────────────────────────────────────
-  // Removed running timer to show static punch-in time as requested
+  useEffect(() => {
+    if (!user) {
+      navigation.replace('Splash');
+    }
+  }, [user, navigation]);
 
   useEffect(() => {
+    if (!user) return;
     initDB().then(() => {
       fetchStatus();
       checkOfflinePunches();
-      // Delay location permission slightly to avoid layout jumps during initial render
       setTimeout(fetchLocation, 1000);
       NotificationManager.checkStatusChanges();
+      NotificationManager.registerAndSendToken(user.user_id);
     });
 
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
       checkOfflinePunches();
-      // Re-try location every time screen is focused (covers GPS-off-then-on scenario)
-      fetchLocation();
+      // Only re-fetch GPS if 2 minutes have passed since last successful fetch
+      if (Date.now() - lastLocationFetch.current > 120000) {
+        fetchLocation();
+      }
     });
 
     const syncTimer = setInterval(() => SyncService.syncAll(), 60000);
@@ -88,6 +84,14 @@ const HomeScreen = ({ navigation, route }) => {
     };
   }, [navigation]);
 
+  if (!user) return null;
+
+  const toggleEvents = () => {
+    setEventsOpen(!eventsOpen);
+  };
+
+  // ── Initialization ────────────────────────────────────────────────────────
+
   // ── Location: high accuracy + human-readable name ─────────────────────────
   const fetchLocation = async () => {
     try {
@@ -96,10 +100,25 @@ const HomeScreen = ({ navigation, route }) => {
         setLocationName('Location access denied');
         return;
       }
+
+      // Show last-known position instantly while full GPS fix loads
+      const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+      if (lastKnown && locationName === 'Fetching location...') {
+        try {
+          const geo = await Location.reverseGeocodeAsync(lastKnown.coords);
+          if (geo?.length > 0) {
+            const r = geo[0];
+            const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
+            setLocationName([...new Set(parts)].join(', ') || 'Location attached');
+          }
+        } catch (_) {}
+      }
+
       let loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
       const { latitude, longitude } = loc.coords;
+      lastLocationFetch.current = Date.now();
 
       try {
         let geo = await Location.reverseGeocodeAsync({ latitude, longitude });
@@ -409,6 +428,7 @@ const HomeScreen = ({ navigation, route }) => {
               loading={punching}
               onSwipeComplete={handleSwipeComplete}
               resetTrigger={cancelTrigger}
+              locationName={locationName}
             />
           )}
 
@@ -453,6 +473,26 @@ const HomeScreen = ({ navigation, route }) => {
             </View>
             <Text style={styles.gridVal}>Expense</Text>
             <Text style={styles.gridLabel}>Add / Track</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* APPROVALS ROW */}
+        <Text style={styles.sectionLabel}>Approvals</Text>
+        <View style={styles.approvalRow}>
+          <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
+            <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
+              <CheckCircle color="#16A34A" size={22} />
+            </View>
+            <Text style={styles.approvalTitle}>Leave</Text>
+            <Text style={styles.approvalSub}>Approval</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
+            <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
+              <ClipboardList color="#F97316" size={22} />
+            </View>
+            <Text style={styles.approvalTitle}>Regularisation</Text>
+            <Text style={styles.approvalSub}>Approval</Text>
           </TouchableOpacity>
         </View>
 
@@ -591,6 +631,13 @@ const styles = StyleSheet.create({
   gridIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
   gridVal: { fontSize: 16, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   gridLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '500' },
+
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: 12, marginLeft: 4, textTransform: 'uppercase' },
+  approvalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
+  approvalCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.light },
+  approvalIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  approvalTitle: { fontSize: 15, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
+  approvalSub: { fontSize: 12, color: COLORS.textLight, fontWeight: '600' },
 
   // Visit Button
   visitButton: {

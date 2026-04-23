@@ -7,16 +7,17 @@ import {
   PanResponder,
   ActivityIndicator
 } from 'react-native';
-import { Fingerprint } from 'lucide-react-native';
+import { Fingerprint, MapPin } from 'lucide-react-native';
 import { COLORS, SHADOWS } from './Theme';
 
 const SwipeToPunch = ({
   onSwipeComplete,
   isPunchedIn = false,
   loading = false,
-  trackHeight = 68,
+  trackHeight = 80,
   padding = 5,
-  resetTrigger = 0
+  resetTrigger = 0,
+  locationName = '',
 }) => {
   const [swipeWidth, setSwipeWidth] = useState(0);
   const buttonWidth = trackHeight - padding * 2;
@@ -114,7 +115,15 @@ const SwipeToPunch = ({
       ]}
       onLayout={(e) => setSwipeWidth(e.nativeEvent.layout.width)}
     >
-      <Text style={[styles.swipeText, { color: textColor }]}>{textVal}</Text>
+      <View style={styles.textBlock}>
+        <Text style={[styles.swipeText, { color: textColor }]}>{textVal}</Text>
+        {!!locationName && !loading && (
+          <View style={styles.locRow}>
+            <MapPin color={textColor} size={10} />
+            <Text style={[styles.locText, { color: textColor }]} numberOfLines={1}>{locationName}</Text>
+          </View>
+        )}
+      </View>
 
       <Animated.View
         {...panResponder.panHandlers}
@@ -161,6 +170,22 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  textBlock: {
+    alignItems: 'center',
+  },
+  locRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+    maxWidth: 220,
+  },
+  locText: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginLeft: 4,
+    opacity: 0.75,
+    flexShrink: 1,
   },
 });
 

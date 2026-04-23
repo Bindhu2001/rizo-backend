@@ -299,9 +299,11 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
   const [isAm, setIsAm] = useState(true);
   const [hour, setHour] = useState(7);
   const [minute, setMinute] = useState(0);
+  const [mode, setMode] = useState('hour'); // 'hour' | 'minute'
 
   useEffect(() => {
     if (visible) {
+      setMode('hour');
       if (value) {
         const parts = value.split(':');
         let h = parseInt(parts[0], 10) || 7;
@@ -316,14 +318,15 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
   const rCenter = 100;
   const radius = 80;
 
-
-  const getPos = (num) => {
-    const angle = (num * 30) * (Math.PI / 180);
+  const getPos = (idx) => {
+    const angle = (idx * 30) * (Math.PI / 180);
     return {
       x: rCenter + radius * Math.sin(angle) - 15,
       y: rCenter - radius * Math.cos(angle) - 15,
     };
   };
+
+  const minuteMarks = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
   const handleOk = () => {
     let finalH = hour;
@@ -334,6 +337,8 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
     onConfirm(`${hh}:${mm}:00`);
   };
 
+  const handAngle = mode === 'hour' ? hour * 30 : (minute / 5) * 30;
+
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
       <View style={tp.overlay}>
@@ -341,13 +346,23 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
           <Text style={tp.title}>SELECT TIME</Text>
 
           <View style={tp.displayRow}>
-            <View style={tp.timeBox}>
-              <Text style={tp.timeNumber}>{hour}</Text>
-            </View>
+            <TouchableOpacity
+              style={mode === 'hour' ? tp.timeBox : tp.timeBoxInactive}
+              onPress={() => setMode('hour')}
+            >
+              <Text style={[tp.timeNumber, mode !== 'hour' && tp.timeNumberInactive]}>
+                {String(hour).padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
             <Text style={tp.colon}>:</Text>
-            <View style={[tp.timeBox, tp.timeBoxInactive]}>
-              <Text style={[tp.timeNumber, tp.timeNumberInactive]}>{String(minute).padStart(2, '0')}</Text>
-            </View>
+            <TouchableOpacity
+              style={mode === 'minute' ? tp.timeBox : tp.timeBoxInactive}
+              onPress={() => setMode('minute')}
+            >
+              <Text style={[tp.timeNumber, mode !== 'minute' && tp.timeNumberInactive]}>
+                {String(minute).padStart(2, '0')}
+              </Text>
+            </TouchableOpacity>
             <View style={tp.ampmBox}>
               <TouchableOpacity style={isAm ? tp.ampmActive : tp.ampmInactive} onPress={() => setIsAm(true)}>
                 <Text style={isAm ? tp.ampmTextActive : tp.ampmTextInactive}>AM</Text>
@@ -362,27 +377,39 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
           {/* Clock Face */}
           <View style={tp.clockWrap}>
             <View style={tp.clockFace}>
-               <View style={tp.centerDot} />
-               {(() => {
-                 const angle = (hour * 30 - 90) * (Math.PI / 180);
-                 return (
-                   <View style={[tp.hand, { transform: [ { rotate: `${hour * 30}deg` } ] }]} />
-                 );
-               })()}
+              <View style={tp.centerDot} />
+              <View style={[tp.hand, { transform: [{ rotate: `${handAngle}deg` }] }]} />
 
-               {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => {
-                 const {x, y} = getPos(n);
-                 const active = n === hour;
-                 return (
-                   <TouchableOpacity
-                     key={n}
-                     style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}
-                     onPress={() => setHour(n)}
-                   >
-                     <Text style={[tp.numText, active && tp.numTextActive]}>{n}</Text>
-                   </TouchableOpacity>
-                 );
-               })}
+              {mode === 'hour'
+                ? [1,2,3,4,5,6,7,8,9,10,11,12].map(n => {
+                    const { x, y } = getPos(n);
+                    const active = n === hour;
+                    return (
+                      <TouchableOpacity
+                        key={n}
+                        style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}
+                        onPress={() => { setHour(n); setMode('minute'); }}
+                      >
+                        <Text style={[tp.numText, active && tp.numTextActive]}>{n}</Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                : minuteMarks.map((m, idx) => {
+                    const { x, y } = getPos(idx);
+                    const active = m === minute;
+                    return (
+                      <TouchableOpacity
+                        key={m}
+                        style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}
+                        onPress={() => setMinute(m)}
+                      >
+                        <Text style={[tp.numText, active && tp.numTextActive]}>
+                          {String(m).padStart(2, '0')}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+              }
             </View>
           </View>
 
@@ -463,8 +490,6 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     }
   }, [user, navigation]);
 
-  if (!user) return null;
-
   const [tab, setTab] = useState(route?.params?.initialTab || 'LOG');
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
@@ -485,33 +510,14 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   const [showReasonPicker, setShowReasonPicker] = useState(false);
   const [showMonthPickerMain, setShowMonthPickerMain] = useState(false);
 
-  // Generate last 12 months for picker
-  const pastMonthsInfo = [];
-  const currentDate = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-    pastMonthsInfo.push({
-      label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
-      date: d,
-      key: `${d.getFullYear()}-${d.getMonth()}`
-    });
-  }
-
   useEffect(() => {
     if (route?.params?.initialTab) {
       setTab(route.params.initialTab);
     }
   }, [route?.params?.initialTab]);
 
-  const regMap = {};
-  regLogs.forEach(r => {
-    const d = r.date || r.dates;
-    if (!d) return;
-    if (!regMap[d]) regMap[d] = [];
-    regMap[d].push(r);
-  });
-
   const fetchData = useCallback(async () => {
+    if (!user) return;
     setLoading(true);
     const mk = monthKey(selectedMonth);
     try {
@@ -526,7 +532,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         if (Array.isArray(resp.data)) return resp.data;
         return [];
       };
-      
+
       setAttLogs(getSafeArray(attResp));
       setRegLogs(getSafeArray(regResp));
     } catch (e) {
@@ -536,9 +542,31 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     } finally {
       setLoading(false);
     }
-  }, [user.user_id, selectedMonth]);
+  }, [user?.user_id, selectedMonth]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  if (!user) return null;
+
+  // Generate last 12 months for picker
+  const pastMonthsInfo = [];
+  const currentDate = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    pastMonthsInfo.push({
+      label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      date: d,
+      key: `${d.getFullYear()}-${d.getMonth()}`
+    });
+  }
+
+  const regMap = {};
+  regLogs.forEach(r => {
+    const d = r.date || r.dates;
+    if (!d) return;
+    if (!regMap[d]) regMap[d] = [];
+    regMap[d].push(r);
+  });
 
   const openRegForm = (attItem, dir) => {
     setSelectedDay(attItem);

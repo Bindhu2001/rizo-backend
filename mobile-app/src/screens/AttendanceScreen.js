@@ -29,6 +29,15 @@ const formatPunchTime = (isoOrFull) => {
 const AttendanceScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
 
+  const [loading, setLoading] = useState(true);
+  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [logs, setLogs] = useState([]);
+  const [rawPunches, setRawPunches] = useState([]);
+  const [expandedDate, setExpandedDate] = useState(null);
+  const [devicePunches, setDevicePunches] = useState({});
+  const [fetchingDevicePunches, setFetchingDevicePunches] = useState(false);
+
   useEffect(() => {
     if (!user) {
       navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
@@ -36,14 +45,6 @@ const AttendanceScreen = ({ navigation, route }) => {
   }, [user, navigation]);
 
   if (!user) return null;
-  const [loading, setLoading] = useState(true);
-  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
-  const [logs, setLogs] = useState([]);
-  const [rawPunches, setRawPunches] = useState([]);
-  const [expandedDate, setExpandedDate] = useState(null);
-  const [devicePunches, setDevicePunches] = useState({});
-  const [fetchingDevicePunches, setFetchingDevicePunches] = useState(false);
 
   // Generate last 12 months for picker
   const pastMonths = [];

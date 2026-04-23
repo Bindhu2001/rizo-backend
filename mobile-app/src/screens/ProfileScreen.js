@@ -83,8 +83,6 @@ const ProfileScreen = ({ navigation, route }) => {
     }
   }, [user, navigation]);
 
-  if (!user || !user.user_id) return null;
-
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showDiscardModal, setShowDiscardModal] = useState(false);
@@ -106,9 +104,20 @@ const ProfileScreen = ({ navigation, route }) => {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
 
   useEffect(() => {
+    if (!user || !user.user_id) return;
     refreshUser();
     fetchCountries();
   }, []);
+
+  // Helper to sync country selection once we load countries
+  useEffect(() => {
+    if (countries.length > 0 && user?.country_id && !editCountry) {
+      const fd = countries.find(c => c.id == user.country_id);
+      if (fd) setEditCountry(fd);
+    }
+  }, [countries]);
+
+  if (!user || !user.user_id) return null;
 
   const fetchCountries = async () => {
     try {
@@ -130,7 +139,7 @@ const ProfileScreen = ({ navigation, route }) => {
         setEditCity(dbUser.city || '');
         setEditState(dbUser.state || '');
         setEditPic(dbUser.profile_pic || '');
-        // For country, we try to map if dbUser.country_id exists, 
+        // For country, we try to map if dbUser.country_id exists,
         // fallback to setting it when we receive it
         if (dbUser.country_id) {
           setEditCountry({ id: dbUser.country_id, country_name: dbUser.country_name || 'Selected' });
@@ -142,14 +151,6 @@ const ProfileScreen = ({ navigation, route }) => {
       console.log('Error refreshing user', e);
     }
   };
-
-  // Helper to sync country selection once we load countries
-  useEffect(() => {
-    if (countries.length > 0 && user?.country_id && !editCountry) {
-      const fd = countries.find(c => c.id == user.country_id);
-      if (fd) setEditCountry(fd);
-    }
-  }, [countries]);
 
   const handleSave = async () => {
     if (!editName.trim()) {
