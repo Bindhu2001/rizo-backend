@@ -335,9 +335,34 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
     const hh = String(finalH).padStart(2, '0');
     const mm = String(minute).padStart(2, '0');
     onConfirm(`${hh}:${mm}:00`);
+    onClose();
   };
 
-  const handAngle = mode === 'hour' ? hour * 30 : (minute / 5) * 30;
+  const handleTouch = (evt) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    const dx = locationX - 100;
+    const dy = locationY - 100;
+    let angle = Math.atan2(dx, -dy) * (180 / Math.PI);
+    if (angle < 0) angle += 360;
+    
+    if (mode === 'hour') {
+      let h = Math.round(angle / 30);
+      if (h === 0) h = 12;
+      setHour(h);
+    } else {
+      let m = Math.round(angle / 6);
+      if (m === 60) m = 0;
+      setMinute(m);
+    }
+  };
+
+  const handleRelease = () => {
+    if (mode === 'hour') {
+      setMode('minute');
+    }
+  };
+
+  const handAngle = mode === 'hour' ? hour * 30 : minute * 6;
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
@@ -376,40 +401,40 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 
           {/* Clock Face */}
           <View style={tp.clockWrap}>
-            <View style={tp.clockFace}>
+            <View 
+              style={tp.clockFace}
+              onStartShouldSetResponder={() => true}
+              onResponderGrant={handleTouch}
+              onResponderMove={handleTouch}
+              onResponderRelease={handleRelease}
+            >
               <View style={tp.centerDot} />
               <View style={[tp.hand, { transform: [{ rotate: `${handAngle}deg` }] }]} />
 
-              {mode === 'hour'
-                ? [1,2,3,4,5,6,7,8,9,10,11,12].map(n => {
-                    const { x, y } = getPos(n);
-                    const active = n === hour;
-                    return (
-                      <TouchableOpacity
-                        key={n}
-                        style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}
-                        onPress={() => { setHour(n); setMode('minute'); }}
-                      >
-                        <Text style={[tp.numText, active && tp.numTextActive]}>{n}</Text>
-                      </TouchableOpacity>
-                    );
-                  })
-                : minuteMarks.map((m, idx) => {
-                    const { x, y } = getPos(idx);
-                    const active = m === minute;
-                    return (
-                      <TouchableOpacity
-                        key={m}
-                        style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}
-                        onPress={() => setMinute(m)}
-                      >
-                        <Text style={[tp.numText, active && tp.numTextActive]}>
-                          {String(m).padStart(2, '0')}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
-              }
+              <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+                {mode === 'hour'
+                  ? [1,2,3,4,5,6,7,8,9,10,11,12].map(n => {
+                      const { x, y } = getPos(n);
+                      const active = n === hour;
+                      return (
+                        <View key={n} style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}>
+                          <Text style={[tp.numText, active && tp.numTextActive]}>{n}</Text>
+                        </View>
+                      );
+                    })
+                  : minuteMarks.map((m, idx) => {
+                      const { x, y } = getPos(idx);
+                      const active = m === minute;
+                      return (
+                        <View key={m} style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}>
+                          <Text style={[tp.numText, active && tp.numTextActive]}>
+                            {String(m).padStart(2, '0')}
+                          </Text>
+                        </View>
+                      );
+                    })
+                }
+              </View>
             </View>
           </View>
 
