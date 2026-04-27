@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  User, Shield, Bell, LogOut, ChevronRight, ChevronLeft,
-  Mail, Phone, Briefcase, Camera, Edit2, Check, Calendar, ChevronDown, X
+  User, Shield, Bell, LogOut,
+  Mail, Phone, Briefcase, Camera, Edit2, Check, Calendar, X
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
@@ -57,7 +57,11 @@ const MenuItem = ({ icon, title, subtitle, onPress }) => (
       <Text style={styles.menuTitle}>{title}</Text>
       {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
     </View>
-    <ChevronRight color={COLORS.textMuted} size={18} />
+    <Image 
+      source={require('../../assets/signup/arrow-right-02.png')} 
+      style={{ width: 18, height: 18, tintColor: COLORS.textMuted }} 
+      resizeMode="contain"
+    />
   </TouchableOpacity>
 );
 
@@ -174,7 +178,8 @@ const ProfileScreen = ({ navigation, route }) => {
         country: parseInt(editCountry?.id || '1', 10),
         international_worker: editIntlWorker ? 'Y' : 'N',
         physical_handicap: editHandicap ? 'Y' : 'N',
-        profile_pic: editPicLocalUri ? '' : (editPic || '') 
+        // Send Base64 string if a new image was picked, otherwise send existing URL
+        profile_pic: editPicBase64 ? `data:image/jpeg;base64,${editPicBase64}` : (editPic || '') 
       };
 
       // API Call with JSON
@@ -195,11 +200,12 @@ const ProfileScreen = ({ navigation, route }) => {
           country_name: editCountry?.country_name || '',
           international_worker: editIntlWorker ? 'Y' : 'N',
           physical_handicap: editHandicap ? 'Y' : 'N',
-          profile_pic: editPicLocalUri || editPic // assume local caching or wait for backend refresh
+          profile_pic: editPicLocalUri || editPic 
         });
 
         setIsEditing(false);
         setEditPicLocalUri('');
+        setEditPicBase64('');
         refreshUser();
       } else {
         Alert.alert('Server Response', res.data?.message || 'Failed to update');
@@ -220,8 +226,11 @@ const ProfileScreen = ({ navigation, route }) => {
     setShowDiscardModal(false);
     setIsEditing(false);
     setEditPicLocalUri('');
+    setEditPicBase64('');
     refreshUser(); // revert changes
   };
+
+  const [editPicBase64, setEditPicBase64] = useState('');
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -233,10 +242,12 @@ const ProfileScreen = ({ navigation, route }) => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,
+      base64: true, // Enable Base64
     });
     if (!result.canceled) {
       setEditPic(result.assets[0].uri);
       setEditPicLocalUri(result.assets[0].uri);
+      setEditPicBase64(result.assets[0].base64); // Store Base64 string
     }
   };
 
@@ -258,7 +269,11 @@ const ProfileScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { isEditing ? attemptDiscard() : navigation.goBack() }} style={styles.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <Image 
+            source={require('../../assets/signup/arrow-right-02.png')} 
+            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEditing ? 'Personal Details' : 'Profile'}</Text>
         <View style={styles.headerIcon} />
@@ -292,7 +307,11 @@ const ProfileScreen = ({ navigation, route }) => {
               <Text style={styles.editLabel}>Country</Text>
               <TouchableOpacity activeOpacity={0.7} style={[styles.inputPickerRow, { backgroundColor: '#FFF' }]} onPress={() => setShowCountryPicker(true)}>
                 <Text style={styles.inputInner}>{editCountry?.country_name || ''}</Text>
-                <ChevronDown color={COLORS.textMuted} size={18} />
+                <Image 
+                  source={require('../../assets/signup/arrow-down-01.png')} 
+                  style={{ width: 16, height: 16, tintColor: COLORS.textMuted }} 
+                  resizeMode="contain"
+                />
               </TouchableOpacity>
             </View>
 

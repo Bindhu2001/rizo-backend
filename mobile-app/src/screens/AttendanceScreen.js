@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar, Modal, Pressable
+  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, Calendar as CalendarIcon, Clock, 
-  ChevronDown, Filter, Cloud, CloudOff, ChevronUp
+  Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff
 } from 'lucide-react-native';
 import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
@@ -189,7 +188,19 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={[s.badge, { backgroundColor: statusBg }]}>
               <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
-            {isExpanded ? <ChevronUp size={16} color="#9CA3AF" /> : <ChevronDown size={16} color="#9CA3AF" />}
+            {isExpanded ? (
+              <Image 
+                source={require('../../assets/signup/arrow-down-01.png')} 
+                style={{ width: 16, height: 16, tintColor: '#9CA3AF', transform: [{ rotate: '180deg' }] }} 
+                resizeMode="contain"
+              />
+            ) : (
+              <Image 
+                source={require('../../assets/signup/arrow-down-01.png')} 
+                style={{ width: 16, height: 16, tintColor: '#9CA3AF' }} 
+                resizeMode="contain"
+              />
+            )}
           </View>
         </TouchableOpacity>
 
@@ -251,7 +262,11 @@ const AttendanceScreen = ({ navigation, route }) => {
       {/* ── Header ── */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <Image 
+            source={require('../../assets/signup/arrow-right-02.png')} 
+            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Attendance History</Text>
         <View style={{ width: 44 }} />
@@ -266,7 +281,11 @@ const AttendanceScreen = ({ navigation, route }) => {
         >
            <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
            <Text style={s.monthText}>{getMonthDisplayText()}</Text>
-           <ChevronDown color="#6C5CE7" size={16} style={{ marginLeft: 8 }} />
+           <Image 
+             source={require('../../assets/signup/arrow-down-01.png')} 
+             style={{ width: 16, height: 16, tintColor: '#6C5CE7', marginLeft: 8 }} 
+             resizeMode="contain"
+           />
         </TouchableOpacity>
       </View>
 

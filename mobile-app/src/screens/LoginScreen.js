@@ -84,15 +84,13 @@ const LoginScreen = ({ navigation }) => {
           style={styles.content}
         >
           <View style={styles.formContainer}>
-            {/* TOP LOGO & BRAND */}
+            {/* TOP LOGO */}
             <View style={styles.headerGroup}>
-              <View style={styles.logoContainer}>
-                <Image 
-                  source={require('../../assets/logo_with_margin.png')} 
-                  style={styles.logoImage} 
-                />
-              </View>
-              <Text style={styles.brandName}>RIZO</Text>
+              <Image 
+                source={require('../../assets/rizo.png')} 
+                style={styles.mainLogo} 
+                resizeMode="contain"
+              />
             </View>
 
             {/* INPUT FIELDS */}
@@ -155,21 +153,10 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 30, justifyContent: 'center' },
   formContainer: { width: '100%', alignItems: 'center' },
   
-  headerGroup: { alignItems: 'center', marginBottom: 60 },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 10,
-    marginBottom: 10,
-  },
-  logoImage: { width: '100%', height: '100%', resizeMode: 'contain' },
-  brandName: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#000',
-    letterSpacing: -2,
+  headerGroup: { alignItems: 'center', marginBottom: 50, width: '100%' },
+  mainLogo: {
+    width: 200,
+    height: 120,
   },
 
   inputGroup: { width: '100%', marginBottom: 40 },

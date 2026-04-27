@@ -12,6 +12,7 @@ import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { API_ENDPOINTS } from '../constants/Config';
@@ -381,9 +382,19 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('duties_handed_over', handoverTo || 'N/A');
       formData.append('authorized_by', authorizedById || '0');
       formData.append('approved_by', approvedByIds || '0');
-      attachedFiles.forEach((f, i) => {
-        formData.append(`file_${i}`, { uri: f.uri, type: f.mimeType || 'application/octet-stream', name: f.name });
-      });
+      
+      // Convert all files to Base64 before sending
+      for (let i = 0; i < attachedFiles.length; i++) {
+        const file = attachedFiles[i];
+        try {
+          const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+          const mime = file.mimeType || 'image/jpeg';
+          formData.append(`file_${i}`, `data:${mime};base64,${base64}`);
+        } catch (fileErr) {
+          console.log(`Error reading file ${i}:`, fileErr);
+        }
+      }
+
       const res = await axios.post(API_ENDPOINTS.LEAVES, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (res.data?.success === 1 || res.data?.success === true || res.data?.message?.toLowerCase().includes('success')) {
         setView('SUCCESS');

@@ -2,11 +2,17 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Dimensions,
-  FlatList, Modal, StatusBar, SafeAreaView as RNSafeAreaView, Image
+  FlatList, Modal, StatusBar, SafeAreaView as RNSafeAreaView, Image,
+  ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Trash2, ArrowRight } from 'lucide-react-native';
+import axios from 'axios';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { COLORS, SHADOWS } from '../components/Theme';
+import { API_ENDPOINTS } from '../constants/Config';
 
 const { width, height } = Dimensions.get('window');
 
@@ -18,13 +24,22 @@ const SLIDES = [
 
 const SignupScreen = ({ navigation }) => {
   const [step, setStep] = useState(0); 
+  const [loading, setLoading] = useState(false);
 
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [name, setName] = useState('');
-  const [photo, setPhoto] = useState(null); 
+  
+  // Profile Photo
+  const [photoUri, setPhotoUri] = useState(null); 
+  const [photoBase64, setPhotoBase64] = useState('');
+
   const [address, setAddress] = useState({ house: '', line2: '', city: '', pincode: '', state: '', country: '' });
-  const [kycDoc, setKycDoc] = useState('');
+  
+  // KYC Documents
+  const [aadharDoc, setAadharDoc] = useState(null);
+  const [panDoc, setPanDoc] = useState(null);
+  const [kycDocType, setKycDocType] = useState('Aadhar Card');
   const [kycDocNumber, setKycDocNumber] = useState('');
   
   const [showScanModal, setShowScanModal] = useState(false);
@@ -36,8 +51,116 @@ const SignupScreen = ({ navigation }) => {
   const [showPicModal, setShowPicModal] = useState(false);
 
   const nextStep = () => {
-    if (step < 6) setStep(step + 1);
-    else navigation.navigate('Login'); 
+    if (step === 3) {
+      handleFinalSubmit();
+    } else if (step < 3) {
+      setStep(step + 1);
+    }
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!name.trim()) { Alert.alert('Error', 'Please enter your name'); return; }
+    
+    setLoading(true);
+    try {
+      // Construction of Multipart request because of KYC files
+      const formData = new FormData();
+      formData.append('email', email);
+      formData.append('name', name);
+      formData.append('address_house', address.house);
+      formData.append('address_line2', address.line2);
+      formData.append('city', address.city);
+      formData.append('state', address.state);
+      formData.append('pincode', address.pincode);
+      formData.append('kyc_type', kycDocType);
+      formData.append('kyc_number', kycDocNumber);
+
+      // CRITICAL: Send Profile Pic as Base64 string as requested
+      if (photoBase64) {
+        formData.append('profile_pic', `data:image/jpeg;base64,${photoBase64}`);
+      }
+
+      // Send KYC docs as Base64 strings
+      if (aadharDoc) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(aadharDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
+          const mime = aadharDoc.mimeType || 'image/jpeg';
+          formData.append('aadhar_card', `data:${mime};base64,${base64}`);
+        } catch (err) { console.log('Aadhar read error', err); }
+      }
+      if (panDoc) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(panDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
+          const mime = panDoc.mimeType || 'image/jpeg';
+          formData.append('pan_card', `data:${mime};base64,${base64}`);
+        } catch (err) { console.log('PAN read error', err); }
+      }
+
+      // Using update_profile as the primary endpoint for profile completion
+      const url = `${API_ENDPOINTS.UPDATE_PROFILE}`; 
+      const res = await axios.post(url, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (res.data?.success) {
+        Alert.alert('Success', 'Profile completed successfully!', [
+          { text: 'Login', onPress: () => navigation.navigate('Login') }
+        ]);
+      } else {
+        Alert.alert('Notice', res.data?.message || 'Submission failed');
+        // For now, let's navigate to login anyway if we don't have the real endpoint yet
+        navigation.navigate('Login');
+      }
+    } catch (e) {
+      console.log('Signup Submit Error:', e.message);
+      navigation.navigate('Login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickImage = async (useCamera = false) => {
+    const { status } = useCamera 
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Access is required.');
+      return;
+    }
+
+    const options = {
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    };
+
+    const result = useCamera 
+      ? await ImagePicker.launchCameraAsync(options)
+      : await ImagePicker.launchImageLibraryAsync(options);
+
+    if (!result.canceled) {
+      setPhotoUri(result.assets[0].uri);
+      setPhotoBase64(result.assets[0].base64);
+      setShowPicModal(false);
+    }
+  };
+
+  const pickDocument = async (type) => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/jpeg', 'image/png', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        if (type === 'aadhar') setAadharDoc(result.assets[0]);
+        else setPanDoc(result.assets[0]);
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Could not pick document');
+    }
   };
 
   const prevStep = () => {
@@ -157,7 +280,11 @@ const SignupScreen = ({ navigation }) => {
             </View>
             <View style={styles.nextBtnRow}>
                <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <ArrowRight color="#FFF" size={24} />
+                 <Image 
+                   source={require('../../assets/signup/arrow-right-02.png')} 
+                   style={{ width: 24, height: 24, tintColor: '#FFF' }} 
+                   resizeMode="contain"
+                 />
                </TouchableOpacity>
             </View>
           </View>
@@ -165,124 +292,80 @@ const SignupScreen = ({ navigation }) => {
       case 3:
         return (
           <View style={styles.formStep}>
-            <Text style={styles.formTitle}>Welcome, enter your name to continue</Text>
-            <View style={{ marginTop: 30 }}>
-               <FloatingInput label="Name" value={name} onChangeText={setName} />
-            </View>
-            <View style={styles.nextBtnRow}>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <ArrowRight color="#FFF" size={24} />
-               </TouchableOpacity>
-            </View>
-          </View>
-        );
-      case 4:
-        return (
-          <View style={styles.formStep}>
-            <View style={styles.progressBar}>
-               {[1,2,3,4,5,6].map(i => <View key={i} style={[styles.progressDash, i <= 3 && styles.progressDashActive]} />)}
-            </View>
-            <Text style={styles.formTitle}>Upload your profile picture</Text>
-            <Text style={styles.formSubtitle}>Enter your details to complete signup to Rizo</Text>
+            <Text style={styles.formTitle}>Complete Your Profile</Text>
+            <Text style={styles.formSubtitle}>Please provide your details to finish setup</Text>
             
-            <View style={styles.pictureUploadContainer}>
-              <View style={styles.pictureCircle}>
-                 {photo ? (
-                    <View style={styles.photoUploaded} /> 
-                 ) : (
-                    <Image source={require('../../assets/signup/picture-updating.png')} style={{width: 140, height: 140, borderRadius: 70}} resizeMode="cover" />
-                 )}
-                 <TouchableOpacity style={styles.editPicBtn} onPress={() => setShowPicModal(true)}>
-                    <Image source={require('../../assets/signup/edit-btn.png')} style={{width: 36, height: 36}} resizeMode="contain" />
-                 </TouchableOpacity>
-              </View>
+            {/* Name Section */}
+            <View style={{ marginTop: 10 }}>
+               <FloatingInput label="Full Name" value={name} onChangeText={setName} placeholder="John Doe" />
             </View>
 
-            <View style={[styles.nextBtnRowSpaceBetween, {marginTop: 60}]}>
-               <TouchableOpacity onPress={nextStep}>
-                 <Text style={styles.skipText}>Skip & Do it later</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <ArrowRight color="#FFF" size={24} />
-               </TouchableOpacity>
+            {/* Photo Section */}
+            <View style={styles.sectionDivider}>
+               <Text style={styles.sectionLabel}>Profile Picture</Text>
+               <View style={styles.photoRow}>
+                  <View style={styles.pictureCircleSmall}>
+                     {photoUri ? (
+                        <Image source={{ uri: photoUri }} style={styles.photoUploadedSmall} resizeMode="cover" />
+                     ) : (
+                        <Image source={require('../../assets/signup/picture-updating.png')} style={{width: 80, height: 80, borderRadius: 40}} resizeMode="cover" />
+                     )}
+                  </View>
+                  <TouchableOpacity style={styles.uploadBtnSmall} onPress={() => setShowPicModal(true)}>
+                     <Text style={styles.uploadBtnTextSmall}>{photoUri ? 'Change Photo' : 'Upload Photo'}</Text>
+                  </TouchableOpacity>
+               </View>
             </View>
-          </View>
-        );
-      case 5:
-        return (
-          <View style={styles.formStep}>
-            <View style={styles.progressBar}>
-               {[1,2,3,4,5,6].map(i => <View key={i} style={[styles.progressDash, i <= 4 && styles.progressDashActive]} />)}
-            </View>
-            <Text style={styles.formTitle}>Add Your Address Details</Text>
-            <Text style={styles.formSubtitle}>Enter your details to complete signup to Rizo</Text>
-            
-            <View style={styles.scrollForm}>
+
+            {/* Address Section */}
+            <View style={styles.sectionDivider}>
+               <Text style={styles.sectionLabel}>Address Details</Text>
                <TextInput style={styles.simpleInput} placeholder="House/Flat Name" placeholderTextColor="#A0AEC0" value={address.house} onChangeText={t=>setAddress({...address, house: t})} />
                <TextInput style={styles.simpleInput} placeholder="Address Line 2" placeholderTextColor="#A0AEC0" value={address.line2} onChangeText={t=>setAddress({...address, line2: t})} />
-               <TextInput style={styles.simpleInput} placeholder="City" placeholderTextColor="#A0AEC0" value={address.city} onChangeText={t=>setAddress({...address, city: t})} />
-               <TextInput style={styles.simpleInput} placeholder="Pin code" placeholderTextColor="#A0AEC0" value={address.pincode} onChangeText={t=>setAddress({...address, pincode: t})} keyboardType="number-pad" />
-               <TouchableOpacity style={styles.dropdownInput}>
-                 <Text style={[styles.dropdownText, !address.state && {color: '#A0AEC0'}]}>{address.state || 'State'}</Text>
-                 <Image source={require('../../assets/signup/arrow-down-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0'}} resizeMode="contain" />
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.dropdownInput}>
-                 <Text style={[styles.dropdownText, !address.country && {color: '#A0AEC0'}]}>{address.country || 'Country'}</Text>
-                 <Image source={require('../../assets/signup/arrow-down-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0'}} resizeMode="contain" />
-               </TouchableOpacity>
+               <View style={styles.inputRow}>
+                  <TextInput style={[styles.simpleInput, {flex: 1, marginRight: 10}]} placeholder="City" placeholderTextColor="#A0AEC0" value={address.city} onChangeText={t=>setAddress({...address, city: t})} />
+                  <TextInput style={[styles.simpleInput, {width: 120}]} placeholder="Pincode" placeholderTextColor="#A0AEC0" value={address.pincode} onChangeText={t=>setAddress({...address, pincode: t})} keyboardType="number-pad" />
+               </View>
+               <TextInput style={styles.simpleInput} placeholder="State" placeholderTextColor="#A0AEC0" value={address.state} onChangeText={t=>setAddress({...address, state: t})} />
             </View>
 
-            <View style={[styles.nextBtnRowSpaceBetween, {marginTop: 20}]}>
-               <TouchableOpacity onPress={nextStep}>
-                 <Text style={styles.skipText}>Skip & Do it later</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 24, height: 24, tintColor: '#FFF'}} resizeMode="contain" />
-               </TouchableOpacity>
-            </View>
-          </View>
-        );
-      case 6:
-        return (
-          <View style={styles.formStep}>
-            <View style={styles.progressBar}>
-               {[1,2,3,4,5,6].map(i => <View key={i} style={[styles.progressDash, i <= 5 && styles.progressDashActive]} />)}
-            </View>
-            <Text style={styles.formTitle}>Enter Your KYC Details</Text>
-            <Text style={styles.formSubtitle}>Enter your details to complete signup to Rizo</Text>
-            
-            <View style={styles.scrollForm}>
-               <Text style={styles.inputLabel}>Choose Document</Text>
+            {/* KYC Section */}
+            <View style={styles.sectionDivider}>
+               <Text style={styles.sectionLabel}>KYC Verification</Text>
                <TouchableOpacity style={styles.dropdownInput}>
-                 <Text style={[styles.dropdownText, !kycDoc && {color: '#A0AEC0'}]}>{kycDoc || 'Aadhar Card'}</Text>
-                 <Image source={require('../../assets/signup/arrow-down-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0'}} resizeMode="contain" />
+                  <Text style={[styles.dropdownText, !kycDocType && {color: '#A0AEC0'}]}>{kycDocType || 'Aadhar Card'}</Text>
+                  <Image source={require('../../assets/signup/arrow-down-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0'}} resizeMode="contain" />
                </TouchableOpacity>
+               <TextInput style={styles.simpleInput} placeholder="Document Number" placeholderTextColor="#A0AEC0" value={kycDocNumber} onChangeText={setKycDocNumber} />
                
-               <TextInput style={styles.simpleInput} placeholder="Aadhar Card Number" placeholderTextColor="#A0AEC0" value={kycDocNumber} onChangeText={setKycDocNumber} />
-               
-               <TouchableOpacity style={styles.uploadDocBtn} onPress={() => { setScannedImage(null); setShowScanModal(true); }}>
-                 <Image source={require('../../assets/signup/camera-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0', marginRight: 12}} resizeMode="contain" />
-                 <Text style={styles.uploadDocText}>Upload Image front Side</Text>
-               </TouchableOpacity>
-
-               <TouchableOpacity style={styles.uploadDocBtn} onPress={() => { setScannedImage(null); setShowScanModal(true); }}>
-                 <Image source={require('../../assets/signup/camera-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0', marginRight: 12}} resizeMode="contain" />
-                 <Text style={styles.uploadDocText}>Upload Image back Side</Text>
-               </TouchableOpacity>
-
-               <TouchableOpacity style={styles.addDocBtn}>
-                 <Text style={styles.addDocBtnText}>+ Add Document</Text>
-               </TouchableOpacity>
+               <View style={styles.inputRow}>
+                  <TouchableOpacity 
+                    style={[styles.uploadDocBtn, {flex: 1, marginRight: 10}, aadharDoc && { borderColor: '#2ECC71', backgroundColor: '#F0FFF4' }]} 
+                    onPress={() => pickDocument('aadhar')}
+                  >
+                     <Image source={require('../../assets/signup/camera-01.png')} style={{width: 18, height: 18, tintColor: aadharDoc ? '#2ECC71' : '#A0AEC0', marginRight: 8}} resizeMode="contain" />
+                     <Text style={[styles.uploadDocTextSmall, aadharDoc && { color: '#2ECC71' }]}>{aadharDoc ? 'Aadhar Added' : 'Aadhar Front'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.uploadDocBtn, {flex: 1}, panDoc && { borderColor: '#2ECC71', backgroundColor: '#F0FFF4' }]} 
+                    onPress={() => pickDocument('pan')}
+                  >
+                     <Image source={require('../../assets/signup/camera-01.png')} style={{width: 18, height: 18, tintColor: panDoc ? '#2ECC71' : '#A0AEC0', marginRight: 8}} resizeMode="contain" />
+                     <Text style={[styles.uploadDocTextSmall, panDoc && { color: '#2ECC71' }]}>{panDoc ? 'PAN Added' : 'PAN Front'}</Text>
+                  </TouchableOpacity>
+               </View>
             </View>
 
-            <View style={[styles.nextBtnRowSpaceBetween, {marginTop: 20}]}>
-               <TouchableOpacity onPress={nextStep}>
-                 <Text style={styles.skipText}>Skip & Do it later</Text>
-               </TouchableOpacity>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 24, height: 24, tintColor: '#FFF'}} resizeMode="contain" />
-               </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={[styles.finishBtn, loading && { opacity: 0.7 }]} onPress={nextStep} disabled={loading}>
+               {loading ? (
+                 <ActivityIndicator color="#FFF" />
+               ) : (
+                 <>
+                   <Text style={styles.finishBtnText}>COMPLETE SIGNUP</Text>
+                   <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 20, height: 20, tintColor: '#FFF'}} resizeMode="contain" />
+                 </>
+               )}
+            </TouchableOpacity>
           </View>
         );
       default: return null;
@@ -300,7 +383,11 @@ const SignupScreen = ({ navigation }) => {
             <>
               <View style={styles.topSection}>
                 <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-                  <ChevronLeft size={28} color="#333" />
+                  <Image 
+                    source={require('../../assets/signup/arrow-right-02.png')} 
+                    style={{ width: 24, height: 24, tintColor: '#333', transform: [{ rotate: '180deg' }] }} 
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
                 {step === 1 && <Image source={require('../../assets/signup/group.png')} style={styles.stepIllustrationImage} resizeMode="contain" />}
                 {step === 2 && <Image source={require('../../assets/signup/group-1.png')} style={styles.stepIllustrationImage} resizeMode="contain" />}
@@ -316,7 +403,11 @@ const SignupScreen = ({ navigation }) => {
             <RNSafeAreaView style={styles.fullScreenWhite}>
               <View style={styles.fullScreenHeader}>
                 <TouchableOpacity onPress={prevStep} style={styles.backBtnFull}>
-                  <ChevronLeft size={28} color="#333" />
+                  <Image 
+                    source={require('../../assets/signup/arrow-right-02.png')} 
+                    style={{ width: 24, height: 24, tintColor: '#333', transform: [{ rotate: '180deg' }] }} 
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.fullScreenScroll}>
@@ -332,7 +423,11 @@ const SignupScreen = ({ navigation }) => {
          <View style={styles.scanModalContainer}>
             <View style={styles.scanHeader}>
                <TouchableOpacity onPress={() => setShowScanModal(false)} style={styles.scanBackBtn}>
-                  <ChevronLeft size={28} color="#FFF" />
+                  <Image 
+                    source={require('../../assets/signup/arrow-right-02.png')} 
+                    style={{ width: 24, height: 24, tintColor: '#FFF', transform: [{ rotate: '180deg' }] }} 
+                    resizeMode="contain"
+                  />
                </TouchableOpacity>
                <Text style={styles.scanTitle}>{scannedImage ? 'Confirm Scan' : 'Scan Card'}</Text>
                <View style={{width: 40}} />
@@ -372,16 +467,16 @@ const SignupScreen = ({ navigation }) => {
          <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                <Text style={styles.modalTitle}>Edit Profile Picture</Text>
-               <TouchableOpacity style={styles.modalAction} onPress={() => setShowPicModal(false)}>
+               <TouchableOpacity style={styles.modalAction} onPress={() => pickImage(true)}>
                   <Image source={require('../../assets/signup/camera-01.png')} style={{width: 20, height: 20, tintColor: '#333'}} resizeMode="contain" />
                   <Text style={styles.modalActionText}>Take a Photo</Text>
                </TouchableOpacity>
-               <TouchableOpacity style={styles.modalAction} onPress={() => setShowPicModal(false)}>
+               <TouchableOpacity style={styles.modalAction} onPress={() => pickImage(false)}>
                   <Image source={require('../../assets/signup/upload-04.png')} style={{width: 20, height: 20, tintColor: '#333'}} resizeMode="contain" />
                   <Text style={styles.modalActionText}>Upload From Camera Roll</Text>
                </TouchableOpacity>
-               {photo && (
-                 <TouchableOpacity style={styles.modalAction} onPress={() => {setPhoto(null); setShowPicModal(false);}}>
+               {photoUri && (
+                 <TouchableOpacity style={styles.modalAction} onPress={() => {setPhotoUri(null); setPhotoBase64(''); setShowPicModal(false);}}>
                     <Trash2 size={20} color="#E53E3E" />
                     <Text style={[styles.modalActionText, {color: '#E53E3E'}]}>Delete Picture</Text>
                  </TouchableOpacity>
@@ -895,7 +990,83 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
-  }
+  },
+  sectionDivider: {
+    marginTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#F7FAFC',
+    paddingTop: 24,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  pictureCircleSmall: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F7FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+  },
+  photoUploadedSmall: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#CBD5E0',
+  },
+  uploadBtnSmall: {
+    marginLeft: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  uploadBtnTextSmall: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primaryDeep || '#4A148C',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  uploadDocTextSmall: {
+    fontSize: 13,
+    color: '#718096',
+    fontWeight: '600'
+  },
+  finishBtn: {
+    backgroundColor: '#2ECC71',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
+    borderRadius: 16,
+    marginTop: 40,
+    ...SHADOWS.medium,
+  },
+  finishBtnText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '900',
+    marginRight: 12,
+    letterSpacing: 1,
+  },
 });
 
 export default SignupScreen;

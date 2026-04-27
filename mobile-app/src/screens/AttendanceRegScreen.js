@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Alert, Modal, Platform,
-  Pressable, Dimensions
+  Pressable, Dimensions, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, ChevronDown, CheckCircle,
-  CalendarDays, ChevronRight, Check
+  CheckCircle, CalendarDays, Check
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS } from '../components/Theme';
@@ -636,7 +635,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       <SafeAreaView style={s.container}>
         <View style={s.headerBar}>
           <TouchableOpacity onPress={() => setView('MAIN')} style={s.backBtn}>
-            <ChevronLeft color="#111827" size={24} />
+            <Image source={require('../../assets/signup/arrow-right-02.png')} style={{ width: 24, height: 24, transform: [{ rotate: '180deg' }] }} resizeMode="contain" />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Regularise Attendance</Text>
           <View style={{ width: 44 }} />
@@ -649,7 +648,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               value={reason}
               editable={false}
               onPress={() => setShowReasonPicker(true)}
-              icon={<ChevronDown color="#9CA3AF" size={20} />}
+              icon={<Image source={require('../../assets/signup/arrow-down-01.png')} style={{ width: 16, height: 16, tintColor: '#9CA3AF' }} resizeMode="contain" />}
             />
 
             <FloatingInput
@@ -718,7 +717,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     <SafeAreaView style={s.container}>
       <View style={s.headerBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color="#111827" size={24} />
+          <Image source={require('../../assets/signup/arrow-right-02.png')} style={{ width: 24, height: 24, transform: [{ rotate: '180deg' }] }} resizeMode="contain" />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Attendance</Text>
         <View style={{ width: 44 }} />
@@ -743,7 +742,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           onPress={() => setShowMonthPickerMain(true)}
         >
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
-          <ChevronDown color={COLORS.primary} size={15} style={{ marginLeft: 4 }} />
+          <Image source={require('../../assets/signup/arrow-down-01.png')} style={{ width: 15, height: 15, tintColor: COLORS.primary, marginLeft: 4 }} resizeMode="contain" />
         </TouchableOpacity>
       </View>
 

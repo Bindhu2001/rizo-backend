@@ -14,10 +14,11 @@ const SwipeToPunch = ({
   onSwipeComplete,
   isPunchedIn = false,
   loading = false,
-  trackHeight = 80,
-  padding = 5,
+  trackHeight = 48,
+  padding = 4,
   resetTrigger = 0,
   locationName = '',
+  punchTime = null,
 }) => {
   const [swipeWidth, setSwipeWidth] = useState(0);
   const buttonWidth = trackHeight - padding * 2;
@@ -28,10 +29,8 @@ const SwipeToPunch = ({
   const maxSlideRef = useRef(maxSlide);
   const loadingRef = useRef(loading);
   const swipeWidthRef = useRef(swipeWidth);
-  // Always hold the latest onSwipeComplete — panResponder closure never updates otherwise
   const onSwipeCompleteRef = useRef(onSwipeComplete);
 
-  // Keep all refs in sync with latest props on every render
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
     maxSlideRef.current = maxSlide;
@@ -40,8 +39,6 @@ const SwipeToPunch = ({
     onSwipeCompleteRef.current = onSwipeComplete;
   });
 
-  // Spring-reset the button ONLY when punch state flips or cancel is pressed
-  // (not on every loading/swipeWidth change — that causes animation conflicts)
   useEffect(() => {
     Animated.spring(pan, {
       toValue: 0,
@@ -56,7 +53,6 @@ const SwipeToPunch = ({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => {
         if (loadingRef.current) return false;
-        // Only allow rightward movement
         return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
 
@@ -77,7 +73,7 @@ const SwipeToPunch = ({
             duration: 150,
             useNativeDriver: false,
           }).start(() => {
-            onSwipeCompleteRef.current(); // Always calls the latest handler
+            onSwipeCompleteRef.current();
           });
         } else {
           Animated.spring(pan, {
@@ -102,7 +98,7 @@ const SwipeToPunch = ({
   const buttonColor = isPunchedIn ? COLORS.danger : '#2ECC71';
   const textColor = isPunchedIn ? COLORS.danger : '#2ECC71';
 
-  let textVal = isPunchedIn ? 'SWIPE RIGHT TO OUT' : 'SWIPE RIGHT TO IN';
+  let textVal = isPunchedIn ? 'SWIPE TO OUT' : 'SWIPE TO IN';
   if (loading) {
     textVal = isPunchedIn ? 'Punching Out...' : 'Punching In...';
   }
@@ -115,7 +111,7 @@ const SwipeToPunch = ({
           backgroundColor: trackColor, 
           height: trackHeight, 
           borderRadius: trackHeight / 2,
-          width: isPunchedIn ? '100%' : '88%',
+          width: isPunchedIn ? '100%' : '100%',
           alignSelf: 'center'
         },
       ]}
@@ -123,10 +119,13 @@ const SwipeToPunch = ({
     >
       <View style={styles.textBlock}>
         <Text style={[styles.swipeText, { color: textColor }]}>{textVal}</Text>
-        {!!locationName && !loading && isPunchedIn && (
+        
+        {isPunchedIn && !loading && !!locationName && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={10} />
-            <Text style={[styles.locText, { color: textColor }]} numberOfLines={1}>{locationName}</Text>
+            <Text style={[styles.locText, { color: textColor }]} numberOfLines={1}>
+              {locationName}
+            </Text>
           </View>
         )}
       </View>
@@ -148,7 +147,7 @@ const SwipeToPunch = ({
         {loading ? (
           <ActivityIndicator color="#FFF" size="small" />
         ) : (
-          <Fingerprint color="#FFF" size={26} />
+          <Fingerprint color="#FFF" size={20} />
         )}
       </Animated.View>
     </View>
@@ -172,25 +171,26 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   swipeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   textBlock: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   locRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 5,
-    maxWidth: 220,
+    marginTop: 4,
+    maxWidth: 200,
   },
   locText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '600',
-    marginLeft: 4,
-    opacity: 0.75,
+    marginLeft: 3,
+    opacity: 0.8,
     flexShrink: 1,
   },
 });

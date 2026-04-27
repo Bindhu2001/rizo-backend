@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
-  ChevronRight, ChevronDown, ChevronUp, Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
+  Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
   CheckCircle, ClipboardList
 } from 'lucide-react-native';
 import axios from 'axios';
@@ -411,7 +411,8 @@ const HomeScreen = ({ navigation, route }) => {
             loading={punching}
             onSwipeComplete={handleSwipeComplete}
             resetTrigger={cancelTrigger}
-            locationName={isPunchedIn ? punchInAddress : locationName}
+            locationName={isPunchedIn ? punchInAddress : ''}
+            punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
           />
 
           {/* Offline location fetch status banner */}
@@ -493,7 +494,11 @@ const HomeScreen = ({ navigation, route }) => {
               <Text style={styles.visitBtnSub}>Track your client meetings</Text>
             </View>
           </View>
-          <ChevronRight color={COLORS.textLight} size={20} />
+          <Image 
+            source={require('../../assets/signup/arrow-right-02.png')} 
+            style={{ width: 20, height: 20, tintColor: COLORS.textLight }} 
+            resizeMode="contain"
+          />
         </TouchableOpacity>
 
         {/* REGULARIZATION */}
@@ -522,8 +527,16 @@ const HomeScreen = ({ navigation, route }) => {
               <Text style={styles.eventsSectionTitle}>Upcoming Events</Text>
             </View>
             {eventsOpen
-              ? <ChevronUp color={COLORS.textLight} size={20} />
-              : <ChevronDown color={COLORS.textLight} size={20} />
+              ? <Image 
+                  source={require('../../assets/signup/arrow-down-01.png')} 
+                  style={{ width: 18, height: 18, tintColor: COLORS.textLight, transform: [{ rotate: '180deg' }] }} 
+                  resizeMode="contain"
+                />
+              : <Image 
+                  source={require('../../assets/signup/arrow-down-01.png')} 
+                  style={{ width: 18, height: 18, tintColor: COLORS.textLight }} 
+                  resizeMode="contain"
+                />
             }
           </TouchableOpacity>
 

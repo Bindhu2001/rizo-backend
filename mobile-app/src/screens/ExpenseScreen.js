@@ -11,6 +11,7 @@ import {
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { COLORS, SHADOWS } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 
@@ -270,9 +271,17 @@ const ExpenseScreen = ({ navigation, route }) => {
       formData.append('authorized_by', '0'); // Mocked
       formData.append('approved_by', '0'); // Mocked
 
-      attachedFiles.forEach((f, i) => {
-        formData.append(`file_${i}`, { uri: f.uri, type: f.mimeType || 'application/octet-stream', name: f.name });
-      });
+      // Convert all files to Base64 before sending
+      for (let i = 0; i < attachedFiles.length; i++) {
+        const file = attachedFiles[i];
+        try {
+          const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
+          const mime = file.mimeType || 'image/jpeg';
+          formData.append(`file_${i}`, `data:${mime};base64,${base64}`);
+        } catch (fileErr) {
+          console.log(`Error reading file ${i}:`, fileErr);
+        }
+      }
 
       const res = await axios.post(API_ENDPOINTS.SUBMIT_EXPENSE, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (res.data?.success === 1 || res.data?.success === true) {

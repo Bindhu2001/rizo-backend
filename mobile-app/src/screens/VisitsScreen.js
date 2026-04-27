@@ -64,9 +64,9 @@ const getAddress = async () => {
     } catch (_) { }
 
     return { address: addressStr, lat, lng };
-  } catch (e) { 
+  } catch (e) {
     console.log('[Visits] getAddress Error:', e);
-    return { address: 'Location check failed', lat: 0, lng: 0 }; 
+    return { address: 'Location check failed', lat: 0, lng: 0 };
   }
 };
 
@@ -314,7 +314,11 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
       <SafeAreaView style={sv.container}>
         <View style={sv.headerRow}>
           <TouchableOpacity onPress={() => { reset(); onClose(); }} style={sv.backBtn}>
-            <ChevronLeft color="#111827" size={26} />
+            <Image 
+              source={require('../../assets/signup/arrow-right-02.png')} 
+              style={{ width: 24, height: 24, tintColor: '#111827', transform: [{ rotate: '180deg' }] }} 
+              resizeMode="contain"
+            />
           </TouchableOpacity>
           <Text style={sv.title}>Going to Meet</Text>
           <View style={{ width: 44 }} />
@@ -464,7 +468,7 @@ const VisitsScreen = ({ navigation, route }) => {
     setProcessing(true);
     try {
       // Ensure DB ready
-      await initDB(); 
+      await initDB();
 
       const id = await saveVisitLocal({
         userId: user.user_id,
@@ -541,7 +545,11 @@ const VisitsScreen = ({ navigation, route }) => {
     <SafeAreaView style={s.container}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color="#111827" size={26} />
+          <Image 
+            source={require('../../assets/signup/arrow-right-02.png')} 
+            style={{ width: 24, height: 24, tintColor: '#111827', transform: [{ rotate: '180deg' }] }} 
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={s.headerTitle}>My Customer Visits</Text>
         <View style={{ width: 44 }} />

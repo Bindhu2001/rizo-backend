@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Alert, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, MoreHorizontal, FileText,
+  MoreHorizontal, FileText,
   Calendar, Download, Landmark, ShieldCheck,
   ArrowUpRight, Wallet
 } from 'lucide-react-native';
@@ -190,7 +190,11 @@ const SalaryScreen = ({ navigation, route }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <Image 
+            source={require('../../assets/signup/arrow-right-02.png')} 
+            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
+            resizeMode="contain"
+          />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Salary Slip</Text>
         <TouchableOpacity style={styles.headerIcon}>
