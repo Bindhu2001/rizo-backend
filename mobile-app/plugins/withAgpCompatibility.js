@@ -11,10 +11,36 @@ module.exports = function withAgpCompatibility(config) {
     const compatibilityRule = `
 // [withAgpCompatibility] Force compatibility for AGP version attributes
 allprojects {
+    configurations.all {
+        resolutionStrategy {
+            eachDependency { DependencyResolveDetails details ->
+                if (details.requested.group == 'com.android.tools.build' && details.requested.name == 'gradle') {
+                    details.useVersion("8.11.0")
+                }
+            }
+        }
+    }
     dependencies {
         attributesSchema {
             attribute(com.android.build.api.attributes.AgpVersionAttr.ATTRIBUTE) {
                 compatibilityRules.add(AgpVersionCompatibilityRule)
+            }
+        }
+    }
+}
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                buildTypes {
+                    release {
+                        matchingFallbacks = ['release', 'debug']
+                    }
+                    debug {
+                        matchingFallbacks = ['debug', 'release']
+                    }
+                }
             }
         }
     }

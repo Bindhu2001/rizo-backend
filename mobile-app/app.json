@@ -56,7 +56,8 @@
         {
           "android": {
             "kotlinVersion": "2.1.21",
-            "memory": 4096
+            "memory": 4096,
+            "newArchEnabled": false
           }
         }
       ],
