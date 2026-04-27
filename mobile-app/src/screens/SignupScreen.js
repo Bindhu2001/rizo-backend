@@ -5,7 +5,7 @@ import {
   FlatList, Modal, StatusBar, SafeAreaView as RNSafeAreaView, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Trash2, ArrowRight } from 'lucide-react-native';
 import { COLORS, SHADOWS } from '../components/Theme';
 
 const { width, height } = Dimensions.get('window');

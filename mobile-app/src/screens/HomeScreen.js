@@ -51,6 +51,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
   const [punchInTime, setPunchInTime] = useState(null);
+  const [punchInAddress, setPunchInAddress] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -156,6 +157,7 @@ const HomeScreen = ({ navigation, route }) => {
       const localLogs = await getTodayLocalHistory(user.user_id);
       if (localLogs && localLogs.length > 0) {
         setPunchInTime(new Date(localLogs[0].punch_time));
+        setPunchInAddress(localLogs[0].address || '');
       }
 
       // Load persistent action time
@@ -328,8 +330,13 @@ const HomeScreen = ({ navigation, route }) => {
       // 5. Update UI state
       const isNowIn = type === 'IN';
       setIsPunchedIn(isNowIn);
-      if (isNowIn) setPunchInTime(new Date(punchTime));
-      else setPunchInTime(null);
+      if (isNowIn) {
+        setPunchInTime(new Date(punchTime));
+        setPunchInAddress(punchAddress);
+      } else {
+        setPunchInTime(null);
+        setPunchInAddress('');
+      }
 
       // 6. Background sync
       checkOfflinePunches();
@@ -399,38 +406,13 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* SWIPE / TIMER ACTION */}
         <View style={styles.swipeBox}>
-          {isPunchedIn ? (
-            <View style={styles.punchedInCard}>
-              <View style={styles.punchedInLeft}>
-                {offlineCount > 0 ? (
-                  <CloudOff color={COLORS.danger} size={20} />
-                ) : (
-                  <MapPin color={COLORS.danger} size={20} />
-                )}
-                <View style={styles.punchedInTextStack}>
-                  <Text style={styles.punchedInTime}>
-                    {punchInTime ? format(punchInTime, 'hh:mm:ss a, dd MMM yyyy') : '--:--:--'}
-                  </Text>
-                  <Text style={styles.punchedInLoc} numberOfLines={1}>{locationName}</Text>
-                </View>
-              </View>
-              <TouchableOpacity 
-                style={styles.clockOutBtn} 
-                onPress={() => setShowConfirmOut(true)}
-                disabled={punching}
-              >
-                {punching ? <ActivityIndicator color={COLORS.danger} size="small" /> : <Power color={COLORS.danger} size={20} strokeWidth={2.5} />}
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <SwipeToPunch
-              isPunchedIn={false}
-              loading={punching}
-              onSwipeComplete={handleSwipeComplete}
-              resetTrigger={cancelTrigger}
-              locationName={locationName}
-            />
-          )}
+          <SwipeToPunch
+            isPunchedIn={isPunchedIn}
+            loading={punching}
+            onSwipeComplete={handleSwipeComplete}
+            resetTrigger={cancelTrigger}
+            locationName={isPunchedIn ? punchInAddress : locationName}
+          />
 
           {/* Offline location fetch status banner */}
           {!!punchMessage && (

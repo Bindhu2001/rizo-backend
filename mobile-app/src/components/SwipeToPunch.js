@@ -111,13 +111,19 @@ const SwipeToPunch = ({
     <View
       style={[
         styles.swipeTrack,
-        { backgroundColor: trackColor, height: trackHeight, borderRadius: trackHeight / 2 },
+        { 
+          backgroundColor: trackColor, 
+          height: trackHeight, 
+          borderRadius: trackHeight / 2,
+          width: isPunchedIn ? '100%' : '88%',
+          alignSelf: 'center'
+        },
       ]}
       onLayout={(e) => setSwipeWidth(e.nativeEvent.layout.width)}
     >
       <View style={styles.textBlock}>
         <Text style={[styles.swipeText, { color: textColor }]}>{textVal}</Text>
-        {!!locationName && !loading && (
+        {!!locationName && !loading && isPunchedIn && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={10} />
             <Text style={[styles.locText, { color: textColor }]} numberOfLines={1}>{locationName}</Text>
