@@ -248,7 +248,7 @@ const cm = StyleSheet.create({
 
 
 // ─── Input Components ────────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType, multiline }) => (
+const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength }) => (
   <View style={fi.wrap}>
     <Text style={fi.label}>{label}</Text>
     <TextInput
@@ -258,6 +258,7 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline }) => 
       keyboardType={keyboardType || 'default'}
       multiline={multiline}
       numberOfLines={multiline ? 3 : 1}
+      maxLength={maxLength}
     />
   </View>
 );
@@ -338,10 +339,10 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           </View>
 
           <View style={sv.formWrap}>
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline />
+            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={20} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
+            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={20} />
+            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={50} />
           </View>
         </ScrollView>
 
@@ -402,10 +403,10 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <Text style={sm.title}>Enter details</Text>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline />
+            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={20} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
+            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={20} />
+            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={50} />
 
             <TouchableOpacity
               style={[sm.saveBtn, processing && { opacity: 0.7 }]}

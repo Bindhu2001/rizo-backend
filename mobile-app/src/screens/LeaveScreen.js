@@ -202,27 +202,27 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
       <TouchableOpacity style={cal.overlay} activeOpacity={1} onPress={onClose}>
         <View style={cal.box}>
           <View style={cal.header}>
-             <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24}/></TouchableOpacity>
-             <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
-             <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24}/></TouchableOpacity>
+            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24} /></TouchableOpacity>
+            <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
+            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24} /></TouchableOpacity>
           </View>
           <View style={cal.daysHeader}>
-             {['Su','Mo','Tu','We','Th','Fr','Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
           </View>
           <View style={cal.grid}>
-             {days.map((d, i) => {
-                const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth()+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` === selectedDate;
-                return (
-                  <TouchableOpacity 
-                    key={i} 
-                    style={[cal.cell, isSelected && cal.cellSelected]} 
-                    onPress={() => d && handleSelect(d)}
-                    disabled={!d}
-                  >
-                    <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
-                  </TouchableOpacity>
-                );
-             })}
+            {days.map((d, i) => {
+              const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` === selectedDate;
+              return (
+                <TouchableOpacity
+                  key={i}
+                  style={[cal.cell, isSelected && cal.cellSelected]}
+                  onPress={() => d && handleSelect(d)}
+                  disabled={!d}
+                >
+                  <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </TouchableOpacity>
@@ -275,7 +275,7 @@ const sm = StyleSheet.create({
 // ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
-  
+
   const [view, setView] = useState('DASHBOARD');
   const [selectedLeave, setSelectedLeave] = useState(null);
   const [leaveBalances, setLeaveBalances] = useState([]);
@@ -315,7 +315,7 @@ const LeaveScreen = ({ navigation, route }) => {
       if (items.data?.success) {
         const d = items.data.data;
         setLeaveBalances(d.leave_types || []);
-        
+
         setAuthorizedById(d.authorized_by || '');
         setAuthorizedByName(d.authorized_by_person?.trim() || 'Not Defined');
 
@@ -382,7 +382,7 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('duties_handed_over', handoverTo || 'N/A');
       formData.append('authorized_by', authorizedById || '0');
       formData.append('approved_by', approvedByIds || '0');
-      
+
       // Convert all files to Base64 before sending
       for (let i = 0; i < attachedFiles.length; i++) {
         const file = attachedFiles[i];
@@ -506,19 +506,42 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* Contact Number */}
         <View style={s.inputBox}>
           <Text style={s.label}>Contact Number</Text>
-          <TextInput style={s.inputRow} value={contactNo} onChangeText={setContactNo} placeholder="+91 0000000000" keyboardType="phone-pad" placeholderTextColor="#D1D5DB" />
+          <TextInput
+            style={s.inputRow}
+            value={contactNo}
+            onChangeText={setContactNo}
+            placeholder="+91 0000000000"
+            keyboardType="phone-pad"
+            placeholderTextColor="#D1D5DB"
+            maxLength={20}
+          />
         </View>
 
         {/* Duties Handed Over */}
         <View style={s.inputBox}>
           <Text style={s.label}>Duties Handed Over To</Text>
-          <TextInput style={s.inputRow} value={handoverTo} onChangeText={setHandoverTo} placeholder="e.g. Handed over to Team Lead" placeholderTextColor="#D1D5DB" />
+          <TextInput
+            style={s.inputRow}
+            value={handoverTo}
+            onChangeText={setHandoverTo}
+            placeholder="e.g. Handed over to Team Lead"
+            placeholderTextColor="#D1D5DB"
+            maxLength={20}
+          />
         </View>
 
         {/* Reason */}
         <View style={s.inputBox}>
           <Text style={s.label}>Reason</Text>
-          <TextInput style={[s.inputRow, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]} value={reason} onChangeText={setReason} multiline placeholder="Enter reason..." placeholderTextColor="#D1D5DB" />
+          <TextInput
+            style={[s.inputRow, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
+            value={reason}
+            onChangeText={setReason}
+            multiline
+            placeholder="Enter reason..."
+            placeholderTextColor="#D1D5DB"
+            maxLength={50}
+          />
         </View>
 
         {/* File attachments */}
@@ -560,8 +583,8 @@ const LeaveScreen = ({ navigation, route }) => {
           setCalendarTarget(null);
         }}
       />
-      
-      <SelectionModal 
+
+      <SelectionModal
         visible={!!halfTarget}
         title={`Select ${halfTarget === 'FROM' ? 'From' : 'To'} Half`}
         options={['Full Day', 'First Half', 'Second Half']}

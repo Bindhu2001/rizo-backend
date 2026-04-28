@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
   Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
-  CheckCircle, ClipboardList
+  CheckCircle, ClipboardList, ChevronRight
 } from 'lucide-react-native';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -52,6 +52,10 @@ const HomeScreen = ({ navigation, route }) => {
   const [punchMessage, setPunchMessage] = useState('');
   const [punchInTime, setPunchInTime] = useState(null);
   const [punchInAddress, setPunchInAddress] = useState('');
+  const [roles, setRoles] = useState({
+    is_employee_hierarchy: false,
+    is_leave_hierarchy: false
+  });
 
   useEffect(() => {
     if (!user) {
@@ -63,6 +67,7 @@ const HomeScreen = ({ navigation, route }) => {
     if (!user) return;
     initDB().then(() => {
       fetchStatus();
+      fetchRoles();
       checkOfflinePunches();
       setTimeout(fetchLocation, 1000);
       NotificationManager.checkStatusChanges();
@@ -71,6 +76,7 @@ const HomeScreen = ({ navigation, route }) => {
 
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
+      fetchRoles();
       checkOfflinePunches();
       // Only re-fetch GPS if 2 minutes have passed since last successful fetch
       if (Date.now() - lastLocationFetch.current > 120000) {
@@ -142,6 +148,17 @@ const HomeScreen = ({ navigation, route }) => {
     } catch (e) {
       console.log('Loc Fetch Error', e);
       setLocationName('Location unavailable');
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const res = await axios.get(`${API_ENDPOINTS.CHECK_ROLES}?user_id=${user.user_id}`);
+      if (res.data && res.data.success && res.data.roles) {
+        setRoles(res.data.roles);
+      }
+    } catch (e) {
+      console.log('[Home] Roles fetch error:', e);
     }
   };
 
@@ -460,24 +477,32 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
         {/* APPROVALS ROW */}
-        <Text style={styles.sectionLabel}>Approvals</Text>
-        <View style={styles.approvalRow}>
-          <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
-            <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
-              <CheckCircle color="#16A34A" size={22} />
-            </View>
-            <Text style={styles.approvalTitle}>Leave</Text>
-            <Text style={styles.approvalSub}>Approval</Text>
-          </TouchableOpacity>
+        {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
+          <>
+            <Text style={styles.sectionLabel}>Approvals</Text>
+            <View style={styles.approvalRow}>
+              {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
+                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
+                  <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
+                    <CheckCircle color="#16A34A" size={22} />
+                  </View>
+                  <Text style={styles.approvalTitle}>Leave</Text>
+                  <Text style={styles.approvalSub}>Approval</Text>
+                </TouchableOpacity>
+              )}
 
-          <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
-            <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
-              <ClipboardList color="#F97316" size={22} />
+              {roles.is_employee_hierarchy && (
+                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => navigation.navigate('RegularisationApproval', { user })}>
+                  <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
+                    <ClipboardList color="#F97316" size={22} />
+                  </View>
+                  <Text style={styles.approvalTitle}>Regularisation</Text>
+                  <Text style={styles.approvalSub}>Approval</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            <Text style={styles.approvalTitle}>Regularisation</Text>
-            <Text style={styles.approvalSub}>Approval</Text>
-          </TouchableOpacity>
-        </View>
+          </>
+        )}
 
         {/* CLIENT VISIT */}
         <TouchableOpacity

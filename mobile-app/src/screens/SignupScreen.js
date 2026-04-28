@@ -27,8 +27,12 @@ const SignupScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const [email, setEmail] = useState('');
+  const [companyCode, setCompanyCode] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [name, setName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [mobileNo, setMobileNo] = useState('');
+  const [dob, setDob] = useState('');
   
   // Profile Photo
   const [photoUri, setPhotoUri] = useState(null); 
@@ -50,8 +54,39 @@ const SignupScreen = ({ navigation }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPicModal, setShowPicModal] = useState(false);
 
+  const handleStep1Submit = async () => {
+    if (!companyCode.trim() || !email.trim()) {
+      Alert.alert('Error', 'Please enter Company Code and Email');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode}&email=${email}`);
+      if (res.data?.success) {
+        if (res.data.exists) {
+           Alert.alert('User Exists', 'User already exists with this email id.', [
+             { text: 'Try another mail', style: 'cancel' },
+             { text: 'Login', onPress: () => navigation.navigate('Login') }
+           ]);
+        } else {
+           setStep(2);
+        }
+      } else {
+         Alert.alert('Error', res.data?.message || 'Verification failed');
+      }
+    } catch (e) {
+      console.log('Email check error', e);
+      Alert.alert('Error', 'Failed to verify email');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const nextStep = () => {
-    if (step === 3) {
+    if (step === 1) {
+      handleStep1Submit();
+    } else if (step === 3) {
       handleFinalSubmit();
     } else if (step < 3) {
       setStep(step + 1);
@@ -63,21 +98,22 @@ const SignupScreen = ({ navigation }) => {
     
     setLoading(true);
     try {
-      // Construction of Multipart request because of KYC files
-      const formData = new FormData();
-      formData.append('email', email);
-      formData.append('name', name);
-      formData.append('address_house', address.house);
-      formData.append('address_line2', address.line2);
-      formData.append('city', address.city);
-      formData.append('state', address.state);
-      formData.append('pincode', address.pincode);
-      formData.append('kyc_type', kycDocType);
-      formData.append('kyc_number', kycDocNumber);
+      const payload = {
+        company_code: companyCode,
+        first_name: name,
+        last_name: lastName,
+        mobile_no: mobileNo,
+        email: email,
+        date_of_birth: dob,
+        address: `${address.house} ${address.line2} ${address.city} ${address.state}`.trim(),
+        pincode: address.pincode,
+        kyc_type: kycDocType,
+        kyc_number: kycDocNumber,
+      };
 
-      // CRITICAL: Send Profile Pic as Base64 string as requested
+      // Send Profile Pic as Base64 string
       if (photoBase64) {
-        formData.append('profile_pic', `data:image/jpeg;base64,${photoBase64}`);
+        payload.profile_pic = `data:image/jpeg;base64,${photoBase64}`;
       }
 
       // Send KYC docs as Base64 strings
@@ -85,21 +121,20 @@ const SignupScreen = ({ navigation }) => {
         try {
           const base64 = await FileSystem.readAsStringAsync(aadharDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
           const mime = aadharDoc.mimeType || 'image/jpeg';
-          formData.append('aadhar_card', `data:${mime};base64,${base64}`);
+          payload.aadhar_card = `data:${mime};base64,${base64}`;
         } catch (err) { console.log('Aadhar read error', err); }
       }
       if (panDoc) {
         try {
           const base64 = await FileSystem.readAsStringAsync(panDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
           const mime = panDoc.mimeType || 'image/jpeg';
-          formData.append('pan_card', `data:${mime};base64,${base64}`);
+          payload.pan_card = `data:${mime};base64,${base64}`;
         } catch (err) { console.log('PAN read error', err); }
       }
 
-      // Using update_profile as the primary endpoint for profile completion
-      const url = `${API_ENDPOINTS.UPDATE_PROFILE}`; 
-      const res = await axios.post(url, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const url = `${API_ENDPOINTS.REGISTER}`; 
+      const res = await axios.post(url, payload, {
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (res.data?.success) {
@@ -217,7 +252,7 @@ const SignupScreen = ({ navigation }) => {
     </View>
   );
 
-  const FloatingInput = ({ label, value, onChangeText, keyboardType = 'default', autoFocus=false, secureTextEntry=false, placeholder="" }) => (
+  const FloatingInput = ({ label, value, onChangeText, keyboardType = 'default', autoFocus=false, secureTextEntry=false, placeholder="", maxLength }) => (
     <View style={styles.inputContainer}>
       <View style={styles.floatingLabelContainer}>
         <Text style={styles.floatingLabel}>{label}</Text>
@@ -231,6 +266,7 @@ const SignupScreen = ({ navigation }) => {
         secureTextEntry={secureTextEntry}
         placeholder={placeholder}
         placeholderTextColor="#CBD5E0"
+        maxLength={maxLength}
       />
     </View>
   );
@@ -240,13 +276,16 @@ const SignupScreen = ({ navigation }) => {
       case 1:
         return (
           <View style={styles.formStep}>
-            <Text style={styles.formTitle}>Hello, Enter your Email to Continue</Text>
+            <Text style={styles.formTitle}>Hello, Enter your Details to Continue</Text>
             <View style={{ marginTop: 30 }}>
-               <FloatingInput label="Email ID" value={email} onChangeText={setEmail} keyboardType="email-address" placeholder="Loisbecket@gmail.com" />
+               <FloatingInput label="Company Code" value={companyCode} onChangeText={(text) => setCompanyCode(text.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={25} />
+            </View>
+            <View style={{ marginTop: 15 }}>
+               <FloatingInput label="Email ID" value={email} onChangeText={(text) => setEmail(text.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="Loisbecket@gmail.com" maxLength={25} />
             </View>
             <View style={styles.nextBtnRow}>
                <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 24, height: 24, tintColor: '#FFF'}} resizeMode="contain" />
+                 {loading ? <ActivityIndicator color="#FFF" /> : <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 24, height: 24, tintColor: '#FFF'}} resizeMode="contain" />}
                </TouchableOpacity>
             </View>
           </View>
@@ -295,9 +334,19 @@ const SignupScreen = ({ navigation }) => {
             <Text style={styles.formTitle}>Complete Your Profile</Text>
             <Text style={styles.formSubtitle}>Please provide your details to finish setup</Text>
             
-            {/* Name Section */}
+            {/* Basic Info Section */}
             <View style={{ marginTop: 10 }}>
-               <FloatingInput label="Full Name" value={name} onChangeText={setName} placeholder="John Doe" />
+               <FloatingInput label="First Name" value={name} onChangeText={(text) => setName(text.replace(/[^A-Za-z0-9.\s]/g, ''))} placeholder="John" maxLength={25} />
+            </View>
+            <View style={{ marginTop: 10 }}>
+               <FloatingInput label="Last Name" value={lastName} onChangeText={(text) => setLastName(text.replace(/[^A-Za-z0-9.\s]/g, ''))} placeholder="Doe" maxLength={25} />
+            </View>
+            <View style={{ marginTop: 10 }}>
+               <FloatingInput label="Mobile Number" value={mobileNo} onChangeText={(text) => setMobileNo(text.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="9876543210" maxLength={10} />
+            </View>
+            <View style={{ marginTop: 10 }}>
+               {/* Note: In a real app, this should be a DatePicker. For now, using text input */}
+               <FloatingInput label="Date of Birth (YYYY-MM-DD)" value={dob} onChangeText={(text) => setDob(text.replace(/[^0-9-]/g, ''))} placeholder="1998-05-10" maxLength={10} />
             </View>
 
             {/* Photo Section */}
@@ -320,13 +369,13 @@ const SignupScreen = ({ navigation }) => {
             {/* Address Section */}
             <View style={styles.sectionDivider}>
                <Text style={styles.sectionLabel}>Address Details</Text>
-               <TextInput style={styles.simpleInput} placeholder="House/Flat Name" placeholderTextColor="#A0AEC0" value={address.house} onChangeText={t=>setAddress({...address, house: t})} />
-               <TextInput style={styles.simpleInput} placeholder="Address Line 2" placeholderTextColor="#A0AEC0" value={address.line2} onChangeText={t=>setAddress({...address, line2: t})} />
+               <TextInput style={styles.simpleInput} placeholder="House/Flat Name" placeholderTextColor="#A0AEC0" value={address.house} onChangeText={t=>setAddress({...address, house: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '')})} maxLength={25} />
+               <TextInput style={styles.simpleInput} placeholder="Address Line 2" placeholderTextColor="#A0AEC0" value={address.line2} onChangeText={t=>setAddress({...address, line2: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '')})} maxLength={25} />
                <View style={styles.inputRow}>
-                  <TextInput style={[styles.simpleInput, {flex: 1, marginRight: 10}]} placeholder="City" placeholderTextColor="#A0AEC0" value={address.city} onChangeText={t=>setAddress({...address, city: t})} />
-                  <TextInput style={[styles.simpleInput, {width: 120}]} placeholder="Pincode" placeholderTextColor="#A0AEC0" value={address.pincode} onChangeText={t=>setAddress({...address, pincode: t})} keyboardType="number-pad" />
+                  <TextInput style={[styles.simpleInput, {flex: 1, marginRight: 10}]} placeholder="City" placeholderTextColor="#A0AEC0" value={address.city} onChangeText={t=>setAddress({...address, city: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '')})} maxLength={25} />
+                  <TextInput style={[styles.simpleInput, {width: 120}]} placeholder="Pincode" placeholderTextColor="#A0AEC0" value={address.pincode} onChangeText={t=>setAddress({...address, pincode: t.replace(/[^0-9]/g, '')})} keyboardType="number-pad" maxLength={6} />
                </View>
-               <TextInput style={styles.simpleInput} placeholder="State" placeholderTextColor="#A0AEC0" value={address.state} onChangeText={t=>setAddress({...address, state: t})} />
+               <TextInput style={styles.simpleInput} placeholder="State" placeholderTextColor="#A0AEC0" value={address.state} onChangeText={t=>setAddress({...address, state: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '')})} maxLength={25} />
             </View>
 
             {/* KYC Section */}
@@ -336,7 +385,7 @@ const SignupScreen = ({ navigation }) => {
                   <Text style={[styles.dropdownText, !kycDocType && {color: '#A0AEC0'}]}>{kycDocType || 'Aadhar Card'}</Text>
                   <Image source={require('../../assets/signup/arrow-down-01.png')} style={{width: 20, height: 20, tintColor: '#A0AEC0'}} resizeMode="contain" />
                </TouchableOpacity>
-               <TextInput style={styles.simpleInput} placeholder="Document Number" placeholderTextColor="#A0AEC0" value={kycDocNumber} onChangeText={setKycDocNumber} />
+               <TextInput style={styles.simpleInput} placeholder="Document Number" placeholderTextColor="#A0AEC0" value={kycDocNumber} onChangeText={(text) => setKycDocNumber(text.replace(/[^a-zA-Z0-9]/g, ''))} maxLength={15} />
                
                <View style={styles.inputRow}>
                   <TouchableOpacity 

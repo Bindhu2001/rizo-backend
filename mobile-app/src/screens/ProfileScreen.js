@@ -65,7 +65,7 @@ const MenuItem = ({ icon, title, subtitle, onPress }) => (
   </TouchableOpacity>
 );
 
-const EditField = ({ label, value, onChangeText, keyboardType = 'default' }) => (
+const EditField = ({ label, value, onChangeText, keyboardType = 'default', maxLength }) => (
   <View style={styles.editInputBox}>
     <Text style={styles.editLabel}>{label}</Text>
     <TextInput
@@ -73,6 +73,7 @@ const EditField = ({ label, value, onChangeText, keyboardType = 'default' }) => 
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType}
+      maxLength={maxLength}
     />
   </View>
 );
@@ -296,12 +297,12 @@ const ProfileScreen = ({ navigation, route }) => {
               </View>
             </View>
 
-            <EditField label="Name" value={editName} onChangeText={setEditName} />
-            <EditField label="Email" value={editEmail} onChangeText={setEditEmail} keyboardType="email-address" />
-            <EditField label="Contact Number" value={editPhone} onChangeText={setEditPhone} keyboardType="phone-pad" />
-            <EditField label="City" value={editCity} onChangeText={setEditCity} />
+            <EditField label="Name" value={editName} onChangeText={(text) => setEditName(text.replace(/[^A-Za-z0-9.\s]/g, ''))} maxLength={25} />
+            <EditField label="Email" value={editEmail} onChangeText={(text) => setEditEmail(text.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" maxLength={25} />
+            <EditField label="Contact Number" value={editPhone} onChangeText={(text) => setEditPhone(text.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} />
+            <EditField label="City" value={editCity} onChangeText={(text) => setEditCity(text.replace(/[^A-Za-z0-9\s,./#()-]/g, ''))} maxLength={25} />
 
-            <EditField label="State" value={editState} onChangeText={setEditState} />
+            <EditField label="State" value={editState} onChangeText={(text) => setEditState(text.replace(/[^A-Za-z0-9\s,./#()-]/g, ''))} maxLength={25} />
 
             <View style={styles.editInputBox}>
               <Text style={styles.editLabel}>Country</Text>

@@ -57,7 +57,7 @@ const fmtDisplayDate = (isoDate) => {
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 // Floating Label Input
-const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChangeText, placeholder, editable, onIconPress }) => {
+const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChangeText, placeholder, editable, onIconPress, maxLength }) => {
   const Container = (onPress && !editable) ? TouchableOpacity : View;
   
   return (
@@ -77,6 +77,7 @@ const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChang
           multiline
           placeholder={placeholder}
           placeholderTextColor="#9CA3AF"
+          maxLength={maxLength}
         />
       ) : (
         <View style={fi.row}>
@@ -87,6 +88,7 @@ const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChang
               onChangeText={onChangeText}
               placeholder={placeholder}
               placeholderTextColor="#9CA3AF"
+              maxLength={maxLength}
             />
           ) : (
             <Text style={fi.value}>{value}</Text>
@@ -665,6 +667,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               onChangeText={setRemarks}
               multiline
               active={true}
+              maxLength={50}
             />
 
             <TouchableOpacity

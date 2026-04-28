@@ -364,7 +364,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             {/* Amount */}
             <View style={s.inputBox}>
               <Text style={s.label}>Amount (₹)</Text>
-              <TextInput style={s.inputRow} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor="#D1D5DB" />
+              <TextInput style={s.inputRow} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor="#D1D5DB" maxLength={20} />
             </View>
 
             {/* Date */}
@@ -397,13 +397,13 @@ const ExpenseScreen = ({ navigation, route }) => {
             {/* Remarks */}
             <View style={s.inputBox}>
               <Text style={s.label}>Remarks</Text>
-              <TextInput style={[s.inputRow, s.textArea]} value={remarks} onChangeText={setRemarks} multiline placeholder="Enter remarks..." placeholderTextColor="#D1D5DB" />
+              <TextInput style={[s.inputRow, s.textArea]} value={remarks} onChangeText={setRemarks} multiline placeholder="Enter remarks..." placeholderTextColor="#D1D5DB" maxLength={50} />
             </View>
 
             {/* Purpose */}
             <View style={s.inputBox}>
               <Text style={s.label}>Purpose</Text>
-              <TextInput style={[s.inputRow, s.textArea]} value={purpose} onChangeText={setPurpose} multiline placeholder="Enter purpose..." placeholderTextColor="#D1D5DB" />
+              <TextInput style={[s.inputRow, s.textArea]} value={purpose} onChangeText={setPurpose} multiline placeholder="Enter purpose..." placeholderTextColor="#D1D5DB" maxLength={50} />
             </View>
 
             {/* Files */}

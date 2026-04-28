@@ -188,6 +188,9 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={[s.badge, { backgroundColor: statusBg }]}>
               <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
+            {!!item.duration && item.duration !== "0" && (
+              <Text style={s.durationText}>{item.duration} mins</Text>
+            )}
             {isExpanded ? (
               <Image 
                 source={require('../../assets/signup/arrow-down-01.png')} 
@@ -386,7 +389,8 @@ const s = StyleSheet.create({
 
   cardWrapper: { marginBottom: 16 },
   cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  statusGroup: { alignItems: 'center', minWidth: 50 },
+  statusGroup: { alignItems: 'center', minWidth: 60 },
+  durationText: { fontSize: 10, fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
 
   detailSection: { 
     backgroundColor: '#F9FAFB', 

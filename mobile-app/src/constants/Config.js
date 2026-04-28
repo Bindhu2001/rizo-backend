@@ -27,6 +27,11 @@ export const API_ENDPOINTS = {
   SALARY_SLIP: `${NEWAPP_URL}/get_salary_slip`,
   MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,
   REGISTER_PUSH_TOKEN: `${NEWAPP_URL}/register_push_token`,
+  CHECK_ROLES: `${NEWAPP_URL}/check_hierarchy_role`,
+  REGULARISATION_HIERARCHY: `${NEWAPP_URL}/regularisation_hierarchy_list`,
+  REGULARISATION_APPROVAL_ACTION: `${NEWAPP_URL}/regularisation_approval`,
+  CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
+  REGISTER: `${NEWAPP_URL}/register`,
 };
 
 export default BASE_URL;
