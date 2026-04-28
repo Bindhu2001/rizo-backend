@@ -315,11 +315,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
       <SafeAreaView style={sv.container}>
         <View style={sv.headerRow}>
           <TouchableOpacity onPress={() => { reset(); onClose(); }} style={sv.backBtn}>
-            <Image 
-              source={require('../../assets/signup/arrow-right-02.png')} 
-              style={{ width: 24, height: 24, tintColor: '#111827', transform: [{ rotate: '180deg' }] }} 
-              resizeMode="contain"
-            />
+            <ChevronLeft color="#111827" size={28} />
           </TouchableOpacity>
           <Text style={sv.title}>Going to Meet</Text>
           <View style={{ width: 44 }} />
@@ -546,11 +542,7 @@ const VisitsScreen = ({ navigation, route }) => {
     <SafeAreaView style={s.container}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 24, height: 24, tintColor: '#111827', transform: [{ rotate: '180deg' }] }} 
-            resizeMode="contain"
-          />
+          <ChevronLeft color="#111827" size={28} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>My Customer Visits</Text>
         <View style={{ width: 44 }} />

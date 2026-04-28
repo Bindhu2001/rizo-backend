@@ -6,7 +6,7 @@ import {
   ActivityIndicator, Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Trash2, ArrowRight } from 'lucide-react-native';
+import { ChevronLeft, Trash2, ArrowRight, ChevronRight } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -15,6 +15,25 @@ import { COLORS, SHADOWS } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const { width, height } = Dimensions.get('window');
+
+const FloatingInput = ({ label, value, onChangeText, keyboardType = 'default', autoFocus=false, secureTextEntry=false, placeholder="", maxLength }) => (
+  <View style={styles.inputContainer}>
+    <View style={styles.floatingLabelContainer}>
+      <Text style={styles.floatingLabel}>{label}</Text>
+    </View>
+    <TextInput
+      style={styles.textInput}
+      value={value}
+      onChangeText={onChangeText}
+      keyboardType={keyboardType}
+      autoFocus={autoFocus}
+      secureTextEntry={secureTextEntry}
+      placeholder={placeholder}
+      placeholderTextColor="#CBD5E0"
+      maxLength={maxLength}
+    />
+  </View>
+);
 
 const SLIDES = [
   { id: '1', title: 'Transform your career', subtitle: 'Transform your career with a portable HR profile that travels with you! Streamline your info sharing securely' },
@@ -62,9 +81,11 @@ const SignupScreen = ({ navigation }) => {
     
     setLoading(true);
     try {
-      const res = await axios.get(`${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode}&email=${email}`);
-      if (res.data?.success) {
-        if (res.data.exists) {
+      const res = await axios.get(`${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode.trim()}&email=${email.trim()}`);
+      
+      // If API returns success or even if it just returns data with 'exists' field
+      if (res.data) {
+        if (res.data.exists || res.data.data?.exists) {
            Alert.alert('User Exists', 'User already exists with this email id.', [
              { text: 'Try another mail', style: 'cancel' },
              { text: 'Login', onPress: () => navigation.navigate('Login') }
@@ -73,7 +94,7 @@ const SignupScreen = ({ navigation }) => {
            setStep(2);
         }
       } else {
-         Alert.alert('Error', res.data?.message || 'Verification failed');
+         Alert.alert('Error', 'Verification failed');
       }
     } catch (e) {
       console.log('Email check error', e);
@@ -243,7 +264,7 @@ const SignupScreen = ({ navigation }) => {
               <Text style={styles.slideSubtitle}>{item.subtitle}</Text>
               <TouchableOpacity style={styles.getStartedBtn} onPress={() => setStep(1)}>
                 <Text style={styles.getStartedText}>Get Started</Text>
-                <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 20, height: 20, tintColor: '#FFF'}} resizeMode="contain" />
+                <ChevronRight color="#FFF" size={20} />
               </TouchableOpacity>
             </View>
           </View>
@@ -252,24 +273,7 @@ const SignupScreen = ({ navigation }) => {
     </View>
   );
 
-  const FloatingInput = ({ label, value, onChangeText, keyboardType = 'default', autoFocus=false, secureTextEntry=false, placeholder="", maxLength }) => (
-    <View style={styles.inputContainer}>
-      <View style={styles.floatingLabelContainer}>
-        <Text style={styles.floatingLabel}>{label}</Text>
-      </View>
-      <TextInput
-        style={styles.textInput}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType={keyboardType}
-        autoFocus={autoFocus}
-        secureTextEntry={secureTextEntry}
-        placeholder={placeholder}
-        placeholderTextColor="#CBD5E0"
-        maxLength={maxLength}
-      />
-    </View>
-  );
+
 
   const renderFormContent = () => {
     switch (step) {
@@ -284,9 +288,9 @@ const SignupScreen = ({ navigation }) => {
                <FloatingInput label="Email ID" value={email} onChangeText={(text) => setEmail(text.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="Loisbecket@gmail.com" maxLength={25} />
             </View>
             <View style={styles.nextBtnRow}>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 {loading ? <ActivityIndicator color="#FFF" /> : <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 24, height: 24, tintColor: '#FFF'}} resizeMode="contain" />}
-               </TouchableOpacity>
+                <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
+                   {loading ? <ActivityIndicator color="#FFF" /> : <ChevronRight color="#FFF" size={24} />}
+                </TouchableOpacity>
             </View>
           </View>
         );
@@ -318,13 +322,9 @@ const SignupScreen = ({ navigation }) => {
               )}
             </View>
             <View style={styles.nextBtnRow}>
-               <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
-                 <Image 
-                   source={require('../../assets/signup/arrow-right-02.png')} 
-                   style={{ width: 24, height: 24, tintColor: '#FFF' }} 
-                   resizeMode="contain"
-                 />
-               </TouchableOpacity>
+                <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>
+                   <ChevronRight color="#FFF" size={24} />
+                </TouchableOpacity>
             </View>
           </View>
         );
@@ -406,14 +406,14 @@ const SignupScreen = ({ navigation }) => {
             </View>
 
             <TouchableOpacity style={[styles.finishBtn, loading && { opacity: 0.7 }]} onPress={nextStep} disabled={loading}>
-               {loading ? (
-                 <ActivityIndicator color="#FFF" />
-               ) : (
-                 <>
-                   <Text style={styles.finishBtnText}>COMPLETE SIGNUP</Text>
-                   <Image source={require('../../assets/signup/arrow-right-02.png')} style={{width: 20, height: 20, tintColor: '#FFF'}} resizeMode="contain" />
-                 </>
-               )}
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <Text style={styles.finishBtnText}>COMPLETE SIGNUP</Text>
+                    <ChevronRight color="#FFF" size={20} />
+                  </>
+                )}
             </TouchableOpacity>
           </View>
         );
@@ -432,11 +432,7 @@ const SignupScreen = ({ navigation }) => {
             <>
               <View style={styles.topSection}>
                 <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-                  <Image 
-                    source={require('../../assets/signup/arrow-right-02.png')} 
-                    style={{ width: 24, height: 24, tintColor: '#333', transform: [{ rotate: '180deg' }] }} 
-                    resizeMode="contain"
-                  />
+                  <ChevronLeft color="#FFF" size={28} />
                 </TouchableOpacity>
                 {step === 1 && <Image source={require('../../assets/signup/group.png')} style={styles.stepIllustrationImage} resizeMode="contain" />}
                 {step === 2 && <Image source={require('../../assets/signup/group-1.png')} style={styles.stepIllustrationImage} resizeMode="contain" />}
@@ -452,11 +448,7 @@ const SignupScreen = ({ navigation }) => {
             <RNSafeAreaView style={styles.fullScreenWhite}>
               <View style={styles.fullScreenHeader}>
                 <TouchableOpacity onPress={prevStep} style={styles.backBtnFull}>
-                  <Image 
-                    source={require('../../assets/signup/arrow-right-02.png')} 
-                    style={{ width: 24, height: 24, tintColor: '#333', transform: [{ rotate: '180deg' }] }} 
-                    resizeMode="contain"
-                  />
+                   <ChevronLeft color="#333" size={28} />
                 </TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.fullScreenScroll}>
@@ -472,11 +464,7 @@ const SignupScreen = ({ navigation }) => {
          <View style={styles.scanModalContainer}>
             <View style={styles.scanHeader}>
                <TouchableOpacity onPress={() => setShowScanModal(false)} style={styles.scanBackBtn}>
-                  <Image 
-                    source={require('../../assets/signup/arrow-right-02.png')} 
-                    style={{ width: 24, height: 24, tintColor: '#FFF', transform: [{ rotate: '180deg' }] }} 
-                    resizeMode="contain"
-                  />
+                  <ChevronLeft color="#FFF" size={28} />
                </TouchableOpacity>
                <Text style={styles.scanTitle}>{scannedImage ? 'Confirm Scan' : 'Scan Card'}</Text>
                <View style={{width: 40}} />

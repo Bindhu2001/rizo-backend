@@ -422,12 +422,13 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
         {/* SWIPE / TIMER ACTION */}
-        <View style={styles.swipeBox}>
+        <View style={[styles.swipeBox, { width: 353, alignSelf: 'center' }]}>
           <SwipeToPunch
             isPunchedIn={isPunchedIn}
             loading={punching}
             onSwipeComplete={handleSwipeComplete}
             resetTrigger={cancelTrigger}
+            trackHeight={60}
             locationName={isPunchedIn ? punchInAddress : ''}
             punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
           />
@@ -444,8 +445,8 @@ const HomeScreen = ({ navigation, route }) => {
         {/* 2×2 GRID */}
         <View style={styles.grid}>
           <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance', { user })}>
-            <View style={[styles.gridIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Fingerprint color="#2ECC71" size={20} />
+            <View style={[styles.gridIcon, { backgroundColor: '#E3F2FD' }]}>
+              <Clock color="#2196F3" size={20} />
             </View>
             <Text style={styles.gridVal}>Attendance</Text>
             <Text style={styles.gridLabel}>View History</Text>
@@ -519,11 +520,7 @@ const HomeScreen = ({ navigation, route }) => {
               <Text style={styles.visitBtnSub}>Track your client meetings</Text>
             </View>
           </View>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 20, height: 20, tintColor: COLORS.textLight }} 
-            resizeMode="contain"
-          />
+          <ChevronRight color={COLORS.textLight} size={20} />
         </TouchableOpacity>
 
         {/* REGULARIZATION */}
@@ -552,16 +549,8 @@ const HomeScreen = ({ navigation, route }) => {
               <Text style={styles.eventsSectionTitle}>Upcoming Events</Text>
             </View>
             {eventsOpen
-              ? <Image 
-                  source={require('../../assets/signup/arrow-down-01.png')} 
-                  style={{ width: 18, height: 18, tintColor: COLORS.textLight, transform: [{ rotate: '180deg' }] }} 
-                  resizeMode="contain"
-                />
-              : <Image 
-                  source={require('../../assets/signup/arrow-down-01.png')} 
-                  style={{ width: 18, height: 18, tintColor: COLORS.textLight }} 
-                  resizeMode="contain"
-                />
+              ? <ChevronUp color={COLORS.textLight} size={20} />
+              : <ChevronDown color={COLORS.textLight} size={20} />
             }
           </TouchableOpacity>
 
@@ -620,7 +609,7 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 24 },
+  swipeBox: { marginBottom: 24, height: 60, width: 353, alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

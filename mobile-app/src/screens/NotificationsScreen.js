@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Bell, CheckCircle, Calendar, FileText, AlertCircle, X
+  Bell, CheckCircle, Calendar, FileText, AlertCircle, X,
+  ChevronLeft, ChevronRight
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import { getLoggedUser, getNotificationsLocal, markNotificationsAsReadLocal } from '../services/LocalDB';
@@ -36,19 +37,11 @@ const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
         <View style={dp.box}>
           <View style={dp.header}>
             <TouchableOpacity onPress={() => setCurrentMonth(new Date(year, month - 1, 1))} style={dp.arrowBtn}>
-              <Image 
-                source={require('../../assets/signup/arrow-right-02.png')} 
-                style={{ width: 18, height: 18, tintColor: '#111827', transform: [{ rotate: '180deg' }] }} 
-                resizeMode="contain"
-              />
+               <ChevronLeft color="#111827" size={20} />
             </TouchableOpacity>
             <Text style={dp.headerTitle}>{monthNames[month]} {year}</Text>
             <TouchableOpacity onPress={() => setCurrentMonth(new Date(year, month + 1, 1))} style={dp.arrowBtn}>
-              <Image 
-                source={require('../../assets/signup/arrow-right-02.png')} 
-                style={{ width: 18, height: 18, tintColor: '#111827' }} 
-                resizeMode="contain"
-              />
+               <ChevronRight color="#111827" size={20} />
             </TouchableOpacity>
           </View>
           <View style={dp.daysHeader}>
@@ -201,11 +194,7 @@ const NotificationsScreen = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
-            resizeMode="contain"
-          />
+          <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>
         <TouchableOpacity

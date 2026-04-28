@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff
+  Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
 } from 'lucide-react-native';
 import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
@@ -78,7 +78,7 @@ const AttendanceScreen = ({ navigation, route }) => {
       }
       console.log('[AttendanceScreen] Fetched', parsed.length, 'records for', month);
       setLogs(parsed);
-      
+
       const localPunches = await getRawPunchesForMonth(user.user_id, month);
       setRawPunches(localPunches || []);
     } catch (e) {
@@ -96,8 +96,8 @@ const AttendanceScreen = ({ navigation, route }) => {
         user_id: user.user_id, date
       }, { timeout: 10000 });
       if (res.data && res.data.success === 1) {
-        const punches = Array.isArray(res.data.data) ? res.data.data : 
-                        (res.data.data ? Object.values(res.data.data) : []);
+        const punches = Array.isArray(res.data.data) ? res.data.data :
+          (res.data.data ? Object.values(res.data.data) : []);
         console.log('[AttendanceScreen] Device punches for', date, ':', punches.length);
         setDevicePunches(prev => ({ ...prev, [date]: punches }));
       } else {
@@ -126,7 +126,7 @@ const AttendanceScreen = ({ navigation, route }) => {
     const d = new Date(item.date);
     const dateNum = d.getDate().toString().padStart(2, '0');
     const monthDay = d.toLocaleDateString('en-US', { month: 'short', weekday: 'short' }).toUpperCase();
-    
+
     // Status Badge Logic
     const isPresent = item.punch_in_time && item.punch_out_time;
     const statusLabel = isPresent ? 'P/P' : (item.status?.includes('WO') ? 'WO' : 'A/A');
@@ -137,7 +137,7 @@ const AttendanceScreen = ({ navigation, route }) => {
     const punchOut = formatPunchTime(item.punch_out_time);
 
     const isExpanded = expandedDate === item.date;
-    
+
     const handleExpandToggle = () => {
       const nextDate = isExpanded ? null : item.date;
       setExpandedDate(nextDate);
@@ -161,8 +161,8 @@ const AttendanceScreen = ({ navigation, route }) => {
 
     return (
       <View style={s.cardWrapper}>
-        <TouchableOpacity 
-          style={[s.card, isExpanded && s.cardExpanded]} 
+        <TouchableOpacity
+          style={[s.card, isExpanded && s.cardExpanded]}
           activeOpacity={0.9}
           onPress={handleExpandToggle}
         >
@@ -192,17 +192,9 @@ const AttendanceScreen = ({ navigation, route }) => {
               <Text style={s.durationText}>{item.duration} mins</Text>
             )}
             {isExpanded ? (
-              <Image 
-                source={require('../../assets/signup/arrow-down-01.png')} 
-                style={{ width: 16, height: 16, tintColor: '#9CA3AF', transform: [{ rotate: '180deg' }] }} 
-                resizeMode="contain"
-              />
+              <ChevronUp color="#9CA3AF" size={16} />
             ) : (
-              <Image 
-                source={require('../../assets/signup/arrow-down-01.png')} 
-                style={{ width: 16, height: 16, tintColor: '#9CA3AF' }} 
-                resizeMode="contain"
-              />
+              <ChevronDown color="#9CA3AF" size={16} />
             )}
           </View>
         </TouchableOpacity>
@@ -213,44 +205,44 @@ const AttendanceScreen = ({ navigation, route }) => {
             {fetchingDevicePunches && !hasDevicePunches ? (
               <ActivityIndicator size="small" color="#6C5CE7" style={{ marginVertical: 10 }} />
             ) : (
-                <>
+              <>
                 {hasDevicePunches ? (
-                    currentDevicePunches.map((p, idx) => (
-                        <View key={idx} style={s.punchDetailRow}>
-                            <View style={s.punchTimeBox}>
-                                <Text style={s.punchTimeVal}>{formatPunchTime(p.LOGDATE)}</Text>
-                                <View style={[s.pBadge, { backgroundColor: p.C1?.toUpperCase() === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
-                                    <Text style={[s.pBadgeText, { color: p.C1?.toUpperCase() === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.C1?.toUpperCase()}</Text>
-                                </View>
-                            </View>
-                            
-                            <View style={s.punchAddressBox}>
-                                <Text style={s.shiftBadgeText} numberOfLines={1}>{p.day_time_desc}</Text>
-                                <Text style={s.addressText} numberOfLines={2}>{p.C3 || 'Location Attached'}</Text>
-                            </View>
+                  currentDevicePunches.map((p, idx) => (
+                    <View key={idx} style={s.punchDetailRow}>
+                      <View style={s.punchTimeBox}>
+                        <Text style={s.punchTimeVal}>{formatPunchTime(p.LOGDATE)}</Text>
+                        <View style={[s.pBadge, { backgroundColor: p.C1?.toUpperCase() === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
+                          <Text style={[s.pBadgeText, { color: p.C1?.toUpperCase() === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.C1?.toUpperCase()}</Text>
                         </View>
-                    ))
+                      </View>
+
+                      <View style={s.punchAddressBox}>
+                        <Text style={s.shiftBadgeText} numberOfLines={1}>{p.day_time_desc}</Text>
+                        <Text style={s.addressText} numberOfLines={2}>{p.C3 || 'Location Attached'}</Text>
+                      </View>
+                    </View>
+                  ))
                 ) : (
-                    localDayPunches.length === 0 ? (
-                        <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
-                    ) : (
-                        localDayPunches.map((p, idx) => (
-                            <View key={p.id || idx} style={s.punchDetailRow}>
-                                <View style={s.punchTimeBox}>
-                                    <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
-                                    <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
-                                        <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
-                                    </View>
-                                </View>
-                                
-                                <View style={s.punchAddressBox}>
-                                    <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
-                                </View>
-                            </View>
-                        ))
-                    )
+                  localDayPunches.length === 0 ? (
+                    <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
+                  ) : (
+                    localDayPunches.map((p, idx) => (
+                      <View key={p.id || idx} style={s.punchDetailRow}>
+                        <View style={s.punchTimeBox}>
+                          <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
+                          <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
+                            <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
+                          </View>
+                        </View>
+
+                        <View style={s.punchAddressBox}>
+                          <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
+                        </View>
+                      </View>
+                    ))
+                  )
                 )}
-                </>
+              </>
             )}
           </View>
         )}
@@ -261,15 +253,11 @@ const AttendanceScreen = ({ navigation, route }) => {
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="dark-content" />
-      
+
       {/* ── Header ── */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
-            resizeMode="contain"
-          />
+          <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Attendance History</Text>
         <View style={{ width: 44 }} />
@@ -277,43 +265,39 @@ const AttendanceScreen = ({ navigation, route }) => {
 
       {/* ── Month Selector ── */}
       <View style={s.monthBar}>
-        <TouchableOpacity 
-          style={s.monthDropdown} 
+        <TouchableOpacity
+          style={s.monthDropdown}
           activeOpacity={0.7}
           onPress={() => setShowMonthPicker(true)}
         >
-           <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
-           <Text style={s.monthText}>{getMonthDisplayText()}</Text>
-           <Image 
-             source={require('../../assets/signup/arrow-down-01.png')} 
-             style={{ width: 16, height: 16, tintColor: '#6C5CE7', marginLeft: 8 }} 
-             resizeMode="contain"
-           />
+          <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
+          <Text style={s.monthText}>{getMonthDisplayText()}</Text>
+          <ChevronDown color="#6C5CE7" size={18} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
 
       {/* ── List ── */}
       <View style={s.listContainer}>
         {loading ? (
-            <View style={s.center}>
-                <ActivityIndicator size="large" color="#6C5CE7" />
-            </View>
+          <View style={s.center}>
+            <ActivityIndicator size="large" color="#6C5CE7" />
+          </View>
         ) : (
-            <FlatList
-                data={logs}
-                keyExtractor={(item, index) => item.date + index}
-                renderItem={renderLogItem}
-                contentContainerStyle={s.listContents}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={s.center}>
-                        <View style={s.emptyCircle}>
-                            <Clock color="#9CA3AF" size={40} />
-                        </View>
-                        <Text style={s.emptyTitle}>No History Found</Text>
-                    </View>
-                }
-            />
+          <FlatList
+            data={logs}
+            keyExtractor={(item, index) => item.date + index}
+            renderItem={renderLogItem}
+            contentContainerStyle={s.listContents}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={s.center}>
+                <View style={s.emptyCircle}>
+                  <Clock color="#9CA3AF" size={40} />
+                </View>
+                <Text style={s.emptyTitle}>No History Found</Text>
+              </View>
+            }
+          />
         )}
       </View>
 
@@ -327,9 +311,9 @@ const AttendanceScreen = ({ navigation, route }) => {
               {pastMonths.map((m) => {
                 const isActive = m.value === currentMonthStr;
                 return (
-                  <TouchableOpacity 
-                    key={m.value} 
-                    style={s.monthItem} 
+                  <TouchableOpacity
+                    key={m.value}
+                    style={s.monthItem}
                     onPress={() => {
                       setCurrentMonthStr(m.value);
                       setShowMonthPicker(false);
@@ -355,24 +339,24 @@ const s = StyleSheet.create({
   },
   backBtn: { width: 44, height: 44, justifyContent: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text },
-  
+
   monthBar: { paddingVertical: 15, alignItems: 'center', backgroundColor: '#FFF' },
-  monthDropdown: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF', 
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25 
+  monthDropdown: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF',
+    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25
   },
   monthText: { fontSize: 16, fontWeight: '700', color: '#6C5CE7' },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
   listContents: { padding: 16, paddingBottom: 40 },
-  
-  card: { 
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20, 
-    padding: 16, marginBottom: 16, alignItems: 'center', ...SHADOWS.light 
+
+  card: {
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20,
+    padding: 16, marginBottom: 16, alignItems: 'center', ...SHADOWS.light
   },
-  dateBox: { 
-    alignItems: 'center', paddingRight: 16, borderRightWidth: 1, 
-    borderRightColor: '#F3F4F6', width: 75 
+  dateBox: {
+    alignItems: 'center', paddingRight: 16, borderRightWidth: 1,
+    borderRightColor: '#F3F4F6', width: 75
   },
   dateNum: { fontSize: 28, fontWeight: '900', color: '#111827' },
   monthDayText: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
@@ -392,24 +376,24 @@ const s = StyleSheet.create({
   statusGroup: { alignItems: 'center', minWidth: 60 },
   durationText: { fontSize: 10, fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
 
-  detailSection: { 
-    backgroundColor: '#F9FAFB', 
-    borderBottomLeftRadius: 20, 
-    borderBottomRightRadius: 20, 
+  detailSection: {
+    backgroundColor: '#F9FAFB',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: '#F3F4F6',
     padding: 16,
     paddingTop: 8,
-    ...SHADOWS.light 
+    ...SHADOWS.light
   },
   detailTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  punchDetailRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFF', 
-    padding: 10, 
-    borderRadius: 12, 
+  punchDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    padding: 10,
+    borderRadius: 12,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#F3F4F6'
@@ -418,7 +402,7 @@ const s = StyleSheet.create({
   punchTimeVal: { fontSize: 13, fontWeight: '800', color: '#111827' },
   pBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
   pBadgeText: { fontSize: 10, fontWeight: '900' },
-  
+
   punchAddressBox: { flex: 1, paddingHorizontal: 12 },
   shiftBadgeText: { fontSize: 10, fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
   addressText: { fontSize: 11, color: '#6B7280', fontWeight: '600' },

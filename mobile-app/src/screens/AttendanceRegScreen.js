@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  CheckCircle, CalendarDays, Check, Target, ChevronDown
+  CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS } from '../components/Theme';
@@ -637,7 +637,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       <SafeAreaView style={s.container}>
         <View style={s.headerBar}>
           <TouchableOpacity onPress={() => setView('MAIN')} style={s.backBtn}>
-            <Image source={require('../../assets/signup/arrow-right-02.png')} style={{ width: 24, height: 24, transform: [{ rotate: '180deg' }] }} resizeMode="contain" />
+            <ChevronLeft color="#333" size={28} />
           </TouchableOpacity>
           <Text style={s.headerTitle}>Regularise Attendance</Text>
           <View style={{ width: 44 }} />
@@ -650,7 +650,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               value={reason}
               editable={false}
               onPress={() => setShowReasonPicker(true)}
-              icon={<Image source={require('../../assets/signup/arrow-down-01.png')} style={{ width: 16, height: 16, tintColor: '#9CA3AF' }} resizeMode="contain" />}
+              icon={<ChevronDown color="#9CA3AF" size={18} />}
             />
 
             <FloatingInput
@@ -720,7 +720,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     <SafeAreaView style={s.container}>
       <View style={s.headerBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Image source={require('../../assets/signup/arrow-right-02.png')} style={{ width: 24, height: 24, transform: [{ rotate: '180deg' }] }} resizeMode="contain" />
+          <ChevronLeft color="#333" size={28} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Attendance</Text>
         <View style={{ width: 44 }} />
@@ -745,7 +745,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           onPress={() => setShowMonthPickerMain(true)}
         >
           <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
-          <Image source={require('../../assets/signup/arrow-down-01.png')} style={{ width: 15, height: 15, tintColor: COLORS.primary, marginLeft: 4 }} resizeMode="contain" />
+          <ChevronDown color={COLORS.primary} size={16} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </View>
 

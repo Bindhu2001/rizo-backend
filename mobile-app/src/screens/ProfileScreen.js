@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, Shield, Bell, LogOut,
-  Mail, Phone, Briefcase, Camera, Edit2, Check, Calendar, X
+  Mail, Phone, Briefcase, Camera, Edit2, Check, Calendar, X,
+  ChevronLeft, ChevronRight
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
@@ -57,11 +58,7 @@ const MenuItem = ({ icon, title, subtitle, onPress }) => (
       <Text style={styles.menuTitle}>{title}</Text>
       {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
     </View>
-    <Image 
-      source={require('../../assets/signup/arrow-right-02.png')} 
-      style={{ width: 18, height: 18, tintColor: COLORS.textMuted }} 
-      resizeMode="contain"
-    />
+    <ChevronRight color={COLORS.textMuted} size={20} />
   </TouchableOpacity>
 );
 
@@ -180,7 +177,7 @@ const ProfileScreen = ({ navigation, route }) => {
         international_worker: editIntlWorker ? 'Y' : 'N',
         physical_handicap: editHandicap ? 'Y' : 'N',
         // Send Base64 string if a new image was picked, otherwise send existing URL
-        profile_pic: editPicBase64 ? `data:image/jpeg;base64,${editPicBase64}` : (editPic || '') 
+        profile_pic: editPicBase64 ? `data:image/jpeg;base64,${editPicBase64}` : (editPic || '')
       };
 
       // API Call with JSON
@@ -201,7 +198,7 @@ const ProfileScreen = ({ navigation, route }) => {
           country_name: editCountry?.country_name || '',
           international_worker: editIntlWorker ? 'Y' : 'N',
           physical_handicap: editHandicap ? 'Y' : 'N',
-          profile_pic: editPicLocalUri || editPic 
+          profile_pic: editPicLocalUri || editPic
         });
 
         setIsEditing(false);
@@ -260,7 +257,7 @@ const ProfileScreen = ({ navigation, route }) => {
         style: 'destructive',
         onPress: async () => {
           await clearUserSession();
-          navigation.replace('Welcome');
+          navigation.replace('Login');
         }
       }
     ]);
@@ -270,11 +267,7 @@ const ProfileScreen = ({ navigation, route }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { isEditing ? attemptDiscard() : navigation.goBack() }} style={styles.backBtn}>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
-            resizeMode="contain"
-          />
+          <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{isEditing ? 'Personal Details' : 'Profile'}</Text>
         <View style={styles.headerIcon} />
@@ -308,9 +301,9 @@ const ProfileScreen = ({ navigation, route }) => {
               <Text style={styles.editLabel}>Country</Text>
               <TouchableOpacity activeOpacity={0.7} style={[styles.inputPickerRow, { backgroundColor: '#FFF' }]} onPress={() => setShowCountryPicker(true)}>
                 <Text style={styles.inputInner}>{editCountry?.country_name || ''}</Text>
-                <Image 
-                  source={require('../../assets/signup/arrow-down-01.png')} 
-                  style={{ width: 16, height: 16, tintColor: COLORS.textMuted }} 
+                <Image
+                  source={require('../../assets/signup/arrow-down-01.png')}
+                  style={{ width: 16, height: 16, tintColor: COLORS.textMuted }}
                   resizeMode="contain"
                 />
               </TouchableOpacity>
@@ -450,33 +443,33 @@ const ProfileScreen = ({ navigation, route }) => {
         onSelect={setEditCountry}
       />
 
-  {/* Discard Modal Form */ }
-  {
-    showDiscardModal && (
-      <Modal visible transparent animationType="fade" statusBarTranslucent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalCircleOuter}>
-              <View style={styles.modalCircleInner}>
-                <X color="#DC2626" size={32} strokeWidth={2.5} />
+      {/* Discard Modal Form */}
+      {
+        showDiscardModal && (
+          <Modal visible transparent animationType="fade" statusBarTranslucent>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalCard}>
+                <View style={styles.modalCircleOuter}>
+                  <View style={styles.modalCircleInner}>
+                    <X color="#DC2626" size={32} strokeWidth={2.5} />
+                  </View>
+                </View>
+                <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
+                <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
+
+                <View style={styles.modalActionRow}>
+                  <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
+                    <Text style={styles.modalBtnNoText}>No, Go back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
+                    <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-            <Text style={styles.modalTitle}>Are you sure you want to discard changes?</Text>
-            <Text style={styles.modalSub}>The informations won't be Updated if you discard.</Text>
-
-            <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.modalBtnNo} onPress={() => setShowDiscardModal(false)}>
-                <Text style={styles.modalBtnNoText}>No, Go back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalBtnYes} onPress={confirmDiscard}>
-                <Text style={styles.modalBtnYesText}>Yes, Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    )
-  }
+          </Modal>
+        )
+      }
 
     </SafeAreaView >
   );

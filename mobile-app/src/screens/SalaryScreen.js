@@ -190,11 +190,7 @@ const SalaryScreen = ({ navigation, route }) => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Image 
-            source={require('../../assets/signup/arrow-right-02.png')} 
-            style={{ width: 24, height: 24, tintColor: COLORS.text, transform: [{ rotate: '180deg' }] }} 
-            resizeMode="contain"
-          />
+          <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Salary Slip</Text>
         <TouchableOpacity style={styles.headerIcon}>
