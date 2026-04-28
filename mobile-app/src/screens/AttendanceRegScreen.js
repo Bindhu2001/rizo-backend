@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  CheckCircle, CalendarDays, Check
+  CheckCircle, CalendarDays, Check, Target, ChevronDown
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS } from '../components/Theme';
@@ -173,7 +173,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         {/* IN */}
         <View style={lc.punchRowBox}>
           <View style={lc.iconCol}>
-            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <TargetIcon color="#DC2626" />}
+            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <Target color="#DC2626" size={18} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchIn ? (
