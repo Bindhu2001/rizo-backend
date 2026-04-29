@@ -402,7 +402,9 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
               onResponderRelease={handleRelease}
             >
               <View style={tp.centerDot} />
-              <View style={[tp.hand, { transform: [{ rotate: `${handAngle}deg` }] }]} />
+              <View style={[tp.handContainer, { transform: [{ rotate: `${handAngle}deg` }] }]}>
+                <View style={tp.hand} />
+              </View>
 
               <View pointerEvents="none" style={StyleSheet.absoluteFill}>
                 {mode === 'hour'
@@ -460,7 +462,8 @@ const tp = StyleSheet.create({
   clockWrap: { alignItems: 'center', marginBottom: 20 },
   clockFace: { width: 200, height: 200, borderRadius: 100, backgroundColor: '#F9FAFB', position: 'relative' },
   centerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6B7280', position: 'absolute', top: 96, left: 96, zIndex: 10 },
-  hand: { position: 'absolute', width: 2, height: 75, backgroundColor: '#6B7280', top: 25, left: 99, transformOrigin: 'bottom' },
+  handContainer: { position: 'absolute', width: 2, height: 200, left: 99, top: 0, alignItems: 'center' },
+  hand: { width: 2, height: 75, backgroundColor: '#4B5563', marginTop: 25, borderRadius: 1 },
   numNode: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', position: 'absolute' },
   numNodeActive: { backgroundColor: '#4B5563' },
   numText: { fontSize: 14, color: '#111827' },
