@@ -200,7 +200,10 @@ const HomeScreen = ({ navigation, route }) => {
     // 2. Cross-verify with Cloud
     try {
       const today = format(new Date(), 'yyyy-MM');
-      const response = await axios.get(`${API_ENDPOINTS.ATTENDANCE_LOGS}?user_id=${user.user_id}&month=${today}`, { timeout: 8000 });
+      const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
+        user_id: user.user_id,
+        month: today
+      }, { timeout: 8000 });
 
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
       
@@ -428,13 +431,14 @@ const HomeScreen = ({ navigation, route }) => {
                     : `https://i.pravatar.cc/100?u=${user.user_id}` 
                 }}
                 style={styles.avatar}
+                resizeMode="cover"
               />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* SWIPE / TIMER ACTION */}
-        <View style={[styles.swipeBox, { width: 353, alignSelf: 'center' }]}>
+        <View style={[styles.swipeBox, { width: 353, height: 60, alignSelf: 'center' }]}>
           <SwipeToPunch
             isPunchedIn={isPunchedIn}
             loading={punching}
@@ -621,7 +625,7 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 16, height: 64, width: 320, alignSelf: 'center' },
+  swipeBox: { marginBottom: 16, height: 60, width: 353, alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

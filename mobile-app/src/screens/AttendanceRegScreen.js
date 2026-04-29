@@ -165,7 +165,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         {/* IN */}
         <View style={lc.punchRowBox}>
           <View style={lc.iconCol}>
-            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <Target color="#DC2626" size={18} />}
+            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <Clock color="#DC2626" size={18} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchIn ? (
@@ -198,7 +198,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         {/* OUT */}
         <View style={[lc.punchRowBox, { marginTop: 32 }]}>
           <View style={[lc.iconCol, { backgroundColor: '#FFF' }]}>
-            {hasPunchOut ? <CheckCircle color="#16A34A" size={18} /> : <TargetIcon color="#DC2626" />}
+            {hasPunchOut ? <CheckCircle color="#16A34A" size={18} /> : <Clock color="#DC2626" size={18} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchOut ? (

@@ -675,7 +675,7 @@ const s = StyleSheet.create({
   inputRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 12, paddingHorizontal: 14, height: 48,
+    borderRadius: 12, paddingHorizontal: 14, height: 48, color: '#000'
   },
   inputVal: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },
   dateText: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },

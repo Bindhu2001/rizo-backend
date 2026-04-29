@@ -86,8 +86,10 @@ const SignupScreen = ({ navigation }) => {
     
     setLoading(true);
     try {
-      const url = `${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode.trim()}&email=${email.trim()}`;
-      const res = await axios.get(url);
+      const res = await axios.post(API_ENDPOINTS.CHECK_EMAIL_EXISTS, {
+        company_code: companyCode.trim(),
+        email: email.trim()
+      });
       
       if (res.data) {
         // Handle both boolean and numeric success flags
