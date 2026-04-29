@@ -53,8 +53,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [punchInTime, setPunchInTime] = useState(null);
   const [punchInAddress, setPunchInAddress] = useState('');
   const [roles, setRoles] = useState({
-    is_employee_hierarchy: false,
-    is_leave_hierarchy: false
+    is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
+    is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
   });
 
   useEffect(() => {
@@ -156,15 +156,15 @@ const HomeScreen = ({ navigation, route }) => {
       const res = await axios.get(`${API_ENDPOINTS.CHECK_ROLES}?user_id=${user.user_id}`);
       if (res.data) {
         // If the API returns success, we look at the roles object
-        if (res.data.success == 1 || res.data.success == true) {
+        const isResSuccess = res.data.success == 1 || res.data.success === true || res.data.success === '1' || res.data.success === 'true';
+        if (isResSuccess) {
           const apiRoles = res.data.roles || {};
           
-          // Use the root is_hierarchy flag as a fallback for is_employee_hierarchy
-          const isHierarchy = res.data.is_hierarchy === true || res.data.is_hierarchy == 1;
+          const isHierarchy = res.data.is_hierarchy == 1 || res.data.is_hierarchy === true || res.data.is_hierarchy === '1' || res.data.is_hierarchy === 'true';
           
           setRoles({
-            is_employee_hierarchy: apiRoles.is_employee_hierarchy === true || apiRoles.is_employee_hierarchy == 1 || isHierarchy,
-            is_leave_hierarchy: apiRoles.is_leave_hierarchy === true || apiRoles.is_leave_hierarchy == 1 || isHierarchy
+            is_employee_hierarchy: apiRoles.is_employee_hierarchy == 1 || apiRoles.is_employee_hierarchy === true || apiRoles.is_employee_hierarchy === '1' || apiRoles.is_employee_hierarchy === 'true' || isHierarchy,
+            is_leave_hierarchy: apiRoles.is_leave_hierarchy == 1 || apiRoles.is_leave_hierarchy === true || apiRoles.is_leave_hierarchy === '1' || apiRoles.is_leave_hierarchy === 'true' || isHierarchy
           });
         }
       }
@@ -384,9 +384,9 @@ const HomeScreen = ({ navigation, route }) => {
 
   const getGreeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning,';
-    if (h < 17) return 'Good Afternoon,';
-    return 'Good Evening,';
+    if (h < 12) return 'Morning,';
+    if (h < 17) return 'Afternoon,';
+    return 'Evening,';
   };
 
   if (loading) {
@@ -408,8 +408,8 @@ const HomeScreen = ({ navigation, route }) => {
               <Text style={styles.greetingHeader}>{getGreeting()}</Text>
               <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
               <View style={styles.locationBadge}>
-                <MapPin color={COLORS.textLight} size={12} />
-                <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
+                <MapPin color={COLORS.textLight} size={14} strokeWidth={2.5} />
+                <Text style={[styles.locationText, { fontWeight: '700', color: '#6B7280' }]} numberOfLines={1}>{locationName || 'Fetching location...'}</Text>
               </View>
             </View>
           </View>
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
   scroll: { flexGrow: 1, padding: 20 },
 
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerLogo: { width: 44, height: 44, marginRight: 16, marginLeft: 4 },
   greetingHeader: { fontSize: 13, color: COLORS.textLight, fontWeight: '600' },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 16, height: 60, width: 353, alignSelf: 'center' },
+  swipeBox: { marginBottom: 20, height: 60, width: '94%', alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

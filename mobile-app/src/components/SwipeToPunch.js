@@ -7,7 +7,7 @@ import {
   PanResponder,
   ActivityIndicator
 } from 'react-native';
-import { Fingerprint, MapPin } from 'lucide-react-native';
+import { Fingerprint, MapPin, ChevronsRight } from 'lucide-react-native';
 import { COLORS, SHADOWS } from './Theme';
 
 const SwipeToPunch = ({
@@ -94,11 +94,11 @@ const SwipeToPunch = ({
     })
   ).current;
 
-  const trackColor = isPunchedIn ? '#FFEBEB' : '#E8F5E9';
-  const buttonColor = isPunchedIn ? COLORS.danger : '#2ECC71';
-  const textColor = isPunchedIn ? COLORS.danger : '#2ECC71';
+  const trackColor = isPunchedIn ? '#F8F1F5' : '#E8F5E9';
+  const buttonColor = isPunchedIn ? '#E91E63' : '#39B54A';
+  const textColor = isPunchedIn ? '#8E7D8A' : '#39B54A';
 
-  let textVal = isPunchedIn ? 'SWIPE TO OUT' : 'SWIPE TO IN';
+  let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO IN';
   if (loading) {
     textVal = isPunchedIn ? 'Punching Out...' : 'Punching In...';
   }
@@ -147,7 +147,7 @@ const SwipeToPunch = ({
         {loading ? (
           <ActivityIndicator color="#FFF" size="small" />
         ) : (
-          <Fingerprint color="#FFF" size={20} />
+          isPunchedIn ? <ChevronsRight color="#FFF" size={24} strokeWidth={2.5} /> : <Fingerprint color="#FFF" size={24} />
         )}
       </Animated.View>
     </View>

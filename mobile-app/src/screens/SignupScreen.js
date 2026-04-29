@@ -101,7 +101,9 @@ const SignupScreen = ({ navigation }) => {
              { text: 'Login', onPress: () => navigation.navigate('Login') }
            ]);
         } else if (isSuccess) {
-           setStep(2);
+           Alert.alert('Success', 'Valid Email', [
+             { text: 'OK', onPress: () => setStep(3) }
+           ]);
         } else {
            Alert.alert('Verification Failed', res.data.message || 'Please check your details');
         }
@@ -123,7 +125,8 @@ const SignupScreen = ({ navigation }) => {
     } else if (step === 3) {
       handleFinalSubmit();
     } else if (step < 3) {
-      setStep(step + 1);
+      // Step 2 (OTP) is skipped now
+      setStep(3);
     }
   };
 
@@ -233,7 +236,8 @@ const SignupScreen = ({ navigation }) => {
   };
 
   const prevStep = () => {
-    if (step > 0) setStep(step - 1);
+    if (step === 3) setStep(1); // Skip OTP (Step 2) when going back
+    else if (step > 0) setStep(step - 1);
     else navigation.goBack();
   };
 
