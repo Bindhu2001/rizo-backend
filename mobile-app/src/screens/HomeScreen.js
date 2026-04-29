@@ -153,7 +153,7 @@ const HomeScreen = ({ navigation, route }) => {
 
   const fetchRoles = async () => {
     try {
-      const res = await axios.get(`${API_ENDPOINTS.CHECK_ROLES}?user_id=${user.user_id}`);
+      const res = await axios.post(API_ENDPOINTS.CHECK_ROLES, { user_id: user.user_id });
       if (res.data) {
         // If the API returns success, we look at the roles object
         const isResSuccess = res.data.success == 1 || res.data.success === true || res.data.success === '1' || res.data.success === 'true';
