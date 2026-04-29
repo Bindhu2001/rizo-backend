@@ -200,10 +200,7 @@ const HomeScreen = ({ navigation, route }) => {
     // 2. Cross-verify with Cloud
     try {
       const today = format(new Date(), 'yyyy-MM');
-      const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
-        user_id: user.user_id,
-        month: today
-      }, { timeout: 8000 });
+      const response = await axios.get(`${API_ENDPOINTS.ATTENDANCE_LOGS}?user_id=${user.user_id}&month=${today}`, { timeout: 8000 });
 
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
       

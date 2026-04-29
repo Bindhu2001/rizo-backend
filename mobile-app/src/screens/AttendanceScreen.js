@@ -60,9 +60,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const attRes = await axios.post(API_ENDPOINTS.ATTENDANCE_PUNCHES, {
-        user_id: user.user_id, month
-      }, { timeout: 10000 });
+      const attRes = await axios.get(`${API_ENDPOINTS.ATTENDANCE_PUNCHES}?user_id=${user.user_id}&month=${month}`, { timeout: 10000 });
       const resData = attRes.data;
       let parsed = [];
       if (resData && resData.success === 1 && Array.isArray(resData.data)) {
@@ -88,9 +86,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   const fetchDevicePunches = async (date) => {
     setFetchingDevicePunches(true);
     try {
-      const res = await axios.post(API_ENDPOINTS.DEVICE_ATTENDANCE, {
-        user_id: user.user_id, date
-      }, { timeout: 10000 });
+      const res = await axios.get(`${API_ENDPOINTS.DEVICE_ATTENDANCE}?user_id=${user.user_id}&date=${date}`, { timeout: 10000 });
       if (res.data && res.data.success === 1) {
         const punches = Array.isArray(res.data.data) ? res.data.data :
           (res.data.data ? Object.values(res.data.data) : []);
