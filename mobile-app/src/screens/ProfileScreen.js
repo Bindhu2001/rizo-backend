@@ -350,9 +350,9 @@ const ProfileScreen = ({ navigation, route }) => {
             <View style={styles.avatarWrapper}>
               <Image
                 source={{ 
-                  uri: user.profile_pic 
+                  uri: editPic ? editPic : (user.profile_pic 
                     ? (user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}`)
-                    : `https://i.pravatar.cc/100?u=${user.user_id}` 
+                    : `https://i.pravatar.cc/150?u=${user.user_id}`)
                 }}
                 style={styles.avatar}
               />
