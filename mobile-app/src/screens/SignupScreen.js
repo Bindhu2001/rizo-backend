@@ -81,24 +81,30 @@ const SignupScreen = ({ navigation }) => {
     
     setLoading(true);
     try {
-      const res = await axios.get(`${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode.trim()}&email=${email.trim()}`);
+      const url = `${API_ENDPOINTS.CHECK_EMAIL_EXISTS}?company_code=${companyCode.trim()}&email=${email.trim()}`;
+      const res = await axios.get(url);
       
-      // If API returns success or even if it just returns data with 'exists' field
       if (res.data) {
+        // Handle both boolean and numeric success flags
+        const isSuccess = res.data.success === true || res.data.success === 1 || res.data.success === "true";
+        
         if (res.data.exists || res.data.data?.exists) {
            Alert.alert('User Exists', 'User already exists with this email id.', [
              { text: 'Try another mail', style: 'cancel' },
              { text: 'Login', onPress: () => navigation.navigate('Login') }
            ]);
-        } else {
+        } else if (isSuccess) {
            setStep(2);
+        } else {
+           Alert.alert('Verification Failed', res.data.message || 'Please check your details');
         }
       } else {
-         Alert.alert('Error', 'Verification failed');
+         Alert.alert('Error', 'Server returned no data');
       }
     } catch (e) {
       console.log('Email check error', e);
-      Alert.alert('Error', 'Failed to verify email');
+      const msg = e.response?.data?.message || e.message || 'Failed to verify email';
+      Alert.alert('Error', msg);
     } finally {
       setLoading(false);
     }
@@ -282,10 +288,10 @@ const SignupScreen = ({ navigation }) => {
           <View style={styles.formStep}>
             <Text style={styles.formTitle}>Hello, Enter your Details to Continue</Text>
             <View style={{ marginTop: 30 }}>
-               <FloatingInput label="Company Code" value={companyCode} onChangeText={(text) => setCompanyCode(text.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={25} />
+               <FloatingInput label="Company Code" value={companyCode} onChangeText={(text) => setCompanyCode(text.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
             </View>
             <View style={{ marginTop: 15 }}>
-               <FloatingInput label="Email ID" value={email} onChangeText={(text) => setEmail(text.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="Loisbecket@gmail.com" maxLength={25} />
+               <FloatingInput label="Email ID" value={email} onChangeText={(text) => setEmail(text.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="Loisbecket@gmail.com" maxLength={100} />
             </View>
             <View style={styles.nextBtnRow}>
                 <TouchableOpacity style={styles.roundNextBtn} onPress={nextStep}>

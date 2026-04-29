@@ -154,8 +154,19 @@ const HomeScreen = ({ navigation, route }) => {
   const fetchRoles = async () => {
     try {
       const res = await axios.get(`${API_ENDPOINTS.CHECK_ROLES}?user_id=${user.user_id}`);
-      if (res.data && res.data.success && res.data.roles) {
-        setRoles(res.data.roles);
+      if (res.data) {
+        // If the API returns success, we look at the roles object
+        if (res.data.success == 1 || res.data.success == true) {
+          const apiRoles = res.data.roles || {};
+          
+          // Use the root is_hierarchy flag as a fallback for is_employee_hierarchy
+          const isHierarchy = res.data.is_hierarchy === true || res.data.is_hierarchy == 1;
+          
+          setRoles({
+            is_employee_hierarchy: apiRoles.is_employee_hierarchy === true || apiRoles.is_employee_hierarchy == 1 || isHierarchy,
+            is_leave_hierarchy: apiRoles.is_leave_hierarchy === true || apiRoles.is_leave_hierarchy == 1 || isHierarchy
+          });
+        }
       }
     } catch (e) {
       console.log('[Home] Roles fetch error:', e);
