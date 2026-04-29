@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
   Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
-  CheckCircle, ClipboardList, ChevronRight
+  CheckCircle, ClipboardList, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react-native';
 import axios from 'axios';
 import { format } from 'date-fns';

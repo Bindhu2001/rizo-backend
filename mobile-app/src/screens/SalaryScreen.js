@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   MoreHorizontal, FileText,
   Calendar, Download, Landmark, ShieldCheck,
-  ArrowUpRight, Wallet
+  ArrowUpRight, Wallet, ChevronLeft
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SHADOWS } from '../components/Theme';
