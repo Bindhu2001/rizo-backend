@@ -74,8 +74,13 @@ const SignupScreen = ({ navigation }) => {
   const [showPicModal, setShowPicModal] = useState(false);
 
   const handleStep1Submit = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!companyCode.trim() || !email.trim()) {
       Alert.alert('Error', 'Please enter Company Code and Email');
+      return;
+    }
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
     

@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
 import CalendarWidget from '../components/CalendarWidget';
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
   savePunchLocal, getTodayLocalHistory, getLastPunchType,
   getPendingCount, initDB
@@ -425,7 +425,11 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
               <Image
-                source={{ uri: user.profile_pic || `https://i.pravatar.cc/100?u=${user.user_id}` }}
+                source={{ 
+                  uri: user.profile_pic 
+                    ? (user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}`)
+                    : `https://i.pravatar.cc/100?u=${user.user_id}` 
+                }}
                 style={styles.avatar}
               />
             </TouchableOpacity>

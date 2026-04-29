@@ -13,7 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { COLORS, SIZES, SHADOWS } from '../components/Theme';
 import { clearUserSession, updateUserProfileLocal, getLocalUser } from '../services/LocalDB';
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 
 // ─── Selection Modal (for Country) ───────────────────────────────────────────
 const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title, labelKey = 'country_name', valueKey = 'id' }) => (
@@ -155,8 +155,13 @@ const ProfileScreen = ({ navigation, route }) => {
   };
 
   const handleSave = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!editName.trim()) {
       Alert.alert('Notice', 'Name cannot be empty'); return;
+    }
+    if (editEmail.trim() && !emailRegex.test(editEmail.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
     }
     setLoading(true);
     try {
@@ -344,7 +349,11 @@ const ProfileScreen = ({ navigation, route }) => {
           <View style={styles.profileSection}>
             <View style={styles.avatarWrapper}>
               <Image
-                source={{ uri: editPic || user.profile_pic || `https://i.pravatar.cc/150?u=${user.user_id}` }}
+                source={{ 
+                  uri: user.profile_pic 
+                    ? (user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}`)
+                    : `https://i.pravatar.cc/100?u=${user.user_id}` 
+                }}
                 style={styles.avatar}
               />
             </View>
@@ -372,6 +381,14 @@ const ProfileScreen = ({ navigation, route }) => {
                 <View>
                   <Text style={styles.infoLabel}>Department</Text>
                   <Text style={styles.infoVal}>{user.department}</Text>
+                </View>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={[styles.iconBox, { backgroundColor: '#F0F4F8' }]}><Briefcase color="#475569" size={18} /></View>
+                <View>
+                  <Text style={styles.infoLabel}>Designation</Text>
+                  <Text style={styles.infoVal}>{user.designation}</Text>
                 </View>
               </View>
               <View style={styles.divider} />

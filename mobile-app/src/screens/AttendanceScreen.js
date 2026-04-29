@@ -10,7 +10,7 @@ import {
 import { COLORS, SHADOWS } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
-import { getRawPunchesForMonth } from '../services/LocalDB';
+import { initDB } from '../services/LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
 
@@ -32,7 +32,6 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [rawPunches, setRawPunches] = useState([]);
   const [expandedDate, setExpandedDate] = useState(null);
   const [devicePunches, setDevicePunches] = useState({});
   const [fetchingDevicePunches, setFetchingDevicePunches] = useState(false);
@@ -78,9 +77,6 @@ const AttendanceScreen = ({ navigation, route }) => {
       }
       console.log('[AttendanceScreen] Fetched', parsed.length, 'records for', month);
       setLogs(parsed);
-
-      const localPunches = await getRawPunchesForMonth(user.user_id, month);
-      setRawPunches(localPunches || []);
     } catch (e) {
       console.log('Fetch error', e?.response?.data || e.message);
       setLogs([]);
@@ -127,11 +123,23 @@ const AttendanceScreen = ({ navigation, route }) => {
     const dateNum = d.getDate().toString().padStart(2, '0');
     const monthDay = d.toLocaleDateString('en-US', { month: 'short', weekday: 'short' }).toUpperCase();
 
-    // Status Badge Logic
-    const isPresent = item.punch_in_time && item.punch_out_time;
-    const statusLabel = isPresent ? 'P/P' : (item.status?.includes('WO') ? 'WO' : 'A/A');
-    const statusColor = isPresent ? '#2ECC71' : (item.status?.includes('WO') ? '#9CA3AF' : '#E91E63');
-    const statusBg = isPresent ? '#E8F5E9' : (item.status?.includes('WO') ? '#F3F4F6' : '#FCE4EC');
+    // Status Badge Logic - Prioritize API status
+    const rawStatus = item.status || (item.punch_in_time && item.punch_out_time ? 'P/P' : 'A/A');
+    const statusLabel = rawStatus.toUpperCase();
+    
+    let statusColor = '#E91E63'; // Default Absent Red
+    let statusBg = '#FCE4EC';
+    
+    if (statusLabel === 'P/P' || statusLabel === 'P' || statusLabel === 'PRESENT') {
+      statusColor = '#2ECC71';
+      statusBg = '#E8F5E9';
+    } else if (statusLabel === 'WO' || statusLabel === 'OFF' || statusLabel === 'W/O') {
+      statusColor = '#9CA3AF';
+      statusBg = '#F3F4F6';
+    } else if (statusLabel === 'H' || statusLabel === 'HOLIDAY') {
+      statusColor = '#3498DB';
+      statusBg = '#EBF8FF';
+    }
 
     const punchIn = formatPunchTime(item.punch_in_time);
     const punchOut = formatPunchTime(item.punch_out_time);
@@ -141,23 +149,12 @@ const AttendanceScreen = ({ navigation, route }) => {
     const handleExpandToggle = () => {
       const nextDate = isExpanded ? null : item.date;
       setExpandedDate(nextDate);
-      if (nextDate) fetchDevicePunches(nextDate); // always re-fetch on expand
+      if (nextDate) fetchDevicePunches(nextDate); 
     };
 
-    // Use fetched device punches if available, otherwise fallback to local ones
+    // Show only API device punches in details
     const currentDevicePunches = devicePunches[item.date] || [];
     const hasDevicePunches = currentDevicePunches.length > 0;
-
-    // ultra-safety for dayPunches (legacy/local fallback)
-    const localDayPunches = (rawPunches || [])
-      .filter(rp => rp && rp.punch_time && item.date && rp.punch_time.includes(item.date))
-      .sort((a, b) => {
-        try {
-          const tA = new Date(a.punch_time.replace(' ', 'T')).getTime();
-          const tB = new Date(b.punch_time.replace(' ', 'T')).getTime();
-          return (tB || 0) - (tA || 0);
-        } catch (_) { return 0; }
-      });
 
     return (
       <View style={s.cardWrapper}>
@@ -223,24 +220,7 @@ const AttendanceScreen = ({ navigation, route }) => {
                     </View>
                   ))
                 ) : (
-                  localDayPunches.length === 0 ? (
-                    <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
-                  ) : (
-                    localDayPunches.map((p, idx) => (
-                      <View key={p.id || idx} style={s.punchDetailRow}>
-                        <View style={s.punchTimeBox}>
-                          <Text style={s.punchTimeVal}>{formatPunchTime(p.punch_time)}</Text>
-                          <View style={[s.pBadge, { backgroundColor: p.type === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
-                            <Text style={[s.pBadgeText, { color: p.type === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.type}</Text>
-                          </View>
-                        </View>
-
-                        <View style={s.punchAddressBox}>
-                          <Text style={s.addressText} numberOfLines={1}>{p.address || 'Location Attached'}</Text>
-                        </View>
-                      </View>
-                    ))
-                  )
+                  <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
                 )}
               </>
             )}
