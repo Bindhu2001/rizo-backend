@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   },
   textInput: {
     fontSize: 16,
-    color: '#1A202C',
+    color: '#000',
     fontWeight: '600',
     height: '100%'
   },
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     fontSize: 24,
     textAlign: 'center',
-    color: '#1A202C',
+    color: '#000',
     fontWeight: '700',
     backgroundColor: '#FFF'
   },

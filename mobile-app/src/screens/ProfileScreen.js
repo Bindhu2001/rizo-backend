@@ -513,14 +513,14 @@ const styles = StyleSheet.create({
   editLabel: { position: 'absolute', top: -8, left: 14, backgroundColor: '#F9FAFB', zIndex: 2, paddingHorizontal: 4, fontSize: 11, color: '#9CA3AF', fontWeight: '500' },
   textInput: {
     backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 54,
-    fontSize: 14, fontWeight: '600', color: COLORS.text,
+    fontSize: 14, fontWeight: '600', color: '#000',
     borderWidth: 1, borderColor: '#E5E7EB'
   },
 
   inputPickerRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 54, borderWidth: 1, borderColor: '#E5E7EB', zIndex: 1
   },
-  inputInner: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
+  inputInner: { flex: 1, fontSize: 14, fontWeight: '600', color: '#000' },
 
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 4 },
   switchLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },

@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft
+  CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS } from '../components/Theme';
@@ -117,8 +117,8 @@ const fi = StyleSheet.create({
   activeLabel: { color: '#E91E63', fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   value: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500' },
-  singleInput: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500', paddingVertical: 0 },
-  inputArea: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500', textAlignVertical: 'top' },
+  singleInput: { flex: 1, fontSize: 15, color: '#000', fontWeight: '500', paddingVertical: 0 },
+  inputArea: { flex: 1, fontSize: 15, color: '#000', fontWeight: '500', textAlignVertical: 'top' },
 });
 
 // Custom Circular Target Icon for MISSING
@@ -133,16 +133,8 @@ const ti = StyleSheet.create({
 });
 
 const ClockIcon = () => (
-  <View style={ci.circle}>
-    <View style={ci.handHr} />
-    <View style={ci.handMin} />
-  </View>
+  <Clock color="#000" size={18} strokeWidth={2} />
 );
-const ci = StyleSheet.create({
-  circle: { width: 18, height: 18, borderRadius: 9, borderWidth: 1.5, borderColor: '#111827', justifyContent: 'center', alignItems: 'center' },
-  handHr: { position: 'absolute', width: 1.5, height: 4, backgroundColor: '#111827', top: 4 },
-  handMin: { position: 'absolute', width: 4, height: 1.5, backgroundColor: '#111827', left: 8 }
-});
 
 
 const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {

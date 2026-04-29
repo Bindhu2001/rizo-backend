@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 24, height: 60, width: 353, alignSelf: 'center' },
+  swipeBox: { marginBottom: 16, height: 64, width: 320, alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

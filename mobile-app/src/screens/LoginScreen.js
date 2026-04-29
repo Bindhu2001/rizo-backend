@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB', borderRadius: 15, paddingHorizontal: 20, 
     marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' 
   },
-  input: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  input: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '700', color: '#000' },
   
   loginBtn: { 
     width: '100%', height: 60, backgroundColor: COLORS.primaryDeep || '#4A148C', borderRadius: 30, 
