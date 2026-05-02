@@ -33,7 +33,7 @@ const SplashScreen = ({ navigation }) => {
     // 1. Play the main rolling animation (Slower for a smoother "reveal" effect)
     Animated.timing(progress, {
       toValue: 1,
-      duration: 4500,
+      duration: 2000,
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: true,
     }).start(() => {
@@ -41,13 +41,13 @@ const SplashScreen = ({ navigation }) => {
       Animated.loop(
         Animated.timing(oRotate, {
           toValue: 1,
-          duration: 4000,
+          duration: 2500,
           easing: Easing.linear,
           useNativeDriver: true,
         })
       ).start();
 
-      // 3. Navigate away after a short delay (Increased for better "settling" feel)
+      // 3. Navigate away after a short delay
       setTimeout(async () => {
         try {
           const user = await getLoggedUser();
@@ -59,7 +59,7 @@ const SplashScreen = ({ navigation }) => {
         } catch (e) {
           navigation.replace('Login');
         }
-      }, 2000);
+      }, 600);
     });
 
     // Calculate precisely when the center of the rolling O matches the X position of the letters
@@ -85,24 +85,24 @@ const SplashScreen = ({ navigation }) => {
       if (value >= thresholds.r && !hasRevealed.r) {
         hasRevealed.r = true;
         Animated.parallel([
-          Animated.timing(rOp, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.spring(rY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
+          Animated.timing(rOp, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.spring(rY, { toValue: 0, tension: 60, friction: 7, useNativeDriver: true })
         ]).start();
       }
       // reveal 'i'
       if (value >= thresholds.i && !hasRevealed.i) {
         hasRevealed.i = true;
         Animated.parallel([
-          Animated.timing(iOp, { toValue: 1, duration: 600, useNativeDriver: true }),
-          Animated.spring(iY, { toValue: 0, tension: 40, friction: 6, useNativeDriver: true })
+          Animated.timing(iOp, { toValue: 1, duration: 250, useNativeDriver: true }),
+          Animated.spring(iY, { toValue: 0, tension: 60, friction: 7, useNativeDriver: true })
         ]).start();
       }
       // reveal 'z' (Much heavier delay to ensure 'o' has cleared more space)
       if (value >= thresholds.z && !hasRevealed.z) {
         hasRevealed.z = true;
         Animated.parallel([
-          Animated.timing(zOp, { toValue: 1, delay: 500, duration: 800, useNativeDriver: true }),
-          Animated.spring(zY, { toValue: 0, delay: 400, tension: 35, friction: 6, useNativeDriver: true })
+          Animated.timing(zOp, { toValue: 1, delay: 100, duration: 300, useNativeDriver: true }),
+          Animated.spring(zY, { toValue: 0, delay: 80, tension: 60, friction: 7, useNativeDriver: true })
         ]).start();
       }
     });

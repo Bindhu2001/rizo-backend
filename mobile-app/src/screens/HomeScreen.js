@@ -389,6 +389,46 @@ const HomeScreen = ({ navigation, route }) => {
     return 'Evening,';
   };
 
+  const getWorkDuration = () => {
+    if (!punchInTime) return null;
+    const diffMs = Date.now() - new Date(punchInTime).getTime();
+    const hours = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    return { hours, minutes, totalHours: hours + minutes / 60 };
+  };
+
+  const getSystemMessages = () => {
+    const dur = getWorkDuration();
+    const hour = new Date().getHours();
+    const msgs = [];
+
+    if (!dur) {
+      msgs.push({ icon: '🕐', text: 'Your attendance will be recorded when you clock out.', color: '#4F46E5' });
+      return msgs;
+    }
+
+    const { hours, minutes, totalHours } = dur;
+    msgs.push({ icon: '⏱️', text: `You have worked ${hours}h ${minutes}m today.`, color: '#0369A1' });
+
+    if (totalHours < 4) {
+      msgs.push({ icon: '⚠️', text: 'Short shift detected. You may need to apply regularisation.', color: '#B45309' });
+    } else if (totalHours >= 9) {
+      msgs.push({ icon: '🌟', text: 'Overtime recorded! Great dedication today.', color: '#059669' });
+    } else if (totalHours >= 7.5) {
+      msgs.push({ icon: '✅', text: 'Full shift completed. Well done!', color: '#059669' });
+    }
+
+    if (hour < 17 && totalHours < 8) {
+      msgs.push({ icon: '📋', text: 'Early clock-out. Regularisation may be required later.', color: '#DC2626' });
+    }
+
+    if (hour >= 20) {
+      msgs.push({ icon: '🌙', text: 'Late clock-out detected. Make sure to rest well.', color: '#7C3AED' });
+    }
+
+    return msgs;
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -625,7 +665,7 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 20, height: 60, width: '94%', alignSelf: 'center' },
+  swipeBox: { marginBottom: 20, height: 60, width: '100%', alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

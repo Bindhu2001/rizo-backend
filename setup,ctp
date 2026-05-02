@@ -1,0 +1,3172 @@
+<style>
+    :root {
+        --primary-blue: #1e90ff;
+        --light-blue-bg: #eef7ff;
+        --danger-red: #e74c3c;
+        --light-danger-bg: #fdedec;
+        --dark-text: #34495e;
+        --light-text: #7f8c8d;
+        --border-color: #dfe6e9;
+        --background-color: #f5f7fa;
+        --white: #ffffff;
+        --input-bg: #fdfdfd;
+    }
+
+    .employee-form-container {
+        width: 100%;
+        max-width: 1100px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+        overflow: hidden;
+        color: white;
+    }
+
+    select option {
+        font-size: 9.5px;
+    }
+
+    label {
+        color: var(--dark-text);
+        /* padding: 0px 10px; */
+        font-weight: normal !important;
+    }
+
+    .label-congif {
+        padding: 0px 10px 5px 0;
+        margin: 0;
+    }
+
+    .form-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 30px;
+        background-color: var(--light-blue-bg);
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .form-header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .employee_config .easy-autocomplete {
+        width: 100% !important;
+
+    }
+
+    .bank-details-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .employee_config {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        border: 1px solid #b0c2cc;
+        padding: 20px 25px;
+        border-radius: 10px;
+    }
+
+    .button-wrapper {
+        grid-column: 1 / -1;
+        /* span all grid columns */
+        text-align: right;
+    }
+
+    .salary-details {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        border: 1px solid #b0c2cc;
+        padding: 20px 25px;
+        border-radius: 10px;
+    }
+
+    .other-details {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .onboarding-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+
+    .onboarding-grid h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+    }
+
+    #empsetuppersonal .form-group {
+        margin: 0;
+    }
+
+    .form-close-btn {
+        background-color: var(--primary-blue);
+        color: var(--white);
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        font-size: 20px;
+        line-height: 1;
+        transition: background-color 0.2s;
+
+    }
+
+    .form-close-btn:hover {
+        background-color: #1c86e8;
+    }
+
+    .main select.form-control option:disabled {
+        color: #287aa364;
+    }
+
+
+    .form-body {
+        padding: 25px 30px;
+    }
+
+    .form-section {
+        margin-bottom: 35px;
+        padding: 20px 10px;
+        border: 1px solid #b0c2cc;
+        border-radius: 10px;
+    }
+
+    #tab3 {
+
+        padding: 25px 30px !important;
+
+    }
+
+    .form-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+    h2 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-top: 21px;
+        color: var(--dark-text);
+    }
+
+    .form-section-header h2 {
+        font-size: 15px;
+        font-weight: 500;
+        margin: 0;
+        color: var(--dark-text);
+    }
+
+    /* Personal Info Layout */
+    .personal-info-layout {
+        display: flex;
+        gap: 30px;
+    }
+
+    .image-uploader-wrapper {
+        flex-shrink: 0;
+        width: 220px;
+        padding: 16px;
+        border-radius: 10px;
+        border: 1px solid #1e516e59;
+        /* display: flex; */
+        /* justify-content: center; */
+        /* align-items: center; */
+    }
+
+    .image-uploader {
+        width: 100%;
+        height: 220px;
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background-color: var(--input-bg);
+        text-align: center;
+        color: var(--light-text);
+        cursor: pointer;
+        transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .image-preview {
+        max-width: 120px;
+        border-radius: 8px;
+        display: block;
+    }
+
+    .image-controls {
+        margin-top: 10px;
+        display: flex;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .image-uploader:hover {
+        border-color: var(--primary-blue);
+        background-color: #fcfdff;
+    }
+
+    .image-uploader i {
+        font-size: 48px;
+        color: var(--light-text);
+        margin-bottom: 10px;
+        opacity: 0.7;
+    }
+
+    .image-uploader span {
+        font-weight: 500;
+    }
+
+    #file-input {
+        display: none;
+    }
+
+    .custom-button,
+    .custom-button:focus,
+    .custom-button:active,
+    .save-btn,
+    .save-btn:focus,
+    .save-btn:active {
+        background-color: #1e516e;
+        color: white;
+    }
+
+    .btn-footer:focus,
+    .btn-footer:active,
+    .btn-footer:hover {
+        color: white;
+    }
+
+    .footer {
+        text-align: end;
+    }
+
+    .custom-button:hover {
+        background-color: #1e516e9e;
+        color: white;
+    }
+
+    .save-btn {
+        margin-top: 13px;
+        padding: 6px 25px;
+        float: inline-end;
+        background-color: #1e516e;
+        border-radius: 5px;
+        border: none;
+        color: white;
+    }
+
+    .custom-button {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+
+
+
+    /* emergency & nominee */
+
+    .btn-checkbox {
+        padding: 5px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        color: white;
+        user-select: none;
+    }
+
+    /* .btn-checkbox input {
+    display: none; 
+}
+.btn-checkbox.nominee {
+    background-color: #6aade6;
+}
+.btn-checkbox.emergency {
+    background-color: #00b85d;
+}
+.btn-checkbox.active {
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.3);
+    opacity: 0.8;
+} */
+
+    .personal-info-grid {
+        padding: 20px;
+        border: 1px solid #1e516e59;
+        border-radius: 10px;
+        flex-grow: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px 25px;
+    }
+
+    .onboarding-grid {
+        padding: 20px;
+        border: 1px solid #1e516e59;
+        border-radius: 10px;
+        flex-grow: 1;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px 25px;
+    }
+
+    /* General Form Elements */
+    .main .form-group {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        z-index: 10;
+        margin-bottom: 0;
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .main .form-control {
+        width: 100%;
+        /* padding: 20px 5px; */
+        font-size: 13px;
+        border-radius: 3px !important;
+        padding: 5px 10px;
+        border: 1px solid var(--border-color);
+        /* border-radius: 8px !important; */
+        background-color: var(--input-bg);
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .main .form-control:focus {
+        outline: none;
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.15);
+    }
+
+    /* .form-control::placeholder {
+            color: #287aa38c;
+        } */
+
+    /* Date input icon */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer;
+        opacity: 0.6;
+    }
+
+    #educationTable td {
+        color: black;
+    }
+
+    #experienceTable td {
+        color: black;
+    }
+
+    #familyTable td {
+        color: black;
+    }
+
+    #documentTable td {
+        color: black;
+    }
+
+
+    /* Dynamic Rows (Education/Experience) */
+    .dynamic-row {
+        display: grid;
+        grid-template-columns: 2fr 2fr 1fr auto;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    /* education */
+
+    #educationTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #educationTable th,
+    #educationTable td {
+        padding: 8px;
+        vertical-align: top;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+    /* Fixed column widths */
+    #educationTable th:nth-child(1),
+    #educationTable td:nth-child(1) {
+        width: 30%;
+    }
+
+    #educationTable th:nth-child(2),
+    #educationTable td:nth-child(2) {
+        width: 30%;
+    }
+
+    #educationTable th:nth-child(3),
+    #educationTable td:nth-child(3) {
+        width: 20%;
+    }
+
+    #educationTable th:nth-child(4),
+    #educationTable td:nth-child(4),
+    {
+    width: 20%;
+    }
+
+    #education-section {
+        margin-bottom: 0px !important;
+    }
+
+    #family-section {
+        margin-bottom: 0px !important;
+    }
+
+    /* experience */
+
+    #experienceTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #experienceTable th,
+    #experienceTable td {
+        padding: 8px;
+        vertical-align: top;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+    /* Fixed column widths */
+    #experienceTable th:nth-child(1),
+    #experienceTable td:nth-child(1) {
+        width: 30%;
+    }
+
+    #experienceTable th:nth-child(2),
+    #experienceTable td:nth-child(2) {
+        width: 20%;
+    }
+
+    #experienceTable th:nth-child(3),
+    #experienceTable td:nth-child(3) {
+        width: 20%;
+    }
+
+    #experienceTable th:nth-child(4),
+    #experienceTable td:nth-child(4),
+    #experienceTable th:nth-child(5),
+    #experienceTable td:nth-child(5) {
+        width: 15%;
+    }
+
+    #experienceTable th:nth-child(6),
+    #experienceTable td:nth-child(6) {
+        width: 15%;
+    }
+
+    #familyTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #familyTable th,
+    #familyTable td {
+        padding: 8px;
+        vertical-align: top;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+    /* Fixed column widths */
+    #familyTable th:nth-child(1),
+    #familyTable td:nth-child(1) {
+        width: 30%;
+    }
+
+    #familyTable th:nth-child(2),
+    #familyTable td:nth-child(2) {
+        width: 20%;
+    }
+
+    #familyTable th:nth-child(3),
+    #familyTable td:nth-child(3) {
+        width: 20%;
+    }
+
+    #familyTable th:nth-child(4),
+    #familyTable td:nth-child(4),
+    #familyTable th:nth-child(5),
+    #familyTable td:nth-child(5) {
+        width: 30%;
+    }
+
+    /* doc table */
+
+    #documentTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #documentTable th,
+    #documentTable td {
+        padding: 8px;
+        vertical-align: top;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+    /* Fixed column widths */
+    #documentTable th:nth-child(1),
+    #documentTable td:nth-child(1) {
+        width: 16%;
+    }
+
+    #documentTable th:nth-child(2),
+    #documentTable td:nth-child(2) {
+        width: 14%;
+    }
+
+    #documentTable th:nth-child(3),
+    #documentTable td:nth-child(3) {
+        width: 20%;
+    }
+
+    #documentTable th:nth-child(4),
+    #documentTable td:nth-child(4) {
+        width: 9%;
+    }
+
+    #documentTable th:nth-child(5),
+    #documentTable td:nth-child(5),
+    #documentTable th:nth-child(6),
+    #documentTable td:nth-child(6) {
+        width: 10%;
+    }
+
+    #documentTable th:nth-child(7),
+    #documentTable td:nth-child(7),
+    #documentTable th:nth-child(8),
+    #documentTable td:nth-child(8) {
+        width: 10%;
+    }
+
+
+    /* Buttons */
+    /* .btn {
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        } */
+
+    .upload-btn {
+        background-color: var(--white);
+        color: var(--dark-text);
+        border-color: var(--border-color);
+    }
+
+    .upload-btn:hover {
+        background-color: #f8f9fa;
+        border-color: #ced4da;
+    }
+
+    .danger {
+        background-color: var(--light-danger-bg);
+        color: var(--danger-red);
+        padding: 0;
+        width: 43px;
+        height: 43px;
+        justify-content: center;
+    }
+
+    .danger:hover {
+        background-color: var(--danger-red);
+        color: var(--white);
+    }
+
+
+    /* Document Uploader */
+    .document-uploader {
+        border: 2px dashed #1e516e59;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        background-color: var(--input-bg);
+        color: var(--light-text);
+    }
+
+    .document-uploader i {
+        font-size: 40px;
+        margin-bottom: 15px;
+        color: #90a4ae;
+    }
+
+    .document-uploader p {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .document-uploader p:last-child {
+        font-size: 13px;
+        font-weight: 400;
+    }
+
+    .form-footer {
+        text-align: end;
+        /* padding-top: 10px; */
+    }
+
+    .main select.form-control {
+        position: relative;
+        z-index: 1000;
+    }
+
+
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+        .personal-info-layout {
+            flex-direction: column;
+        }
+
+        .image-uploader-wrapper {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .image-uploader {
+            width: 220px;
+        }
+
+        .personal-info-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .dynamic-row {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .dynamic-row .year-field,
+        .dynamic-row .danger {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .form-body {
+            padding: 20px 15px;
+        }
+
+        .personal-info-grid,
+        .dynamic-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+
+    .checkbox-item {
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    .checkbox-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .checkbox-label {
+        font-weight: 500;
+        font-size: 14px;
+        margin-top: 5px;
+        color: #333;
+    }
+
+    .styled-checkbox-box {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        /* Adjust as needed or keep fixed */
+        height: 30px;
+        /* Same height as input */
+        border: 1px solid var(--border-color);
+        border-radius: 5px;
+        padding: 0 12px;
+        background-color: #fff;
+        justify-content: space-between;
+    }
+
+    .styled-checkbox-box input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: #e6e6e6;
+        cursor: pointer;
+    }
+
+    /* .disability-wrapper {
+    display: flex; 
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  } */
+
+    input[type="checkbox"] {
+        width: auto;
+        height: 16px;
+        margin: 0px;
+    }
+
+    .disabled-group label,
+    .disabled-group input[type="checkbox"] {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+
+    .delete-btn {
+        background-color: #ff4204;
+        border: none;
+        border-radius: 5px;
+    }
+
+    /* tabs */
+    .tab {
+        border-bottom: 1px solid #dfdfdf;
+        display: flex;
+        margin-top: 10px;
+        background-color: #dfdfdf !important;
+    }
+
+    .tab>div {
+        background-color: #dfdfdf;
+        /* grey when inactive */
+        /* border: 1px solid #dee2e6; */
+        border-bottom: none;
+        border-radius: 0.25rem 0.25rem 0 0;
+        padding: 6px;
+    }
+
+    .tab>div.active {
+        background-color: #dfdfdf;
+        padding: 6px;
+    }
+
+
+    .tab button {
+        background-color: transparent;
+        border: none;
+        border-top-left-radius: 0.25rem;
+        border-top-right-radius: 0.25rem;
+        padding: 0.7rem 5rem;
+        color: var(--dark-text);
+        margin-bottom: -1px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        border-radius: 10px;
+    }
+
+    .tab button:hover {
+        border-color: #e9ecef #e9ecef #dee2e6;
+
+    }
+
+    .tab button.active {
+        color: var(--dark-text);
+        background-color: #fff;
+
+
+    }
+
+    .tabcontent {
+        display: none;
+        /* border: 1px solid #dee2e6; */
+        border-top: none;
+        background-color: #fff;
+    }
+
+    .tabcontent.active {
+        display: block;
+    }
+
+    .modal-content {
+        position: relative;
+    }
+
+    .modal-body {
+        overflow: visible !important;
+    }
+
+    .select2-container--open .select2-dropdown {
+        top: 100% !important;
+        bottom: auto !important;
+    }
+
+    .select2-container {
+        z-index: 9999 !important;
+    }
+    
+    .onboarding-grid > .form-group {
+    min-width: 0;
+}
+
+.onboarding-grid label,
+.onboarding-grid .form-control-static,
+.onboarding-grid .help-block {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+.employee_config label,
+.employee_config .form-control-static,
+.employee_config .help-block {
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+.employee_config {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    border: 1px solid #b0c2cc;
+    padding: 20px 25px;
+    border-radius: 10px;
+}
+
+.employee_config > .form-group {
+    min-width: 0;
+}
+
+.employee_config .easy-autocomplete {
+    width: 100% !important;
+}
+
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .employee_config {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+@media (max-width: 900px) {
+    .employee_config {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 600px) {
+    .employee_config {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+</style>
+
+
+<div class="main">
+    <div class="employee-form-container">
+        <header class="form-header" style="background-color:#1e516e">
+            <h1>Employee Details</h1>
+            <button class="form-close-btn" aria-label="Close" onclick="$('#largeModalForm').modal('hide');$('#emptable').datagrid('reload');">×</button>
+        </header>
+
+        <div class="tab">
+
+
+            <div>
+                <button class="tablinks active" onclick="openTab(event, 'tab1')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person" viewBox="0 0 16 16">
+                        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z" />
+                    </svg>
+                    <span style="margin-left:5px;font-weight:600;">Personal Info</span>
+                </button>
+            </div>
+
+            <div>
+                <button class="tablinks" onclick="openTab(event, 'tab2')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                    </svg>
+                    <span style="margin-left:5px;font-weight:600;">Other Details</span>
+                </button>
+            </div>
+
+            <!-- <?php if ($emp_pkey != 0) { ?> -->
+            <div>
+                <button class="tablinks" onclick="openTab(event, 'tab3')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-person-check" viewBox="0 0 16 16">
+                        <path d="M12.5 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7m1.679-4.493-1.335 2.226a.75.75 0 0 1-1.174.144l-.774-.773a.5.5 0 0 1 .708-.708l.547.548 1.17-1.951a.5.5 0 1 1 .858.514M11 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0M8 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4" />
+                        <path d="M8.256 14a4.5 4.5 0 0 1-.229-1.004H3c.001-.246.154-.986.832-1.664C4.484 10.68 5.711 10 8 10q.39 0 .74.025c.226-.341.496-.65.804-.918Q8.844 9.002 8 9c-5 0-6 3-6 4s1 1 1 1z" />
+                    </svg>
+                    <span style="margin-left:5px;font-weight:600;">Onboarding</span>
+                </button>
+            </div>
+            <!-- <?php } ?> -->
+
+        </div>
+
+        <div id="tab1" class="tabcontent" style="display: block;">
+            <main class="form-body">
+                <form method="post" enctype="multipart/form-data" action="" id="employee-form">
+                    <input id="model" name="model" type="hidden" value="EmployeeProfessionalDetails">
+                    <!-- Personal Information Section -->
+                    <section class="form-section" style="margin-bottom:20px;">
+                        <div class="form-section-header">
+                            <h2>Personal Information</h2>
+                        </div>
+                        <div class="personal-info-layout">
+                            <?php
+                            $profileImage = isset($arr_personalinfo['profile_image_url']) ? $arr_personalinfo['profile_image_url'] : '';
+                            $hasImage = !empty($profileImage);
+                            ?>
+                            <div class="image-uploader-wrapper">
+                                <label for="file-input" class="image-uploader">
+                                    <!-- Default icon -->
+                                    <div id="icon-wrapper" style="<?= $hasImage ? 'display: none;' : 'display: block;' ?>">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor"
+                                            class="bi bi-person-circle" viewBox="0 0 16 16">
+                                            <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
+                                            <path fill-rule="evenodd"
+                                                d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8m8-7a7 7 0 0 0-5.468 
+                       11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 
+                       5.468 2.37A7 7 0 0 0 8 1" />
+                                        </svg>
+                                    </div>
+
+                                    <!-- Image preview -->
+                                    <img id="preview"
+                                        class="image-preview"
+                                        alt="Uploaded Image"
+                                        style="<?= $hasImage ? 'display: block;' : 'display: none;' ?>"
+                                        src="<?= $hasImage ? h($profileImage) : '' ?>" />
+
+                                    <!-- Upload text (shown only when no image) -->
+                                    <span style="<?= $hasImage ? 'display: none;' : 'display: inline-block;' ?>">
+                                        Upload Image
+                                    </span>
+                                </label>
+
+                                <!-- File input -->
+                                <input type="file" id="file-input" accept="image/*" style="display: none;" onchange="previewImage(this)" name="profile_image" />
+
+                                <!-- Hidden field for delete flag -->
+                                <input type="hidden" id="profile_image_delete" name="profile_image_delete" value="0">
+
+                                <!-- Delete button -->
+                                <div class="image-controls" id="imageControls" style="<?= $hasImage ? 'display: block;' : 'display: none;' ?>">
+                                    <button type="button" class="delete-btn" onclick="deleteImage()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                            class="bi bi-trash3" viewBox="0 0 16 16">
+                                            <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 
+                         0 0 1 .5-.5M11 2.5v-1A1.5 1.5 
+                         0 0 0 9.5 0h-3A1.5 1.5 
+                         0 0 0 5 1.5v1H1.5a.5.5 
+                         0 0 0 0 1h.538l.853 10.66A2 2 
+                         0 0 0 4.885 16h6.23a2 2 
+                         0 0 0 1.994-1.84l.853-10.66h.538a.5.5 
+                         0 0 0 0-1z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+
+                            <div class="personal-info-grid">
+                                 <div class="form-group">
+                                    <label> Name &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" maxlength="100" name="first_name" value="<?php echo isset($arr_personalinfo["first_name"]) ? $arr_personalinfo["first_name"] : ''; ?>" placeholder="First Name" maxlength="100" pattern="[A-Za-z0-9.\s]+"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z0-9.\s]/g, '');">
+                                </div>
+                                <!-- <div class="form-group">
+                                <label>Last Name</label>
+                                <input type="text" class="form-control" name="last_name" placeholder="Last Name" value="<?php echo isset($arr_personalinfo["last_name"]) ? $arr_personalinfo["last_name"] : ''; ?>">
+                            </div> -->
+                                <div class="form-group">
+                                    <label>Birth Date &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="date_of_birth" name="date_of_birth" placeholder="yyyy-mm-dd" value="<?php echo isset($arr_personalinfo["date_of_birth"]) ? $arr_personalinfo["date_of_birth"] : ''; ?>">
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Gender &nbsp;<span style="color:red;">*</span></label>
+                                    <select name="classification" class="select2" required>
+                                        <option value="" disabled <?= empty($arr_personalinfo['classification']) ? 'selected' : '' ?>>Gender</option>
+                                        <option value="male" <?= (isset($arr_personalinfo['classification']) && $arr_personalinfo['classification'] == 'male') ? 'selected' : '' ?>>Male</option>
+                                        <option value="female" <?= (isset($arr_personalinfo['classification']) && $arr_personalinfo['classification'] == 'female') ? 'selected' : '' ?>>Female</option>
+                                        <option value="others" <?= (isset($arr_personalinfo['classification']) && $arr_personalinfo['classification'] == 'others') ? 'selected' : '' ?>>Others</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>Email Address</label>
+                                    <input type="email" class="form-control" name="email" placeholder="Email" value="<?php echo isset($arr_personalinfo["email"]) ? $arr_personalinfo["email"] : ''; ?>"
+                                        oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '')">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" class="form-control" maxlength="10" name="mobile_no" placeholder="Phone No" value="<?php echo isset($arr_personalinfo["mobile_no"]) ? $arr_personalinfo["mobile_no"] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                </div>
+                               <div class="form-group">
+    <label>Address</label>
+    <input type="text"
+           class="form-control"
+           name="address"
+           placeholder="Address"
+           value="<?php echo isset($arr_personalinfo['address']) ? $arr_personalinfo['address'] : ''; ?>"
+           pattern="[A-Za-z0-9\s,./#()-]+"
+           title="Only letters, numbers, space, comma, dot, slash, hyphen, # and parentheses allowed"
+           oninput="this.value = this.value.replace(/[^A-Za-z0-9\s,./#()-]/g, '');">
+</div>
+                                <div class="form-group">
+                                    <label>Pin Code</label>
+                                    <input type="text" class="form-control" maxlength="6" name="pincode" placeholder="Pin Code" value="<?php echo isset($arr_personalinfo["pincode"]) ? $arr_personalinfo["pincode"] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                </div>
+                                <div class="form-group" style="width: 100%;">
+                                    <label>Nationality &nbsp;<span style="color:red;">*</span></label>
+                                    <select name="nationality_id" required class="select2" style="width: 100%;">
+                                        <option value="" disabled <?= empty($arr_personalinfo['nationality_id']) ? 'selected' : '' ?>>Country</option>
+                                        <?php foreach ($arr_countries as $country): ?>
+                                            <?php $countryId = $country['countries_nationality']['id']; ?>
+                                            <option value="<?= h($countryId) ?>" <?= (isset($arr_personalinfo['nationality_id']) && $arr_personalinfo['nationality_id'] == $countryId) ? 'selected' : '' ?>>
+                                                <?= h($country['countries_nationality']['country_name']) ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>District</label>
+                                    <input type="text" class="form-control" name="district" placeholder="District" value="<?php echo isset($arr_personalinfo["district"]) ? $arr_personalinfo["district"] : ''; ?>">
+                                </div>
+                                <div class="form-group">
+                                    <label>State</label>
+                                    <input type="text" class="form-control" name="state" placeholder="State" value="<?php echo isset($arr_personalinfo["state"]) ? $arr_personalinfo["state"] : ''; ?>" >
+                                </div>
+                                <div class="form-group" style="width: 100%;">
+                                    <label>Marital Status</label>
+                                    <select name="maritual_status" class="select2" style="width: 100%;">
+                                        <option value="" disabled <?= empty($arr_personalinfo['maritual_status']) ? 'selected' : '' ?>>Marital Status</option>
+                                        <option value="single" <?= (isset($arr_personalinfo['maritual_status']) && $arr_personalinfo['maritual_status'] == 'single') ? 'selected' : '' ?>>Single</option>
+                                        <option value="married" <?= (isset($arr_personalinfo['maritual_status']) && $arr_personalinfo['maritual_status'] == 'married') ? 'selected' : '' ?>>Married</option>
+                                        <option value="divorced" <?= (isset($arr_personalinfo['maritual_status']) && $arr_personalinfo['maritual_status'] == 'divorced') ? 'selected' : '' ?>>Divorced</option>
+                                        <option value="widowed" <?= (isset($arr_personalinfo['maritual_status']) && $arr_personalinfo['maritual_status'] == 'widowed') ? 'selected' : '' ?>>Widowed</option>
+                                    </select>
+                                </div>
+
+
+                            </div>
+                        </div>
+
+                        <div class="other-details" style="margin-top: 20px; width: 100%;">
+                            <div class="form-group">
+                                <label>Guardian Name</label>
+                                <input type="text" class="form-control" name="guradian" placeholder="Guardian Name" value="<?php echo isset($arr_personalinfo["guradian"]) ? $arr_personalinfo["guradian"] : ''; ?>" pattern="[A-Za-z\s]+"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                            </div>
+                            <div class="form-group">
+                                <label>Relation</label>
+                                <input type="text" class="form-control" name="relation_guardian" placeholder="Relation" value="<?php echo isset($arr_personalinfo["relation_guardian"]) ? $arr_personalinfo["relation_guardian"] : ''; ?>" pattern="[A-Za-z\s]+"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                            </div>
+                            <div class="form-group">
+                                <label>Blood Group</label>
+                                <input type="text" class="form-control" name="blood" placeholder="Blood Group" value="<?php echo isset($arr_personalinfo["blood"]) ? $arr_personalinfo["blood"] : ''; ?>">
+                            </div>
+                            <!-- <div class="form-group">
+    <label>Aadhaar No &nbsp;<span style="color:red;">*</span></label>
+    <input type="text" class="form-control" name="id_card" placeholder="Aadhaar No"  value="<?php echo isset($arr_personalinfo["id_card"]) ? $arr_personalinfo["id_card"] : ''; ?>">
+</div> 
+  <div class="form-group">
+    <label>PAN No &nbsp;<span style="color:red;">*</span></label>
+    <input type="text" class="form-control" name="pan_no" placeholder="PAN No" value="<?php echo isset($arr_personalinfo["pan_no"]) ? $arr_personalinfo["pan_no"] : ''; ?>">
+</div> -->
+                            <div class="form-group">
+                                <label>Aadhaar No &nbsp;<span style="color:red;">*</span></label>
+                                <input type="text" class="form-control" required id="id_card" name="id_card" placeholder="Aadhaar No"
+                                    value="<?php echo isset($arr_personalinfo['id_card']) ? $arr_personalinfo['id_card'] : ''; ?>" maxlength="12" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                <small id="id_card_msg" style="color:red; display:none;"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>PAN No</label>
+                                <input type="text" class="form-control" id="pan_no" name="pan_no" placeholder="ABCDE1234D"
+                                    value="<?php echo isset($arr_personalinfo['pan_no']) ? $arr_personalinfo['pan_no'] : ''; ?>" maxlength="10" pattern="[A-Za-z0-9\s]+"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9\s]/g, '');">
+                                <small id="pan_no_msg" style="color:red; display:none;"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bank">Bank Name</label>
+                                <input type="text" class="form-control" id="bank" name="bank" placeholder="Bank Name"
+                                    value="<?php echo isset($arr_personalinfo['bank']) ? $arr_personalinfo['bank'] : ''; ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="bank_branch">Branch</label>
+                                <input type="text" class="form-control" id="bank_branch" name="bank_branch" placeholder="Branch"
+                                    value="<?php echo isset($arr_personalinfo['bank_branch']) ? $arr_personalinfo['bank_branch'] : ''; ?>">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ifsc">IFSC Code</label>
+                                <input type="text" class="form-control" maxlength="12" id="ifsc" name="ifsc_code" placeholder="IFSC Code"
+                                    value="<?php echo isset($arr_personalinfo['ifsc_code']) ? $arr_personalinfo['ifsc_code'] : ''; ?>" pattern="[A-Za-z0-9\s]+"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9\s]/g, '');">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="account_no">Account Number</label>
+                                <input type="text" class="form-control" maxlength="18" id="account_no" name="account_no" placeholder="Account No" value="<?php echo isset($arr_personalinfo['account_no']) ? $arr_personalinfo['account_no'] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                               <small id="account_no_msg" style="color:red; display:none;"></small>
+                            </div>
+
+
+
+                            <div class="form-group">
+                                <label>ESI No</label>
+                                <input type="text" class="form-control" id="esi" name="esi" maxlength="10" placeholder="ESI No" value="<?php echo isset($arr_personalinfo["esi"]) ? $arr_personalinfo["esi"] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                <small id="esi_msg" style="color:red; display:none;"></small>
+                            </div>
+                            <div class="form-group">
+                                <label>ESI Dispensary </label>
+                                <input type="text" class="form-control" name="esi_dispensary" placeholder="ESI Dispensary" value="<?php echo isset($arr_personalinfo["esi_dispensary"]) ? $arr_personalinfo["esi_dispensary"] : ''; ?>" >
+                            </div>
+                            <div class="form-group">
+                                <label>PF No</label>
+                                <input type="text" id="pf" maxlength="22" name="pf" placeholder="PF No" class="form-control"
+                                    value="<?php echo isset($arr_personalinfo['pf']) ? $arr_personalinfo['pf'] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                <small id="pf_msg" style="color:red; display:none;"></small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>UAN No</label>
+                                <input type="text"
+                                    class="form-control"
+                                    id="uan"
+                                    name="company_pf"
+                                    maxlength="12"
+                                    placeholder="UAN No"
+                                    value="<?php echo isset($arr_personalinfo['company_pf']) ? $arr_personalinfo['company_pf'] : ''; ?>"
+                                    data-valid="false" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                                <small id="uan_msg" style="color:red; display:none;"></small>
+                            </div>
+                            <div class="form-group">
+                                <label>Previous Member ID</label>
+                                <input type="text" class="form-control" maxlength="15" name="previous_member_id" placeholder="Previous Member ID" value="<?php echo isset($arr_personalinfo["previous_member_id"]) ? $arr_personalinfo["previous_member_id"] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                            </div>
+                            <div class="form-group">
+                                <label>WPS ID</label>
+                                <input type="text" class="form-control" maxlength="15" name="wps_code" placeholder="WPS ID" value="<?php echo isset($arr_personalinfo["wps_code"]) ? $arr_personalinfo["wps_code"] : ''; ?>" onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                            </div>
+                            <div class="form-group">
+                                <label>LWF Registration Number</label>
+                                <input type="text" class="form-control" maxlength="15" id="lwf_code" name="lwf_code" placeholder="LWF Registration No" value="<?php echo isset($arr_personalinfo["lwf_code"]) ? $arr_personalinfo["lwf_code"] : ''; ?>" pattern="[A-Za-z0-9\s]+"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9\s]/g, '');">
+                               <small id="lwf_code_msg" style="color:red; display:none;"></small>
+                            </div>
+
+                            <?php
+                            $is_physical = isset($arr_personalinfo['physical_handicap']) && $arr_personalinfo['physical_handicap'] === 'Y';
+                            $is_international = isset($arr_personalinfo['international_worker']) && $arr_personalinfo['international_worker'] === 'Y';
+                            $is_epf_eligible = isset($arr_personalinfo['eps']) && $arr_personalinfo['eps'] === 'Y';
+                            $locomotive = isset($arr_personalinfo['locomotive']) && $arr_personalinfo['locomotive'] === 'Y';
+                            $hearing = isset($arr_personalinfo['hearing']) && $arr_personalinfo['hearing'] === 'Y';
+                            $visual = isset($arr_personalinfo['visual']) && $arr_personalinfo['visual'] === 'Y';
+                            ?>
+                            <!-- Checkboxes with labels -->
+                            <div class="checkbox-item">
+                                <div class="checkbox-wrapper">
+                                    <div class="styled-checkbox-box">
+                                        <label for="eps_eligibility" class="checkbox-label">EPS Eligibility</label>
+                                        <input type="checkbox" name="eps" id="eps_eligibility" <?= $is_epf_eligible ? 'checked' : '' ?>>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="checkbox-item">
+                                <div class="checkbox-wrapper">
+                                    <div class="styled-checkbox-box">
+                                        <label for="physical_handicap" class="checkbox-label">Physical Handicap</label>
+                                        <input type="checkbox" name="physical_handicap" id="physical_handicap"
+                                            onchange="toggleDisabilityTypes()" <?= $is_physical ? 'checked' : '' ?>>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                            <div class="checkbox-item">
+                                <div class="checkbox-wrapper">
+                                    <div class="styled-checkbox-box">
+                                        <label for="international_worker" class="checkbox-label">International Worker</label>
+                                        <input type="checkbox" name="international_worker" id="international_worker"
+                                            onchange="toggleCountryField()"
+                                            <?= $is_international ? 'checked' : '' ?>>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="country" id="country_origin_hidden" value="">
+                            <div class="form-group" style="width: 100%;" id="country_field">
+                                <label>Country of Origin</label>
+                                <select name="country" class="form-control" style="width: 100%;" id="country_of_origin" <?= !$is_international ? 'disabled' : '' ?>>
+                                    <option value="" disabled <?= empty($arr_personalinfo['country_origin']) ? 'selected' : '' ?>>Country of Origin</option>
+                                    <?php foreach ($arr_countries as $country): ?>
+                                        <option value="<?= h($country['countries_nationality']['id']) ?>"
+                                            <?= (isset($arr_personalinfo['country_origin']) && $arr_personalinfo['country_origin'] == $country['countries_nationality']['id']) ? 'selected' : '' ?>>
+                                            <?= h($country['countries_nationality']['country_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+
+                            </div>
+                        </div>
+                        <div class="disability-wrapper">
+                            <input type="hidden" name="emp_pkey"
+                                value="<?= h(isset($arr_personalinfo['emp_join_pkey']) ? $arr_personalinfo['emp_join_pkey'] : '') ?>">
+
+                            <div id="disability-types" style="display: <?= $is_physical ? 'block' : 'none' ?>;">
+                                <label class="title-label">Types of Disability:</label>
+
+                                <div style="display: flex; gap: 11px; flex-wrap: wrap;margin-top:5px;">
+                                    <div class="checkbox-item" style="width:24%;">
+                                        <div class="styled-checkbox-box">
+                                            <label for="locomotive" class="checkbox-label">Locomotive</label>
+                                            <input type="checkbox" name="locomotive" id="locomotive"
+                                                <?= $locomotive ? 'checked' : '' ?> <?= !$is_physical ? 'disabled' : '' ?>>
+                                        </div>
+                                    </div>
+
+                                    <div class="checkbox-item" style="width:24%;">
+                                        <div class="styled-checkbox-box">
+                                            <label for="hearing" class="checkbox-label">Hearing</label>
+                                            <input type="checkbox" name="hearing" id="hearing"
+                                                <?= $hearing ? 'checked' : '' ?> <?= !$is_physical ? 'disabled' : '' ?>>
+                                        </div>
+                                    </div>
+
+                                    <div class="checkbox-item" style="width:24%;">
+                                        <div class="styled-checkbox-box">
+                                            <label for="visual" class="checkbox-label">Visual</label>
+                                            <input type="checkbox" name="visual" id="visual"
+                                                <?= $visual ? 'checked' : '' ?> <?= !$is_physical ? 'disabled' : '' ?>>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                    </section>
+                    if
+                    <div class="form-footer">
+                        <input class="btn btn-footer" style="MARGIN-TOP: -25PX;background-color:#1e516e;border-radius: 10px;padding: 8px 20px;border: none;float:inline-end;" type="submit" value="Save & Next" />
+                    </div>
+                </form>
+
+            </main>
+        </div>
+        <!-- <form method="post" action="" id="otherDetailsForm"> -->
+        <div id="tab2" class="tabcontent" style="display: none;height:200px">
+
+            <!-- Add Education Modal -->
+            <div class="modal fade" id="educationModal" tabindex="-1" role="dialog" aria-labelledby="educationModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background-color:#1e516e; color:white;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h3 class="modal-title" id="educationModalLabel">Add Education</h3>
+                                <button type="button" class="close" aria-label="Close" onclick="$('#educationModal').modal('hide')" style="color:white; opacity:1;">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="modal-body">
+                            <form id="educationFormModal" method="post">
+                                <input type="hidden"
+                                    id="emp_join_fkey_edu"
+                                    name="emp_join_fkey"
+                                    value="<?= h(!empty($arr_personalinfo['emp_join_pkey']) ? $arr_personalinfo['emp_join_pkey'] : '') ?>">
+
+                                <div class="col-md-6">
+                                    <label for="course">Course &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="course" name="course" placeholder="Degree/Qualification" maxlength="100" pattern="[A-Za-z.\s]+"
+oninput="this.value = this.value.replace(/[^A-Za-z.\s]/g, '');">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="institution">University/College Name &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="university" name="university" maxlength="100" placeholder="Institution/University" onkeypress="return /[a-zA-Z\-]/.test(event.key)">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="duration">Duration &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="duration" name="duration" maxlength="10" placeholder="Duration (e.g., 2019 - 2023)" onkeypress="return /[0-9\-,]/.test(event.key)">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="marks">Mark &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="marks" name="mark" maxlength="6" placeholder="Percentage/CGPA" onkeypress="return /[0-9.%]/.test(event.key)">
+                                </div>
+                                <div class="modal-footer" style="border: none;">
+                                    <button type="button" class="btn btn-secondary" style="margin-top:10px" onclick="resetEducationModal()">Clear</button>
+                                    <button style="background-color:#1e516e;border-radius: 10px;padding: 8px 20px;border: none;float:inline-end;margin-top:10px" type="submit" class="btn btn-primary" onclick="">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Education Section -->
+            <div style="padding:16px  30px 0px 30px;">
+                <div class="form-section-header" style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:center;align-items:center;">
+                        <h2>Education</h2>
+                        <i class="fa fa-eye-slash " id="icon-eye" style="font-size: 16px;color: #00b85d;margin-left: 10px;" onclick="loadEducationTable(this)"></i>
+                    </div>
+
+                    <button type="button" class="btn custom-button" data-toggle="modal" data-target="#educationModal" style="padding:6px 14px;display:none;" id="education-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-plus-lg" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                                d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+                        </svg> <span style="margin-left:5px;">Add Education</span>
+                    </button>
+
+                </div>
+                <section class="form-section" style="padding:10px;display:none;margin:0px;" id="education-section">
+
+                    <table class="table" style="margin-top:10px;" id="educationTable">
+                        <thead style="background-color:#1e516e;color:white;">
+                            <tr>
+                                <th>Course</th>
+                                <th>University</th>
+                                <th>Duration</th>
+                                <th>Mark</th>
+                            </tr>
+                        </thead>
+                        <tbody id="educationTableBody">
+                            <!-- Education data will load here by JavaScript -->
+                        </tbody>
+
+                    </table>
+
+
+                </section>
+            </div>
+
+            <div style="padding:10px 30px;">
+
+                <div class="modal fade" id="experienceModal" tabindex="-1" role="dialog" aria-labelledby="experienceModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background-color:#1e516e; color:white;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <h3 class="modal-title" id="experienceModalLabel">Add Experience</h3>
+                                    <button type="button" class="close" aria-label="Close" onclick="$('#experienceModal').modal('hide')" style="color:white; opacity:1;">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+
+                                </div>
+                            </div>
+                            <div class="modal-body">
+                                <form id="experienceFormModal" method="post">
+                                    <input type="hidden"
+                                        id="emp_join_fkey_exp"
+                                        name="emp_join_fkey"
+                                        value="<?= h(!empty($arr_personalinfo['emp_join_pkey']) ? $arr_personalinfo['emp_join_pkey'] : '') ?>">
+                                    <div class="col-md-6">
+                                        <label for="company">Company &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="company" name="company" placeholder="Company" maxlength="100" pattern="[A-Za-z\s]+"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="department">Department &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="department" name="department" placeholder="Department" maxlength="100" pattern="[A-Za-z\s]+"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="designation">Designation &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="designation" name="designation" placeholder="Designation" maxlength="100" pattern="[A-Za-z\s]+"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="from_date">From Date &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="from_date" name="from_date" placeholder="From Date"
+                                            onkeypress="return /[0-9\-,]/.test(event.key)">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="to_date">To Date &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="to_date" name="to_date" placeholder="To Date"
+                                            onkeypress="return /[0-9\-,]/.test(event.key)">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="salary">Salary &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" class="form-control" id="ctc" required name="salary" placeholder="Salary" maxlength="10" onkeypress="return /[0-9.]/.test(event.key)">
+                                    </div>
+                                    <div class="modal-footer"  style="border: none;">
+                                        <button type="button" class="btn btn-secondary" style="margin-top:10px" onclick="resetexperienceModal()">Clear</button>
+                                        <button style="background-color:#1e516e;border-radius: 10px;padding: 8px 20px;border: none;float:inline-end;margin-top:10px" type="submit" class="btn btn-primary" onclick="">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section-header" style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:center;align-items:center;">
+                        <h2>Experience</h2>
+                        <i class="fa fa-eye-slash " id="icon-eye2" style="font-size: 16px;color: #00b85d;margin-left: 10px;" onclick="loadExperienceTable(this)"></i>
+                    </div>
+                    <button type="button" class="btn custom-button" data-toggle="modal" data-target="#experienceModal" id="experience-btn" style="display:none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-plus-lg" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                                d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+                        </svg> <span style="margin-left:5px;">Add Experience</span>
+                    </button>
+
+                </div>
+                <section class="form-section" style="margin-bottom:0px;padding:10px;display:none;" id="experience-section">
+
+                    <table class="table" style="margin-top:10px;" id="experienceTable">
+                        <thead style="background-color:#1e516e;color:white;">
+                            <tr>
+                                <th>Company</th>
+                                <th>Department</th>
+                                <th>Designation</th>
+                                <th>From Date</th>
+                                <th>To Date</th>
+                                <th>CTC</th>
+                            </tr>
+                        </thead>
+                        <tbody id="experienceTableBody">
+                            <!-- Education data will load here by JavaScript -->
+                        </tbody>
+                    </table>
+
+                </section>
+            </div>
+
+            <div class="modal fade" id="familyModal" tabindex="-1" role="dialog" aria-labelledby="familyModalLabel" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header" style="background-color:#1e516e; color:white;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <h3 class="modal-title" id="familyModalLabel">Add Family</h3>
+                                <button type="button" class="close" aria-label="Close" onclick="$('#familyModal').modal('hide')" style="color:white; opacity:1;">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+
+                            </div>
+                        </div>
+                        <div class="modal-body">
+                            <form id="familyFormModal" method="post">
+                                <input type="hidden"
+                                    id="emp_join_fkey_fam"
+                                    name="emp_join_fkey"
+                                    value="<?= h(!empty($arr_personalinfo['emp_join_pkey']) ? $arr_personalinfo['emp_join_pkey'] : '') ?>">
+                                <div class="col-md-6">
+                                    <label for="name">Name &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="name" name="name" placeholder="Full Name" maxlength="100" pattern="[A-Za-z\s]+"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="relation">Relation</label>
+                                    <select required="required" class="form-control js-example-basic-single" style="width: 100%" value="" name="relation" id="relation_fam">
+                                        <option value="Self">Self</option>
+                                        <option value="Mother">Mother</option>
+                                        <option value="Father">Father</option>
+                                        <option value="Sister">Sister</option>
+                                        <option value="Brother">Brother</option>
+                                        <option value="Cousin">Cousin</option>
+                                        <option value="Spouse">Spouse</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+
+                                <input type="hidden" name="is_nominee" value="N">
+                                <div class="col-md-6">
+                                    <label class="emergency" style="display: flex; align-items: center; gap: 8px; cursor: pointer;padding:20px 2px 0 2px">
+                                        <input type="checkbox" name="is_nominee" value="Y" style="transform: scale(1.2);">
+                                        Mark as Nominee
+                                    </label>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="dob">Date of Birth &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="date" required class="form-control" id="dob" name="DOB">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="age">Age &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="age" name="age" placeholder="Age" maxlength="4" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="blood_group">Blood Group &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="bl_gp" name="blood_group" placeholder="Blood group" maxlength="6" pattern="[A-Za-z\s+-]+"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s+-]/g, '');">
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="gender">Gender &nbsp;<span style="color:red;">*</span></label>
+                                    <select class="form-control" id="_fam" name="gender" required>
+                                        <option value="" selected disabled>Select</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="nationality">Nationality &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="text" required class="form-control" id="nationality_fam" name="nationality" placeholder="Nationality" maxlength="100" pattern="[A-Za-z\s]+"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                </div>
+
+                                <div class="col-md-6" style="width: 100%;">
+                                    <label for="contact_number">Contact Number &nbsp;<span style="color:red;">*</span></label>
+                                    <input type="tel" required class="form-control" id="contact_number" name="contact_number" placeholder="Primary Contact Number" maxlength="10" onkeypress="return /[0-9,]/.test(event.key)">
+                                </div>
+                                <input type="hidden" name="emergency_contact" value="N">
+                                <div class="col-md-6">
+                                    <label class="emergency" style="display: flex; align-items: center; gap: 8px; cursor: pointer;padding:20px 2px 0 2px">
+                                        <input type="checkbox" name="emergency_contact" value="Y" style="transform: scale(1.2);">
+                                        Mark as Emergency Contact
+                                    </label>
+                                </div>
+
+
+                                <div class="col-md-6">
+                                    <label for="alternative_number">Alternative Number</label>
+                                    <input type="tel" class="form-control" id="alternative_number" name="alternate_number" placeholder="Alternative Contact Number" maxlength="10" onkeypress="return /[0-9,]/.test(event.key)">
+                                </div>
+
+                                <div class="modal-footer"  style="border: none;">
+                                    <button type="button" class="btn btn-secondary" style="margin-top:10px" onclick="resetfamilyModal()">Clear</button>
+                                    <button style="background-color:#1e516e;border-radius: 10px;padding: 8px 20px;border: none;float:inline-end;margin-top:10px" type="submit" class="btn btn-primary" onclick="">Save</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding:0px  30px 0px 30px;">
+                <div class="form-section-header" style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:center;align-items:center;">
+                        <h2>Family</h2>
+                        <i class="fa fa-eye-slash " id="icon-eye3" style="font-size: 16px;color: #00b85d;margin-left: 10px;" onclick="loadFamilyTable(this)"></i>
+                    </div>
+                    <button type="button" class="btn custom-button" data-toggle="modal" data-target="#familyModal" style="padding:6px 24px;display:none;" id="family-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-plus-lg" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                                d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+                        </svg> <span style="margin-left:5px;">Add Family</span>
+                    </button>
+
+                </div>
+                <section class="form-section" style="padding:10px;display:none;" id="family-section">
+                    <table class="table" style="margin-top:10px;" id="familyTable">
+                        <thead style="background-color:#1e516e;color:white;">
+                            <tr>
+                                <th>Name</th>
+                                <th>Relation</th>
+                                <th>Blood Group</th>
+                                <th>Emergency Contact</th>
+                                <th>Contact Number</th>
+                            </tr>
+                        </thead>
+                        <tbody id="familyTableBody">
+                        </tbody>
+                    </table>
+
+
+                </section>
+            </div>
+
+            <div style="padding:10px 30px;">
+                <div class="modal fade" id="documentModal" tabindex="-1" role="dialog" aria-labelledby="documentModalLabel" aria-hidden="true">
+                    <div class="modal-dialog" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background-color:#1e516e; color:white;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <h3 class="modal-title" id="documentModalLabel">Add Document Details</h3>
+                                    <button type="button" class="close" aria-label="Close" onclick="$('#documentModal').modal('hide')" style="color:white; opacity:1;">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="modal-body">
+                                <form id="documentFormModal" method="post" enctype="multipart/form-data">
+                                    <input type="hidden"
+                                        id="emp_join_fkey_doc"
+                                        name="emp_join_fkey"
+                                        value="<?= h(!empty($arr_personalinfo['emp_join_pkey']) ? $arr_personalinfo['emp_join_pkey'] : '') ?>">
+                                    <div class="col-md-6">
+                                        <label for="doc_name">Document Name &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="doc_name" name="name" placeholder="Document Name" maxlength="100" pattern="[A-Za-z\s]+"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="document_type">Document Type &nbsp;<span style="color:red;">*</span></label>
+                                        <select required class="form-control js-example-basic-single" style="width: 100%" value="" name="document_type" id="document_type">
+                                            <option value="Passport">Passport</option>
+                                            <option value="visa">Visa</option>
+                                            <option value="Labour Card">Labour Card</option>
+                                            <option value="Health Card">Health Card</option>
+                                            <option value="Driving License">Driving License</option>
+                                            <option value="Insurance">Insurance</option>
+                                            <option value="ID Card">ID Card</option>
+                                            <option value="Aadhar Card">Aadhar Card</option>
+                                            <option value="Others">Others</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="doc_number">Document Number &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="doc_number" name="document_number" maxlength="50" onkeypress="return /[0-9,-]/.test(event.key)">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="relation">Relation &nbsp;<span style="color:red;">*</span></label>
+                                        <select required class="form-control js-example-basic-single" style="width: 100%" value="" name="relation" id="relation_doc">
+                                            <option value="Self">Self</option>
+                                            <option value="Mother">Mother</option>
+                                            <option value="Father">Father</option>
+                                            <option value="Sister">Sister</option>
+                                            <option value="Brother">Brother</option>
+                                            <option value="Cousin">Cousin</option>
+                                            <option value="Spouse">Spouse</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="valid_from">Valid From &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" required class="form-control" id="valid_from" name="valid_from" placeholder="Valid From" readonly>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="valid_till">Valid Till</label>
+                                        <input type="text" class="form-control" id="valid_till" name="valid_till" placeholder="Valid Till" readonly>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="gender">Gender &nbsp;<span style="color:red;">*</span></label>
+                                        <select class="form-control" id="gender_fam" name="classification" required>
+                                            <option value="" selected disabled>Select</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Others">Others</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="nationality">Nationality &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="text" class="form-control" id="nationality_doc" name="nationality" placeholder="Nationality" maxlength="100" pattern="[A-Za-z\s]+"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s]/g, '');" required>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label for="avatarfile">Choose File &nbsp;<span style="color:red;">*</span></label>
+                                        <input type="file" id="avatarfile" name="avatarfile" accept=".pdf,image/*" required />
+                                        <input type="hidden" name="files" id="files">
+                                        <small id="avatarfile_msg" style="color:red; display:none;"></small>
+                                        <div style="margin-top:6px; display:flex; gap:8px; align-items:center;">
+                                            <input type="text" id="selected_file_name" class="form-control" placeholder="No file chosen" readonly style="flex:1;">
+                                            <button type="button" class="btn btn-danger" id="clear_file_btn" title="Remove selected file" style="padding:6px 12px;">
+                                                <i class="fa fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+
+
+                                   <div class="col-md-6">
+    <label for="remind">Remind Before (Days)</label>
+
+    <input type="text"
+           class="form-control"
+           id="remind"
+           name="remind"
+           placeholder="Remind Before"
+           maxlength="7"
+           pattern="[0-9]{1,7}"
+           inputmode="numeric"
+           title="Enter only numbers (0-9), up to 7 digits">
+</div>
+
+
+                                    <div class="col-md-6">
+                                        <label for="reccuring">Reccuring</label>
+                                        <select required="required" class="form-control js-example-basic-single" style="width: 100%" name="reccuring" id="reccuring">
+                                            <option value="Yes">Yes</option>
+                                            <option value="No">No</option>
+                                        </select>
+                                    </div>
+
+
+                                    <div class="modal-footer"  style="border: none;">
+                                        <button type="button" class="btn btn-secondary" style="margin-top:10px" onclick="resetdocumentModal()">Clear</button>
+                                        <button style="background-color:#1e516e;border-radius: 10px;padding: 8px 20px;border: none;float:inline-end;margin-top:10px" type="submit" class="btn btn-primary" onclick="">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section-header" style="margin-bottom:8px;">
+                    <div style="display:flex;justify-content:center;align-items:center;">
+                        <h2>Documents</h2>
+                        <i class="fa fa-eye-slash " id="icon-eye4" style="font-size: 16px;color: #00b85d;margin-left: 10px;" onclick="loadDocumentTable(this)"></i>
+                    </div>
+                    <button type="button" class="btn custom-button" data-toggle="modal" data-target="#documentModal" style="padding:6px 14px;display:none;" id="document-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-plus-lg" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                                d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2" />
+                        </svg> <span style="margin-left:5px;">Add Document</span>
+                    </button>
+
+                </div>
+                <section class="form-section" style="padding:10px;display:none;" id="document-section">
+
+                    <table class="table" style="margin-top:10px;" id="documentTable">
+                        <thead style="background-color:#1e516e;color:white;">
+                            <tr>
+                                <th>Doc Name</th>
+                                <th>Doc Type</th>
+                                <th>Doc Number</th>
+                                <th>Relation</th>
+                                <th>Valid From</th>
+                                <th>Valid To</th>
+                                <th>Remind</th>
+                                <th>File</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documentTableBody">
+                        </tbody>
+                    </table>
+
+
+                </section>
+
+
+                <div>
+                    <?php if ($emp_pkey != 0): ?>
+                        <input class="btn btn-footer" id="saveNext"
+                            style="background-color:#1e516e;border-radius:10px;padding:8px 20px;border:none;float:inline-end;margin: 10px;"
+                            type="button" value="Save & Next" />
+                    <?php else: ?>
+                        <input class="btn btn-footer" id="complete"
+                            style="background-color:#1e516e;border-radius:10px;padding:8px 20px;border:none;float:inline-end;margin: 10px;"
+                            type="button" value="Complete" />
+                    <?php endif; ?>
+                </div>
+
+
+
+                <!-- <div>
+                    <input class="btn btn-footer" id="complete"
+                        style="background-color:#1e516e;border-radius:10px;padding:8px 20px;border:none;float:inline-end;"
+                        type="submit"
+                        value="Complete" />
+                </div> -->
+
+            </div>
+        </div>
+        </form>
+    </div>
+</div>
+<div id="tab3" class="tabcontent">
+</div>
+</div>
+
+
+
+<script>
+document.getElementById('dob').addEventListener('change', function() {
+    const dob = new Date(this.value);
+    const today = new Date();
+    
+    if (!isNaN(dob)) {
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        
+        // Adjust if birthday hasn't occurred yet this year
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+        }
+
+        document.getElementById('age').value = age;
+    } else {
+        document.getElementById('age').value = '';
+    }
+});
+</script>
+
+
+<script>
+    // $(document).on('submit', 'form', function() {
+    //     $(this).find('button[type=submit]').prop('disabled', true).text('Saving...');
+    // });
+
+
+
+    $(document).ready(function() {
+        // Initialize both datepickers
+        $("#from_date").datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true
+        }).on('changeDate', function(e) {
+            var fromDate = e.date;
+
+
+            $('#to_date').datepicker('setStartDate', fromDate);
+
+
+            if (toVal && toVal < fromDate) {
+                $('#to_date').datepicker('clearDates');
+            }
+        });
+
+        $("#to_date").datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true
+        });
+    });
+
+    $(document).ready(function() {
+
+        $("#valid_from").datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true
+        }).on('changeDate', function(e) {
+            var fromDate = e.date;
+
+
+            $('#valid_till').datepicker('setStartDate', fromDate);
+
+
+            var tillDate = $('#valid_till').datepicker('getDate');
+            if (tillDate && tillDate < fromDate) {
+                $('#valid_till').datepicker('clearDates');
+            }
+        });
+
+        $("#valid_till").datepicker({
+            format: 'yyyy-mm-dd',
+            autoclose: true,
+            todayHighlight: true,
+            startDate: new Date()
+        });
+    });
+    document.getElementById('avatarfile').addEventListener('change', function() {
+        const file = this.files[0];
+        const msg = document.getElementById('avatarfile_msg');
+        const nameField = document.getElementById('selected_file_name');
+
+        if (!file) {
+            msg.style.display = 'none';
+            if (nameField) nameField.value = '';
+            return;
+        }
+
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'];
+
+        if (!allowedTypes.includes(file.type)) {
+            msg.textContent = 'Only PDF and image files are allowed!';
+            msg.style.display = 'block';
+            this.value = ''; // clear the input
+            if (nameField) nameField.value = '';
+        } else {
+            msg.style.display = 'none'; // valid file
+            if (nameField) nameField.value = file.name;
+        }
+    });
+    // Clear file selection
+    $(document).on('click', '#clear_file_btn', function() {
+        var $file = $('#avatarfile');
+        $file.val('');
+        $('#selected_file_name').val('');
+        $('#avatarfile_msg').hide().text('');
+    });
+
+
+    $(document).ready(function() {
+        // ✅ If Complete button exists
+        $("#complete").on("click", function(e) {
+            e.preventDefault();
+            $('#largeModalForm').modal('hide'); // Close modal
+            $('#emptable').datagrid('reload'); // Reload employee grid
+        });
+
+        // ✅ If Save & Next button exists
+        $(document).on("click", "#saveNext", function(e) {
+            e.preventDefault();
+
+            // 🔹 Directly switch to Tab3
+            const tabButton = document.querySelector('.tablinks[onclick*="tab3"]');
+            if (tabButton) {
+                openTab({
+                    currentTarget: tabButton
+                }, 'tab3');
+            }
+        });
+
+    });
+
+    $(document).ready(function() {
+        $('#largeModalForm').one('shown.bs.modal', function() {
+            if (<?php echo $emp_pkey; ?> != 0) {
+                $('#tab3').html('<p class="text-center">Loading...</p>');
+                $('#tab3').load(livesite + 'EmployeeJoin/onboarding/<?php echo $emp_pkey; ?>');
+            }
+        });
+    });
+
+
+    $('#largeModalForm').modal({
+        backdrop: 'static',
+        keyboard: false
+    });
+
+    $(document).ready(function() {
+        $("#complete").on("click", function(e) {
+            e.preventDefault();
+
+            // ✅ Close the modal
+            $('#largeModalForm').modal('hide');
+
+
+        });
+    });
+
+    $('#date_of_birth').datepicker({
+        format: 'yyyy-mm-dd',
+        endDate: '-18y',
+        autoclose: true
+    });
+
+
+    function resetEducationModal() {
+        $('#educationFormModal')[0].reset();
+    }
+
+    function resetexperienceModal() {
+        $('#experienceFormModal')[0].reset();
+    }
+
+    function resetfamilyModal() {
+        $('#familyFormModal')[0].reset();
+    }
+
+    function resetdocumentModal() {
+        $('#documentFormModal')[0].reset();
+    }
+    let educationLoaded = false;
+
+
+    function loadEducationTable(buttonElement) {
+        const section = document.getElementById('education-section');
+        const icon = document.getElementById('icon-eye');
+        const tab2 = document.getElementById('tab2');
+        const empKey = document.querySelector('[name="emp_join_fkey"]').value;
+        const addEducationBtn = document.getElementById('education-btn');
+
+        if (section.style.display === "none") {
+            section.style.display = "block";
+            addEducationBtn.style.display = "flex";
+
+            // Change to "eye" icon
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            if (tab2) tab2.style.height = "400px";
+
+            if (!educationLoaded) {
+                fetch('/EmployeeJoin/getEducationData/' + empKey)
+                    .then(res => {
+                        if (!res.ok) throw new Error("HTTP error " + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        const tbody = document.getElementById('educationTableBody');
+                        tbody.innerHTML = ''; // <-- clears old rows (this is the "refresh")
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4">No qualifications added.</td></tr>';
+                            return;
+                        }
+
+                        data.forEach(edu => {
+                            const row = `<tr>
+                <td>${edu.course || ''}</td>
+                <td>${edu.university || ''}</td>
+                <td>${edu.duration || ''}</td>
+                <td>${edu.mark || ''}</td>
+                 </tr>`;
+                            tbody.innerHTML += row;
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch education data:', err);
+                    });
+            }
+        } else {
+            section.style.display = "none";
+            addEducationBtn.style.display = "none";
+
+            // Change to "eye-slash" icon
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            if (tab2) tab2.style.height = "200px";
+        }
+    }
+
+
+    let familyLoaded = false;
+
+    function loadFamilyTable(buttonElement) {
+        const section = document.getElementById('family-section');
+        const icon = document.getElementById('icon-eye3');
+        const empKey = document.querySelector('[name="emp_join_fkey"]').value;
+        const addFamilyBtn = document.getElementById('family-btn');
+        const tab2 = document.getElementById('tab2'); // <-- reference to tab2
+
+        if (section.style.display === "none") {
+            section.style.display = "block";
+            addFamilyBtn.style.display = "flex";
+
+            // Change to "eye" icon
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            if (tab2) tab2.style.height = "400px";
+
+            if (!familyLoaded) {
+                fetch('/EmployeeJoin/getFamilyData/' + empKey)
+                    .then(res => {
+                        if (!res.ok) throw new Error("HTTP error " + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        const tbody = document.getElementById('familyTableBody');
+                        tbody.innerHTML = '';
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4">No family details added.</td></tr>';
+                            return;
+                        }
+
+                        data.forEach(fam => {
+                            const row = `<tr>
+                            <td>${fam.name || ''}</td>
+                            <td>${fam.relation || ''}</td>
+                            <td>${fam.blood_group || ''}</td>
+                            <td>${fam.emergency_contact || ''}</td>
+                            <td>${fam.contact_number || ''}</td>
+                        </tr>`;
+                            tbody.innerHTML += row;
+                        });
+
+                        // familyLoaded = true;
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch family data:', err);
+                    });
+            }
+        } else {
+            section.style.display = "none";
+            addFamilyBtn.style.display = "none";
+
+            // Change to "eye-slash" icon
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            if (tab2) tab2.style.height = "200px";
+        }
+    }
+
+    let experienceLoaded = false;
+
+    function loadExperienceTable(buttonElement) {
+        const section = document.getElementById('experience-section');
+        const icon = document.getElementById('icon-eye2');
+        const empKey = document.querySelector('[name="emp_join_fkey"]').value;
+        const addExperienceBtn = document.getElementById('experience-btn');
+        const tab2 = document.getElementById('tab2'); // <-- reference to tab2
+
+        if (section.style.display === "none") {
+            section.style.display = "block";
+            addExperienceBtn.style.display = "flex";
+
+            // Change to "eye" icon
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            if (tab2) tab2.style.height = "400px";
+            if (!experienceLoaded) {
+                fetch('/EmployeeJoin/getExperienceData/' + empKey)
+                    .then(res => {
+                        if (!res.ok) throw new Error("HTTP error " + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        const tbody = document.getElementById('experienceTableBody');
+                        tbody.innerHTML = '';
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4">No Experience added.</td></tr>';
+                            return;
+                        }
+
+                        data.forEach(ex => {
+                            const row = `<tr>
+                            <td>${ex.company || ''}</td>
+                            <td>${ex.department || ''}</td>
+                            <td>${ex.designation || ''}</td>
+                            <td>${ex.from_date || ''}</td>
+                             <td>${ex.to_date || ''}</td>
+                              <td>${ex.salary || ''}</td>
+                        </tr>`;
+                            tbody.innerHTML += row;
+                        });
+
+                        // experienceLoaded = true;
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch education data:', err);
+                    });
+            }
+        } else {
+            section.style.display = "none";
+            addExperienceBtn.style.display = "none";
+
+            // Change to "eye-slash" icon
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            if (tab2) tab2.style.height = "200px";
+        }
+    }
+
+    let documentLoaded = false;
+
+    function loadDocumentTable(buttonElement) {
+        const section = document.getElementById('document-section');
+        const icon = document.getElementById('icon-eye4');
+        const empKey = document.querySelector('[name="emp_join_fkey"]').value;
+        const tab2 = document.getElementById('tab2'); // <-- reference to tab2
+        const addDocbtn = document.getElementById('document-btn');
+
+        if (section.style.display === "none") {
+            section.style.display = "block";
+            addDocbtn.style.display = "flex"; // Show button
+
+            // Change to "eye" icon
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            if (tab2) tab2.style.height = "400px";
+
+            if (!documentLoaded) {
+                fetch('/EmployeeJoin/getDocumentData/' + empKey)
+                    .then(res => {
+                        if (!res.ok) throw new Error("HTTP error " + res.status);
+                        return res.json();
+                    })
+                    .then(data => {
+                        const tbody = document.getElementById('documentTableBody');
+                        tbody.innerHTML = '';
+
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4">No documents added.</td></tr>';
+                            return;
+                        }
+
+                        // data.forEach(doc => {
+                        //     const row = `<tr>
+                        //     <td>${doc.name || ''}</td>
+                        //     <td>${doc.document_type || ''}</td>
+                        //     <td>${doc.document_number || ''}</td>
+                        //     <td>${doc.relation || ''}</td>
+                        //      <td>${doc.valid_from || ''}</td>
+                        //       <td>${doc.valid_till || ''}</td>
+                        //        <td>${doc.remind || ''}</td>
+                        //         <td>${doc.files || ''}</td>
+                        // </tr>`;
+                        //     tbody.innerHTML += row;
+                        // });
+                        const webrootPath = '<?= $this->webroot ?>';
+                        data.forEach(doc => {
+                            let fileLink = '';
+                            if (doc.files) {
+                                const fullUrl = webrootPath + doc.files;
+                                fileLink = `<a href="${fullUrl}" target="_blank">View</a>`;
+                            }
+
+                            const docId = doc.id || doc.emp_document_pkey || doc.emp_doc_pkey || doc.document_pkey;
+                            const deleteBtn = docId ? `<button type="button" class="btn btn-sm btn-danger" onclick="deleteDocument('${docId}')" style="margin-left:8px;"><i class=\"fa fa-trash\"></i></button>` : '';
+
+                            const row = `<tr>
+        <td>${doc.name || ''}</td>
+        <td>${doc.document_type || ''}</td>
+        <td>${doc.document_number || ''}</td>
+        <td>${doc.relation || ''}</td>
+        <td>${doc.valid_from || ''}</td>
+        <td>${doc.valid_till || ''}</td>
+        <td>${doc.remind || ''}</td>
+        <td>${fileLink} ${deleteBtn}</td>
+    </tr>`;
+                            tbody.innerHTML += row;
+                        });
+
+                        // documentLoaded = true;
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch document data:', err);
+                    });
+            }
+        } else {
+            section.style.display = "none";
+            addDocbtn.style.display = "none"; // Hide button
+
+            // Change to "eye-slash" icon
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            if (tab2) tab2.style.height = "200px";
+        }
+    }
+
+
+
+
+
+    document.getElementById("file-input").addEventListener("change", function(event) {
+        const file = event.target.files[0];
+        const preview = document.getElementById("preview");
+        const iconWrapper = document.getElementById("icon-wrapper");
+
+        if (file) {
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = "block";
+                iconWrapper.style.display = "none";
+            };
+
+            reader.readAsDataURL(file);
+        }
+    });
+
+    function toggleDisabilityTypes() {
+        const mainCheckbox = document.getElementById('physical_handicap');
+        const typesDiv = document.getElementById('disability-types');
+        const typeCheckboxes = typesDiv.querySelectorAll('input[type="checkbox"]');
+
+        if (mainCheckbox.checked) {
+            typesDiv.style.display = 'block';
+            typeCheckboxes.forEach(cb => cb.disabled = false);
+        } else {
+            typesDiv.style.display = 'none';
+            typeCheckboxes.forEach(cb => {
+                cb.checked = false;
+                cb.disabled = true;
+            });
+        }
+    }
+
+
+    function toggleCountryField() {
+        const checkbox = document.getElementById('international_worker');
+        const countrySelect = document.getElementById('country_of_origin');
+        const countryHidden = document.getElementById('country_origin_hidden');
+
+        if (checkbox.checked) {
+            countrySelect.disabled = false;
+            // Copy selected value to hidden input
+            countryHidden.value = countrySelect.value;
+        } else {
+            countrySelect.disabled = true;
+            countrySelect.selectedIndex = 0; // reset dropdown visually
+            countryHidden.value = ''; // submit as empty/null
+        }
+    }
+
+    // Keep hidden input in sync when dropdown changes
+    document.getElementById('country_of_origin').addEventListener('change', function() {
+        document.getElementById('country_origin_hidden').value = this.value;
+    });
+
+    // Run this on page load (edit mode)
+    window.onload = function() {
+        toggleCountryField();
+        toggleDisabilityTypes();
+    };
+
+    function previewImage(input) {
+        const file = input.files[0];
+        const preview = document.getElementById('preview');
+        const iconWrapper = document.getElementById('icon-wrapper');
+        const imageControls = document.getElementById('imageControls');
+
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+                iconWrapper.style.display = 'none';
+                imageControls.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function deleteImage() {
+        const input = document.getElementById('file-input');
+        const preview = document.getElementById('preview');
+        const iconWrapper = document.getElementById('icon-wrapper');
+        const imageControls = document.getElementById('imageControls');
+        const hiddenDelete = document.getElementById('profile_image_delete');
+
+        // Reset UI
+        input.value = '';
+        preview.src = '';
+        preview.style.display = 'none';
+        iconWrapper.style.display = 'block';
+        imageControls.style.display = 'none';
+
+        // Mark for deletion in backend
+        hiddenDelete.value = '1';
+    }
+
+
+
+    function openTab(evt, tabId) {
+        // Remove active state from all buttons & divs
+        const tabLinks = document.getElementsByClassName("tablinks");
+        for (let i = 0; i < tabLinks.length; i++) {
+            tabLinks[i].classList.remove("active");
+            tabLinks[i].parentElement.classList.remove("active");
+        }
+
+        // Hide all tab contents
+        const tabContents = document.getElementsByClassName("tabcontent");
+        for (let i = 0; i < tabContents.length; i++) {
+            tabContents[i].style.display = "none";
+        }
+
+        // Activate the clicked tab & its wrapper
+        evt.currentTarget.classList.add("active");
+        evt.currentTarget.parentElement.classList.add("active");
+
+        // Show the related content
+        document.getElementById(tabId).style.display = "block";
+    }
+
+
+    // $('#educationFormModal').on('submit', function(e) {
+    //     e.preventDefault(); // Prevent default form submission
+
+    //     let formData = new FormData(this);
+
+    //     $.ajax({
+    //         url: '/EmployeeJoin/saveEducation', // Replace with your actual backend URL
+    //         type: 'POST',
+    //         data: formData,
+    //         contentType: false,
+    //         processData: false,
+    //         success: function(response) {
+    //             try {
+    //                 const res = JSON.parse(response);
+
+    //                 // ✅ Show red for error, green for success
+    //                 const notifyType = res.status === 'error' ? 'danger' : 'success';
+
+    //                 $.notify(res.message || 'Education data saved successfully!', {
+    //                     type: notifyType,
+    //                     z_index: 99999
+    //                 });
+
+    //                 // ✅ Always clear form & close modal (success or error)
+    //                 $('#educationFormModal')[0].reset();
+    //                 $('#educationModal').modal('hide');
+    //                 loadEducationTable();
+
+    //             } catch (e) {
+    //                 // Handle invalid JSON or unexpected response
+    //                 $.notify('Unexpected server response. Please try again.', {
+    //                     type: 'danger',
+    //                     z_index: 99999
+    //                 });
+
+    //                 // ✅ Also clear and close in case of unexpected issue
+    //                 $('#educationFormModal')[0].reset();
+    //                 $('#educationModal').modal('hide');
+    //                 loadEducationTable();
+    //             }
+    //         },
+    //         error: function(xhr) {
+    //             $.notify('Something went wrong. Please try again.', {
+    //                 type: 'danger',
+    //                 z_index: 99999
+    //             });
+
+    //             // ✅ Also clear and close on AJAX error
+    //             $('#educationFormModal')[0].reset();
+    //             $('#educationModal').modal('hide');
+    //             loadEducationTable();
+
+    //             console.error(xhr.responseText);
+    //         }
+
+    //     });
+    // });
+
+    // $('#experienceFormModal').on('submit', function(e) {
+    //     e.preventDefault();
+    //     let formData = new FormData(this);
+
+    //     $.ajax({
+    //         url: '/EmployeeJoin/saveExperience',
+    //         type: 'POST',
+    //         data: formData,
+    //         contentType: false,
+    //         processData: false,
+    //         success: function(response) {
+    //             try {
+    //                 const res = JSON.parse(response);
+    //                 if (res.status === 'success') {
+    //                     $.notify(res.message || 'Experience saved successfully!', {
+    //                         type: 'success',
+    //                         z_index: 99999
+    //                     });
+    //                     $('#experienceFormModal')[0].reset();
+    //                     $('#experienceModal').modal('hide');
+    //                     loadExperienceTable();
+    //                 } else {
+    //                     $.notify(res.message || 'Failed to save experience.', {
+    //                         type: 'danger',
+    //                         z_index: 99999
+    //                     });
+    //                     $('#experienceFormModal')[0].reset();
+    //                     $('#experienceModal').modal('hide');
+    //                     loadExperienceTable();
+    //                 }
+    //             } catch (e) {
+    //                 $.notify('Unexpected server response.', {
+    //                     type: 'danger',
+    //                     z_index: 99999
+    //                 });
+    //                 $('#experienceFormModal')[0].reset();
+    //                 $('#experienceModal').modal('hide');
+    //                 loadExperienceTable();
+    //             }
+    //         },
+    //         error: function(xhr) {
+    //             $.notify('Server error while saving experience.', {
+    //                 type: 'danger',
+    //                 z_index: 99999
+    //             });
+    //             console.error(xhr.responseText);
+    //         }
+    //     });
+    // });
+
+    // $('#familyFormModal').on('submit', function(e) {
+    //     e.preventDefault();
+    //     let formData = new FormData(this);
+
+    //     $.ajax({
+    //         url: '/EmployeeJoin/saveFam',
+    //         type: 'POST',
+    //         data: formData,
+    //         contentType: false,
+    //         processData: false,
+    //         success: function(response) {
+    //             try {
+    //                 const res = JSON.parse(response);
+    //                 if (res.status === 'success') {
+    //                     $.notify(res.message || 'Family saved successfully!', {
+    //                         type: 'success',
+    //                         z_index: 99999
+    //                     });
+    //                     $('#familyFormModal')[0].reset();
+    //                     $('#familyModal').modal('hide');
+    //                     loadFamilyTable();
+    //                 } else {
+    //                     $.notify(res.message || 'Failed to save family.', {
+    //                         type: 'danger',
+    //                         z_index: 99999
+    //                     });
+    //                     $('#familyFormModal')[0].reset();
+    //                     $('#familyModal').modal('hide');
+    //                     loadFamilyTable();
+    //                 }
+    //             } catch (e) {
+    //                 $.notify('Unexpected server response.', {
+    //                     type: 'danger',
+    //                     z_index: 99999
+    //                 });
+    //                 $('#familyFormModal')[0].reset();
+    //                 $('#familyModal').modal('hide');
+    //                 loadFamilyTable();
+    //             }
+    //         },
+    //         error: function(xhr) {
+    //             $.notify('Server error while saving family.', {
+    //                 type: 'danger',
+    //                 z_index: 99999
+    //             });
+    //             console.error(xhr.responseText);
+    //         }
+    //     });
+    // });
+    $('#educationFormModal').on('submit', function(e) {
+    e.preventDefault();
+
+    const $form = $(this);
+    const $submitBtn = $form.find('button[type="submit"]');
+    if ($submitBtn.prop('disabled')) return;
+
+    $submitBtn.prop('disabled', true).text('Saving...');
+
+    let formData = new FormData(this);
+
+    $.ajax({
+        url: '/EmployeeJoin/saveEducation',
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            try {
+                const res = JSON.parse(response);
+                const type = res.status === 'error' ? 'danger' : 'success';
+                $.notify(res.message || 'Education data saved successfully!', { type, z_index: 99999 });
+            } catch (err) {
+                $.notify('Unexpected server response.', { type: 'danger', z_index: 99999 });
+            } finally {
+                $form[0].reset();
+                $('#educationModal').modal('hide');
+                loadEducationTable();
+                $submitBtn.prop('disabled', false).text('Save');
+            }
+        },
+        error: function(xhr) {
+            $.notify('Server error while saving education.', { type: 'danger', z_index: 99999 });
+            console.error(xhr.responseText);
+            $submitBtn.prop('disabled', false).text('Save');
+        }
+    });
+});
+
+$('#experienceFormModal').on('submit', function(e) {
+    e.preventDefault();
+
+    let fromDate = $('#from_date').val().trim();
+    let toDate   = $('#to_date').val().trim();
+
+    if (fromDate === "" || toDate === "") {
+        $.notify("Please enter both From Date and To Date.", { type: 'danger', z_index: 99999 });
+        return;
+    }
+
+    let fDate = new Date(fromDate);
+    let tDate = new Date(toDate);
+
+    if (isNaN(fDate) || isNaN(tDate)) {
+        $.notify("Invalid date format. Please enter a valid date.", { type: 'danger', z_index: 99999 });
+        return;
+    }
+
+    if (tDate < fDate) {
+        $.notify("To Date cannot be earlier than From Date.", { type: 'danger', z_index: 99999 });
+
+        $('#to_date').val('');   // Clear incorrect date
+        return;                  // STOP FORM SUBMISSION
+    }
+    const $form = $(this);
+    const $submitBtn = $form.find('button[type="submit"]');
+    if ($submitBtn.prop('disabled')) return;
+
+    $submitBtn.prop('disabled', true).text('Saving...');
+
+    let formData = new FormData(this);
+
+    $.ajax({
+        url: '/EmployeeJoin/saveExperience',
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            try {
+                const res = JSON.parse(response);
+                const type = res.status === 'error' ? 'danger' : 'success';
+                $.notify(res.message || 'Experience saved successfully!', { type, z_index: 99999 });
+            } catch (err) {
+                $.notify('Unexpected server response.', { type: 'danger', z_index: 99999 });
+            } finally {
+                $form[0].reset();
+                $('#experienceModal').modal('hide');
+                loadExperienceTable();
+                $submitBtn.prop('disabled', false).text('Save');
+            }
+        },
+        error: function(xhr) {
+            $.notify('Server error while saving experience.', { type: 'danger', z_index: 99999 });
+            console.error(xhr.responseText);
+            $submitBtn.prop('disabled', false).text('Save');
+        }
+    });
+});
+
+$('#familyFormModal').on('submit', function(e) {
+    e.preventDefault();
+
+    const $form = $(this);
+    const $submitBtn = $form.find('button[type="submit"]');
+    if ($submitBtn.prop('disabled')) return;
+
+    $submitBtn.prop('disabled', true).text('Saving...');
+
+    let formData = new FormData(this);
+
+    $.ajax({
+        url: '/EmployeeJoin/saveFam',
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            try {
+                const res = JSON.parse(response);
+                const type = res.status === 'error' ? 'danger' : 'success';
+                $.notify(res.message || 'Family data saved successfully!', { type, z_index: 99999 });
+            } catch (err) {
+                $.notify('Unexpected server response.', { type: 'danger', z_index: 99999 });
+            } finally {
+                $form[0].reset();
+                $('#familyModal').modal('hide');
+                loadFamilyTable();
+                $submitBtn.prop('disabled', false).text('Save');
+            }
+        },
+        error: function(xhr) {
+            $.notify('Server error while saving family.', { type: 'danger', z_index: 99999 });
+            console.error(xhr.responseText);
+            $submitBtn.prop('disabled', false).text('Save');
+        }
+    });
+});
+
+
+$('#documentFormModal').on('submit', function(e) {
+    e.preventDefault();
+let fromDate = $('#valid_from').val().trim();
+let toDate   = $('#valid_till').val().trim();
+
+// Validate Valid From
+if (fromDate === "") {
+    $.notify("Please enter Valid From.", { type: 'danger', z_index: 99999 });
+    return; // stop only if fromDate missing
+}
+
+let fDate = new Date(fromDate);
+
+// If Valid Till is empty → DO NOTHING → allow save
+if (toDate === "") {
+    // do not return; just continue normally
+} else {
+
+    // Valid Till exists → validate
+    let tDate = new Date(toDate);
+
+    if (isNaN(fDate) || isNaN(tDate)) {
+        $.notify("Invalid date format. Please enter a valid date.", { type: 'danger', z_index: 99999 });
+        return;  
+    }
+
+    if (tDate < fDate) {
+        $.notify("Valid Till cannot be earlier than Valid From.", { type: 'danger', z_index: 99999 });
+        $('#valid_till').val('');
+        return;
+    }
+}
+
+
+    const $form = $(this);
+    const $submitBtn = $form.find('button[type="submit"]');
+
+    // Prevent multiple clicks
+    if ($submitBtn.prop('disabled')) return;
+
+    $submitBtn.prop('disabled', true).text('Saving...');
+
+    let formData = new FormData(this);
+
+    $.ajax({
+        url: '/EmployeeJoin/saveDoc',
+        type: 'POST',
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            try {
+                const res = JSON.parse(response);
+                if (res.status === 'success') {
+                    $.notify(res.message || 'Document saved successfully!', {
+                        type: 'success',
+                        z_index: 99999
+                    });
+                } else {
+                    $.notify(res.message || 'Failed to save document.', {
+                        type: 'danger',
+                        z_index: 99999
+                    });
+                }
+            } catch (e) {
+                $.notify('Unexpected server response.', {
+                    type: 'danger',
+                    z_index: 99999
+                });
+            } finally {
+                // Reset form & modal, re-enable button, reload table
+                $form[0].reset();
+                $('#documentModal').modal('hide');
+                loadDocumentTable();
+                $submitBtn.prop('disabled', false).text('Save');
+            }
+        },
+        error: function(xhr) {
+            $.notify('Server error while saving document.', {
+                type: 'danger',
+                z_index: 99999
+            });
+            console.error(xhr.responseText);
+            $submitBtn.prop('disabled', false).text('Save'); // Re-enable button
+        }
+    });
+});
+
+
+    $('.select2').select2({
+        dropdownParent: $('#largeModalForm'),
+        minimumResultsForSearch: 0,
+        closeOnSelect: true,
+        width: '100%',
+
+        dropdownPosition: 'below'
+    });
+    // $('#largeModalForm').on('shown.bs.modal', function () {
+    //   $('.select2').select2({
+    //     dropdownParent: $('#largeModalForm .modal-content'),
+    //     width: '100%',
+    //     minimumResultsForSearch: 0
+    //   });
+    // });
+
+
+    // $("#from_date").datepicker({
+    //     format: 'yyyy-mm-dd',
+    //     autoclose: true
+    // });
+    // $("#to_date").datepicker({
+    //     format: 'yyyy-mm-dd',
+    //     autoclose: true
+    // });
+
+    $(document).ready(function() {
+
+        $('#pan_no').on('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+
+        $('#lwf_code').on('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+
+        // -------- Helper function to validate a single field --------
+        function liveValidate(inputId, regex, message, optional = false) {
+            const $input = $(inputId);
+            const value = $input.val().trim();
+            const $msg = $('#' + $input.attr('id') + '_msg');
+
+            $msg.hide().text('').css('color', 'red');
+
+            if (!value && !optional) {
+                $msg.text(message).show();
+                return false;
+            }
+
+            if (value && !regex.test(value)) {
+                $msg.text(message).show();
+                // $input.val(''); // Clear invalid input
+                return false;
+            }
+
+            if (value && regex.test(value)) {
+                $msg.text('Valid').css('color', 'green').show();
+            }
+
+            return true;
+        }
+
+        // -------- Live validation on keyup and blur --------
+        $('#id_card').on('keyup blur', function() {
+            liveValidate('#id_card', /^\d{12}$/, 'Aadhaar must be exactly 12 digits!');
+        });
+
+        $('#pan_no').on('keyup blur', function() {
+            liveValidate('#pan_no', /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, 'Invalid PAN format!',true);
+        });
+
+        $('#esi').on('keyup blur', function() {
+            liveValidate('#esi', /^\d{10}$/, 'ESI must be exactly 10 digits!', true);
+        });
+
+        $('#uan').on('keyup blur', function() {
+            liveValidate('#uan', /^\d{12}$/, 'UAN must be exactly 12 digits!', true);
+        });
+
+        $('#lwf_code').on('keyup blur', function() {
+            liveValidate('#lwf_code', /^[A-Za-z0-9]{5,15}$/, 'LWF must be 5–15 alphanumeric characters!', true);
+        });
+
+        $('#account_no').on('keyup blur', function() {
+            liveValidate('#account_no', /^\d+$/, 'Account Number must contain only digits!', true);
+        });
+
+        $('#pf').on('keyup blur', function() {
+             liveValidate('#pf', /^[A-Za-z0-9]+$/, 'PF Number must be alphanumeric!', true);
+        });
+
+    });
+
+
+
+
+    $('#employee-form').on('submit', function(e) {
+        e.preventDefault(); // Stop normal submit
+
+        // Clear previous messages
+       $('#id_card_msg, #pan_no_msg, #esi_msg, #uan_msg, #lwf_code_msg, #account_no_msg').hide().text('');
+
+        var id_card = $('#id_card').val().trim();
+        var pan_no = $('#pan_no').val().trim().toUpperCase();
+        var esi = $('#esi').val().trim();
+        var uan = $('#uan').val().trim();
+        var lwf = $('#lwf_code').val().trim();
+
+        var error = false;
+
+        // Aadhaar validation
+        if (!id_card) {
+            $('#id_card_msg').text('Aadhaar number is required!').show();
+            error = true;
+        } else if (!/^\d{12}$/.test(id_card)) {
+            $('#id_card_msg').text('Aadhaar must be exactly 12 digits!').show();
+            error = true;
+        }
+
+        // PAN validation
+        // PAN uniqueness check
+        // if (pan_no) {
+        //     $.post('/EmployeeJoin/checkPan', {
+        //         pan_no: pan_no
+        //     }).then(function(res) {
+        //         var r = JSON.parse(res);
+        //         const $msg = $('#pan_no_msg');
+        //         if (r.status === 'valid') {
+        //             $msg.text(r.message).css('color', 'green').show();
+        //         } else if (r.status === 'duplicate') {
+        //             $msg.text(r.message).css('color', 'red').show();
+        //             $('#pan_no').val(''); // optional: clear input if duplicate
+        //         } else {
+        //             $msg.text(r.message).css('color', 'red').show();
+        //             $('#pan_no').val(''); // optional: clear input if error
+        //         }
+        //     });
+        // }
+// PAN validation (OPTIONAL)
+if (pan_no) {
+    if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan_no)) {
+        $('#pan_no_msg').text('Invalid PAN format!').show();
+        error = true;
+    }
+}
+
+
+        // ESI validation (optional)
+        if (esi && !/^\d{10}$/.test(esi)) {
+            $('#esi_msg').text('ESI must be exactly 10 digits!').show();
+            error = true;
+        }
+
+        // UAN validation (optional)
+        if (uan && !/^\d{12}$/.test(uan)) {
+            $('#uan_msg').text('UAN must be exactly 12 digits!').show();
+            error = true;
+        }
+
+        // LWF validation (optional)
+        var lwf = $('#lwf_code').val().trim();
+        if (lwf.length > 0) {
+            if (!/^[A-Za-z0-9]{5,15}$/.test(lwf)) {
+                $('#lwf_code_msg').text('LWF must be 5–15 alphanumeric characters!').css('color', 'red').show();
+                error = true;
+            } else {
+                 $('#lwf_code_msg').text('Valid').css('color', 'green').show();
+            }
+        }
+
+
+        if (error) return; // Stop submission if any error exists
+
+        // Now perform AJAX backend validations for uniqueness
+        var ajaxChecks = [];
+
+        // Aadhaar check
+        // ajaxChecks.push(
+        //     $.post('/EmployeeJoin/checkIdCard', {
+        //         id_card: id_card
+        //     }).then(function(res) {
+        //         var r = JSON.parse(res);
+        //         if (r.status !== 'valid') {
+        //             $('#id_card_msg').text(r.message).show();
+        //             throw 'validation failed';
+        //         }
+        //     })
+        // );
+        ajaxChecks.push(
+            $.post('/EmployeeJoin/checkIdCard', {
+                id_card: id_card
+            }).then(function(res) {
+                var r = JSON.parse(res);
+                if (r.status !== 'valid') {
+                    $('#id_card_msg').text(r.message)
+                        .css('color', r.color)
+                        .show();
+                    throw 'validation failed';
+                } else {
+                    $('#id_card_msg').text(r.message)
+                        .css('color', r.color)
+                        .show();
+                }
+            })
+        );
+
+        // ajaxChecks.push(
+        //     $.post('/EmployeeJoin/checkPan', {
+        //         pan_no: pan_no
+        //     }).then(function(res) {
+        //         var r = JSON.parse(res);
+        //         $('#pan_msg').text(r.message)
+        //             .css('color', r.color)
+        //             .show();
+        //         if (r.status !== 'valid') {
+        //             throw 'validation failed';
+        //         }
+        //     })
+        // );
+
+      // Optional PAN uniqueness check
+if (pan_no) {
+    ajaxChecks.push(
+        $.post('/EmployeeJoin/checkPan', {
+            pan_no: pan_no,
+            emp_pkey: $('[name="emp_pkey"]').val()
+        }).then(function(res) {
+            var r = JSON.parse(res);
+            $('#pan_no_msg').text(r.message)
+                .css('color', r.color)
+                .show();
+
+            if (r.status !== 'valid') {
+                throw 'validation failed';
+            }
+        })
+    );
+}
+
+        // Optional: ESI check
+if (esi) {
+    ajaxChecks.push(
+        $.post('/EmployeeJoin/checkESI', {
+            esi: esi,
+            emp_pkey: $('[name="emp_pkey"]').val()
+        }).then(function (res) {
+            var r = JSON.parse(res);
+            $('#esi_msg').text(r.message).css('color', r.color).show();
+            if (r.status !== 'valid') {
+                throw 'validation failed';
+            }
+        })
+    );
+}
+
+// Optional: UAN check
+if (uan) {
+    ajaxChecks.push(
+        $.post('/EmployeeJoin/checkUAN', {
+            uan: uan,
+            emp_pkey: $('[name="emp_pkey"]').val()
+        }).then(function (res) {
+            var r = JSON.parse(res);
+            $('#uan_msg').text(r.message).css('color', r.color).show();
+            if (r.status !== 'valid') {
+                throw 'validation failed';
+            }
+        })
+    );
+}
+
+// Optional: LWF check
+if (lwf) {
+            ajaxChecks.push(
+                $.post('/EmployeeJoin/checkLWF', {
+                    lwf_code: lwf
+                }).then(function(res) {
+                    var r = JSON.parse(res);
+                    $('#lwf_code_msg').text(r.message).css('color', r.color).show();
+                    if (r.status !== 'valid') {
+                        throw 'validation failed';
+                    }
+                })
+            );
+        }
+
+
+
+        // Optional: Account No check
+        var account_no = $('#account_no').val().trim();
+        if (account_no) {
+             ajaxChecks.push(
+                $.post('/EmployeeJoin/checkAccountNo', {
+                    account_no: account_no,
+                    emp_pkey: $('[name="emp_pkey"]').val()
+                }).then(function(res) {
+                    var r = JSON.parse(res);
+                    $('#account_no_msg').text(r.message).css('color', r.color).show();
+                    if (r.status !== 'valid') {
+                        throw 'validation failed';
+                    }
+                })
+            );
+        }
+
+        // Optional: PF No check
+        var pf = $('#pf').val().trim();
+        if (pf) {
+             ajaxChecks.push(
+                $.post('/EmployeeJoin/checkPF', {
+                    pf: pf,
+                    emp_pkey: $('[name="emp_pkey"]').val()
+                }).then(function(res) {
+                    var r = JSON.parse(res);
+                     $('#pf_msg').text(r.message).css('color', r.color).show();
+                    if (r.status !== 'valid') {
+                        throw 'validation failed';
+                    }
+                })
+            );
+        }
+
+    
+
+        // Execute all backend validations
+        $.when.apply($, ajaxChecks).done(function() {
+            // All validations passed, now submit the actual form
+            var formData = new FormData($('#employee-form')[0]);
+
+            $.ajax({
+                url: '/EmployeeJoin/saveToJoin',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    try {
+                        var res = JSON.parse(response);
+
+                        if (res.status === 'error') {
+                            $.notify(res.message, {
+                                z_index: 99999,
+                                type: 'danger'
+                            });
+                            return;
+                        }
+
+                        $.notify(res.message, {
+                            z_index: 99999,
+                            type: 'success'
+                        });
+
+                        if (res.emp_join_pkey) {
+                            $('#emp_join_fkey_edu, #emp_join_fkey_exp, #emp_join_fkey_fam, #emp_join_fkey_doc')
+                                .val(res.emp_join_pkey);
+                        }
+
+                        // Switch to Tab 2
+                        const tabButton = document.querySelector('.tablinks[onclick*="tab2"]');
+                        if (tabButton) openTab({
+                            currentTarget: tabButton
+                        }, 'tab2');
+
+                    } catch (e) {
+                        $.notify("Employee Saving Failed. Try Again", {
+                            type: 'danger'
+                        });
+                    }
+                }
+            });
+
+        }).fail(function() {
+            // Do nothing, errors already displayed
+        });
+    });
+</script>
+<script>
+    $(document).ready(function() {
+        // Fix scrolling issue when closing inner modals (stacked modals)
+        $('#educationModal, #experienceModal, #familyModal, #documentModal').on('hidden.bs.modal', function() {
+            // Check if the outer modal is visible
+            if ($('#largeModalForm').is(':visible')) {
+                // Re-add 'modal-open' class to body to enable scrolling on the outer modal
+                $('body').addClass('modal-open');
+                // Bring focus back to the outer modal
+                $('#largeModalForm').focus();
+            }
+        });
+    });
+</script>
