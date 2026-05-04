@@ -539,7 +539,7 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.sectionLabel}>Approvals</Text>
             <View style={styles.approvalRow}>
               {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
-                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => {}}>
+                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveApproval', { user })}>
                   <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
                     <CheckCircle color="#16A34A" size={22} />
                   </View>

@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Dimensions,
-  FlatList, Modal, StatusBar, Image, ActivityIndicator
+  FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Trash2, ChevronRight, Camera, FileText, Check } from 'lucide-react-native';
+import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { SHADOWS } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 
@@ -35,6 +33,27 @@ const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secu
   </View>
 );
 
+// ─── Picker Row (dropdown trigger) ────────────────────────────────────────────
+const PickerRow = ({ label, value, onPress }) => (
+  <View style={st.inputWrap}>
+    <Text style={st.floatLabel}>{label}</Text>
+    <TouchableOpacity style={st.pickerRow} onPress={onPress} activeOpacity={0.75}>
+      <Text style={[st.pickerText, !value && { color: '#CBD5E0' }]}>{value || `Select ${label}`}</Text>
+      <ChevronDown color="#9CA3AF" size={18} />
+    </TouchableOpacity>
+  </View>
+);
+
+// ─── Checkbox Row ──────────────────────────────────────────────────────────────
+const CheckRow = ({ label, value, onToggle }) => (
+  <TouchableOpacity style={st.checkRow} onPress={onToggle} activeOpacity={0.75}>
+    <View style={[st.checkBox, value && st.checkBoxActive]}>
+      {value && <Check color="#FFF" size={13} strokeWidth={3} />}
+    </View>
+    <Text style={st.checkLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
 // ─── Step Progress Bar ─────────────────────────────────────────────────────────
 const StepBar = ({ current, total }) => (
   <View style={st.stepBarRow}>
@@ -45,6 +64,35 @@ const StepBar = ({ current, total }) => (
       />
     ))}
   </View>
+);
+
+// ─── Country Picker Modal ──────────────────────────────────────────────────────
+const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <View style={st.modalSheet}>
+        <View style={st.modalHandle} />
+        <Text style={st.modalTitle}>Select Country</Text>
+        <ScrollView style={{ maxHeight: 320 }}>
+          {countries.map((c, i) => (
+            <TouchableOpacity
+              key={i}
+              style={st.countryItem}
+              onPress={() => { onSelect(c); onClose(); }}
+            >
+              <Text style={[st.countryItemText, selected?.id === c.id && st.countryItemActive]}>
+                {c.country_name}
+              </Text>
+              {selected?.id === c.id && <Check color={PURPLE} size={18} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <TouchableOpacity style={st.modalCloseBtn} onPress={onClose}>
+          <Text style={st.modalCloseText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  </Modal>
 );
 
 // ─── Welcome Slides ────────────────────────────────────────────────────────────
@@ -78,13 +126,35 @@ const SignupScreen = ({ navigation }) => {
   const [showPicModal, setShowPicModal] = useState(false);
 
   // Step 4 – Address
-  const [address, setAddress] = useState({ house: '', line2: '', city: '', pincode: '', state: '', country: '' });
+  const [address, setAddress] = useState({ house: '', line2: '', city: '', pincode: '', state: '' });
+  const [addrCountry, setAddrCountry] = useState(null);
+  const [showAddrCountryPicker, setShowAddrCountryPicker] = useState(false);
 
-  // Step 5 – KYC
-  const [kycDocType] = useState('Aadhar Card');
-  const [kycDocNumber, setKycDocNumber] = useState('');
-  const [aadharDoc, setAadharDoc] = useState(null);
-  const [panDoc, setPanDoc] = useState(null);
+  // Step 5 – KYC (Aadhaar number only)
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+
+  // Step 6 – Other Details
+  const [intlWorker, setIntlWorker] = useState(false);
+  const [intlCountry, setIntlCountry] = useState(null);
+  const [showIntlCountryPicker, setShowIntlCountryPicker] = useState(false);
+  const [physHandicap, setPhysHandicap] = useState(false);
+  const [locomotive, setLocomotive] = useState(false);
+  const [hearing, setHearing] = useState(false);
+  const [visual, setVisual] = useState(false);
+
+  // Countries list
+  const [countries, setCountries] = useState([]);
+
+  useEffect(() => {
+    fetchCountries();
+  }, []);
+
+  const fetchCountries = async () => {
+    try {
+      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES);
+      if (res.data?.success && res.data.data) setCountries(res.data.data);
+    } catch (_) {}
+  };
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
@@ -111,7 +181,9 @@ const SignupScreen = ({ navigation }) => {
             { text: 'Login', style: 'destructive', onPress: () => navigation.navigate('Login') },
           ]);
         } else if (isSuccess) {
-          setStep(3);
+          showAlert('success', 'Valid Email', 'Your email has been verified successfully.', [
+            { text: 'OK', onPress: () => setStep(3) },
+          ]);
         } else {
           showAlert('error', 'Verification Failed', res.data.message || 'Please check your company code and email.');
         }
@@ -126,7 +198,7 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-  // ── Step 5: Final submit ──────────────────────────────────────────────────
+  // ── Step 6: Final submit ──────────────────────────────────────────────────
   const handleFinalSubmit = async () => {
     setLoading(true);
     try {
@@ -139,32 +211,27 @@ const SignupScreen = ({ navigation }) => {
         date_of_birth: dob,
         address: `${address.house} ${address.line2} ${address.city} ${address.state}`.trim(),
         pincode: address.pincode,
-        kyc_type: kycDocType,
-        kyc_number: kycDocNumber,
+        country: addrCountry?.id || null,
+        kyc_type: 'Aadhar Card',
+        kyc_number: aadhaarNumber,
+        international_worker: intlWorker ? 'Y' : 'N',
+        intl_country: intlWorker && intlCountry ? intlCountry.id : null,
+        physical_handicap: physHandicap ? 'Y' : 'N',
+        locomotive: physHandicap && locomotive ? 'Y' : 'N',
+        hearing: physHandicap && hearing ? 'Y' : 'N',
+        visual: physHandicap && visual ? 'Y' : 'N',
       };
       if (photoBase64) payload.profile_pic = `data:image/jpeg;base64,${photoBase64}`;
-      if (aadharDoc) {
-        try {
-          const b64 = await FileSystem.readAsStringAsync(aadharDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
-          payload.aadhar_card = `data:${aadharDoc.mimeType || 'image/jpeg'};base64,${b64}`;
-        } catch (_) {}
-      }
-      if (panDoc) {
-        try {
-          const b64 = await FileSystem.readAsStringAsync(panDoc.uri, { encoding: FileSystem.EncodingType.Base64 });
-          payload.pan_card = `data:${panDoc.mimeType || 'image/jpeg'};base64,${b64}`;
-        } catch (_) {}
-      }
+
       const res = await axios.post(API_ENDPOINTS.REGISTER, payload, { headers: { 'Content-Type': 'application/json' } });
       if (res.data?.success) {
-        setStep(6);
+        setStep(7);
       } else {
         showAlert('error', 'Submission Failed', res.data?.message || 'Could not complete signup. Please try again.');
-        navigation.navigate('Login');
       }
     } catch (e) {
       console.log('Signup error', e.message);
-      navigation.navigate('Login');
+      showAlert('error', 'Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -181,6 +248,8 @@ const SignupScreen = ({ navigation }) => {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
       setStep(5);
     } else if (step === 5) {
+      setStep(6);
+    } else if (step === 6) {
       handleFinalSubmit();
     }
   };
@@ -189,6 +258,7 @@ const SignupScreen = ({ navigation }) => {
     if (step === 3) setStep(1);
     else if (step === 4) setStep(3);
     else if (step === 5) setStep(4);
+    else if (step === 6) setStep(5);
     else if (step === 1) setStep(0);
     else navigation.goBack();
   };
@@ -197,7 +267,7 @@ const SignupScreen = ({ navigation }) => {
     const { status } = useCamera
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { showAlert('error', 'Permission Denied', 'Camera or gallery access is required to add a profile photo.'); return; }
+    if (status !== 'granted') { showAlert('error', 'Permission Denied', 'Camera or gallery access is required.'); return; }
     const result = useCamera
       ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true })
       : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true });
@@ -208,25 +278,11 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-  const pickDocument = async (type) => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/jpeg', 'image/png', 'application/pdf'],
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled && result.assets?.length > 0) {
-        if (type === 'aadhar') setAadharDoc(result.assets[0]);
-        else setPanDoc(result.assets[0]);
-      }
-    } catch (_) {
-      showAlert('error', 'Upload Failed', 'Could not open the document picker. Please try again.');
-    }
-  };
-
   const getStepNum = () => {
     if (step === 3) return 1;
     if (step === 4) return 2;
     if (step === 5) return 3;
+    if (step === 6) return 4;
     return 0;
   };
 
@@ -277,7 +333,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={st.container}>
         <StatusBar barStyle="dark-content" backgroundColor={PURPLE_BG} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={st.step1Top}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
               <ChevronLeft color={PURPLE} size={28} />
@@ -311,9 +367,9 @@ const SignupScreen = ({ navigation }) => {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── STEP 6: SUCCESS
+  // ── STEP 7: SUCCESS
   // ════════════════════════════════════════════════════════════════════════════
-  if (step === 6) {
+  if (step === 7) {
     return (
       <SafeAreaView style={[st.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }]}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
@@ -331,7 +387,7 @@ const SignupScreen = ({ navigation }) => {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── STEPS 3 / 4 / 5  —  V1 SPLIT DESIGN: purple top + white card bottom
+  // ── STEPS 3 / 4 / 5 / 6  —  purple top + white card bottom
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <SafeAreaView style={st.container} edges={['top']}>
@@ -339,17 +395,14 @@ const SignupScreen = ({ navigation }) => {
 
       {/* ── PURPLE TOP SECTION ── */}
       <View style={st.dataTop}>
-
-        {/* Step header bar */}
         <View style={st.dataTopBar}>
           <TouchableOpacity onPress={prevStep} style={st.dataBackBtn}>
             <ChevronLeft color={PURPLE} size={28} />
           </TouchableOpacity>
-          <StepBar current={getStepNum()} total={3} />
-          <Text style={st.stepCount}>{getStepNum()} / 3</Text>
+          <StepBar current={getStepNum()} total={4} />
+          <Text style={st.stepCount}>{getStepNum()} / 4</Text>
         </View>
 
-        {/* Illustration / Avatar area */}
         <View style={st.dataTopCenter}>
           {step === 3 && (
             <>
@@ -368,23 +421,16 @@ const SignupScreen = ({ navigation }) => {
               <Text style={st.avatarHint}>{photoUri ? 'Tap to change photo' : 'Tap to add profile photo'}</Text>
             </>
           )}
-          {step === 4 && (
-            <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />
-          )}
-          {step === 5 && (
-            <Image source={require('../../assets/signup/illustration-3.png')} style={st.topIllustration} resizeMode="contain" />
-          )}
+          {step === 4 && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
+          {step === 5 && <Image source={require('../../assets/signup/illustration-3.png')} style={st.topIllustration} resizeMode="contain" />}
+          {step === 6 && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
         </View>
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <View style={st.bottomCard}>
-          <ScrollView
-            contentContainerStyle={st.cardScroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+          <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
             {/* ══ STEP 3 — PERSONAL DETAILS ══ */}
             {step === 3 && (
@@ -406,8 +452,8 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={st.cardTitle}>Address Details</Text>
                 <Text style={st.cardSub}>This information will be used for official records</Text>
-                <FloatInput label="House / Flat Name" value={address.house} onChangeText={t => setAddress({ ...address, house: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
-                <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Near City Mall" maxLength={60} />
+                <FloatInput label="House / Flat Name" value={address.house} onChangeText={t => setAddress({ ...address, house: t })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
+                <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t })} placeholder="Near City Mall" maxLength={60} />
                 <View style={st.inputRow}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <FloatInput label="City" value={address.city} onChangeText={t => setAddress({ ...address, city: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Mumbai" maxLength={30} />
@@ -417,40 +463,87 @@ const SignupScreen = ({ navigation }) => {
                   </View>
                 </View>
                 <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={30} />
-                <FloatInput label="Country" value={address.country} onChangeText={t => setAddress({ ...address, country: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="India" maxLength={30} />
+                <PickerRow label="Country" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
               </>
             )}
 
-            {/* ══ STEP 5 — ID / KYC ══ */}
+            {/* ══ STEP 5 — KYC (Aadhaar Number only) ══ */}
             {step === 5 && (
               <>
-                <Text style={st.cardTitle}>ID Verification</Text>
-                <Text style={st.cardSub}>Upload your government-issued identity documents</Text>
-
-                <Text style={st.docLabel}>PAN Card</Text>
-                <FloatInput label="PAN Card Number" value={kycDocNumber} onChangeText={t => setKycDocNumber(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))} placeholder="ABCDE1234F" maxLength={10} />
-                <TouchableOpacity style={[st.uploadBtn, panDoc && st.uploadBtnDone]} onPress={() => pickDocument('pan')} activeOpacity={0.8}>
-                  <FileText color={panDoc ? '#059669' : PURPLE} size={20} />
-                  <Text style={[st.uploadBtnText, panDoc && { color: '#059669' }]}>
-                    {panDoc ? `✓  ${panDoc.name}` : 'Upload PAN Card (JPG / PNG / PDF)'}
-                  </Text>
+                <Text style={st.cardTitle}>KYC Details</Text>
+                <Text style={st.cardSub}>Enter your Aadhaar card number</Text>
+                <FloatInput
+                  label="Aadhaar Number"
+                  value={aadhaarNumber}
+                  onChangeText={t => setAadhaarNumber(t.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  placeholder="XXXX XXXX XXXX"
+                  maxLength={12}
+                />
+                <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
+                <Text style={st.skipNote}>You can update your documents later from your profile.</Text>
+              </>
+            )}
 
-                <Text style={st.docLabel}>Aadhaar Card</Text>
-                <TouchableOpacity style={[st.uploadBtn, aadharDoc && st.uploadBtnDone]} onPress={() => pickDocument('aadhar')} activeOpacity={0.8}>
-                  <FileText color={aadharDoc ? '#059669' : PURPLE} size={20} />
-                  <Text style={[st.uploadBtnText, aadharDoc && { color: '#059669' }]}>
-                    {aadharDoc ? `✓  ${aadharDoc.name}` : 'Upload Aadhaar Card (JPG / PNG / PDF)'}
-                  </Text>
-                </TouchableOpacity>
+            {/* ══ STEP 6 — OTHER DETAILS ══ */}
+            {step === 6 && (
+              <>
+                <Text style={st.cardTitle}>Other Details</Text>
+                <Text style={st.cardSub}>Enter your details to complete signup to Rizo</Text>
+
+                {/* International Worker */}
+                <View style={st.toggleCard}>
+                  <View style={st.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.toggleLabel}>International Worker</Text>
+                    </View>
+                    <Switch
+                      value={intlWorker}
+                      onValueChange={v => { setIntlWorker(v); if (!v) setIntlCountry(null); }}
+                      trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
+                      thumbColor={intlWorker ? PURPLE : '#FFF'}
+                    />
+                  </View>
+                  {intlWorker && (
+                    <View style={{ marginTop: 12 }}>
+                      <PickerRow label="Country" value={intlCountry?.country_name} onPress={() => setShowIntlCountryPicker(true)} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Physically Handicapped */}
+                <View style={st.toggleCard}>
+                  <View style={st.toggleRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.toggleLabel}>Physically Handicapped</Text>
+                    </View>
+                    <Switch
+                      value={physHandicap}
+                      onValueChange={v => { setPhysHandicap(v); if (!v) { setLocomotive(false); setHearing(false); setVisual(false); } }}
+                      trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
+                      thumbColor={physHandicap ? PURPLE : '#FFF'}
+                    />
+                  </View>
+                  {physHandicap && (
+                    <View style={st.checkGroup}>
+                      <Text style={st.checkGroupLabel}>Types of Disability</Text>
+                      <View style={st.checkGroupRow}>
+                        <CheckRow label="Locomotive" value={locomotive} onToggle={() => setLocomotive(v => !v)} />
+                        <CheckRow label="Hearing" value={hearing} onToggle={() => setHearing(v => !v)} />
+                        <CheckRow label="Visual" value={visual} onToggle={() => setVisual(v => !v)} />
+                      </View>
+                    </View>
+                  )}
+                </View>
 
                 <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669' }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Complete Signup</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
-                <Text style={st.skipNote}>Documents are optional — you can add them later from your profile.</Text>
               </>
             )}
 
@@ -491,6 +584,24 @@ const SignupScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* ── Address Country Picker ── */}
+      <CountryPickerModal
+        visible={showAddrCountryPicker}
+        countries={countries}
+        selected={addrCountry}
+        onClose={() => setShowAddrCountryPicker(false)}
+        onSelect={setAddrCountry}
+      />
+
+      {/* ── International Worker Country Picker ── */}
+      <CountryPickerModal
+        visible={showIntlCountryPicker}
+        countries={countries}
+        selected={intlCountry}
+        onClose={() => setShowIntlCountryPicker(false)}
+        onSelect={setIntlCountry}
+      />
     </SafeAreaView>
   );
 };
@@ -499,158 +610,91 @@ const SignupScreen = ({ navigation }) => {
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: PURPLE_BG },
 
-  // ── Welcome Carousel ─────────────────────────────────────────────────────
-  carouselTop: {
-    flex: 1.2, justifyContent: 'center', alignItems: 'center',
-    paddingTop: 60, backgroundColor: PURPLE_BG,
-  },
+  carouselTop: { flex: 1.2, justifyContent: 'center', alignItems: 'center', paddingTop: 60, backgroundColor: PURPLE_BG },
   carouselImg: { width: width * 0.75, height: width * 0.65 },
-  carouselCard: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    padding: 32, paddingBottom: Platform.OS === 'ios' ? 48 : 36,
-  },
+  carouselCard: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: Platform.OS === 'ios' ? 48 : 36 },
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: 20 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E2E8F0', marginHorizontal: 4 },
   dotActive: { width: 24, backgroundColor: PURPLE },
   slideTitle: { fontSize: 22, fontWeight: '900', color: '#111827', textAlign: 'center', marginBottom: 12 },
   slideSub: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 32 },
-  getStartedBtn: {
-    backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', height: 56, borderRadius: 28,
-  },
+  getStartedBtn: { backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 56, borderRadius: 28 },
   getStartedText: { color: '#FFF', fontSize: 16, fontWeight: '700', marginRight: 8 },
 
-  // ── Step 1 top (split layout same style as carousel) ─────────────────────
-  step1Top: {
-    flex: 0.75, backgroundColor: PURPLE_BG,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  backBtnLight: {
-    position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28,
-    left: 16, width: 44, height: 44, justifyContent: 'center', alignItems: 'center',
-  },
+  step1Top: { flex: 0.75, backgroundColor: PURPLE_BG, justifyContent: 'center', alignItems: 'center' },
+  backBtnLight: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, left: 16, width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   step1Img: { width: 170, height: 170 },
 
-  // ── Shared white bottom card ──────────────────────────────────────────────
-  bottomCard: {
-    flex: 1, backgroundColor: '#FFF',
-    borderTopLeftRadius: 32, borderTopRightRadius: 32,
-    paddingHorizontal: 24, paddingTop: 28,
-    ...SHADOWS.medium,
-  },
+  bottomCard: { flex: 1, backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 28, ...SHADOWS.medium },
   cardScroll: { paddingBottom: 32 },
   cardTitle: { fontSize: 24, fontWeight: '900', color: '#111827', marginBottom: 4 },
   cardSub: { fontSize: 14, color: '#6B7280', lineHeight: 20, marginBottom: 24 },
 
-  // ── Login link (step 1) ───────────────────────────────────────────────────
   loginLink: { alignItems: 'center', marginTop: 20 },
   loginLinkText: { fontSize: 14, color: '#6B7280' },
   loginLinkBold: { color: PURPLE, fontWeight: '700' },
 
-  // ── Data steps: purple top section ───────────────────────────────────────
   dataTop: { backgroundColor: PURPLE_BG, paddingBottom: 0 },
-  dataTopBar: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, height: 56,
-  },
+  dataTopBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 56 },
   dataBackBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   stepBarRow: { flex: 1, flexDirection: 'row', marginHorizontal: 10 },
   stepBarItem: { flex: 1, height: 5, backgroundColor: '#DDD6FE', borderRadius: 3 },
   stepBarActive: { backgroundColor: PURPLE },
   stepCount: { fontSize: 13, fontWeight: '700', color: PURPLE, width: 36, textAlign: 'right' },
-
-  dataTopCenter: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 16, paddingBottom: 28,
-  },
+  dataTopCenter: { alignItems: 'center', justifyContent: 'center', paddingVertical: 16, paddingBottom: 28 },
   topIllustration: { width: 150, height: 130 },
 
-  // ── Avatar picker (step 3 in purple top) ─────────────────────────────────
-  avatarPickerWrap: {
-    position: 'relative', width: 110, height: 110, borderRadius: 55,
-  },
-  avatarImg: {
-    width: 110, height: 110, borderRadius: 55,
-    borderWidth: 3, borderColor: '#EDE9FE',
-  },
-  avatarPlaceholder: {
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: '#EDE9FE', overflow: 'hidden',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  camBadge: {
-    position: 'absolute', bottom: 2, right: 2,
-    backgroundColor: PURPLE, width: 32, height: 32, borderRadius: 16,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#FFF',
-  },
-  avatarHint: {
-    fontSize: 12, color: '#6D28D9', fontWeight: '600',
-    marginTop: 10, textAlign: 'center',
-  },
+  avatarPickerWrap: { position: 'relative', width: 110, height: 110, borderRadius: 55 },
+  avatarImg: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#EDE9FE' },
+  avatarPlaceholder: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#EDE9FE', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
+  camBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: PURPLE, width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
+  avatarHint: { fontSize: 12, color: '#6D28D9', fontWeight: '600', marginTop: 10, textAlign: 'center' },
 
-  // ── Floating input ────────────────────────────────────────────────────────
   inputWrap: { marginBottom: 20, position: 'relative' },
-  floatLabel: {
-    position: 'absolute', top: -9, left: 14, zIndex: 2,
-    backgroundColor: '#FFF', paddingHorizontal: 4,
-    fontSize: 11, color: '#9CA3AF', fontWeight: '600',
-  },
-  input: {
-    backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 16, height: 56,
-    fontSize: 15, fontWeight: '600', color: '#111827',
-    borderWidth: 1.5, borderColor: '#E5E7EB',
-  },
+  floatLabel: { position: 'absolute', top: -9, left: 14, zIndex: 2, backgroundColor: '#FFF', paddingHorizontal: 4, fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
+  input: { backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 16, height: 56, fontSize: 15, fontWeight: '600', color: '#111827', borderWidth: 1.5, borderColor: '#E5E7EB' },
   inputRow: { flexDirection: 'row' },
 
-  // ── Action button ─────────────────────────────────────────────────────────
-  nextBtn: {
-    backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', height: 58, borderRadius: 30,
-    marginTop: 8, ...SHADOWS.medium,
-  },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 14, paddingHorizontal: 16, height: 56, borderWidth: 1.5, borderColor: '#E5E7EB' },
+  pickerText: { flex: 1, fontSize: 15, fontWeight: '600', color: '#111827' },
+
+  nextBtn: { backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 58, borderRadius: 30, marginTop: 8, ...SHADOWS.medium },
   nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800', marginRight: 8 },
 
-  // ── Document upload ───────────────────────────────────────────────────────
-  docLabel: {
-    fontSize: 12, fontWeight: '800', color: '#6B7280',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10,
-  },
-  uploadBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#C4B5FD',
-    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 16,
-    marginBottom: 16, backgroundColor: '#FAF5FF',
-  },
-  uploadBtnDone: { borderColor: '#6EE7B7', borderStyle: 'solid', backgroundColor: '#ECFDF5' },
-  uploadBtnText: { fontSize: 14, fontWeight: '600', color: PURPLE, marginLeft: 12, flex: 1 },
   skipNote: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: 16, lineHeight: 18 },
 
-  // ── Success ───────────────────────────────────────────────────────────────
-  successCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center',
-    marginBottom: 24, ...SHADOWS.medium,
-  },
+  // Toggle + disability
+  toggleCard: { backgroundColor: '#FAFAFA', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F3F4F6' },
+  toggleRow: { flexDirection: 'row', alignItems: 'center' },
+  toggleLabel: { fontSize: 15, fontWeight: '700', color: '#111827' },
+
+  checkGroup: { marginTop: 14 },
+  checkGroupLabel: { fontSize: 12, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 },
+  checkGroupRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
+  checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  checkBoxActive: { backgroundColor: PURPLE, borderColor: PURPLE },
+  checkLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+
+  // Success
+  successCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', marginBottom: 24, ...SHADOWS.medium },
   successTitle: { fontSize: 26, fontWeight: '900', color: '#111827', marginBottom: 12 },
   successSub: { fontSize: 15, color: '#6B7280', textAlign: 'center', lineHeight: 22, paddingHorizontal: 32 },
 
-  // ── Photo modal ───────────────────────────────────────────────────────────
+  // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-  },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
   modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 13, fontWeight: '700', color: '#9CA3AF', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.6 },
   modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
   modalDivider: { height: 1, backgroundColor: '#F3F4F6' },
   modalRowText: { fontSize: 16, fontWeight: '600', color: '#111827', marginLeft: 16 },
-  modalCloseBtn: {
-    marginTop: 16, height: 52, borderWidth: 1.5, borderColor: '#E5E7EB',
-    borderRadius: 26, justifyContent: 'center', alignItems: 'center',
-  },
+  modalCloseBtn: { marginTop: 16, height: 52, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
   modalCloseText: { fontSize: 15, fontWeight: '700', color: '#374151' },
+
+  countryItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  countryItemText: { fontSize: 15, color: '#4B5563', flex: 1 },
+  countryItemActive: { color: PURPLE, fontWeight: '700' },
 });
 
 export default SignupScreen;

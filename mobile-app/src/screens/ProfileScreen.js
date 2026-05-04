@@ -74,6 +74,15 @@ const PickerRow = ({ label, value, onPress }) => (
   </View>
 );
 
+const CheckRow = ({ label, value, onToggle }) => (
+  <TouchableOpacity style={s.checkRow} onPress={onToggle} activeOpacity={0.75}>
+    <View style={[s.checkBox, value && s.checkBoxActive]}>
+      {value && <Check color="#FFF" size={13} strokeWidth={3} />}
+    </View>
+    <Text style={s.checkLabel}>{label}</Text>
+  </TouchableOpacity>
+);
+
 const SectionItem = ({ iconBg, icon, title, subtitle, onPress, last }) => (
   <>
     <TouchableOpacity style={s.sectionRow} onPress={onPress} activeOpacity={0.7}>
@@ -125,7 +134,12 @@ const ProfileScreen = ({ navigation, route }) => {
   const [pEmail, setPEmail] = useState('');
   const [pPhone, setPPhone] = useState('');
   const [pIntl, setPIntl] = useState(false);
+  const [pIntlCountry, setPIntlCountry] = useState(null);
+  const [showIntlCountryPicker, setShowIntlCountryPicker] = useState(false);
   const [pHandicap, setPHandicap] = useState(false);
+  const [pLocomotive, setPLocomotive] = useState(false);
+  const [pHearing, setPHearing] = useState(false);
+  const [pVisual, setPVisual] = useState(false);
   const [pPic, setPPic] = useState('');
   const [pPicBase64, setPPicBase64] = useState('');
   const [pPicLocal, setPPicLocal] = useState('');
@@ -266,7 +280,11 @@ const ProfileScreen = ({ navigation, route }) => {
         email: pEmail,
         mobile_no: pPhone,
         international_worker: pIntl ? 'Y' : 'N',
+        country: pIntl && pIntlCountry ? pIntlCountry.id : null,
         physical_handicap: pHandicap ? 'Y' : 'N',
+        locomotive: pHandicap && pLocomotive ? 'Y' : 'N',
+        hearing: pHandicap && pHearing ? 'Y' : 'N',
+        visual: pHandicap && pVisual ? 'Y' : 'N',
         profile_pic: pPicBase64 ? `data:image/jpeg;base64,${pPicBase64}` : (pPic || ''),
       };
       const res = await axios.post(`${API_ENDPOINTS.UPDATE_PROFILE}?user_id=${user.user_id}`, payload, {
@@ -412,25 +430,50 @@ const ProfileScreen = ({ navigation, route }) => {
           <FloatInput label="Department" value={user.department || ''} editable={false} />
 
           <View style={s.switchCard}>
+            {/* International Worker */}
             <View style={s.switchRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={s.switchTitle}>International Worker</Text>
                 <Text style={s.switchSub}>Are you an international worker?</Text>
               </View>
-              <Switch value={pIntl} onValueChange={setPIntl}
+              <Switch value={pIntl}
+                onValueChange={v => { setPIntl(v); if (!v) setPIntlCountry(null); }}
                 trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
                 thumbColor={pIntl ? COLORS.primaryDeep : '#FFF'} />
             </View>
+            {pIntl && (
+              <View style={{ paddingHorizontal: 4, paddingBottom: 4 }}>
+                <PickerRow
+                  label="Country"
+                  value={pIntlCountry?.country_name}
+                  onPress={() => setShowIntlCountryPicker(true)}
+                />
+              </View>
+            )}
+
             <View style={s.divider} />
+
+            {/* Physically Handicapped */}
             <View style={s.switchRow}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={s.switchTitle}>Physically Handicapped</Text>
                 <Text style={s.switchSub}>Do you have a physical disability?</Text>
               </View>
-              <Switch value={pHandicap} onValueChange={setPHandicap}
+              <Switch value={pHandicap}
+                onValueChange={v => { setPHandicap(v); if (!v) { setPLocomotive(false); setPHearing(false); setPVisual(false); } }}
                 trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
                 thumbColor={pHandicap ? COLORS.primaryDeep : '#FFF'} />
             </View>
+            {pHandicap && (
+              <View style={s.checkGroup}>
+                <Text style={s.checkGroupLabel}>Types of Disability</Text>
+                <View style={s.checkGroupRow}>
+                  <CheckRow label="Locomotive" value={pLocomotive} onToggle={() => setPLocomotive(v => !v)} />
+                  <CheckRow label="Hearing"    value={pHearing}    onToggle={() => setPHearing(v => !v)} />
+                  <CheckRow label="Visual"     value={pVisual}     onToggle={() => setPVisual(v => !v)} />
+                </View>
+              </View>
+            )}
           </View>
 
           <SaveButton onPress={savePersonal} loading={loading} />
@@ -439,6 +482,16 @@ const ProfileScreen = ({ navigation, route }) => {
 
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <DiscardModal visible={showDiscard} onCancel={() => setShowDiscard(false)} onConfirm={confirmDiscard} />
+
+        {/* Intl Worker Country Picker */}
+        <SelectionModal
+          visible={showIntlCountryPicker}
+          title="Select Country"
+          options={countries}
+          selectedValue={pIntlCountry?.id}
+          onClose={() => setShowIntlCountryPicker(false)}
+          onSelect={c => { setPIntlCountry(c); setShowIntlCountryPicker(false); }}
+        />
       </SafeAreaView>
     );
   }
@@ -810,6 +863,15 @@ const s = StyleSheet.create({
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12 },
   switchTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
   switchSub: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+
+  // Disability checkboxes
+  checkGroup: { paddingHorizontal: 12, paddingBottom: 12 },
+  checkGroupLabel: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  checkGroupRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  checkBoxActive: { backgroundColor: PURPLE, borderColor: PURPLE },
+  checkLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
 
   // Form subheading
   formSubheading: { fontSize: 20, fontWeight: '900', color: COLORS.text, marginBottom: 6, marginTop: 4 },

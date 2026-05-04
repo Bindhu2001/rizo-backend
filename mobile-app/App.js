@@ -21,6 +21,7 @@ import WelcomeScreen from './src/screens/WelcomeScreen';
 import SplashScreen from './src/screens/SplashScreen';
 import AttendanceRegScreen from './src/screens/AttendanceRegScreen';
 import RegularisationApprovalScreen from './src/screens/RegularisationApprovalScreen';
+import LeaveApprovalScreen from './src/screens/LeaveApprovalScreen';
 
 import { COLORS, SHADOWS } from './src/components/Theme';
 import { initDB } from './src/services/LocalDB';
@@ -117,6 +118,7 @@ export default function App() {
           <Stack.Screen name="Salary" component={SalaryScreen} />
           <Stack.Screen name="AttendanceReg" component={AttendanceRegScreen} />
           <Stack.Screen name="RegularisationApproval" component={RegularisationApprovalScreen} />
+          <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

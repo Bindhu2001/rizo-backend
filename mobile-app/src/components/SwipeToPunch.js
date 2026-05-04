@@ -14,7 +14,7 @@ const SwipeToPunch = ({
   onSwipeComplete,
   isPunchedIn = false,
   loading = false,
-  trackHeight = 48,
+  trackHeight = 60,
   padding = 4,
   resetTrigger = 0,
   locationName = '',

@@ -31,6 +31,8 @@ export const API_ENDPOINTS = {
   CHECK_ROLES: `${NEWAPP_URL}/check_hierarchy_role`,
   REGULARISATION_HIERARCHY: `${NEWAPP_URL}/regularisation_hierarchy_list`,
   REGULARISATION_APPROVAL_ACTION: `${NEWAPP_URL}/regularisation_approval`,
+  LEAVE_HIERARCHY: `${NEWAPP_URL}/leave_hierarchy_list`,
+  LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   REGISTER: `${NEWAPP_URL}/register`,
 };
