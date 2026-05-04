@@ -39,12 +39,22 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_ENDPOINTS.LEAVE_HIERARCHY}?user_id=${user.user_id}&month=${month}`);
+      const formData = new FormData();
+      formData.append('user_id', user.user_id);
+      
+      const res = await axios.post(`${API_ENDPOINTS.LEAVE_HIERARCHY}?user_id=${user.user_id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       if (res.data?.success) {
         const { authorizer_leaves = [], approver_leaves = [] } = res.data.data || {};
+        
+        // Filter locally since API returns all months
+        const filteredAuth = authorizer_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
+        const filteredAppr = approver_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
+
         const built = [];
-        if (authorizer_leaves.length) built.push({ key: 'authorizer', title: 'Authorise Requests', data: authorizer_leaves });
-        if (approver_leaves.length)   built.push({ key: 'approver',   title: 'Approve Requests',   data: approver_leaves });
+        if (filteredAuth.length) built.push({ key: 'authorizer', title: 'Authorise Requests', data: filteredAuth });
+        if (filteredAppr.length) built.push({ key: 'approver',   title: 'Approve Requests',   data: filteredAppr });
         setSections(built);
       } else {
         setSections([]);
@@ -92,11 +102,14 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
     setProcessing(true);
     try {
-      const res = await axios.post(`${API_ENDPOINTS.LEAVE_ACTION}?user_id=${user.user_id}`, {
-        user_id: user.user_id,
-        leave_id: item.leave_id || item.LEAVEENTRYID,
-        action,
-        remarks: remarks.trim(),
+      const formData = new FormData();
+      formData.append('user_id', user.user_id);
+      formData.append('leave_id', item.leave_id || item.LEAVEENTRYID);
+      formData.append('action', action);
+      formData.append('remarks', remarks.trim());
+
+      const res = await axios.post(`${API_ENDPOINTS.LEAVE_ACTION}?user_id=${user.user_id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data?.success) {
         Alert.alert('Success', `Leave request ${action.toLowerCase()} successfully.`);

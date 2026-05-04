@@ -30,7 +30,13 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const fetchData = async (month) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_ENDPOINTS.REGULARISATION_HIERARCHY}?user_id=${user.user_id}&month=${month}`);
+      const formData = new FormData();
+      formData.append('user_id', user.user_id);
+      formData.append('month', month);
+
+      const res = await axios.post(`${API_ENDPOINTS.REGULARISATION_HIERARCHY}?user_id=${user.user_id}&month=${month}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       if (res.data && res.data.success) {
         setRequests(res.data.data || []);
       } else {
@@ -58,14 +64,15 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
     setProcessing(true);
     try {
-      const payload = {
-        user_id: user.user_id,
-        id: actionModal.item.id || actionModal.item.emp_attendance_regularisation_pkey,
-        status: actionModal.type === 'APPROVE' ? 'A' : 'R',
-        remarks: remarks
-      };
+      const formData = new FormData();
+      formData.append('user_id', user.user_id);
+      formData.append('id', actionModal.item.id || actionModal.item.emp_attendance_regularisation_pkey);
+      formData.append('status', actionModal.type === 'APPROVE' ? 'A' : 'R');
+      formData.append('remarks', remarks);
 
-      const res = await axios.post(API_ENDPOINTS.REGULARISATION_APPROVAL_ACTION, payload);
+      const res = await axios.post(API_ENDPOINTS.REGULARISATION_APPROVAL_ACTION, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       if (res.data && res.data.success) {
         Alert.alert('Success', `Request ${actionModal.type === 'APPROVE' ? 'approved' : 'rejected'} successfully.`);
         setActionModal({ visible: false, item: null, type: '' });
