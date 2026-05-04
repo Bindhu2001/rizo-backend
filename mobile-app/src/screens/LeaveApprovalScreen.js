@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList,
   ActivityIndicator, Alert, StatusBar, Modal, TextInput,
+  Pressable, ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -32,11 +33,13 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [actionModal, setActionModal] = useState({ visible: false, item: null, sectionKey: '', actionType: '' });
   const [remarks, setRemarks] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = async (month) => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_ENDPOINTS.LEAVE_HIERARCHY}?user_id=${user.user_id}`);
+      const res = await axios.get(`${API_ENDPOINTS.LEAVE_HIERARCHY}?user_id=${user.user_id}&month=${month}`);
       if (res.data?.success) {
         const { authorizer_leaves = [], approver_leaves = [] } = res.data.data || {};
         const built = [];
@@ -54,7 +57,19 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchData(); }, []));
+  useFocusEffect(useCallback(() => { fetchData(currentMonthStr); }, [currentMonthStr]));
+
+  const pastMonths = [];
+  const currentDate = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const yr = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    pastMonths.push({
+      label: d.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      value: `${yr}-${mo}`
+    });
+  }
 
   const openModal = (item, sectionKey, actionType) => {
     setActionModal({ visible: true, item, sectionKey, actionType });
@@ -77,16 +92,16 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
     setProcessing(true);
     try {
-      const res = await axios.post(API_ENDPOINTS.LEAVE_ACTION, {
+      const res = await axios.post(`${API_ENDPOINTS.LEAVE_ACTION}?user_id=${user.user_id}`, {
         user_id: user.user_id,
-        leave_id: item.leave_id,
+        leave_id: item.leave_id || item.LEAVEENTRYID,
         action,
         remarks: remarks.trim(),
       });
       if (res.data?.success) {
         Alert.alert('Success', `Leave request ${action.toLowerCase()} successfully.`);
         closeModal();
-        fetchData();
+        fetchData(currentMonthStr);
       } else {
         Alert.alert('Notice', res.data?.message || 'Action failed.');
       }
@@ -125,13 +140,13 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             <View style={s.detailItem}>
               <CalendarIcon size={14} color="#6B7280" />
               <Text style={s.detailText}>
-                {item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}
+                {item.from_date || item.FROMDATE}{(item.to_date || item.TODATE) && (item.to_date || item.TODATE) !== (item.from_date || item.FROMDATE) ? ` – ${item.to_date || item.TODATE}` : ''}
               </Text>
             </View>
-            {item.no_of_days != null && (
+            {(item.no_of_days || item.leave_days) != null && (
               <View style={s.detailItem}>
                 <Clock size={14} color="#6B7280" />
-                <Text style={s.detailText}>{item.no_of_days} day{item.no_of_days !== 1 ? 's' : ''}</Text>
+                <Text style={s.detailText}>{item.no_of_days || item.leave_days} day{(item.no_of_days || item.leave_days) != 1 ? 's' : ''}</Text>
               </View>
             )}
           </View>
@@ -180,6 +195,13 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         <View style={{ width: 44 }} />
       </View>
 
+      <View style={s.monthBar}>
+        <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
+           <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
+           <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={s.loaderWrap}>
           <ActivityIndicator size="large" color={COLORS.primaryDeep} />
@@ -187,7 +209,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       ) : (
         <SectionList
           sections={sections}
-          keyExtractor={(item, idx) => String(item.leave_id ?? idx)}
+          keyExtractor={(item, idx) => String(item.leave_id || item.LEAVEENTRYID || idx)}
           renderItem={renderItem}
           renderSectionHeader={({ section }) => (
             <View style={s.sectionHeader}>
@@ -204,7 +226,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               <Text style={s.emptyText}>No pending requests</Text>
             </View>
           }
-          onRefresh={fetchData}
+          onRefresh={() => fetchData(currentMonthStr)}
           refreshing={loading}
           stickySectionHeadersEnabled={false}
         />
@@ -259,6 +281,27 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Month Picker Modal */}
+      <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPicker(false)}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Select Month</Text>
+            <ScrollView>
+              {pastMonths.map((m) => (
+                <TouchableOpacity 
+                  key={m.value} 
+                  style={s.sheetItem} 
+                  onPress={() => { setCurrentMonthStr(m.value); setShowMonthPicker(false); }}
+                >
+                  <Text style={[s.sheetItemText, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -272,6 +315,10 @@ const s = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
   backBtn: { width: 44, height: 44, justifyContent: 'center' },
+
+  monthBar: { padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  monthText: { fontSize: 14, fontWeight: '700', color: '#6C5CE7' },
 
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -348,6 +395,13 @@ const s = StyleSheet.create({
     flex: 2, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
   },
   modalConfirmText: { color: '#FFF', fontWeight: '800' },
+
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },
+  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  sheetTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheetItemText: { fontSize: 15, color: '#4B5563', textAlign: 'center' },
+  sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
 });
 
 export default LeaveApprovalScreen;

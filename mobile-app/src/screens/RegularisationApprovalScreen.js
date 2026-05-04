@@ -60,7 +60,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
     try {
       const payload = {
         user_id: user.user_id,
-        id: actionModal.item.emp_attendance_regularisation_pkey,
+        id: actionModal.item.id || actionModal.item.emp_attendance_regularisation_pkey,
         status: actionModal.type === 'APPROVE' ? 'A' : 'R',
         remarks: remarks
       };
@@ -98,27 +98,30 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       <View style={s.cardHeader}>
         <View style={s.empInfo}>
           <Text style={s.empName}>{item.employee_name}</Text>
-          <Text style={s.empId}>{item.employee_id}</Text>
+          <Text style={s.empId}>{item.empid || item.employee_id}</Text>
         </View>
-        <View style={[s.typeBadge, { backgroundColor: item.type === 'Late In' ? '#FFF3E0' : '#E3F2FD' }]}>
-          <Text style={[s.typeText, { color: item.type === 'Late In' ? '#E65100' : '#1565C0' }]}>{item.type}</Text>
+        <View style={[s.typeBadge, { backgroundColor: (item.direction || item.type) === 'Late In' ? '#FFF3E0' : '#E3F2FD' }]}>
+          <Text style={[s.typeText, { color: (item.direction || item.type) === 'Late In' ? '#E65100' : '#1565C0' }]}>{item.direction || item.type}</Text>
         </View>
       </View>
 
       <View style={s.detailsRow}>
         <View style={s.detailItem}>
           <CalendarIcon size={14} color="#6B7280" />
-          <Text style={s.detailText}>{item.punch_date}</Text>
+          <Text style={s.detailText}>{item.att_date || item.punch_date}</Text>
         </View>
         <View style={s.detailItem}>
           <Clock size={14} color="#6B7280" />
-          <Text style={s.detailText}>{item.actual_time || '--:--'} → {item.expected_time || '--:--'}</Text>
+          <Text style={s.detailText}>
+            {item.LOGTIME || item.actual_time || '--:--'}
+            {item.expected_time ? ` → ${item.expected_time}` : ''}
+          </Text>
         </View>
       </View>
 
       <View style={s.reasonBox}>
         <Info size={14} color="#9CA3AF" />
-        <Text style={s.reasonText}>{item.reason || 'No reason provided'}</Text>
+        <Text style={s.reasonText}>{item.remarks || item.reason || 'No reason provided'}</Text>
       </View>
 
       <View style={s.actions}>
@@ -161,7 +164,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
       <FlatList
         data={requests}
-        keyExtractor={(item) => String(item.emp_attendance_regularisation_pkey)}
+        keyExtractor={(item, index) => String(item.id || item.emp_attendance_regularisation_pkey || index)}
         renderItem={renderItem}
         contentContainerStyle={s.list}
         ListEmptyComponent={
