@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
@@ -35,6 +36,9 @@ const AttendanceScreen = ({ navigation, route }) => {
   const [expandedDate, setExpandedDate] = useState(null);
   const [devicePunches, setDevicePunches] = useState({});
   const [fetchingDevicePunches, setFetchingDevicePunches] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!user) {
@@ -307,6 +311,7 @@ const AttendanceScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

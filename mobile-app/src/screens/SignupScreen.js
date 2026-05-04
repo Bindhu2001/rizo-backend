@@ -158,13 +158,13 @@ const SignupScreen = ({ navigation }) => {
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!companyCode.trim() || !email.trim()) {
       showAlert('error', 'Missing Details', 'Please enter your Company Code and Email to continue.');
       return;
     }
     if (!emailRegex.test(email.trim())) {
-      showAlert('warning', 'Invalid Email', 'Please enter a valid email address (e.g. john@company.com).');
+      showAlert('warning', 'Invalid Email', 'Please enter a valid email address (e.g. employee@gmail.com).');
       return;
     }
     setLoading(true);
@@ -242,7 +242,7 @@ const SignupScreen = ({ navigation }) => {
       handleStep1Submit();
     } else if (step === 3) {
       if (!name.trim()) { showAlert('warning', 'Name Required', 'Please enter your first name to continue.'); return; }
-      if (!mobileNo.trim() || mobileNo.length < 10) { showAlert('warning', 'Invalid Mobile', 'Please enter a valid 10-digit mobile number.'); return; }
+      if (!mobileNo.trim() || mobileNo.length < 8) { showAlert('warning', 'Invalid Mobile', 'Please enter a valid mobile number.'); return; }
       setStep(4);
     } else if (step === 4) {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
@@ -272,8 +272,13 @@ const SignupScreen = ({ navigation }) => {
       ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true })
       : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true });
     if (!result.canceled) {
-      setPhotoUri(result.assets[0].uri);
-      setPhotoBase64(result.assets[0].base64);
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        showAlert('warning', 'File Too Large', 'The selected image exceeds the 5MB limit. Please choose a smaller image.');
+        return;
+      }
+      setPhotoUri(asset.uri);
+      setPhotoBase64(asset.base64);
       setShowPicModal(false);
     }
   };
@@ -333,7 +338,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={st.container}>
         <StatusBar barStyle="dark-content" backgroundColor={PURPLE_BG} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={st.step1Top}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
               <ChevronLeft color={PURPLE} size={28} />
@@ -347,7 +352,7 @@ const SignupScreen = ({ navigation }) => {
               <View style={{ marginTop: 28 }}>
                 <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
               </View>
-              <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="john@company.com" maxLength={100} />
+              <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="employee@gmail.com" maxLength={100} />
               <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                 {loading ? <ActivityIndicator color="#FFF" /> : (
                   <>
@@ -428,7 +433,7 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={st.bottomCard}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
@@ -437,9 +442,9 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={st.cardTitle}>Personal Details</Text>
                 <Text style={st.cardSub}>Let's start with your basic information</Text>
-                <FloatInput label="First Name" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="John" maxLength={25} />
-                <FloatInput label="Last Name" value={lastName} onChangeText={t => setLastName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Doe" maxLength={25} />
-                <FloatInput label="Mobile Number" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="9876543210" maxLength={10} />
+                <FloatInput label="First Name" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee" maxLength={25} />
+                <FloatInput label="Last Name" value={lastName} onChangeText={t => setLastName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Last Name" maxLength={25} />
+                <FloatInput label="Mobile Number" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
                 <FloatInput label="Date of Birth (DD-MM-YYYY)" value={dob} onChangeText={t => setDob(t.replace(/[^0-9-]/g, ''))} placeholder="01-01-1998" maxLength={10} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
@@ -626,7 +631,7 @@ const st = StyleSheet.create({
   step1Img: { width: 170, height: 170 },
 
   bottomCard: { flex: 1, backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: 24, paddingTop: 28, ...SHADOWS.medium },
-  cardScroll: { paddingBottom: 32 },
+  cardScroll: { paddingBottom: 100 },
   cardTitle: { fontSize: 24, fontWeight: '900', color: '#111827', marginBottom: 4 },
   cardSub: { fontSize: 14, color: '#6B7280', lineHeight: 20, marginBottom: 24 },
 

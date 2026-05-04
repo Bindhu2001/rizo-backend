@@ -23,6 +23,7 @@ import AttendanceRegScreen from './src/screens/AttendanceRegScreen';
 import RegularisationApprovalScreen from './src/screens/RegularisationApprovalScreen';
 import LeaveApprovalScreen from './src/screens/LeaveApprovalScreen';
 
+import OfflineBanner from './src/components/OfflineBanner';
 import { COLORS, SHADOWS } from './src/components/Theme';
 import { initDB } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
@@ -99,6 +100,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <OfflineBanner />
       <NavigationContainer>
         <Stack.Navigator
           initialRouteName="Splash"

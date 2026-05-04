@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, Animated, Easing, Modal, ActivityIndicator, Alert, Dimensions, LayoutAnimation, UIManager, Platform
+  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
@@ -56,6 +57,9 @@ const HomeScreen = ({ navigation, route }) => {
     is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
     is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
   });
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!user) {
@@ -375,7 +379,7 @@ const HomeScreen = ({ navigation, route }) => {
       }
     } catch (e) {
       console.error('[Punch] Error:', e);
-      Alert.alert('Error', 'Failed to process punch.\n\n' + e.message);
+      showAlert('error', 'Error', 'Failed to process punch. Please try again.');
     } finally {
       setPunching(false);
       setPunchMessage('');
@@ -478,16 +482,18 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
         {/* SWIPE / TIMER ACTION */}
-        <View style={[styles.swipeBox, { width: 353, height: 60, alignSelf: 'center' }]}>
-          <SwipeToPunch
-            isPunchedIn={isPunchedIn}
-            loading={punching}
-            onSwipeComplete={handleSwipeComplete}
-            resetTrigger={cancelTrigger}
-            trackHeight={60}
-            locationName={isPunchedIn ? punchInAddress : ''}
-            punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
-          />
+        <View style={styles.swipeBoxContainer}>
+          <View style={[styles.swipeBox, { width: 353, height: 68, alignSelf: 'center' }]}>
+            <SwipeToPunch
+              isPunchedIn={isPunchedIn}
+              loading={punching}
+              onSwipeComplete={handleSwipeComplete}
+              resetTrigger={cancelTrigger}
+              trackHeight={68}
+              locationName={isPunchedIn ? punchInAddress : ''}
+              punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
+            />
+          </View>
 
           {/* Offline location fetch status banner */}
           {!!punchMessage && (
@@ -643,6 +649,7 @@ const HomeScreen = ({ navigation, route }) => {
           </View>
         </View>
       </Modal>
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };
@@ -665,7 +672,8 @@ const styles = StyleSheet.create({
   avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBox: { marginBottom: 20, height: 60, width: '100%', alignSelf: 'center' },
+  swipeBoxContainer: { marginBottom: 20 },
+  swipeBox: { height: 68, width: '100%', alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',

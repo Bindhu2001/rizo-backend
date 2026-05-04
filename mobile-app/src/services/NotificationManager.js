@@ -113,8 +113,13 @@ class NotificationManager {
         for (const sLeave of serverLeaves) {
             const serverStatus = (sLeave.leave_status || sLeave.status || '').toUpperCase();
             const leaveId = sLeave.leave_id || sLeave.id;
-            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED') && leaveId) {
-                const title = `Leave ${serverStatus === 'APPROVED' ? 'Approved ✅' : 'Rejected ❌'}`;
+            
+            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || serverStatus === 'AUTHORISED') && leaveId) {
+                let title = '';
+                if (serverStatus === 'APPROVED') title = 'Leave Approved ✅';
+                else if (serverStatus === 'REJECTED') title = 'Leave Rejected ❌';
+                else if (serverStatus === 'AUTHORISED') title = 'Leave Authorised 🛡️';
+
                 const dateText = sLeave.from_date || 'your request';
                 const message = `Your leave (${sLeave.leave_name || 'request'}) for ${dateText} was ${serverStatus.toLowerCase()}.`;
                 

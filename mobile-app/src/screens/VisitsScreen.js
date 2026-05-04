@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Platform, Animated
+  TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -301,9 +302,9 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   };
 
   const handleSave = () => {
-    if (!company.trim()) { Alert.alert('Error', 'Please enter Company name'); return; }
-    if (!contactPerson.trim()) { Alert.alert('Error', 'Please enter Contact Person'); return; }
-    if (fetchingLoc) { Alert.alert('Please wait', 'Fetching location...'); return; }
+    if (!company.trim()) { showAlert('warning', 'Company Required', 'Please enter the Company / Customer name.'); return; }
+    if (!contactPerson.trim()) { showAlert('warning', 'Name Required', 'Please enter the Contact Person name.'); return; }
+    if (fetchingLoc) { showAlert('info', 'Please Wait', 'We are still fetching your current location.'); return; }
     onSave({ company, contactNo, contactPerson, purpose, locText, ...locCoords });
     reset();
   };
@@ -438,6 +439,9 @@ const VisitsScreen = ({ navigation, route }) => {
   const [showStepInModal, setShowStepInModal] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingVisit, setPendingVisit] = useState(null);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!user || !user.user_id) {
@@ -486,7 +490,7 @@ const VisitsScreen = ({ navigation, route }) => {
       fetchVisits();
     } catch (e) {
       console.error('Visit Save Error:', e);
-      Alert.alert('Error', 'Failed to save visit record. Please try again.');
+      showAlert('error', 'Error', 'Failed to save visit record. Please try again.');
     } finally { setProcessing(false); }
   };
 
@@ -507,7 +511,7 @@ const VisitsScreen = ({ navigation, route }) => {
       setPendingVisit(null);
       fetchVisits();
     } catch (e) {
-      Alert.alert('Error', 'Failed to step in');
+      showAlert('error', 'Error', 'Failed to step in. Please try again.');
     } finally { setProcessing(false); }
   };
 
@@ -527,7 +531,8 @@ const VisitsScreen = ({ navigation, route }) => {
       });
       syncIfOnline(); // fire-and-forget — UI updates instantly
       fetchVisits();
-    } catch (_) { Alert.alert('Error', 'Failed to step-out'); }
+      showAlert('success', 'Visit Completed', 'Customer visit has been closed.');
+    } catch (_) { showAlert('error', 'Error', 'Failed to step-out.'); }
     finally { setProcessing(false); setPendingVisit(null); }
   };
 
@@ -573,7 +578,7 @@ const VisitsScreen = ({ navigation, route }) => {
           onPress={() => {
             const hasActive = visits.some(v => v.status === 'REACHED' || v.status === 'step_in');
             if (hasActive) {
-              Alert.alert('Visit In Progress', 'Please complete the current visit before starting a new one.');
+              showAlert('warning', 'Visit In Progress', 'Please complete the current visit before starting a new one.');
               return;
             }
             setShowStartScreen(true);
@@ -601,6 +606,7 @@ const VisitsScreen = ({ navigation, route }) => {
         onConfirm={doStepOut}
         onCancel={() => setConfirmVisible(false)}
       />
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Platform,
-  Pressable, Dimensions, Image
+  TextInput, ActivityIndicator, Modal, Platform,
+  Pressable, Dimensions, Image, KeyboardAvoidingView
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
@@ -517,6 +518,9 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   const [attLogs, setAttLogs] = useState([]);
   const [regLogs, setRegLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   const [view, setView] = useState('MAIN');
   const [selectedDay, setSelectedDay] = useState(null);
@@ -615,10 +619,10 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         setTab('REGULARISED');
         fetchData();
       } else {
-        Alert.alert('Cannot Submit', res.data?.message || 'Request failed.');
+        showAlert('error', 'Cannot Submit', res.data?.message || 'Request failed.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || e.message || 'Submission failed');
+      showAlert('error', 'Error', e?.response?.data?.message || e.message || 'Submission failed');
     } finally {
       setProcessing(false);
     }
@@ -787,6 +791,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

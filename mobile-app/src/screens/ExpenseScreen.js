@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, Pressable
+  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, ChevronDown,
@@ -185,6 +186,9 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [purpose, setPurpose] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAuthPicker, setShowAuthPicker] = useState(false);
@@ -246,18 +250,26 @@ const ExpenseScreen = ({ navigation, route }) => {
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length > 0) {
-        setAttachedFiles(prev => [...prev, ...result.assets]);
+        const oversized = result.assets.filter(file => file.size > 5 * 1024 * 1024);
+        if (oversized.length > 0) {
+          showAlert('warning', 'File Too Large', 'One or more files exceed the 5MB limit. Please select smaller files.');
+          return;
+        }
+        const valid = result.assets.filter(f => ['image/jpeg', 'image/jpg', 'application/pdf'].includes(f.mimeType));
+        if (valid.length < result.assets.length)
+          showAlert('warning', 'Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
+        setAttachedFiles(prev => [...prev, ...valid]);
       }
     } catch (e) {
-      Alert.alert('Error', 'Could not open file picker.');
+      showAlert('error', 'Error', 'Could not open file picker.');
     }
   };
 
   const submitExpense = async () => {
-    if (!expenseType) { Alert.alert('Error', 'Please select Expense Type'); return; }
-    if (!amount.trim()) { Alert.alert('Error', 'Please enter Amount'); return; }
-    if (!expenseDate) { Alert.alert('Error', 'Please select Date'); return; }
-    if (!remarks.trim() && !purpose.trim()) { Alert.alert('Error', 'Please enter Remarks or Purpose'); return; }
+    if (!expenseType) { showAlert('warning', 'Missing Type', 'Please select Expense Type'); return; }
+    if (!amount.trim()) { showAlert('warning', 'Missing Amount', 'Please enter Amount'); return; }
+    if (!expenseDate) { showAlert('warning', 'Missing Date', 'Please select Date'); return; }
+    if (!remarks.trim() && !purpose.trim()) { showAlert('warning', 'Missing Details', 'Please enter Remarks or Purpose'); return; }
 
     setSubmitting(true);
     try {
@@ -289,10 +301,10 @@ const ExpenseScreen = ({ navigation, route }) => {
         // Reset form
         setExpenseType(null); setExpenseDate(''); setAmount(''); setRemarks(''); setPurpose(''); setAttachedFiles([]);
       } else {
-        Alert.alert('Notice', res.data?.message || 'Submission failed.');
+        showAlert('error', 'Notice', res.data?.message || 'Submission failed.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to submit expense.\n' + e.message);
+      showAlert('error', 'Error', 'Failed to submit expense.\n' + e.message);
     } finally {
       setSubmitting(false);
     }
@@ -350,7 +362,8 @@ const ExpenseScreen = ({ navigation, route }) => {
       {view === 'APPLY' && (
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} />
-          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
             {/* Expense Type */}
             <View style={s.inputBox}>
@@ -431,6 +444,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             <View style={{ height: 20 }} />
 
           </ScrollView>
+          </KeyboardAvoidingView>
         </View>
       )}
 
@@ -483,6 +497,7 @@ const ExpenseScreen = ({ navigation, route }) => {
         </Modal>
       )}
 
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

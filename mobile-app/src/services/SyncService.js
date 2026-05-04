@@ -206,41 +206,39 @@ const SyncService = {
     const pending = await db.getAllAsync("SELECT * FROM client_visits WHERE sync_status = 'PENDING'");
     if (pending.length === 0) return;
 
-    for (const item of pending) {
-      try {
-        let storedLat = parseFloat(item.latitude) || 0;
-        let storedLng = parseFloat(item.longitude) || 0;
-        let finalLoc = item.location;
-        
-        // Resolve human-readable address if it was saved as Lat/Lng while offline
-        if (!finalLoc || finalLoc === 'Unable to fetch location' || finalLoc === 'Unknown Location' || finalLoc.startsWith('Lat:')) {
-          if (Math.abs(storedLat) > 0.01) {
-            try {
-              const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
-              if (geo && geo.length > 0) {
-                const r = geo[0];
-                // Unified comprehensive address parts
-                const parts = [
-                  r.name, 
-                  r.street, 
-                  r.district || r.subregion,
-                  r.city || r.locality, 
-                  r.region, 
-                  r.postalCode
-                ].filter(Boolean);
-                
-                if (parts.length > 0) {
-                  finalLoc = [...new Set(parts)].join(', ');
-                  // Update local DB so UI reflects the resolved address too
-                  await db.runAsync("UPDATE client_visits SET location = ? WHERE id = ?", [finalLoc, item.id]);
-                }
-              }
-            } catch (e) {
-              console.log('[SyncService] Reverse geocode failed during sync:', e.message);
+    const resolveAddress = async (lat, lng, existingAddr) => {
+      if (!existingAddr || existingAddr === 'Unable to fetch location' || existingAddr === 'Unknown Location' || existingAddr.startsWith('Lat:')) {
+        if (Math.abs(lat) > 0.01) {
+          try {
+            const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            if (geo && geo.length > 0) {
+              const r = geo[0];
+              const parts = [r.name, r.street, r.district || r.subregion, r.city || r.locality, r.region, r.postalCode].filter(Boolean);
+              if (parts.length > 0) return [...new Set(parts)].join(', ');
             }
+          } catch (e) {
+            console.log('[SyncService] Reverse geocode failed during sync:', e.message);
           }
         }
-        
+      }
+      return existingAddr;
+    };
+
+    for (const item of pending) {
+      try {
+        // Resolve all possible addresses
+        const finalMainLoc = await resolveAddress(parseFloat(item.latitude) || 0, parseFloat(item.longitude) || 0, item.location);
+        const finalStepInAddr = await resolveAddress(parseFloat(item.step_in_lat) || 0, parseFloat(item.step_in_lng) || 0, item.step_in_address || item.location);
+        const finalEndAddr = await resolveAddress(parseFloat(item.end_lat) || 0, parseFloat(item.end_lng) || 0, item.end_address || item.location);
+
+        // Update local DB with resolved addresses if they changed
+        if (finalMainLoc !== item.location || finalStepInAddr !== item.step_in_address || finalEndAddr !== item.end_address) {
+          await db.runAsync(
+            "UPDATE client_visits SET location = ?, step_in_address = ?, end_address = ? WHERE id = ?",
+            [finalMainLoc, finalStepInAddr, finalEndAddr, item.id]
+          );
+        }
+
         const formatSyncTime = (iso) => {
            if (!iso) return "";
            const d = new Date(iso);
@@ -256,7 +254,7 @@ const SyncService = {
               latitude: `${lat || 0}`,
               longitude: `${lng || 0}`,
               accuracy: 20,
-              location: addr || finalLoc,
+              location: addr || finalMainLoc,
               contact_person: item.contact_person,
               contact_number: item.contact_number,
               created_time: formatSyncTime(timeStr)
@@ -272,15 +270,13 @@ const SyncService = {
         if (item.step_in_time || item.start_time) {
              const sLat = item.step_in_lat || item.latitude || 0;
              const sLng = item.step_in_lng || item.longitude || 0;
-             const sAddr = item.step_in_address || item.location;
-             await postVisit("Step In", item.step_in_time || item.start_time, sLat, sLng, sAddr);
+             await postVisit("Step In", item.step_in_time || item.start_time, sLat, sLng, finalStepInAddr);
         }
         // If it was fully COMPLETED, we additionally post Step Out
         if (item.status === 'COMPLETED' && item.end_time) {
              const eLat = item.end_lat || item.latitude || 0;
              const eLng = item.end_lng || item.longitude || 0;
-             const eAddr = item.end_address || item.location;
-             await postVisit("Step Out", item.end_time, eLat, eLng, eAddr);
+             await postVisit("Step Out", item.end_time, eLat, eLng, finalEndAddr);
         }
         
         await db.runAsync("UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);

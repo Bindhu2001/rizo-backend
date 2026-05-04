@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Alert, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Image } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   MoreHorizontal, FileText,
@@ -21,6 +22,9 @@ const SalaryScreen = ({ navigation, route }) => {
   const [salarySlips, setSalarySlips] = useState([]);
   const [grossSalary, setGrossSalary] = useState(0);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (user && user.user_id) {
@@ -165,12 +169,12 @@ const SalaryScreen = ({ navigation, route }) => {
       if (isSharingAvailable) {
         await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Salary_Slip_${monthStr}.pdf` });
       } else {
-        Alert.alert('Error', 'Sharing/Downloading is not available on this device');
+        showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
       }
 
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.');
+      showAlert('error', 'Error', 'Failed to generate PDF. Please try again.');
     } finally {
       setDownloadingId(null);
     }
@@ -193,9 +197,7 @@ const SalaryScreen = ({ navigation, route }) => {
           <ChevronLeft color={COLORS.text} size={28} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Salary Slip</Text>
-        <TouchableOpacity style={styles.headerIcon}>
-          <MoreHorizontal color={COLORS.text} size={24} />
-        </TouchableOpacity>
+        <View style={{ width: 44 }} />
       </View>
 
       {loading ? (
@@ -292,6 +294,7 @@ const SalaryScreen = ({ navigation, route }) => {
           <View style={{ height: 100 }} />
         </ScrollView>
       )}
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

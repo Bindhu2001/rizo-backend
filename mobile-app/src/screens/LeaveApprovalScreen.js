@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList,
-  ActivityIndicator, Alert, StatusBar, Modal, TextInput,
-  Pressable, ScrollView
+  Pressable, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft, XCircle, Calendar as CalendarIcon,
@@ -16,7 +16,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 
 const SECTION_META = {
   authorizer: {
-    side: '#7C3AED', bg: '#F3E8FF', text: '#7C3AED',
+    side: '#6C5CE7', bg: '#F3F0FF', text: '#6C5CE7',
     label: 'AUTHORISE', action: 'Authorized', btnLabel: 'Authorize',
   },
   approver: {
@@ -35,26 +35,29 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [processing, setProcessing] = useState(false);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   const fetchData = async (month) => {
     setLoading(true);
     try {
       const formData = new FormData();
       formData.append('user_id', user.user_id);
-      
+
       const res = await axios.post(`${API_ENDPOINTS.LEAVE_HIERARCHY}?user_id=${user.user_id}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data?.success) {
         const { authorizer_leaves = [], approver_leaves = [] } = res.data.data || {};
-        
+
         // Filter locally since API returns all months
         const filteredAuth = authorizer_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
         const filteredAppr = approver_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
 
         const built = [];
         if (filteredAuth.length) built.push({ key: 'authorizer', title: 'Authorise Requests', data: filteredAuth });
-        if (filteredAppr.length) built.push({ key: 'approver',   title: 'Approve Requests',   data: filteredAppr });
+        if (filteredAppr.length) built.push({ key: 'approver', title: 'Approve Requests', data: filteredAppr });
         setSections(built);
       } else {
         setSections([]);
@@ -93,7 +96,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
   const handleAction = async () => {
     if (!remarks.trim()) {
-      Alert.alert('Required', 'Please enter remarks.');
+      showAlert('warning', 'Required', 'Please enter remarks.');
       return;
     }
     const { item, sectionKey, actionType } = actionModal;
@@ -112,14 +115,15 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data?.success) {
-        Alert.alert('Success', `Leave request ${action.toLowerCase()} successfully.`);
+        showAlert('success', 'Success', `Leave request ${action.toLowerCase()} successfully.`, [
+          { text: 'OK', onPress: () => fetchData(currentMonthStr) }
+        ]);
         closeModal();
-        fetchData(currentMonthStr);
       } else {
-        Alert.alert('Notice', res.data?.message || 'Action failed.');
+        showAlert('error', 'Notice', res.data?.message || 'Action failed.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to process request.');
+      showAlert('error', 'Error', 'Failed to process request.');
     } finally {
       setProcessing(false);
     }
@@ -210,8 +214,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       <View style={s.monthBar}>
         <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
-           <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
-           <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
+          <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
+          <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
         </TouchableOpacity>
       </View>
 
@@ -247,7 +251,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <View style={s.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalContent}>
             <Text style={s.modalTitle}>
               {actionModal.actionType === 'REJECT'
@@ -261,6 +265,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             <TextInput
               style={s.remarksInput}
               placeholder="Enter remarks here..."
+              placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={4}
               value={remarks}
@@ -292,7 +297,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Month Picker Modal */}
@@ -303,9 +308,9 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             <Text style={s.sheetTitle}>Select Month</Text>
             <ScrollView>
               {pastMonths.map((m) => (
-                <TouchableOpacity 
-                  key={m.value} 
-                  style={s.sheetItem} 
+                <TouchableOpacity
+                  key={m.value}
+                  style={s.sheetItem}
                   onPress={() => { setCurrentMonthStr(m.value); setShowMonthPicker(false); }}
                 >
                   <Text style={[s.sheetItemText, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
@@ -315,6 +320,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };
@@ -397,6 +403,7 @@ const s = StyleSheet.create({
   remarksInput: {
     backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 100,
     textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24,
+    color: '#000',
   },
   modalActions: { flexDirection: 'row', gap: 12 },
   modalCancel: {

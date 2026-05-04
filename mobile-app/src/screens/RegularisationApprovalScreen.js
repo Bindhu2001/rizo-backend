@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar as CalendarIcon, ChevronLeft, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
 import { COLORS, SHADOWS } from '../components/Theme';
@@ -20,6 +21,9 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const [actionModal, setActionModal] = useState({ visible: false, item: null, type: '' });
   const [remarks, setRemarks] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!user) {
@@ -58,7 +62,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
   const handleAction = async () => {
     if (!remarks.trim()) {
-      Alert.alert('Required', 'Please enter remarks.');
+      showAlert('warning', 'Required', 'Please enter remarks.');
       return;
     }
 
@@ -74,15 +78,16 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data && res.data.success) {
-        Alert.alert('Success', `Request ${actionModal.type === 'APPROVE' ? 'approved' : 'rejected'} successfully.`);
+        showAlert('success', 'Success', `Request ${actionModal.type === 'APPROVE' ? 'approved' : 'rejected'} successfully.`, [
+          { text: 'OK', onPress: () => fetchData(currentMonthStr) }
+        ]);
         setActionModal({ visible: false, item: null, type: '' });
         setRemarks('');
-        fetchData(currentMonthStr);
       } else {
-        Alert.alert('Notice', res.data?.message || 'Action failed.');
+        showAlert('error', 'Notice', res.data?.message || 'Action failed.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to process request.');
+      showAlert('error', 'Error', 'Failed to process request.');
     } finally {
       setProcessing(false);
     }
@@ -187,7 +192,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       />
 
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <View style={s.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalContent}>
             <Text style={s.modalTitle}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
             <Text style={s.modalSub}>Enter remarks for {actionModal.item?.employee_name}</Text>
@@ -195,11 +200,12 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
             <TextInput
               style={s.remarksInput}
               placeholder="Enter remarks here..."
+              placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={4}
               value={remarks}
               onChangeText={setRemarks}
-              maxLength={50}
+              maxLength={100}
             />
 
             <View style={s.modalActions}>
@@ -219,7 +225,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
@@ -241,6 +247,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };
@@ -284,7 +291,11 @@ const s = StyleSheet.create({
   modalContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%' },
   modalTitle: { fontSize: 18, fontWeight: '900', color: '#111827', marginBottom: 8 },
   modalSub: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
-  remarksInput: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24 },
+  remarksInput: {
+    backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 100,
+    textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24,
+    color: '#000',
+  },
   modalActions: { flexDirection: 'row', gap: 12 },
   modalCancel: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#F3F4F6' },
   modalCancelText: { color: '#4B5563', fontWeight: '800' },

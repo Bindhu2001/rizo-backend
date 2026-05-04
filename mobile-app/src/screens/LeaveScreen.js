@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform
+  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, KeyboardAvoidingView
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft, Calendar as CalendarIcon, ChevronDown,
@@ -21,7 +22,9 @@ const STATUS_COLORS = {
   Approved: { bg: '#DCFCE7', text: '#16A34A', side: '#16A34A' },
   Applied: { bg: '#DBEAFE', text: '#1D4ED8', side: '#1D4ED8' },
   Rejected: { bg: '#FEE2E2', text: '#DC2626', side: '#DC2626' },
-  Authorised: { bg: '#F3E8FF', text: '#7C3AED', side: '#7C3AED' },
+  Authorised: { bg: '#F3F0FF', text: '#6C5CE7', side: '#6C5CE7' },
+  Cancelled: { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' },
+  'Cancelled by Admin': { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' },
 };
 const statusColor = (s) => STATUS_COLORS[s] || { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' };
 
@@ -298,6 +301,9 @@ const LeaveScreen = ({ navigation, route }) => {
   const [handoverTo, setHandoverTo] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!user || !user.user_id) {
@@ -352,21 +358,27 @@ const LeaveScreen = ({ navigation, route }) => {
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length > 0) {
+        const oversized = result.assets.filter(file => file.size > 5 * 1024 * 1024);
+        if (oversized.length > 0) {
+          showAlert('warning', 'File Too Large', 'One or more files exceed the 5MB limit. Please select smaller files.');
+          return;
+        }
+
         const valid = result.assets.filter(f => {
           const ext = f.name?.split('.').pop()?.toLowerCase();
           return ['jpg', 'jpeg', 'pdf'].includes(ext);
         });
         if (valid.length < result.assets.length)
-          Alert.alert('Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
+          showAlert('warning', 'Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
         setAttachedFiles(prev => [...prev, ...valid]);
       }
-    } catch (e) { Alert.alert('Error', 'Could not open file picker.'); }
+    } catch (e) { showAlert('error', 'Error', 'Could not open file picker.'); }
   };
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!reason.trim()) { Alert.alert('Error', 'Please provide a reason'); return; }
-    if (!fromDate.trim()) { Alert.alert('Error', 'Please enter a From Date'); return; }
+    if (!reason.trim()) { showAlert('warning', 'Missing Reason', 'Please provide a reason for your leave.'); return; }
+    if (!fromDate.trim()) { showAlert('warning', 'Date Required', 'Please enter a From Date.'); return; }
     if (!selectedLeave) return;
     setSubmitting(true);
     try {
@@ -401,10 +413,10 @@ const LeaveScreen = ({ navigation, route }) => {
         setAttachedFiles([]);
         setReason(''); setContactNo(''); setFromDate(''); setToDate('');
       } else {
-        Alert.alert('Notice', res.data?.message || 'Submission failed.');
+        showAlert('error', 'Submission Failed', res.data?.message || 'Submission failed.');
       }
     } catch (e) {
-      Alert.alert('Error', 'Failed to submit leave.\n' + e.message);
+      showAlert('error', 'System Error', 'Failed to submit leave. Please check your connection.');
     } finally { setSubmitting(false); }
   };
 
@@ -449,7 +461,8 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
         {/* From Row */}
         <View style={s.dateRow}>
@@ -564,6 +577,7 @@ const LeaveScreen = ({ navigation, route }) => {
           {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <CalendarModal
         visible={!!calendarTarget}
@@ -575,7 +589,7 @@ const LeaveScreen = ({ navigation, route }) => {
             if (!toDate || toDate < val) setToDate(val);
           } else {
             if (fromDate && val < fromDate) {
-              Alert.alert('Invalid Date', 'End date cannot be before the start date.');
+              showAlert('warning', 'Invalid Date', 'End date cannot be before the start date.');
               return;
             }
             setToDate(val);
@@ -595,6 +609,8 @@ const LeaveScreen = ({ navigation, route }) => {
           else setToHalf(val);
         }}
       />
+
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </View>
   );
 

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Image, StatusBar
+  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Image, StatusBar
 } from 'react-native';
+import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight } from 'lucide-react-native';
@@ -18,10 +19,13 @@ const LoginScreen = ({ navigation }) => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   const handleLogin = async () => {
     if (!userId || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('warning', 'Missing Fields', 'Please fill in both User ID and Password to login.');
       return;
     }
 
@@ -51,7 +55,7 @@ const LoginScreen = ({ navigation }) => {
             }
           }
           const failMsg = response.data?.message || 'Invalid credentials';
-          Alert.alert('Login Failed', failMsg);
+          showAlert('error', 'Login Failed', failMsg);
           setLoading(false);
           return;
         } catch (error) {
@@ -61,15 +65,16 @@ const LoginScreen = ({ navigation }) => {
 
       const cachedUser = await getLocalUser(userId, password);
       if (cachedUser) {
-        Alert.alert('Offline Mode', 'Logged in using cached credentials.');
-        navigation.replace('Main', { user: cachedUser });
+        showAlert('success', 'Offline Mode', 'Logged in using cached credentials.', [
+          { text: 'Continue', onPress: () => navigation.replace('Main', { user: cachedUser }) }
+        ]);
       } else {
-        Alert.alert('Cannot Login', isOnline
-          ? 'Cannot connect to server.'
-          : 'No internet connection.');
+        showAlert('error', 'Cannot Login', isOnline
+          ? 'Cannot connect to server. Please check your network.'
+          : 'No internet connection. Offline login failed.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Something went wrong.');
+      showAlert('error', 'Error', 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -140,6 +145,8 @@ const LoginScreen = ({ navigation }) => {
         </KeyboardAvoidingView>
       </SafeAreaView>
       
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
+
       <View style={styles.footer}>
         <Text style={styles.footerText}>POWERED BY RIZO SOLUTIONS</Text>
       </View>

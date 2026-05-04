@@ -143,6 +143,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const [pPic, setPPic] = useState('');
   const [pPicBase64, setPPicBase64] = useState('');
   const [pPicLocal, setPPicLocal] = useState('');
+  const [tempPic, setTempPic] = useState(null);
 
   // ── Address Details
   const [aLine1, setALine1] = useState('');
@@ -248,7 +249,6 @@ const ProfileScreen = ({ navigation, route }) => {
     refreshUser();
   };
 
-  // ── Pick avatar ────────────────────────────────────────────────────────────
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -259,17 +259,36 @@ const ProfileScreen = ({ navigation, route }) => {
       allowsEditing: true, aspect: [1, 1], quality: 0.7, base64: true,
     });
     if (!result.canceled) {
-      setPPic(result.assets[0].uri);
-      setPPicLocal(result.assets[0].uri);
-      setPPicBase64(result.assets[0].base64);
+      const asset = result.assets[0];
+      if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+        showAlert('warning', 'File Too Large', 'The selected image exceeds the 5MB limit. Please choose a smaller image.');
+        return;
+      }
+      setTempPic({
+        uri: asset.uri,
+        base64: asset.base64
+      });
     }
+  };
+
+  const confirmPhoto = () => {
+    if (tempPic) {
+      setPPic(tempPic.uri);
+      setPPicLocal(tempPic.uri);
+      setPPicBase64(tempPic.base64);
+      setTempPic(null);
+    }
+  };
+
+  const cancelPhoto = () => {
+    setTempPic(null);
   };
 
   // ── Save Personal ──────────────────────────────────────────────────────────
   const savePersonal = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!pName.trim()) { showAlert('warning', 'Name Required', 'Your name cannot be empty. Please enter your full name.'); return; }
-    if (pEmail.trim() && !emailRegex.test(pEmail.trim())) { showAlert('warning', 'Invalid Email', 'Please enter a valid email address (e.g. john@company.com).'); return; }
+    if (pEmail.trim() && !emailRegex.test(pEmail.trim())) { showAlert('warning', 'Invalid Email', 'Please enter a valid email address (e.g. employee@gmail.com).'); return; }
     setLoading(true);
     try {
       const nameParts = pName.trim().split(/\s+/);
@@ -397,6 +416,7 @@ const ProfileScreen = ({ navigation, route }) => {
   };
 
   const getAvatarUri = () => {
+    if (tempPic) return tempPic.uri;
     const pic = pPic || user.profile_pic;
     if (!pic) return `https://i.pravatar.cc/150?u=${user.user_id}`;
     if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return pic;
@@ -410,21 +430,35 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={s.container}>
         <SectionHeader title="Personal Details" onBack={goBack} />
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Avatar picker */}
           <View style={s.avatarCenter}>
             <View style={s.avatarWrap}>
               <Image source={{ uri: getAvatarUri() }} style={s.avatarLg} />
-              <TouchableOpacity style={s.camBtn} onPress={handlePickImage} activeOpacity={0.8}>
-                <Camera color="#FFF" size={14} />
-              </TouchableOpacity>
+              {!tempPic && (
+                <TouchableOpacity style={s.camBtn} onPress={handlePickImage} activeOpacity={0.8}>
+                  <Camera color="#FFF" size={14} />
+                </TouchableOpacity>
+              )}
             </View>
-            <Text style={s.avatarHint}>Tap to change photo</Text>
+            {tempPic ? (
+              <View style={s.tempActions}>
+                <TouchableOpacity style={[s.tempBtn, s.tempCancel]} onPress={cancelPhoto}>
+                  <Text style={s.tempBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.tempBtn, s.tempSave]} onPress={confirmPhoto}>
+                  <Text style={[s.tempBtnText, s.tempSaveText]}>Save Photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={s.avatarHint}>Tap to change photo</Text>
+            )}
           </View>
 
           <FloatInput label="Full Name" value={pName} onChangeText={t => setPName(t.replace(/[^A-Za-z0-9.\s]/g, ''))} maxLength={40} />
           <FloatInput label="Email Address" value={pEmail} onChangeText={t => setPEmail(t.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" maxLength={50} />
-          <FloatInput label="Mobile Number" value={pPhone} onChangeText={t => setPPhone(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} />
+          <FloatInput label="Mobile Number" value={pPhone} onChangeText={t => setPPhone(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={18} />
           <FloatInput label="Employee ID" value={String(user.user_id || '')} editable={false} />
           <FloatInput label="Designation" value={user.designation || ''} editable={false} />
           <FloatInput label="Department" value={user.department || ''} editable={false} />
@@ -479,6 +513,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <SaveButton onPress={savePersonal} loading={loading} />
           <View style={{ height: 32 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <DiscardModal visible={showDiscard} onCancel={() => setShowDiscard(false)} onConfirm={confirmDiscard} />
@@ -503,7 +538,8 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={s.container}>
         <SectionHeader title="Address Details" onBack={goBack} />
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={s.formSubheading}>Add Your Address Details</Text>
           <Text style={s.formSubtitle}>This information will be used for official records.</Text>
 
@@ -518,6 +554,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <SaveButton onPress={saveAddress} loading={loading} />
           <View style={{ height: 32 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <SelectionModal visible={showCountryPicker} title="Select Country" options={countries}
           selectedValue={aCountry?.id} onClose={() => setShowCountryPicker(false)} onSelect={setACountry} />
@@ -534,7 +571,8 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={s.container}>
         <SectionHeader title="Bank & Payment Details" onBack={goBack} />
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={s.formSubheading}>Bank & Payment Details</Text>
           <Text style={s.formSubtitle}>Your salary will be credited to this account.</Text>
 
@@ -547,6 +585,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <SaveButton onPress={saveBank} loading={loading} />
           <View style={{ height: 32 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
 
         <SelectionModal visible={showAccountTypePicker} title="Select Account Type" options={accountTypes}
           selectedValue={bAccountType} onClose={() => setShowAccountTypePicker(false)}
