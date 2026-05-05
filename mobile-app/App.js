@@ -94,14 +94,29 @@ function TabNavigator({ route }) {
 
 // ─── Root App ──────────────────────────────────────────────────────────────
 export default function App() {
+  const [currentRoute, setCurrentRoute] = useState(null);
+
   useEffect(() => {
     NotificationManager.setup();
   }, []);
 
   return (
     <SafeAreaProvider>
-      <OfflineBanner />
-      <NavigationContainer>
+      <OfflineBanner currentRoute={currentRoute} />
+      <NavigationContainer
+        onStateChange={(state) => {
+          const route = state?.routes[state.index];
+          // Handle nested navigators (like TabNavigator)
+          let currentName = route?.name;
+          let currentState = route?.state;
+          while (currentState) {
+            const nestedRoute = currentState.routes[currentState.index];
+            currentName = nestedRoute.name;
+            currentState = nestedRoute.state;
+          }
+          setCurrentRoute(currentName);
+        }}
+      >
         <Stack.Navigator
           initialRouteName="Splash"
           screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.background } }}
