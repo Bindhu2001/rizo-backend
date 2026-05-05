@@ -45,7 +45,7 @@ const resolveAddress = async (locationStr) => {
       const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
       if (parts.length > 0) return [...new Set(parts)].join(', ');
     }
-  } catch (_) {}
+  } catch (_) { }
   return locationStr;
 };
 
@@ -381,8 +381,8 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
           <View style={sv.formWrap}>
             <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={20} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={20} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={50} />
           </View>
         </ScrollView>
