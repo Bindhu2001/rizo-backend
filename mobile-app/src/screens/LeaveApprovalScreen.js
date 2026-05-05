@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList,
-  Pressable, ScrollView, KeyboardAvoidingView, Platform
+  Pressable, ScrollView, KeyboardAvoidingView, Platform,
+  Modal, TextInput, ActivityIndicator, StatusBar
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';

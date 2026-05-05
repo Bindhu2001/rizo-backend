@@ -28,6 +28,27 @@ const fmtDate = (iso) => {
   } catch (_) { return ''; }
 };
 
+// Detect if a location string is raw lat/lng (offline format) and resolve it
+const LAT_LNG_REGEX = /Lat:\s*(-?\d+\.\d+),\s*Lng:\s*(-?\d+\.\d+)/i;
+const resolveAddress = async (locationStr) => {
+  if (!locationStr) return locationStr;
+  const match = locationStr.match(LAT_LNG_REGEX);
+  if (!match) return locationStr; // Already a readable address
+  try {
+    const net = await Network.getNetworkStateAsync();
+    if (!net.isConnected) return locationStr;
+    const lat = parseFloat(match[1]);
+    const lng = parseFloat(match[2]);
+    const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    if (geo && geo.length > 0) {
+      const g = geo[0];
+      const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
+      if (parts.length > 0) return [...new Set(parts)].join(', ');
+    }
+  } catch (_) {}
+  return locationStr;
+};
+
 const getAddress = async () => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -118,6 +139,29 @@ const tl = StyleSheet.create({
 const VisitCard = ({ visit, onStepIn, onStepOut }) => {
   const isLive = visit.status === 'REACHED' || visit.status === 'step_in';
 
+  // Resolve any stored lat/lng addresses to human-readable format
+  const [resolvedLocation, setResolvedLocation] = useState(visit.location || '');
+  const [resolvedStepIn, setResolvedStepIn] = useState(visit.step_in_address || '');
+  const [resolvedEnd, setResolvedEnd] = useState(visit.end_address || '');
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolve = async () => {
+      const [loc, stepIn, end] = await Promise.all([
+        resolveAddress(visit.location || ''),
+        resolveAddress(visit.step_in_address || ''),
+        resolveAddress(visit.end_address || ''),
+      ]);
+      if (!cancelled) {
+        setResolvedLocation(loc);
+        setResolvedStepIn(stepIn);
+        setResolvedEnd(end);
+      }
+    };
+    resolve();
+    return () => { cancelled = true; };
+  }, [visit.location, visit.step_in_address, visit.end_address]);
+
   // Own pulse animation for the live dot
   const pulse = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -143,7 +187,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut }) => {
           </View>
         </View>
         <Text style={cs.liveTimeText}>{fmtTime(visit.start_time)} {fmtDate(visit.start_time)}</Text>
-        <Text style={cs.liveLocText}>Location: {visit.location}</Text>
+        <Text style={cs.liveLocText}>Location: {resolvedLocation}</Text>
 
         <TouchableOpacity
           style={cs.purpleBtnFull}
@@ -161,7 +205,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut }) => {
   const hasStepIn = !!visit.step_in_time;
   const hasStepOut = !!visit.end_time;
 
-  const location = visit.location || '';
+  const location = resolvedLocation || '';
   const contactNo = visit.contact_number || '';
   const contactPerson = visit.contact_person || visit.client_name;
   const dateStr = visit.created_at ? fmtDate(visit.created_at) : '';
@@ -179,10 +223,10 @@ const VisitCard = ({ visit, onStepIn, onStepOut }) => {
           <TimelineStep time={fmtTime(visit.start_time)} location={visit.location || location} label="START" labelBg="#EDE9FE" labelColor="#7C3AED" done={hasStart} isLast={!hasStepIn} />
         )}
         {hasStepIn && (
-          <TimelineStep time={fmtTime(visit.step_in_time)} location={visit.step_in_address || location} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
+          <TimelineStep time={fmtTime(visit.step_in_time)} location={resolvedStepIn || location} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
         )}
         {hasStepOut && (
-          <TimelineStep time={fmtTime(visit.end_time)} location={visit.end_address || location} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
+          <TimelineStep time={fmtTime(visit.end_time)} location={resolvedEnd || location} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
         )}
       </View>
     </View>

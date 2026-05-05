@@ -483,7 +483,7 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* SWIPE / TIMER ACTION */}
         <View style={styles.swipeBoxContainer}>
-          <View style={[styles.swipeBox, { width: 353, height: 68, alignSelf: 'center' }]}>
+          <View style={[styles.swipeBox, { width: '100%', height: 68, alignSelf: 'center' }]}>
             <SwipeToPunch
               isPunchedIn={isPunchedIn}
               loading={punching}

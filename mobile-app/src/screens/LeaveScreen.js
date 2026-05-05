@@ -503,16 +503,18 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* Authorised By */}
         <View style={s.inputBox}>
           <Text style={s.label}>Authorised By</Text>
-          <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
-            <Text style={[s.inputVal, { color: '#6B7280' }]}>{authorizedByName}</Text>
+          <View style={[s.inputRow, { backgroundColor: '#F3F0FF', borderColor: '#C4B5FD' }]}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#6C5CE7', marginRight: 8 }} />
+            <Text style={[s.inputVal, { color: '#6C5CE7' }]}>{authorizedByName}</Text>
           </View>
         </View>
 
         {/* Approved By */}
         <View style={s.inputBox}>
           <Text style={s.label}>Approved By</Text>
-          <View style={[s.inputRow, { backgroundColor: '#F9FAFB' }]}>
-            <Text style={[s.inputVal, { color: '#6B7280' }]}>{approvedByName}</Text>
+          <View style={[s.inputRow, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#16A34A', marginRight: 8 }} />
+            <Text style={[s.inputVal, { color: '#16A34A' }]}>{approvedByName}</Text>
           </View>
         </View>
 
