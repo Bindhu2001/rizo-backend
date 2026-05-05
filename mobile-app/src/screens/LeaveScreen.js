@@ -23,10 +23,16 @@ const STATUS_COLORS = {
   Applied: { bg: '#DBEAFE', text: '#1D4ED8', side: '#1D4ED8' },
   Rejected: { bg: '#FEE2E2', text: '#DC2626', side: '#DC2626' },
   Authorised: { bg: '#F3F0FF', text: '#6C5CE7', side: '#6C5CE7' },
-  Cancelled: { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' },
-  'Cancelled by Admin': { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' },
 };
-const statusColor = (s) => STATUS_COLORS[s] || { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' };
+
+const statusColor = (s) => {
+  const norm = (s || '').trim().toLowerCase();
+  if (norm === 'approved' || norm === 'a') return STATUS_COLORS.Approved;
+  if (norm === 'applied' || norm === 'pending' || norm === 'p') return STATUS_COLORS.Applied;
+  if (norm === 'rejected' || norm === 'r') return STATUS_COLORS.Rejected;
+  if (norm === 'authorised' || norm === 'authorized') return STATUS_COLORS.Authorised;
+  return { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' };
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const LeaveHeader = ({ title, onBack }) => (
