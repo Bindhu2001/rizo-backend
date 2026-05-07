@@ -66,6 +66,33 @@ const StepBar = ({ current, total }) => (
   </View>
 );
 
+// ─── Simple Option Picker Modal ────────────────────────────────────────────────
+const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelect }) => (
+  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+    <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
+      <View style={st.modalSheet}>
+        <View style={st.modalHandle} />
+        <Text style={st.modalTitle}>{title}</Text>
+        <ScrollView style={{ maxHeight: 320 }}>
+          {options.map((opt, i) => (
+            <TouchableOpacity
+              key={i}
+              style={st.countryItem}
+              onPress={() => { onSelect(opt); onClose(); }}
+            >
+              <Text style={[st.countryItemText, selected === opt && st.countryItemActive]}>{opt}</Text>
+              {selected === opt && <Check color={PURPLE} size={18} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <TouchableOpacity style={st.modalCloseBtn} onPress={onClose}>
+          <Text style={st.modalCloseText}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  </Modal>
+);
+
 // ─── Country Picker Modal ──────────────────────────────────────────────────────
 const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -121,22 +148,47 @@ const SignupScreen = ({ navigation }) => {
   const [lastName, setLastName] = useState('');
   const [mobileNo, setMobileNo] = useState('');
   const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
+  const [maritalStatus, setMaritalStatus] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [nationality, setNationality] = useState(null);
+  const [showGenderPicker, setShowGenderPicker] = useState(false);
+  const [showMaritalPicker, setShowMaritalPicker] = useState(false);
+  const [showBloodPicker, setShowBloodPicker] = useState(false);
+  const [showNationalityPicker, setShowNationalityPicker] = useState(false);
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState('');
   const [showPicModal, setShowPicModal] = useState(false);
 
   // Step 4 – Address
-  const [address, setAddress] = useState({ house: '', line2: '', city: '', pincode: '', state: '' });
+  const [address, setAddress] = useState({ house: '', line2: '', city: '', pincode: '', state: '', district: '' });
   const [addrCountry, setAddrCountry] = useState(null);
   const [showAddrCountryPicker, setShowAddrCountryPicker] = useState(false);
 
-  // Step 5 – KYC (Aadhaar number only)
+  // Step 5 – KYC
   const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [panNumber, setPanNumber] = useState('');
 
   // Step 6 – Other Details
+  const [guardianName, setGuardianName] = useState('');
+  const [guardianRelation, setGuardianRelation] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branch, setBranch] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [esiNo, setEsiNo] = useState('');
+  const [esiDispensary, setEsiDispensary] = useState('');
+  const [pfNo, setPfNo] = useState('');
+  const [uanNo, setUanNo] = useState('');
+  const [prevMemberId, setPrevMemberId] = useState('');
+  const [wpsId, setWpsId] = useState('');
+  const [lwfRegNo, setLwfRegNo] = useState('');
+  const [epsEligibility, setEpsEligibility] = useState(false);
   const [intlWorker, setIntlWorker] = useState(false);
   const [intlCountry, setIntlCountry] = useState(null);
   const [showIntlCountryPicker, setShowIntlCountryPicker] = useState(false);
+  const [originCountry, setOriginCountry] = useState(null);
+  const [showOriginCountryPicker, setShowOriginCountryPicker] = useState(false);
   const [physHandicap, setPhysHandicap] = useState(false);
   const [locomotive, setLocomotive] = useState(false);
   const [hearing, setHearing] = useState(false);
@@ -209,13 +261,35 @@ const SignupScreen = ({ navigation }) => {
         mobile_no: mobileNo,
         email: email,
         date_of_birth: dob,
+        gender: gender,
+        marital_status: maritalStatus,
+        blood_group: bloodGroup,
+        nationality: nationality?.id || null,
         address: `${address.house} ${address.line2} ${address.city} ${address.state}`.trim(),
         pincode: address.pincode,
+        district: address.district,
+        state: address.state,
         country: addrCountry?.id || null,
         kyc_type: 'Aadhar Card',
         kyc_number: aadhaarNumber,
+        pan_number: panNumber,
+        guardian_name: guardianName,
+        guardian_relation: guardianRelation,
+        bank_name: bankName,
+        branch: branch,
+        ifsc_code: ifscCode,
+        account_number: accountNumber,
+        esi_no: esiNo,
+        esi_dispensary: esiDispensary,
+        pf_no: pfNo,
+        uan_no: uanNo,
+        prev_member_id: prevMemberId,
+        wps_id: wpsId,
+        lwf_reg_no: lwfRegNo,
+        eps_eligibility: epsEligibility ? 'Y' : 'N',
         international_worker: intlWorker ? 'Y' : 'N',
         intl_country: intlWorker && intlCountry ? intlCountry.id : null,
+        country_of_origin: originCountry?.id || null,
         physical_handicap: physHandicap ? 'Y' : 'N',
         locomotive: physHandicap && locomotive ? 'Y' : 'N',
         hearing: physHandicap && hearing ? 'Y' : 'N',
@@ -243,6 +317,9 @@ const SignupScreen = ({ navigation }) => {
     } else if (step === 3) {
       if (!name.trim()) { showAlert('warning', 'Name Required', 'Please enter your first name to continue.'); return; }
       if (!mobileNo.trim() || mobileNo.length < 8) { showAlert('warning', 'Invalid Mobile', 'Please enter a valid mobile number.'); return; }
+      if (!dob.trim()) { showAlert('warning', 'DOB Required', 'Please enter your date of birth.'); return; }
+      if (!gender) { showAlert('warning', 'Gender Required', 'Please select your gender.'); return; }
+      if (!nationality) { showAlert('warning', 'Nationality Required', 'Please select your nationality.'); return; }
       setStep(4);
     } else if (step === 4) {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
@@ -442,10 +519,14 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={st.cardTitle}>Personal Details</Text>
                 <Text style={st.cardSub}>Let's start with your basic information</Text>
-                <FloatInput label="First Name" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee" maxLength={25} />
+                <FloatInput label="First Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee" maxLength={25} />
                 <FloatInput label="Last Name" value={lastName} onChangeText={t => setLastName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Last Name" maxLength={25} />
-                <FloatInput label="Mobile Number" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
-                <FloatInput label="Date of Birth (DD-MM-YYYY)" value={dob} onChangeText={t => setDob(t.replace(/[^0-9-]/g, ''))} placeholder="01-01-1998" maxLength={10} />
+                <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
+                <FloatInput label="Date of Birth (DD-MM-YYYY) *" value={dob} onChangeText={t => setDob(t.replace(/[^0-9-]/g, ''))} placeholder="01-01-1998" maxLength={10} />
+                <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
+                <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
+                <PickerRow label="Blood Group" value={bloodGroup} onPress={() => setShowBloodPicker(true)} />
+                <PickerRow label="Nationality *" value={nationality?.country_name} onPress={() => setShowNationalityPicker(true)} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -467,6 +548,7 @@ const SignupScreen = ({ navigation }) => {
                     <FloatInput label="Pin Code" value={address.pincode} onChangeText={t => setAddress({ ...address, pincode: t.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholder="400001" maxLength={6} />
                   </View>
                 </View>
+                <FloatInput label="District" value={address.district} onChangeText={t => setAddress({ ...address, district: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="District" maxLength={30} />
                 <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={30} />
                 <PickerRow label="Country" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
@@ -481,12 +563,19 @@ const SignupScreen = ({ navigation }) => {
                 <Text style={st.cardTitle}>KYC Details</Text>
                 <Text style={st.cardSub}>Enter your Aadhaar card number</Text>
                 <FloatInput
-                  label="Aadhaar Number"
+                  label="Aadhaar Number *"
                   value={aadhaarNumber}
                   onChangeText={t => setAadhaarNumber(t.replace(/[^0-9]/g, ''))}
                   keyboardType="number-pad"
                   placeholder="XXXX XXXX XXXX"
                   maxLength={12}
+                />
+                <FloatInput
+                  label="PAN Number"
+                  value={panNumber}
+                  onChangeText={t => setPanNumber(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                  placeholder="ABCDE1234F"
+                  maxLength={10}
                 />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
@@ -500,6 +589,56 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={st.cardTitle}>Other Details</Text>
                 <Text style={st.cardSub}>Enter your details to complete signup to Rizo</Text>
+
+                {/* Guardian */}
+                <View style={st.toggleCard}>
+                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>Guardian Details</Text>
+                  <FloatInput label="Guardian Name" value={guardianName} onChangeText={t => setGuardianName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Guardian Name" maxLength={40} />
+                  <FloatInput label="Relation" value={guardianRelation} onChangeText={setGuardianRelation} placeholder="Father / Mother / Spouse" maxLength={30} />
+                </View>
+
+                {/* Bank */}
+                <View style={st.toggleCard}>
+                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>Bank Details</Text>
+                  <FloatInput label="Bank Name" value={bankName} onChangeText={setBankName} placeholder="Bank Name" maxLength={50} />
+                  <FloatInput label="Branch" value={branch} onChangeText={setBranch} placeholder="Branch" maxLength={50} />
+                  <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => setIfscCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="SBIN0001234" maxLength={11} />
+                  <FloatInput label="Account Number" value={accountNumber} onChangeText={t => setAccountNumber(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Account Number" maxLength={20} />
+                </View>
+
+                {/* HR / Compliance */}
+                <View style={st.toggleCard}>
+                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>HR &amp; Compliance</Text>
+                  <View style={st.inputRow}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => setEsiNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="ESI No" maxLength={20} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <FloatInput label="PF No" value={pfNo} onChangeText={setPfNo} placeholder="PF No" maxLength={22} />
+                    </View>
+                  </View>
+                  <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={setEsiDispensary} placeholder="ESI Dispensary" maxLength={50} />
+                  <View style={st.inputRow}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => setUanNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="UAN No" maxLength={12} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={setPrevMemberId} placeholder="Prev Member ID" maxLength={30} />
+                    </View>
+                  </View>
+                  <View style={st.inputRow}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <FloatInput label="WPS ID" value={wpsId} onChangeText={setWpsId} placeholder="WPS ID" maxLength={20} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <FloatInput label="LWF Registration No" value={lwfRegNo} onChangeText={setLwfRegNo} placeholder="LWF Reg No" maxLength={20} />
+                    </View>
+                  </View>
+                  <CheckRow label="EPS Eligibility" value={epsEligibility} onToggle={() => setEpsEligibility(v => !v)} />
+                </View>
+
+                {/* Country of Origin */}
+                <PickerRow label="Country of Origin" value={originCountry?.country_name} onPress={() => setShowOriginCountryPicker(true)} />
 
                 {/* International Worker */}
                 <View style={st.toggleCard}>
@@ -590,6 +729,45 @@ const SignupScreen = ({ navigation }) => {
         </View>
       </Modal>
 
+      {/* ── Gender Picker ── */}
+      <SimplePickerModal
+        visible={showGenderPicker}
+        title="Select Gender"
+        options={['Male', 'Female', 'Other']}
+        selected={gender}
+        onClose={() => setShowGenderPicker(false)}
+        onSelect={setGender}
+      />
+
+      {/* ── Marital Status Picker ── */}
+      <SimplePickerModal
+        visible={showMaritalPicker}
+        title="Select Marital Status"
+        options={['Single', 'Married', 'Divorced', 'Widowed']}
+        selected={maritalStatus}
+        onClose={() => setShowMaritalPicker(false)}
+        onSelect={setMaritalStatus}
+      />
+
+      {/* ── Blood Group Picker ── */}
+      <SimplePickerModal
+        visible={showBloodPicker}
+        title="Select Blood Group"
+        options={['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']}
+        selected={bloodGroup}
+        onClose={() => setShowBloodPicker(false)}
+        onSelect={setBloodGroup}
+      />
+
+      {/* ── Nationality Picker ── */}
+      <CountryPickerModal
+        visible={showNationalityPicker}
+        countries={countries}
+        selected={nationality}
+        onClose={() => setShowNationalityPicker(false)}
+        onSelect={setNationality}
+      />
+
       {/* ── Address Country Picker ── */}
       <CountryPickerModal
         visible={showAddrCountryPicker}
@@ -597,6 +775,15 @@ const SignupScreen = ({ navigation }) => {
         selected={addrCountry}
         onClose={() => setShowAddrCountryPicker(false)}
         onSelect={setAddrCountry}
+      />
+
+      {/* ── Country of Origin Picker ── */}
+      <CountryPickerModal
+        visible={showOriginCountryPicker}
+        countries={countries}
+        selected={originCountry}
+        onClose={() => setShowOriginCountryPicker(false)}
+        onSelect={setOriginCountry}
       />
 
       {/* ── International Worker Country Picker ── */}
