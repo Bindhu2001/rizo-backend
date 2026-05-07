@@ -136,7 +136,7 @@ const tl = StyleSheet.create({
 });
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
-const VisitCard = ({ visit, onStepIn, onStepOut }) => {
+const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
   const isLive = visit.status === 'REACHED' || visit.status === 'step_in';
 
   // Resolve any stored lat/lng addresses to human-readable format
@@ -190,11 +190,15 @@ const VisitCard = ({ visit, onStepIn, onStepOut }) => {
         <Text style={cs.liveLocText}>Location: {resolvedLocation}</Text>
 
         <TouchableOpacity
-          style={cs.purpleBtnFull}
+          style={[cs.purpleBtnFull, processing && { opacity: 0.6 }]}
           onPress={() => visit.status === 'REACHED' ? onStepIn(visit) : onStepOut(visit)}
           activeOpacity={0.8}
+          disabled={processing}
         >
-          <Text style={cs.purpleBtnText}>{visit.status === 'REACHED' ? 'STEP IN' : 'STEP OUT'}</Text>
+          {processing
+            ? <ActivityIndicator color="#FFF" />
+            : <Text style={cs.purpleBtnText}>{visit.status === 'REACHED' ? 'STEP IN' : 'STEP OUT'}</Text>
+          }
         </TouchableOpacity>
       </View>
     );
@@ -260,7 +264,7 @@ const BanIcon = () => (
   </View>
 );
 
-const ConfirmModal = ({ visible, onConfirm, onCancel }) => (
+const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => (
   <Modal visible={visible} transparent animationType="fade">
     <View style={cm.overlay}>
       <View style={cm.box}>
@@ -268,8 +272,12 @@ const ConfirmModal = ({ visible, onConfirm, onCancel }) => (
         <Text style={cm.title}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
         <Text style={cm.desc}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
         <View style={cm.row}>
-          <TouchableOpacity style={cm.cancelBtn} onPress={onCancel} activeOpacity={0.8}><Text style={cm.cancelText}>No, Go back</Text></TouchableOpacity>
-          <TouchableOpacity style={cm.confirmBtn} onPress={onConfirm} activeOpacity={0.8}><Text style={cm.confirmText}>Yes, Confirm</Text></TouchableOpacity>
+          <TouchableOpacity style={cm.cancelBtn} onPress={onCancel} activeOpacity={0.8} disabled={processing}>
+            <Text style={cm.cancelText}>No, Go back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[cm.confirmBtn, processing && { opacity: 0.6 }]} onPress={onConfirm} activeOpacity={0.8} disabled={processing}>
+            {processing ? <ActivityIndicator color="#FFF" /> : <Text style={cm.confirmText}>Yes, Confirm</Text>}
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -616,6 +624,7 @@ const VisitsScreen = ({ navigation, route }) => {
               visit={v}
               onStepIn={onStepInClick}
               onStepOut={onStepOutClick}
+              processing={processing}
             />
           ))}
           <View style={{ height: 120 }} />
@@ -656,6 +665,7 @@ const VisitsScreen = ({ navigation, route }) => {
         visible={confirmVisible}
         onConfirm={doStepOut}
         onCancel={() => setConfirmVisible(false)}
+        processing={processing}
       />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>

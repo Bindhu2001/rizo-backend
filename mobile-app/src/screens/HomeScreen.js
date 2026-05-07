@@ -648,14 +648,14 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={styles.modalTitle}>Clock Out?</Text>
             <Text style={styles.modalSub}>Your working hours will end. Are you sure you want to clock out?</Text>
             <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => {
+              <TouchableOpacity style={styles.cancelBtn} disabled={punching} onPress={() => {
                 setShowConfirmOut(false);
                 setCancelTrigger(prev => prev + 1);
               }}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.logoutBtn} onPress={() => processPunch('OUT')}>
-                <Text style={styles.logoutBtnText}>Clock Out</Text>
+              <TouchableOpacity style={[styles.logoutBtn, punching && { opacity: 0.6 }]} disabled={punching} onPress={() => processPunch('OUT')}>
+                {punching ? <ActivityIndicator color="#FFF" /> : <Text style={styles.logoutBtnText}>Clock Out</Text>}
               </TouchableOpacity>
             </View>
           </View>
