@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
 } from 'lucide-react-native';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { initDB } from '../services/LocalDB';
@@ -30,6 +30,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -109,6 +110,12 @@ const AttendanceScreen = ({ navigation, route }) => {
     } finally {
       setFetchingDevicePunches(false);
     }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData(currentMonthStr);
+    setRefreshing(false);
   };
 
   useFocusEffect(
@@ -273,6 +280,8 @@ const AttendanceScreen = ({ navigation, route }) => {
             renderItem={renderLogItem}
             contentContainerStyle={s.listContents}
             showsVerticalScrollIndicator={false}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
             ListEmptyComponent={
               <View style={s.center}>
                 <View style={s.emptyCircle}>
@@ -323,14 +332,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, height: 60, backgroundColor: '#FFF'
   },
   backBtn: { width: 44, height: 44, justifyContent: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(20), fontWeight: '800', color: COLORS.text },
 
   monthBar: { paddingVertical: 15, alignItems: 'center', backgroundColor: '#FFF' },
   monthDropdown: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF',
     paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25
   },
-  monthText: { fontSize: 16, fontWeight: '700', color: '#6C5CE7' },
+  monthText: { fontSize: moderateScale(16), fontWeight: '700', color: '#6C5CE7' },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
   listContents: { padding: 16, paddingBottom: 40 },
@@ -343,23 +352,23 @@ const s = StyleSheet.create({
     alignItems: 'center', paddingRight: 16, borderRightWidth: 1,
     borderRightColor: '#F3F4F6', width: 75
   },
-  dateNum: { fontSize: 28, fontWeight: '900', color: '#111827' },
-  monthDayText: { fontSize: 10, fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
+  dateNum: { fontSize: moderateScale(28), fontWeight: '900', color: '#111827' },
+  monthDayText: { fontSize: moderateScale(10), fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
 
   infoCol: { flex: 1, paddingLeft: 16 },
-  shiftTitle: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  shiftTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: 8 },
   punchRow: { flexDirection: 'row', alignItems: 'center' },
   punchItem: { flexDirection: 'row', alignItems: 'center' },
-  timeValue: { fontSize: 14, fontWeight: '900', color: '#111827', marginLeft: 6 },
-  timeType: { fontSize: 11, fontWeight: '700', color: '#9CA3AF' },
+  timeValue: { fontSize: moderateScale(14), fontWeight: '900', color: '#111827', marginLeft: 6 },
+  timeType: { fontSize: moderateScale(11), fontWeight: '700', color: '#9CA3AF' },
 
   badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, minWidth: 45, alignItems: 'center' },
-  badgeText: { fontSize: 12, fontWeight: '900' },
+  badgeText: { fontSize: moderateScale(12), fontWeight: '900' },
 
   cardWrapper: { marginBottom: 16 },
   cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
   statusGroup: { alignItems: 'center', minWidth: 60 },
-  durationText: { fontSize: 10, fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
+  durationText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
 
   detailSection: {
     backgroundColor: '#F9FAFB',
@@ -372,7 +381,7 @@ const s = StyleSheet.create({
     paddingTop: 8,
     ...SHADOWS.light
   },
-  detailTitle: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailTitle: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   punchDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,27 +393,28 @@ const s = StyleSheet.create({
     borderColor: '#F3F4F6'
   },
   punchTimeBox: { width: 85, borderRightWidth: 1, borderRightColor: '#F3F4F6', paddingRight: 8 },
-  punchTimeVal: { fontSize: 13, fontWeight: '800', color: '#111827' },
+  punchTimeVal: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827' },
   pBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
-  pBadgeText: { fontSize: 10, fontWeight: '900' },
+  pBadgeText: { fontSize: moderateScale(10), fontWeight: '900' },
 
   punchAddressBox: { flex: 1, paddingHorizontal: 12 },
-  shiftBadgeText: { fontSize: 10, fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
-  addressText: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
+  shiftBadgeText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
+  addressText: { fontSize: moderateScale(11), color: '#6B7280', fontWeight: '600' },
   syncBox: { width: 24, alignItems: 'center' },
-  noDetailText: { fontSize: 12, color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
+  noDetailText: { fontSize: moderateScale(12), color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 20, ...SHADOWS.light },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
+  emptyTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
   modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
   monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
-  monthItemText: { fontSize: 15, color: '#4B5563', fontWeight: '500' },
+  monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
   monthItemTextActive: { color: '#6C5CE7', fontWeight: '800' },
 });
 
 export default AttendanceScreen;
+

@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Image } from 'react-native';
+﻿import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Bell, CheckCircle, Calendar, FileText, AlertCircle, X,
   ChevronLeft, ChevronRight
 } from 'lucide-react-native';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SIZES, SHADOWS , moderateScale } from '../components/Theme';
 import { getLoggedUser, getNotificationsLocal, markNotificationsAsReadLocal } from '../services/LocalDB';
 import NotificationManager from '../services/NotificationManager';
 
@@ -75,14 +75,14 @@ const dp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   box: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.medium },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  headerTitle: { fontSize: 15, fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
   arrowBtn: { padding: 6 },
   daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 8, marginBottom: 8 },
-  dhText: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: '#6B7280' },
+  dhText: { flex: 1, textAlign: 'center', fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
   cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: 20 },
-  cellText: { fontSize: 13, color: '#111827', fontWeight: '500' },
+  cellText: { fontSize: moderateScale(13), color: '#111827', fontWeight: '500' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' },
 });
 
@@ -90,14 +90,22 @@ const dp = StyleSheet.create({
 const NotificationsScreen = ({ navigation }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedNotif, setSelectedNotif] = useState(null);
 
   useEffect(() => {
     loadData();
     NotificationManager.checkStatusChanges().then(() => loadData());
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   const loadData = async () => {
     const u = await getLoggedUser();
@@ -116,11 +124,16 @@ const NotificationsScreen = ({ navigation }) => {
     }
   };
 
-  const handleNotifClick = async (item) => {
-    if (user && item.is_read === 0) {
-      await markNotificationsAsReadLocal(user.user_id, item.id);
+  const handleNotifClick = (item) => {
+    setSelectedNotif(item);
+  };
+
+  const handleMarkRead = async () => {
+    if (user && selectedNotif && selectedNotif.is_read === 0) {
+      await markNotificationsAsReadLocal(user.user_id, selectedNotif.id);
       loadData();
     }
+    setSelectedNotif(null);
   };
 
   const filteredNotifications = selectedDate
@@ -182,7 +195,6 @@ const NotificationsScreen = ({ navigation }) => {
             <Text style={[styles.notifTitle, isUnread && styles.unreadTitle]}>{item.title}</Text>
             <Text style={styles.notifTime}>{formatTime(item.created_at)}</Text>
           </View>
-          <Text style={styles.notifSub} numberOfLines={2}>{item.message}</Text>
         </View>
         {isUnread && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -236,6 +248,8 @@ const NotificationsScreen = ({ navigation }) => {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           ListEmptyComponent={(
             <View style={styles.emptyGroup}>
               <Bell color={COLORS.textMuted} size={60} style={{ marginBottom: 20 }} />
@@ -256,6 +270,26 @@ const NotificationsScreen = ({ navigation }) => {
         onClose={() => setShowCalendar(false)}
         onConfirm={(date) => setSelectedDate(date)}
       />
+
+      {/* Notification Detail Modal */}
+      <Modal visible={!!selectedNotif} transparent animationType="fade" onRequestClose={() => setSelectedNotif(null)} statusBarTranslucent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={[styles.modalIconBox, { backgroundColor: selectedNotif ? getBgColorForType(selectedNotif.message) : '#FFF3E0' }]}>
+              {selectedNotif ? getIconForType(selectedNotif.message) : null}
+            </View>
+            <Text style={styles.modalTitle}>{selectedNotif?.title}</Text>
+            <Text style={styles.modalTime}>{selectedNotif ? formatTime(selectedNotif.created_at) : ''}</Text>
+            <Text style={styles.modalMessage}>{selectedNotif?.message}</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalBackBtn} onPress={handleMarkRead}>
+                <ChevronLeft color={COLORS.text} size={18} />
+                <Text style={styles.modalBackText}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -264,18 +298,18 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
   headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerIconActive: { backgroundColor: '#F3E8FF', borderRadius: 12 },
 
   filterBar: { paddingHorizontal: 16, paddingBottom: 8 },
   filterChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#F3E8FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 },
-  filterChipText: { fontSize: 12, fontWeight: '700', color: COLORS.primaryDeep },
+  filterChipText: { fontSize: moderateScale(12), fontWeight: '700', color: COLORS.primaryDeep },
   filterClearBtn: { marginLeft: 2, padding: 2 },
 
   summaryBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  summaryText: { fontSize: 12, fontWeight: '800', color: COLORS.textLight, paddingVertical: 14 },
-  markAll: { fontSize: 12, fontWeight: '800', color: COLORS.primaryDeep },
+  summaryText: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.textLight, paddingVertical: 14 },
+  markAll: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.primaryDeep },
 
   list: { padding: 20 },
   notifCard: {
@@ -287,15 +321,28 @@ const styles = StyleSheet.create({
   iconBox: { width: 48, height: 48, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   notifMain: { flex: 1 },
   notifTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  notifTitle: { fontSize: 15, fontWeight: '800', color: COLORS.text },
+  notifTitle: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   unreadTitle: { color: COLORS.primaryDeep },
-  notifTime: { fontSize: 10, color: COLORS.textMuted, fontWeight: '700' },
-  notifSub: { fontSize: 13, color: COLORS.textLight, lineHeight: 18, fontWeight: '500' },
+  notifTime: { fontSize: moderateScale(10), color: COLORS.textMuted, fontWeight: '700' },
+  notifSub: { fontSize: moderateScale(13), color: COLORS.textLight, lineHeight: 18, fontWeight: '500' },
   unreadDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primaryDeep, marginLeft: 12 },
 
   emptyGroup: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyTitle: { fontSize: 20, fontWeight: '900', color: COLORS.text, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: COLORS.textLight, fontWeight: '500', textAlign: 'center', paddingHorizontal: 20 },
+  emptyTitle: { fontSize: moderateScale(20), fontWeight: '900', color: COLORS.text, marginBottom: 8 },
+  emptySub: { fontSize: moderateScale(14), color: COLORS.textLight, fontWeight: '500', textAlign: 'center', paddingHorizontal: 20 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: 28, padding: 28, alignItems: 'center', ...SHADOWS.medium },
+  modalIconBox: { width: 64, height: 64, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 4 },
+  modalTime: { fontSize: moderateScale(11), fontWeight: '700', color: COLORS.textMuted, marginBottom: 16 },
+  modalMessage: { fontSize: moderateScale(14), color: COLORS.textLight, lineHeight: 22, textAlign: 'center', marginBottom: 28 },
+  modalActions: { flexDirection: 'row', gap: 12, width: '100%' },
+  modalBackBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', gap: 4 },
+  modalBackText: { fontSize: moderateScale(14), fontWeight: '700', color: COLORS.text },
+  modalMarkBtn: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 16, backgroundColor: COLORS.primaryDeep, gap: 8 },
+  modalMarkText: { fontSize: moderateScale(14), fontWeight: '700', color: '#FFF' },
 });
 
 export default NotificationsScreen;
+

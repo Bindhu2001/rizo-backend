@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, Platform,
-  Pressable, Dimensions, Image, KeyboardAvoidingView
+  Pressable, Dimensions, Image, KeyboardAvoidingView, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
 
@@ -114,12 +114,12 @@ const fi = StyleSheet.create({
   activeContainer: { borderColor: '#E91E63' },
   multiline: { height: 120, paddingVertical: 12 },
   labelContainer: { position: 'absolute', top: -10, left: 12, backgroundColor: '#FFF', paddingHorizontal: 4 },
-  label: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  label: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '500' },
   activeLabel: { color: '#E91E63', fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  value: { flex: 1, fontSize: 15, color: '#111827', fontWeight: '500' },
-  singleInput: { flex: 1, fontSize: 15, color: '#000', fontWeight: '500', paddingVertical: 0 },
-  inputArea: { flex: 1, fontSize: 15, color: '#000', fontWeight: '500', textAlignVertical: 'top' },
+  value: { flex: 1, fontSize: moderateScale(15), color: '#111827', fontWeight: '500' },
+  singleInput: { flex: 1, fontSize: moderateScale(15), color: '#000', fontWeight: '500', paddingVertical: 0 },
+  inputArea: { flex: 1, fontSize: moderateScale(15), color: '#000', fontWeight: '500', textAlignVertical: 'top' },
 });
 
 // Custom Circular Target Icon for MISSING
@@ -256,10 +256,10 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 const lc = StyleSheet.create({
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  dateTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
-  shiftText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  dateTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 2 },
+  shiftText: { fontSize: moderateScale(12), fontWeight: '600', color: '#6B7280' },
   badgeWo: { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeWoText: { fontSize: 10, fontWeight: '800', color: '#9CA3AF' },
+  badgeWoText: { fontSize: moderateScale(10), fontWeight: '800', color: '#9CA3AF' },
   
   punchContainer: { position: 'relative', paddingLeft: 8, marginTop: 10 },
   trackLine: { position: 'absolute', left: 16.5, top: 20, bottom: 20, width: 2, backgroundColor: '#E5E7EB', borderStyle: 'dotted', zIndex: 0 },
@@ -267,25 +267,25 @@ const lc = StyleSheet.create({
   punchRowBox: { flexDirection: 'row', alignItems: 'flex-start', zIndex: 1 },
   iconCol: { width: 20, alignItems: 'center', backgroundColor: '#FFF', marginTop: 0 },
   timeCol: { flex: 1, paddingLeft: 16, paddingTop: 1 },
-  timeVal: { fontSize: 14, fontWeight: '800', color: '#111827' },
-  locText: { fontSize: 10, color: '#6B7280', marginTop: 4, lineHeight: 14, paddingRight: 10 },
+  timeVal: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827' },
+  locText: { fontSize: moderateScale(10), color: '#6B7280', marginTop: 4, lineHeight: 14, paddingRight: 10 },
   
-  missingHdr: { fontSize: 12, color: '#4B5563', fontWeight: '500' },
-  missingVal: { fontSize: 13, fontWeight: '900', color: '#DC2626', marginTop: 2 },
+  missingHdr: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '500' },
+  missingVal: { fontSize: moderateScale(13), fontWeight: '900', color: '#DC2626', marginTop: 2 },
   regBtnAction: { backgroundColor: '#DC2626', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
-  regBtnActionText: { color: '#FFF', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  regBtnActionText: { color: '#FFF', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   regBtnActionSecondary: { backgroundColor: '#F3F4F6', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10, borderWidth: 1, borderColor: '#E5E7EB' },
-  regBtnActionTextSecondary: { color: '#4B5563', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  regBtnActionTextSecondary: { color: '#4B5563', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   
   chipCol: { marginLeft: 10 },
   chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
-  chipText: { fontSize: 11, fontWeight: '700', color: '#4F46E5' },
+  chipText: { fontSize: moderateScale(11), fontWeight: '700', color: '#4F46E5' },
 
   regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 14, borderRadius: 12 },
-  regTitle: { fontSize: 13, fontWeight: '800', color: '#111827' },
-  regMsg: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '500', lineHeight: 16 },
+  regTitle: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827' },
+  regMsg: { fontSize: moderateScale(11), color: '#6B7280', marginTop: 4, fontWeight: '500', lineHeight: 16 },
   regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginLeft: 10 },
-  regBadgeText: { fontSize: 11, fontWeight: '800' },
+  regBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
 });
 
 // Analog Time Picker Modal
@@ -447,18 +447,18 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 const tp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   box: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: 320, ...SHADOWS.medium },
-  title: { fontSize: 12, fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 20 },
+  title: { fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 20 },
   displayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
   timeBox: { backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
   timeBoxInactive: { backgroundColor: 'transparent' },
-  timeNumber: { fontSize: 36, fontWeight: '400', color: '#111827' },
+  timeNumber: { fontSize: moderateScale(36), fontWeight: '400', color: '#111827' },
   timeNumberInactive: { color: '#6B7280' },
-  colon: { fontSize: 36, marginHorizontal: 8, color: '#111827' },
+  colon: { fontSize: moderateScale(36), marginHorizontal: 8, color: '#111827' },
   ampmBox: { marginLeft: 'auto', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, overflow: 'hidden', flexDirection: 'column' },
   ampmActive: { backgroundColor: '#F3F4F6', paddingVertical: 10, paddingHorizontal: 12 },
   ampmInactive: { backgroundColor: '#FFF', paddingVertical: 10, paddingHorizontal: 12 },
-  ampmTextActive: { fontSize: 13, fontWeight: '700', color: '#111827' },
-  ampmTextInactive: { fontSize: 13, fontWeight: '600', color: '#9CA3AF' },
+  ampmTextActive: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
+  ampmTextInactive: { fontSize: moderateScale(13), fontWeight: '600', color: '#9CA3AF' },
 
   clockWrap: { alignItems: 'center', marginBottom: 20 },
   clockFace: { width: 200, height: 200, borderRadius: 100, backgroundColor: '#F9FAFB', position: 'relative' },
@@ -467,12 +467,12 @@ const tp = StyleSheet.create({
   hand: { width: 2, height: 75, backgroundColor: '#4B5563', marginTop: 25, borderRadius: 1 },
   numNode: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', position: 'absolute' },
   numNodeActive: { backgroundColor: '#4B5563' },
-  numText: { fontSize: 14, color: '#111827' },
+  numText: { fontSize: moderateScale(14), color: '#111827' },
   numTextActive: { color: '#FFF' },
 
   actions: { flexDirection: 'row', alignItems: 'center', marginTop: 10, justifyContent: 'flex-end', gap: 8 },
   btn: { paddingHorizontal: 16, paddingVertical: 10 },
-  btnText: { fontSize: 14, fontWeight: '600', color: '#4B5563' },
+  btnText: { fontSize: moderateScale(14), fontWeight: '600', color: '#4B5563' },
 });
 
 // Reason Picker Modal
@@ -498,7 +498,7 @@ const rp = StyleSheet.create({
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  itemText: { fontSize: 15, color: '#4B5563' },
+  itemText: { fontSize: moderateScale(15), color: '#4B5563' },
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
 
@@ -518,6 +518,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   const [attLogs, setAttLogs] = useState([]);
   const [regLogs, setRegLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
@@ -540,6 +541,12 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       setTab(route.params.initialTab);
     }
   }, [route?.params?.initialTab]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   const fetchData = useCallback(async () => {
     if (!user) return;
@@ -751,7 +758,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color="#E91E63" /></View>
       ) : (
-        <ScrollView contentContainerStyle={s.listScroll}>
+        <ScrollView contentContainerStyle={s.listScroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {tab === 'LOG' && attLogs.map((item, i) => (
             <LogCard key={item.date || i} item={item} isRegularisedTab={false} onRegularise={openRegForm} />
           ))}
@@ -800,16 +807,16 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 60, paddingHorizontal: 8, backgroundColor: '#FFF' },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(16), fontWeight: '600', color: '#111827' },
 
   tabBox: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   tabsWrap: { flexDirection: 'row' },
   tabItem: { paddingVertical: 14, marginRight: 24, position: 'relative' },
-  tabLabel: { fontSize: 14, fontWeight: '500', color: '#9CA3AF' },
+  tabLabel: { fontSize: moderateScale(14), fontWeight: '500', color: '#9CA3AF' },
   tabLabelActive: { color: '#E91E63', fontWeight: '700' },
   tabLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 3, backgroundColor: '#E91E63', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
   monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, marginBottom: 10, alignSelf: 'center' },
-  monthText: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  monthText: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
 
   listScroll: { padding: 16, paddingBottom: 120 },
 
@@ -817,24 +824,25 @@ const s = StyleSheet.create({
   formWrap: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, paddingBottom: 40, ...SHADOWS.light, minHeight: Dimensions.get('window').height * 0.7 },
   submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: 16, borderRadius: 50, alignItems: 'center', marginTop: 'auto' },
   submitBtnActive: { backgroundColor: '#E91E63' },
-  submitText: { color: '#9CA3AF', fontSize: 14, fontWeight: '700', letterSpacing: 0.5 },
+  submitText: { color: '#9CA3AF', fontSize: moderateScale(14), fontWeight: '700', letterSpacing: 0.5 },
   submitTextActive: { color: '#FFF' },
 
   successBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, backgroundColor: '#FFF' },
   successAura: { width: 180, height: 180, borderRadius: 90, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   successCircleInner: { width: 90, height: 90, borderRadius: 45, borderWidth: 6, borderColor: '#10B981', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
-  successTitle: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 12 },
-  successDesc: { fontSize: 13, color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 40, paddingHorizontal: 10 },
+  successTitle: { fontSize: moderateScale(20), fontWeight: '800', color: '#111827', marginBottom: 12 },
+  successDesc: { fontSize: moderateScale(13), color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 40, paddingHorizontal: 10 },
   homeBtn: { width: '100%', paddingVertical: 16, borderRadius: 50, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', backgroundColor: '#FFF' },
-  homeBtnText: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  homeBtnText: { fontSize: moderateScale(15), fontWeight: '700', color: '#111827' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
   modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
   monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
-  monthItemText: { fontSize: 15, color: '#4B5563', fontWeight: '500' },
+  monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
   monthItemTextActive: { color: '#E91E63', fontWeight: '800' },
 });
 
 export default AttendanceRegScreen;
+

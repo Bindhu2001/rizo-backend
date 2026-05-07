@@ -1,28 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Platform, TouchableOpacity } from 'react-native';
 import * as Network from 'expo-network';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WifiOff, RefreshCcw } from 'lucide-react-native';
+import { WifiOff, Home } from 'lucide-react-native';
 import { COLORS, SHADOWS } from './Theme';
 
 const { width, height } = Dimensions.get('window');
 
-const OfflineBanner = ({ currentRoute }) => {
+const OfflineBanner = ({ currentRoute, navigationRef }) => {
   const [status, setStatus] = useState('online'); // 'online', 'offline', 'restored'
   const insets = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
-  // Screens that are allowed to work offline (only show banner)
-  const OFFLINE_ALLOWED_SCREENS = ['HomeTab', 'Visits', 'Splash'];
-  const isBlockerMode = !OFFLINE_ALLOWED_SCREENS.includes(currentRoute);
+  const BAR_SCREENS = ['HomeTab'];
+  const SILENT_SCREENS = ['Visits', 'Splash'];
 
   useEffect(() => {
     const checkNetwork = async () => {
       try {
         const state = await Network.getNetworkStateAsync();
         const isActuallyOffline = !state.isConnected || !state.isInternetReachable;
-        
+
         if (isActuallyOffline && status !== 'offline') {
           setStatus('offline');
           // Banner animation
@@ -67,10 +66,14 @@ const OfflineBanner = ({ currentRoute }) => {
 
   if (status === 'online') return null;
 
-  const isRestored = status === 'restored';
+  // Visits and Splash: show nothing
+  if (SILENT_SCREENS.includes(currentRoute)) return null;
 
-  // 1. Full Screen Blocker UI
-  if (isBlockerMode && status === 'offline') {
+  const isRestored = status === 'restored';
+  const isBarScreen = BAR_SCREENS.includes(currentRoute);
+
+  // 1. Full Screen Blocker UI (all pages except Home/Visits/Splash)
+  if (!isBarScreen && status === 'offline') {
     return (
       <Animated.View style={[styles.blockerContainer, { opacity: fadeAnim }]}>
         <View style={styles.blockerCard}>
@@ -79,29 +82,32 @@ const OfflineBanner = ({ currentRoute }) => {
           </View>
           <Text style={styles.blockerTitle}>No Internet Connection</Text>
           <Text style={styles.blockerSub}>This page requires an active internet connection to function properly.</Text>
-          <View style={styles.offlineHint}>
-            <Text style={styles.hintText}>Home and Visits pages are available offline.</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.homeButton}
+            onPress={() => navigationRef?.current?.navigate('Main')}
+          >
+            <Home size={14} color="#FFF" strokeWidth={2.5} />
+            <Text style={styles.homeButtonText}>Back to Home</Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
     );
   }
 
-  // 2. Small Pill Banner UI (for Home/Visits)
+  // 2. Full-width Bar Banner UI (Home only)
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.pillBanner, 
-        { 
+        styles.barBanner,
+        {
           transform: [{ translateY: slideAnim }],
-          top: insets.top + 10,
-          backgroundColor: isRestored ? '#10B981' : '#1F2937'
+          top: insets.top,
+          backgroundColor: isRestored ? '#10B981' : '#E53935',
         }
       ]}
     >
-      <View style={[styles.dot, { backgroundColor: isRestored ? '#FFF' : '#EF4444' }]} />
-      <Text style={styles.pillText}>
-        {isRestored ? 'Back Online' : 'Offline Mode'}
+      <Text style={styles.barText}>
+        {isRestored ? 'We are back !' : 'Connection Lost. Try reconnecting...'}
       </Text>
     </Animated.View>
   );
@@ -148,43 +154,36 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 24,
   },
-  offlineHint: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  hintText: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '600',
-  },
-
-  // Pill Banner Styles
-  pillBanner: {
-    position: 'absolute',
-    alignSelf: 'center',
+  homeButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.primaryDeep,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 25,
-    zIndex: 9999,
-    ...SHADOWS.medium,
-    minWidth: 140,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  homeButtonText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Bar Banner Styles
+  barBanner: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 32,
+    alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 9999,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  pillText: {
+  barText: {
     color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });
 

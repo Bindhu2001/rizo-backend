@@ -1,6 +1,6 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, StatusBar } from 'react-native';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 
 const { width } = Dimensions.get('window');
 
@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   brandName: {
-    fontSize: 50,
+    fontSize: moderateScale(50),
     fontWeight: '900',
     color: '#000',
     letterSpacing: -2,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   loginBtnText: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '800',
     color: '#FFF',
     letterSpacing: 2,
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   footerText: {
-    fontSize: 10,
+    fontSize: moderateScale(10),
     color: '#9CA3AF',
     fontWeight: '800',
     letterSpacing: 1.5,
@@ -101,3 +101,4 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeScreen;
+

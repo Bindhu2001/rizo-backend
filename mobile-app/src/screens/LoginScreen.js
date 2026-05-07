@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Image, StatusBar
@@ -7,7 +7,7 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight } from 'lucide-react-native';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
@@ -172,20 +172,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB', borderRadius: 15, paddingHorizontal: 20, 
     marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' 
   },
-  input: { flex: 1, marginLeft: 12, fontSize: 16, fontWeight: '700', color: '#000' },
+  input: { flex: 1, marginLeft: 12, fontSize: moderateScale(16), fontWeight: '700', color: '#000' },
   
   loginBtn: { 
     width: '100%', height: 60, backgroundColor: COLORS.primaryDeep || '#4A148C', borderRadius: 30, 
     justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium 
   },
-  btnText: { color: '#FFF', fontSize: 16, fontWeight: '900', letterSpacing: 2 },
+  btnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '900', letterSpacing: 2 },
   
   signupLink: { marginTop: 32, alignItems: 'center' },
-  signupLabel: { color: '#64748B', fontSize: 14, fontWeight: '600' },
+  signupLabel: { color: '#64748B', fontSize: moderateScale(14), fontWeight: '600' },
   signupText: { color: COLORS.primaryDeep || '#4A148C', fontWeight: '900' },
 
   footer: { alignItems: 'center', paddingBottom: 20 },
-  footerText: { fontSize: 10, color: '#94A3B8', fontWeight: '800', letterSpacing: 1.5 },
+  footerText: { fontSize: moderateScale(10), color: '#94A3B8', fontWeight: '800', letterSpacing: 1.5 },
 });
 
 export default LoginScreen;
+

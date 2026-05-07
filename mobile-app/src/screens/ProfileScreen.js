@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, Switch, TextInput, ActivityIndicator, Modal, Platform, KeyboardAvoidingView
@@ -12,7 +12,7 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SIZES, SHADOWS , moderateScale } from '../components/Theme';
 import { clearUserSession, updateUserProfileLocal, getLocalUser } from '../services/LocalDB';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 
@@ -43,9 +43,9 @@ const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24 },
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16 },
+  title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16 },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  itemText: { fontSize: 15, color: '#4B5563' },
+  itemText: { fontSize: moderateScale(15), color: '#4B5563' },
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
 
@@ -824,7 +824,7 @@ const s = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
 
   // Scroll
   scroll: { padding: 20, paddingTop: 12 },
@@ -844,30 +844,30 @@ const s = StyleSheet.create({
     borderWidth: 2, borderColor: '#FFF',
   },
   avatarCenter: { alignItems: 'center', marginBottom: 24, marginTop: 8 },
-  avatarHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 8, fontWeight: '500' },
-  profileName: { fontSize: 22, fontWeight: '900', color: COLORS.text, marginBottom: 4 },
-  profileRole: { fontSize: 14, color: COLORS.textLight, fontWeight: '600', marginBottom: 12 },
+  avatarHint: { fontSize: moderateScale(12), color: COLORS.textMuted, marginTop: 8, fontWeight: '500' },
+  profileName: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, marginBottom: 4 },
+  profileRole: { fontSize: moderateScale(14), color: COLORS.textLight, fontWeight: '600', marginBottom: 12 },
   activeBadge: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#ECFDF5', paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: 20, marginBottom: 16,
   },
   activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 6 },
-  activeText: { fontSize: 11, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
+  activeText: { fontSize: moderateScale(11), fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
   idRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  idLabel: { fontSize: 13, color: COLORS.textLight, fontWeight: '500' },
-  idVal: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  idLabel: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '500' },
+  idVal: { fontSize: moderateScale(13), fontWeight: '700', color: COLORS.text },
 
   // Card group
-  cardGroupTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textLight, letterSpacing: 0.4, marginBottom: 10, marginLeft: 4, textTransform: 'uppercase' },
+  cardGroupTitle: { fontSize: moderateScale(13), fontWeight: '700', color: COLORS.textLight, letterSpacing: 0.4, marginBottom: 10, marginLeft: 4, textTransform: 'uppercase' },
 
   // Menu Card
   menuCard: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 24, ...SHADOWS.light, overflow: 'hidden' },
   sectionRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
   sectionIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   sectionText: { flex: 1 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text },
-  sectionSub: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  sectionTitle: { fontSize: moderateScale(15), fontWeight: '700', color: COLORS.text },
+  sectionSub: { fontSize: moderateScale(12), color: COLORS.textLight, marginTop: 2 },
   divider: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 16 },
 
   // Logout
@@ -876,18 +876,18 @@ const s = StyleSheet.create({
     backgroundColor: '#FFF', paddingVertical: 18, borderRadius: 20,
     borderWidth: 1, borderColor: '#FEE2E2', ...SHADOWS.light,
   },
-  logoutText: { fontSize: 15, fontWeight: '800', color: COLORS.danger, marginLeft: 10 },
+  logoutText: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.danger, marginLeft: 10 },
 
   // Form fields
   inputWrap: { marginBottom: 18, position: 'relative' },
   floatLabel: {
     position: 'absolute', top: -8, left: 14, zIndex: 2,
     backgroundColor: '#F8F9FA', paddingHorizontal: 4,
-    fontSize: 11, color: '#9CA3AF', fontWeight: '600',
+    fontSize: moderateScale(11), color: '#9CA3AF', fontWeight: '600',
   },
   input: {
     backgroundColor: '#FFF', borderRadius: 12, paddingHorizontal: 16, height: 54,
-    fontSize: 14, fontWeight: '600', color: COLORS.text,
+    fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text,
     borderWidth: 1.5, borderColor: '#E5E7EB',
   },
   pickerRow: {
@@ -895,26 +895,26 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 16, height: 54,
     borderWidth: 1.5, borderColor: '#E5E7EB',
   },
-  pickerText: { flex: 1, fontSize: 14, fontWeight: '600', color: COLORS.text },
+  pickerText: { flex: 1, fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text },
 
   // Switch card
   switchCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 4, marginBottom: 20, ...SHADOWS.light },
   switchRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12 },
-  switchTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text },
-  switchSub: { fontSize: 12, color: COLORS.textLight, marginTop: 2 },
+  switchTitle: { fontSize: moderateScale(14), fontWeight: '700', color: COLORS.text },
+  switchSub: { fontSize: moderateScale(12), color: COLORS.textLight, marginTop: 2 },
 
   // Disability checkboxes
   checkGroup: { paddingHorizontal: 12, paddingBottom: 12 },
-  checkGroupLabel: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
+  checkGroupLabel: { fontSize: moderateScale(11), fontWeight: '700', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 10 },
   checkGroupRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   checkBox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
   checkBoxActive: { backgroundColor: PURPLE, borderColor: PURPLE },
-  checkLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  checkLabel: { fontSize: moderateScale(14), fontWeight: '600', color: '#374151' },
 
   // Form subheading
-  formSubheading: { fontSize: 20, fontWeight: '900', color: COLORS.text, marginBottom: 6, marginTop: 4 },
-  formSubtitle: { fontSize: 13, color: COLORS.textLight, marginBottom: 24, lineHeight: 20 },
+  formSubheading: { fontSize: moderateScale(20), fontWeight: '900', color: COLORS.text, marginBottom: 6, marginTop: 4 },
+  formSubtitle: { fontSize: moderateScale(13), color: COLORS.textLight, marginBottom: 24, lineHeight: 20 },
 
   // Upload button
   uploadBtn: {
@@ -922,27 +922,28 @@ const s = StyleSheet.create({
     borderWidth: 1.5, borderColor: PURPLE, borderStyle: 'dashed',
     borderRadius: 12, paddingVertical: 16, marginBottom: 20, backgroundColor: '#FAF5FF',
   },
-  uploadBtnText: { fontSize: 14, fontWeight: '700', color: PURPLE, marginLeft: 8 },
+  uploadBtnText: { fontSize: moderateScale(14), fontWeight: '700', color: PURPLE, marginLeft: 8 },
 
   // Save button
   saveBtn: {
     backgroundColor: PURPLE, borderRadius: 30, height: 56,
     justifyContent: 'center', alignItems: 'center', marginTop: 8, ...SHADOWS.medium,
   },
-  saveBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  saveBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800', letterSpacing: 0.3 },
 
   // Discard Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
   modalCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 28, alignItems: 'center', ...SHADOWS.medium },
   modalIconOuter: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#FEF2F2', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   modalIconInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFF', borderWidth: 2, borderColor: '#DC2626', justifyContent: 'center', alignItems: 'center', ...SHADOWS.light },
-  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
-  modalSub: { fontSize: 13, color: '#6B7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  modalTitle: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
+  modalSub: { fontSize: moderateScale(13), color: '#6B7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   modalRow: { flexDirection: 'row', width: '100%' },
   modalBtnNo: { flex: 1, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-  modalBtnNoText: { color: '#4B5563', fontWeight: '700', fontSize: 14 },
+  modalBtnNoText: { color: '#4B5563', fontWeight: '700', fontSize: moderateScale(14) },
   modalBtnYes: { flex: 1, height: 48, borderRadius: 24, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
-  modalBtnYesText: { color: '#FFF', fontWeight: '700', fontSize: 14 },
+  modalBtnYesText: { color: '#FFF', fontWeight: '700', fontSize: moderateScale(14) },
 });
 
 export default ProfileScreen;
+

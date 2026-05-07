@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView
+  TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { getTodayVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import * as Network from 'expo-network';
@@ -127,12 +127,12 @@ const tl = StyleSheet.create({
   line: { width: 2, flex: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
   content: { flex: 1, paddingBottom: 14 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  time: { fontSize: 13, fontWeight: '700', color: '#111827' },
-  timePlaceholder: { fontSize: 13, fontWeight: '700', color: '#9CA3AF' },
+  time: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
+  timePlaceholder: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
   badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
-  badgeText: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  badgeText: { fontSize: moderateScale(9), fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
   locRow: { flexDirection: 'row', alignItems: 'flex-start' },
-  loc: { fontSize: 11, color: '#9CA3AF', flex: 1, lineHeight: 16 },
+  loc: { fontSize: moderateScale(11), color: '#9CA3AF', flex: 1, lineHeight: 16 },
 });
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
@@ -237,19 +237,19 @@ const cs = StyleSheet.create({
   card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOWS.light },
   // Live Card Headers
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  clientName: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  clientName: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827' },
   liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#FCA5A5' },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 },
-  liveText: { fontSize: 10, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
-  liveTimeText: { fontSize: 13, color: '#4B5563', marginBottom: 4, fontWeight: '600' },
-  liveLocText: { fontSize: 12, color: '#4B5563', marginBottom: 16, lineHeight: 18 },
+  liveText: { fontSize: moderateScale(10), fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
+  liveTimeText: { fontSize: moderateScale(13), color: '#4B5563', marginBottom: 4, fontWeight: '600' },
+  liveLocText: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: 16, lineHeight: 18 },
   purpleBtnFull: { backgroundColor: '#62338B', paddingVertical: 14, borderRadius: 50, alignItems: 'center' },
-  purpleBtnText: { color: '#FFF', fontSize: 13, fontWeight: '800', letterSpacing: 1 },
+  purpleBtnText: { color: '#FFF', fontSize: moderateScale(13), fontWeight: '800', letterSpacing: 1 },
 
   // Completed Headers
   compHeader: { marginBottom: 16 },
-  date: { fontSize: 12, color: '#9CA3AF', marginBottom: 2, marginTop: 4 },
-  contactText: { fontSize: 12, color: '#9CA3AF' },
+  date: { fontSize: moderateScale(12), color: '#9CA3AF', marginBottom: 2, marginTop: 4 },
+  contactText: { fontSize: moderateScale(12), color: '#9CA3AF' },
   timeline: { marginLeft: 0 },
 });
 
@@ -282,13 +282,13 @@ const cm = StyleSheet.create({
   iconWrap: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
   banOuter: { width: 44, height: 44, borderRadius: 22, borderWidth: 3.5, borderColor: '#62338B', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   banDiag: { position: 'absolute', width: 3.5, height: 52, backgroundColor: '#62338B', transform: [{ rotate: '45deg' }] },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
-  desc: { fontSize: 13, color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
+  desc: { fontSize: moderateScale(13), color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
   row: { flexDirection: 'row', gap: 12, width: '100%' },
   cancelBtn: { flex: 1, paddingVertical: 15, borderRadius: 50, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
-  cancelText: { fontSize: 14, fontWeight: '800', color: '#374151' },
+  cancelText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151' },
   confirmBtn: { flex: 1, paddingVertical: 15, borderRadius: 50, backgroundColor: '#581C87', alignItems: 'center' },
-  confirmText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
+  confirmText: { fontSize: moderateScale(14), fontWeight: '800', color: '#FFF' },
 });
 
 
@@ -310,8 +310,8 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLe
 
 const fi = StyleSheet.create({
   wrap: { marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
-  label: { fontSize: 10, fontWeight: '600', color: '#9CA3AF', marginBottom: 2 },
-  input: { fontSize: 14, color: '#111827', fontWeight: '600', paddingVertical: 2 },
+  label: { fontSize: moderateScale(10), fontWeight: '600', color: '#9CA3AF', marginBottom: 2 },
+  input: { fontSize: moderateScale(14), color: '#111827', fontWeight: '600', paddingVertical: 2 },
   multiline: { height: 72, textAlignVertical: 'top' },
 });
 
@@ -404,16 +404,16 @@ const sv = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: '#111827' },
+  title: { fontSize: moderateScale(17), fontWeight: '700', color: '#111827' },
   scroll: { padding: 20 },
   locChipBox: { backgroundColor: '#F5F3FF', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#EDE9FE' },
   locWrap: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  locLabel: { fontSize: 12, fontWeight: '700', color: '#6D28D9', marginLeft: 6 },
-  locText: { fontSize: 12, color: '#4C1D95', textAlign: 'center', lineHeight: 18 },
+  locLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: 6 },
+  locText: { fontSize: moderateScale(12), color: '#4C1D95', textAlign: 'center', lineHeight: 18 },
   formWrap: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, ...SHADOWS.light },
   footer: { padding: 20, backgroundColor: '#F9FAFB' },
   startBtn: { backgroundColor: '#62338B', paddingVertical: 18, borderRadius: 50, alignItems: 'center' },
-  startBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
+  startBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
 // ─── Enter Details (Bottom Sheet for STEP IN) ────────────────────────────────
@@ -466,9 +466,9 @@ const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 20, maxHeight: '80%' },
   dragHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20, marginLeft: 4 },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: 20, marginLeft: 4 },
   saveBtn: { backgroundColor: '#62338B', paddingVertical: 18, borderRadius: 50, alignItems: 'center', marginTop: 10 },
-  saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800', letterSpacing: 1 },
+  saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -477,6 +477,7 @@ const VisitsScreen = ({ navigation, route }) => {
 
   // All hooks must be declared before any conditional return
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [visits, setVisits] = useState([]);
   const [processing, setProcessing] = useState(false);
   const [showStartScreen, setShowStartScreen] = useState(false);
@@ -497,6 +498,12 @@ const VisitsScreen = ({ navigation, route }) => {
     if (!user || !user.user_id) return;
     initDB().then(() => fetchVisits());
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchVisits();
+    setRefreshing(false);
+  };
 
   const fetchVisits = async () => {
     try {
@@ -602,7 +609,7 @@ const VisitsScreen = ({ navigation, route }) => {
           <ActivityIndicator size="large" color="#62338B" />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={s.scroll}>
+        <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {visits.map((v) => (
             <VisitCard
               key={v.id}
@@ -659,7 +666,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: '#111827' },
   scroll: { padding: 16, paddingTop: 20 },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -668,3 +675,4 @@ const s = StyleSheet.create({
 });
 
 export default VisitsScreen;
+

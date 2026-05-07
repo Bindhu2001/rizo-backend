@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList,
   Pressable, ScrollView, KeyboardAvoidingView, Platform,
@@ -10,7 +10,7 @@ import {
   ChevronLeft, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -333,12 +333,12 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, height: 60, backgroundColor: '#FFF',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
   backBtn: { width: 44, height: 44, justifyContent: 'center' },
 
   monthBar: { padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  monthText: { fontSize: 14, fontWeight: '700', color: '#6C5CE7' },
+  monthText: { fontSize: moderateScale(14), fontWeight: '700', color: '#6C5CE7' },
 
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -347,11 +347,11 @@ const s = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginTop: 4,
   },
-  sectionHeaderText: { fontSize: 14, fontWeight: '800', color: '#374151', flex: 1 },
+  sectionHeaderText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151', flex: 1 },
   sectionCount: {
     backgroundColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2,
   },
-  sectionCountText: { fontSize: 12, fontWeight: '800', color: '#374151' },
+  sectionCountText: { fontSize: moderateScale(12), fontWeight: '800', color: '#374151' },
 
   card: {
     flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16,
@@ -360,47 +360,47 @@ const s = StyleSheet.create({
   },
   sideBar: { width: 36, justifyContent: 'center', alignItems: 'center' },
   sideText: {
-    color: '#FFF', fontSize: 8, fontWeight: '900', letterSpacing: 1,
+    color: '#FFF', fontSize: moderateScale(8), fontWeight: '900', letterSpacing: 1,
     transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center',
   },
   cardBody: { flex: 1, padding: 14 },
 
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
   empInfo: { flex: 1, marginRight: 8 },
-  empName: { fontSize: 15, fontWeight: '800', color: '#111827' },
-  empId: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  empName: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
+  empId: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
   typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
-  typeText: { fontSize: 11, fontWeight: '800' },
+  typeText: { fontSize: moderateScale(11), fontWeight: '800' },
 
   detailsRow: { flexDirection: 'row', marginBottom: 10, gap: 16, flexWrap: 'wrap' },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  detailText: { fontSize: 13, color: '#4B5563', fontWeight: '600' },
+  detailText: { fontSize: moderateScale(13), color: '#4B5563', fontWeight: '600' },
 
   reasonBox: {
     flexDirection: 'row', backgroundColor: '#F9FAFB', padding: 10,
     borderRadius: 10, gap: 8, marginBottom: 14,
   },
-  reasonText: { fontSize: 12, color: '#6B7280', flex: 1, fontStyle: 'italic' },
+  reasonText: { fontSize: moderateScale(12), color: '#6B7280', flex: 1, fontStyle: 'italic' },
 
   actions: { flexDirection: 'row', gap: 12 },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, borderRadius: 12, gap: 8,
   },
-  approveBtnText: { fontWeight: '800', fontSize: 14 },
+  approveBtnText: { fontWeight: '800', fontSize: moderateScale(14) },
   rejectBtn: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1 },
-  rejectBtnText: { color: '#B91C1C', fontWeight: '800', fontSize: 14 },
+  rejectBtnText: { color: '#B91C1C', fontWeight: '800', fontSize: moderateScale(14) },
 
   empty: { alignItems: 'center', marginTop: 100 },
-  emptyText: { marginTop: 12, fontSize: 15, color: '#9CA3AF', fontWeight: '600' },
+  emptyText: { marginTop: 12, fontSize: moderateScale(15), color: '#9CA3AF', fontWeight: '600' },
 
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center', alignItems: 'center', padding: 20,
   },
   modalContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%' },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: '#111827', marginBottom: 8 },
-  modalSub: { fontSize: 14, color: '#6B7280', marginBottom: 20 },
+  modalTitle: { fontSize: moderateScale(18), fontWeight: '900', color: '#111827', marginBottom: 8 },
+  modalSub: { fontSize: moderateScale(14), color: '#6B7280', marginBottom: 20 },
   remarksInput: {
     backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 100,
     textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24,
@@ -419,10 +419,11 @@ const s = StyleSheet.create({
 
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
+  sheetTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
   sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  sheetItemText: { fontSize: 15, color: '#4B5563', textAlign: 'center' },
+  sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
   sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
 });
 
 export default LeaveApprovalScreen;
+

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Image } from 'react-native';
+﻿import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, Platform, Image, RefreshControl } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Wallet, ChevronLeft
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Print from 'expo-print';
@@ -19,6 +19,7 @@ const { width } = Dimensions.get('window');
 const SalaryScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [salarySlips, setSalarySlips] = useState([]);
   const [grossSalary, setGrossSalary] = useState(0);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -33,6 +34,12 @@ const SalaryScreen = ({ navigation, route }) => {
       setLoading(false);
     }
   }, [user]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchSalaryData();
+    setRefreshing(false);
+  };
 
   const fetchSalaryData = async () => {
     try {
@@ -205,7 +212,7 @@ const SalaryScreen = ({ navigation, route }) => {
           <ActivityIndicator size="large" color={COLORS.primaryDeep} />
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
 
           {/* Salary Card */}
           <LinearGradient
@@ -303,52 +310,53 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
   headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   scroll: { padding: 20 },
 
   // Salary Card
   salaryCard: { borderRadius: 30, padding: 24, marginBottom: 32, ...SHADOWS.medium },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
-  cardLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
-  amount: { fontSize: 32, fontWeight: '900', color: '#FFF' },
+  cardLabel: { fontSize: moderateScale(12), color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
+  amount: { fontSize: moderateScale(32), fontWeight: '900', color: '#FFF' },
   statusBadge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  statusText: { fontSize: 10, color: '#FFF', fontWeight: '800' },
+  statusText: { fontSize: moderateScale(10), color: '#FFF', fontWeight: '800' },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   nextPayRow: { flexDirection: 'row', alignItems: 'center' },
-  nextPayText: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginLeft: 6, fontWeight: '600' },
+  nextPayText: { fontSize: moderateScale(11), color: 'rgba(255,255,255,0.7)', marginLeft: 6, fontWeight: '600' },
   slipBtn: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' },
-  slipBtnText: { color: COLORS.primaryDeep, fontWeight: '800', fontSize: 12, marginLeft: 8 },
+  slipBtnText: { color: COLORS.primaryDeep, fontWeight: '800', fontSize: moderateScale(12), marginLeft: 8 },
 
   // Bank Card
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text },
-  seeAll: { fontSize: 13, color: COLORS.primaryDeep, fontWeight: '700' },
+  sectionTitle: { fontSize: moderateScale(16), fontWeight: '800', color: COLORS.text },
+  seeAll: { fontSize: moderateScale(13), color: COLORS.primaryDeep, fontWeight: '700' },
   bankCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 24, ...SHADOWS.light },
   bankIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: '#F5F3FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   bankInfo: { flex: 1 },
-  bankName: { fontSize: 15, fontWeight: '800', color: COLORS.text },
-  accNo: { fontSize: 12, color: COLORS.textLight, marginTop: 4, fontWeight: '600' },
+  bankName: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
+  accNo: { fontSize: moderateScale(12), color: COLORS.textLight, marginTop: 4, fontWeight: '600' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
-  verifiedText: { fontSize: 10, color: '#2ECC71', fontWeight: '800', marginLeft: 4 },
+  verifiedText: { fontSize: moderateScale(10), color: '#2ECC71', fontWeight: '800', marginLeft: 4 },
 
   // Stats
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
   statCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 16, ...SHADOWS.light },
   statIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  statVal: { fontSize: 18, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
-  statLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  statVal: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
+  statLabel: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
 
   // List
   listCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 8, ...SHADOWS.light },
   slipItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   slipIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   slipMain: { flex: 1 },
-  slipMonth: { fontSize: 15, fontWeight: '800', color: COLORS.text },
-  slipDate: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+  slipMonth: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
+  slipDate: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
   slipEnd: { alignItems: 'flex-end', flexDirection: 'row', alignItems: 'center' },
-  slipAmount: { fontSize: 15, fontWeight: '900', color: COLORS.text, marginRight: 15 },
+  slipAmount: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginRight: 15 },
   downloadBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }
 });
 
 export default SalaryScreen;
+

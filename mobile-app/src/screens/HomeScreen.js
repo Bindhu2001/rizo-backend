@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform
+  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import * as Location from 'expo-location';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { COLORS, SIZES, SHADOWS } from '../components/Theme';
+import { COLORS, SIZES, SHADOWS, moderateScale } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
 import CalendarWidget from '../components/CalendarWidget';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
@@ -58,6 +58,7 @@ const HomeScreen = ({ navigation, route }) => {
     is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
   });
   const [alertCfg, setAlertCfg] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -255,6 +256,13 @@ const HomeScreen = ({ navigation, route }) => {
     setOfflineCount(count);
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchStatus(), fetchRoles(), checkOfflinePunches()]);
+    fetchLocation();
+    setRefreshing(false);
+  };
+
   const syncOfflinePunches = async () => {
     await SyncService.syncAll();
     checkOfflinePunches();
@@ -443,7 +451,11 @@ const HomeScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primaryDeep]} tintColor={COLORS.primaryDeep} />}
+      >
 
         {/* TOP BAR */}
         <View style={styles.topBar}>
@@ -662,10 +674,10 @@ const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerLogo: { width: 44, height: 44, marginRight: 16, marginLeft: 4 },
-  greetingHeader: { fontSize: 13, color: COLORS.textLight, fontWeight: '600' },
-  userNameHeader: { fontSize: 24, fontWeight: '900', color: COLORS.text, letterSpacing: -0.5 },
+  greetingHeader: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '600' },
+  userNameHeader: { fontSize: moderateScale(24), fontWeight: '900', color: COLORS.text, letterSpacing: -0.5 },
   locationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  locationText: { fontSize: 11, color: COLORS.textLight, marginLeft: 4, fontWeight: '600', flexShrink: 1 },
+  locationText: { fontSize: moderateScale(11), color: COLORS.textLight, marginLeft: 4, fontWeight: '600', flexShrink: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
   headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginRight: 10, ...SHADOWS.light },
   offlineDot: { position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: COLORS.primary, borderWidth: 1.5, borderColor: '#FFF' },
@@ -686,7 +698,7 @@ const styles = StyleSheet.create({
     borderColor: '#C7D2FE',
   },
   punchMessageText: {
-    fontSize: 13,
+    fontSize: moderateScale(13),
     fontWeight: '600',
     color: COLORS.primaryDeep,
     flexShrink: 1,
@@ -695,22 +707,22 @@ const styles = StyleSheet.create({
   punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, ...SHADOWS.light },
   punchedInLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingLeft: 12 },
   punchedInTextStack: { marginLeft: 12, flex: 1, marginRight: 8 },
-  punchedInTime: { fontSize: 13, fontWeight: '800', color: COLORS.text, marginBottom: 1 },
-  punchedInLoc: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  punchedInTime: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.text, marginBottom: 1 },
+  punchedInLoc: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
   clockOutBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFD1D1', justifyContent: 'center', alignItems: 'center' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
   gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, ...SHADOWS.light },
   gridIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  gridVal: { fontSize: 16, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
-  gridLabel: { fontSize: 11, color: COLORS.textLight, fontWeight: '500' },
+  gridVal: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
+  gridLabel: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '500' },
 
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: 12, marginLeft: 4, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: 12, marginLeft: 4, textTransform: 'uppercase' },
   approvalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
   approvalCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.light },
   approvalIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
-  approvalTitle: { fontSize: 15, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
-  approvalSub: { fontSize: 12, color: COLORS.textLight, fontWeight: '600' },
+  approvalTitle: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
+  approvalSub: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600' },
 
   // Visit Button
   visitButton: {
@@ -719,29 +731,29 @@ const styles = StyleSheet.create({
   },
   visitButtonLeft: { flexDirection: 'row', alignItems: 'center' },
   visitIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  visitBtnTitle: { fontSize: 16, fontWeight: '900', color: COLORS.text, marginBottom: 2 },
-  visitBtnSub: { fontSize: 11, color: COLORS.textLight, fontWeight: '600' },
+  visitBtnTitle: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
+  visitBtnSub: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
 
   // Events Dropdown
   eventsSection: { backgroundColor: '#FFF', borderRadius: 24, overflow: 'hidden', ...SHADOWS.light, marginBottom: 16 },
   eventsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
   eventsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
-  eventsSectionTitle: { fontSize: 16, fontWeight: '800', color: COLORS.text, marginLeft: 10 },
+  eventsSectionTitle: { fontSize: moderateScale(16), fontWeight: '800', color: COLORS.text, marginLeft: 10 },
   eventsBody: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 18, paddingBottom: 12, paddingTop: 4 },
   eventsLoading: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
   eventsLoadingText: { marginLeft: 10, color: COLORS.textLight, fontWeight: '600' },
   eventsEmpty: { color: COLORS.textLight, textAlign: 'center', paddingVertical: 20, fontWeight: '600' },
   eventRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   eventDot: { width: 10, height: 10, borderRadius: 5, marginRight: 14 },
-  eventName: { fontSize: 14, fontWeight: '800', color: COLORS.text },
-  eventMeta: { fontSize: 11, color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
+  eventName: { fontSize: moderateScale(14), fontWeight: '800', color: COLORS.text },
+  eventMeta: { fontSize: moderateScale(11), color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: 32, padding: 24, alignItems: 'center' },
   modalPowerCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#FFE4E4' },
-  modalTitle: { fontSize: 22, fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 10 },
-  modalSub: { fontSize: 14, color: COLORS.textLight, textAlign: 'center', lineHeight: 20, marginBottom: 32 },
+  modalTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 10 },
+  modalSub: { fontSize: moderateScale(14), color: COLORS.textLight, textAlign: 'center', lineHeight: 20, marginBottom: 32 },
   modalBtns: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
   cancelBtn: { flex: 1, paddingVertical: 16, marginRight: 12, borderRadius: 16, borderWidth: 1, borderColor: '#EEF2F7', alignItems: 'center', backgroundColor: '#F9FAFB' },
   cancelBtnText: { color: COLORS.textLight, fontWeight: '700' },

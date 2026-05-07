@@ -1,3 +1,28 @@
+import { Dimensions } from 'react-native';
+
+const { width: W, height: H } = Dimensions.get('window');
+const BASE_W = 390; // iPhone 14 base
+const BASE_H = 844;
+
+/** Scales a size linearly with screen width */
+export const scale = (size) => Math.round((W / BASE_W) * size);
+
+/** Scales a size linearly with screen height */
+export const verticalScale = (size) => Math.round((H / BASE_H) * size);
+
+/**
+ * Scales fonts/spacing moderately — won't grow/shrink as aggressively as full scale.
+ * factor 0 = no scaling, factor 1 = full linear scale. Default 0.45.
+ */
+export const moderateScale = (size, factor = 0.45) =>
+  Math.round(size + (scale(size) - size) * factor);
+
+/** Percentage of screen width */
+export const wp = (pct) => Math.round((W * pct) / 100);
+
+/** Percentage of screen height */
+export const hp = (pct) => Math.round((H * pct) / 100);
+
 export const COLORS = {
   primary: '#E91E63', // Vibrant Pink from screenshot
   primaryLight: '#FCE4EC',

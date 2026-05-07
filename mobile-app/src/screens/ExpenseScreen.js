@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable, KeyboardAvoidingView
+  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable, KeyboardAvoidingView, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
-import { COLORS, SHADOWS } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const { width } = Dimensions.get('window');
@@ -47,7 +47,7 @@ const Header = ({ title, onBack }) => (
 const h = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
   back: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 17, fontWeight: '800', color: COLORS.text },
+  title: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
 });
 
 // ─── File Thumbnail ───────────────────────────────────────────────────────────
@@ -68,8 +68,8 @@ const FileThumbnail = ({ file, onRemove }) => {
 const ft = StyleSheet.create({
   wrap: { width: 72, marginRight: 10, alignItems: 'center', position: 'relative' },
   thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
-  ext: { fontSize: 11, fontWeight: '900', color: '#1D4ED8' },
-  name: { fontSize: 9, color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
+  ext: { fontSize: moderateScale(11), fontWeight: '900', color: '#1D4ED8' },
+  name: { fontSize: moderateScale(9), color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
   remove: { position: 'absolute', top: -4, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
 });
 
@@ -126,14 +126,14 @@ const cal = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   box: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.medium },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827' },
   arrowBtn: { padding: 4 },
   daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 10, marginBottom: 10 },
-  dhText: { flex: 1, textAlign: 'center', fontSize: 13, fontWeight: '700', color: '#6B7280' },
+  dhText: { flex: 1, textAlign: 'center', fontSize: moderateScale(13), fontWeight: '700', color: '#6B7280' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
   cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: 20 },
-  cellText: { fontSize: 14, color: '#111827', fontWeight: '500' },
+  cellText: { fontSize: moderateScale(14), color: '#111827', fontWeight: '500' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' }
 });
 
@@ -165,9 +165,9 @@ const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24 },
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 16 },
+  title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16 },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  itemText: { fontSize: 15, color: '#4B5563' },
+  itemText: { fontSize: moderateScale(15), color: '#4B5563' },
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
 
@@ -186,6 +186,7 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [purpose, setPurpose] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
@@ -205,6 +206,12 @@ const ExpenseScreen = ({ navigation, route }) => {
 
   const tempAuths = ['John Doe', 'Sarah Miller', 'Alex Walker'];
   const tempApps = ['Ajil Walker', 'Michael Smith', 'HR Dept'];
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchExpenses();
+    setRefreshing(false);
+  };
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -341,7 +348,7 @@ const ExpenseScreen = ({ navigation, route }) => {
           {loading ? (
             <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
           ) : (
-            <ScrollView contentContainerStyle={s.scroll}>
+            <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
               {expenses.length === 0 ? (
                 <View style={s.emptyWrap}>
                   <FileText color="#D1D5DB" size={48} style={{ marginBottom: 16 }} />
@@ -510,27 +517,27 @@ const s = StyleSheet.create({
 
   // Inputs
   inputBox: { marginBottom: 16 },
-  label: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', marginBottom: 8, marginLeft: 6 },
+  label: { fontSize: moderateScale(12), fontWeight: '600', color: '#9CA3AF', marginBottom: 8, marginLeft: 6 },
   inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, height: 50 },
-  inputVal: { fontSize: 14, fontWeight: '600', color: COLORS.text, flex: 1 },
+  inputVal: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
   textArea: { height: 100, textAlignVertical: 'top', paddingTop: 16, borderStyle: 'solid' }, // If it's active field we could tint border
 
   fileBox: { marginBottom: 24, paddingHorizontal: 4 },
   addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
-  addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: 13 },
+  addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: moderateScale(13) },
   addMoreThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
-  addMorePlus: { fontSize: 24, color: '#9CA3AF', fontWeight: '300' },
+  addMorePlus: { fontSize: moderateScale(24), color: '#9CA3AF', fontWeight: '300' },
 
   submitBtn: { backgroundColor: '#4C1D95', height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 16 },
-  submitText: { color: '#FFF', fontWeight: '800', fontSize: 14, letterSpacing: 1 },
+  submitText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(14), letterSpacing: 1 },
 
   emptyWrap: { alignItems: 'center', marginTop: 80 },
 
   // Success
   successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#FFF' },
   successCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
-  successTitle: { fontSize: 22, fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 14 },
-  successSub: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 50 },
+  successTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 14 },
+  successSub: { fontSize: moderateScale(14), color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 50 },
   goHomeBtn: { width: '100%', height: 54, borderRadius: 30, borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
   goHomeText: { color: COLORS.text, fontWeight: '800' },
 });
@@ -538,27 +545,28 @@ const s = StyleSheet.create({
 const c = StyleSheet.create({
   card: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6', height: 86 },
   sideBar: { width: 32, justifyContent: 'center', alignItems: 'center' },
-  sideText: { fontSize: 8, fontWeight: '900', letterSpacing: 1, transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center' },
+  sideText: { fontSize: moderateScale(8), fontWeight: '900', letterSpacing: 1, transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center' },
   body: { flex: 1, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, justifyContent: 'center' },
   row: { flexDirection: 'row' },
-  title: { fontSize: 13, fontWeight: '800', color: '#111827', marginBottom: 3 },
-  date: { fontSize: 11, color: '#6B7280', marginBottom: 6, fontWeight: '500' },
-  remarks: { fontSize: 11, color: '#9CA3AF' },
-  amount: { fontSize: 15, fontWeight: '900', color: '#1D4ED8' }
+  title: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827', marginBottom: 3 },
+  date: { fontSize: moderateScale(11), color: '#6B7280', marginBottom: 6, fontWeight: '500' },
+  remarks: { fontSize: moderateScale(11), color: '#9CA3AF' },
+  amount: { fontSize: moderateScale(15), fontWeight: '900', color: '#1D4ED8' }
 });
 
 const dm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
   card: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', ...SHADOWS.medium, borderWidth: 1, borderColor: '#F3F4F6' },
   sideBar: { width: 36, justifyContent: 'center', alignItems: 'center' },
-  sideText: { fontSize: 10, fontWeight: '900', letterSpacing: 2, transform: [{ rotate: '-90deg' }], width: 140, textAlign: 'center' },
+  sideText: { fontSize: moderateScale(10), fontWeight: '900', letterSpacing: 2, transform: [{ rotate: '-90deg' }], width: 140, textAlign: 'center' },
   body: { flex: 1, padding: 20 },
-  title: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 4 },
-  date: { fontSize: 12, color: '#6B7280', marginBottom: 16, fontWeight: '500' },
-  info: { fontSize: 12, color: '#4B5563', marginBottom: 8, lineHeight: 18, fontWeight: '500' },
-  amountLabel: { fontSize: 13, color: '#4B5563', fontWeight: '800', marginTop: 16 },
+  title: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: 4 },
+  date: { fontSize: moderateScale(12), color: '#6B7280', marginBottom: 16, fontWeight: '500' },
+  info: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: 8, lineHeight: 18, fontWeight: '500' },
+  amountLabel: { fontSize: moderateScale(13), color: '#4B5563', fontWeight: '800', marginTop: 16 },
   fileChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 8, backgroundColor: '#F9FAFB', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-  fileChipText: { fontSize: 11, color: '#4B5563', fontWeight: '600' }
+  fileChipText: { fontSize: moderateScale(11), color: '#4B5563', fontWeight: '600' }
 });
 
 export default ExpenseScreen;
+

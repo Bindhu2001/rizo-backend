@@ -95,6 +95,7 @@ function TabNavigator({ route }) {
 // ─── Root App ──────────────────────────────────────────────────────────────
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState(null);
+  const navigationRef = React.useRef(null);
 
   useEffect(() => {
     NotificationManager.setup();
@@ -102,8 +103,8 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <OfflineBanner currentRoute={currentRoute} />
       <NavigationContainer
+        ref={navigationRef}
         onStateChange={(state) => {
           const route = state?.routes[state.index];
           // Handle nested navigators (like TabNavigator)
@@ -138,6 +139,7 @@ export default function App() {
           <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} />
     </SafeAreaProvider>
   );
 }
