@@ -374,7 +374,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 
             {/* Expense Type */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Expense Type</Text>
+              <Text style={s.label}>Expense Type *</Text>
               <TouchableOpacity style={s.inputRow} onPress={() => setShowTypePicker(true)}>
                 <Text style={[s.inputVal, !expenseType && { color: '#9CA3AF' }]}>{expenseType?.name || 'Select Type'}</Text>
                 <ChevronDown color="#9CA3AF" size={16} />
@@ -383,13 +383,13 @@ const ExpenseScreen = ({ navigation, route }) => {
 
             {/* Amount */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Amount (₹)</Text>
+              <Text style={s.label}>Amount (₹) *</Text>
               <TextInput style={s.inputRow} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor="#D1D5DB" maxLength={20} />
             </View>
 
             {/* Date */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Select Date</Text>
+              <Text style={s.label}>Select Date *</Text>
               <TouchableOpacity style={s.inputRow} onPress={() => setShowDatePicker(true)}>
                 <Text style={[s.inputVal, !expenseDate && { color: '#9CA3AF' }]}>{expenseDate || 'YYYY-MM-DD'}</Text>
                 <CalendarIcon color="#9CA3AF" size={16} />
@@ -416,7 +416,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 
             {/* Remarks */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Remarks</Text>
+              <Text style={s.label}>Remarks *</Text>
               <TextInput style={[s.inputRow, s.textArea]} value={remarks} onChangeText={setRemarks} multiline placeholder="Enter remarks..." placeholderTextColor="#D1D5DB" maxLength={50} />
             </View>
 

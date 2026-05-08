@@ -480,7 +480,7 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* From Row */}
         <View style={s.dateRow}>
           <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
-            <Text style={s.label}>From Date</Text>
+            <Text style={s.label}>From Date *</Text>
             <TouchableOpacity style={s.inputRow} onPress={() => setCalendarTarget('FROM')}>
               <Text style={[s.dateText, !fromDate && { color: '#9CA3AF' }]}>{fromDate || 'YYYY-MM-DD'}</Text>
               <CalendarIcon color="#9CA3AF" size={16} />
@@ -558,7 +558,7 @@ const LeaveScreen = ({ navigation, route }) => {
 
         {/* Reason */}
         <View style={s.inputBox}>
-          <Text style={s.label}>Reason</Text>
+          <Text style={s.label}>Reason *</Text>
           <TextInput
             style={[s.inputRow, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
             value={reason}

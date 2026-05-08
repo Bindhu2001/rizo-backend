@@ -35,6 +35,12 @@ export const API_ENDPOINTS = {
   LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   REGISTER: `${NEWAPP_URL}/register`,
+  CHECK_AADHAR: `${NEWAPP_URL}/checkAadhar`,
+  CHECK_PAN: `${NEWAPP_URL}/checkPan`,
+  CHECK_UAN: `${NEWAPP_URL}/checkUan`,
+  CHECK_PF: `${NEWAPP_URL}/checkPf`,
+  CHECK_ESI: `${NEWAPP_URL}/checkEsi`,
+  CHECK_LWF: `${NEWAPP_URL}/checkLwf`,
 };
 
 export default BASE_URL;

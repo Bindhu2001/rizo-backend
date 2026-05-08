@@ -4,6 +4,7 @@ import * as Network from 'expo-network';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WifiOff, Home } from 'lucide-react-native';
 import { COLORS, SHADOWS } from './Theme';
+import { getLoggedUser } from '../services/LocalDB';
 
 const { width, height } = Dimensions.get('window');
 
@@ -84,7 +85,18 @@ const OfflineBanner = ({ currentRoute, navigationRef }) => {
           <Text style={styles.blockerSub}>This page requires an active internet connection to function properly.</Text>
           <TouchableOpacity
             style={styles.homeButton}
-            onPress={() => navigationRef?.current?.navigate('Main')}
+            onPress={async () => {
+              try {
+                const user = await getLoggedUser();
+                if (user?.user_id) {
+                  navigationRef?.current?.navigate('Main', { user, screen: 'HomeTab' });
+                } else {
+                  navigationRef?.current?.navigate('Main', { screen: 'HomeTab' });
+                }
+              } catch (_) {
+                navigationRef?.current?.navigate('Main', { screen: 'HomeTab' });
+              }
+            }}
           >
             <Home size={14} color="#FFF" strokeWidth={2.5} />
             <Text style={styles.homeButtonText}>Back to Home</Text>

@@ -621,7 +621,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         remarks: remarks || reason,
       };
       const res = await axios.post(API_ENDPOINTS.REGULARISE, payload, { timeout: 10000 });
-      if (res.data?.success === 1) {
+      if (res.data?.success === 1 || res.data?.success === true) {
         setView('SUCCESS');
         setTab('REGULARISED');
         fetchData();
@@ -652,7 +652,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
           <View style={s.formWrap}>
             <FloatingInput
-              label="Reason"
+              label="Reason *"
               value={reason}
               editable={false}
               onPress={() => setShowReasonPicker(true)}
@@ -660,7 +660,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
             />
 
             <FloatingInput
-              label="Enter Time"
+              label="Enter Time *"
               value={logTime}
               onPress={() => setShowTimePicker(true)}
               editable={false}
@@ -698,6 +698,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           onClose={() => setShowReasonPicker(false)}
           onConfirm={(r) => setReason(r)}
         />
+        <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       </SafeAreaView>
     );
   }

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Dimensions,
   FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
@@ -12,16 +13,18 @@ import * as ImagePicker from 'expo-image-picker';
 import { SHADOWS } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 
+const MAX_DOB = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })();
+
 const { width } = Dimensions.get('window');
 const PURPLE = '#4A148C';
 const PURPLE_BG = '#F5F0FF';
 
 // ─── Floating Label Input ──────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '' }) => (
+const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '', validation }) => (
   <View style={st.inputWrap}>
     <Text style={st.floatLabel}>{label}</Text>
     <TextInput
-      style={st.input}
+      style={[st.input, validation?.status === 'exists' && { borderColor: '#DC2626' }, validation?.status === 'valid' && { borderColor: '#16A34A' }]}
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType}
@@ -30,6 +33,16 @@ const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secu
       placeholderTextColor="#CBD5E0"
       maxLength={maxLength}
     />
+    {validation?.status && validation.status !== 'idle' && (
+      <View style={st.vRow}>
+        {validation.status === 'checking'
+          ? <ActivityIndicator size="small" color="#9CA3AF" style={{ marginRight: 5 }} />
+          : <Text style={validation.status === 'valid' ? st.vDotGreen : st.vDotRed}>●</Text>}
+        <Text style={[st.vText, validation.status === 'valid' && { color: '#16A34A' }, (validation.status === 'exists' || validation.status === 'error') && { color: '#DC2626' }, validation.status === 'checking' && { color: '#9CA3AF' }]}>
+          {validation.status === 'checking' ? 'Checking...' : validation.message}
+        </Text>
+      </View>
+    )}
   </View>
 );
 
@@ -94,33 +107,50 @@ const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelec
 );
 
 // ─── Country Picker Modal ──────────────────────────────────────────────────────
-const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => (
-  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-    <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
-      <View style={st.modalSheet}>
-        <View style={st.modalHandle} />
-        <Text style={st.modalTitle}>Select Country</Text>
-        <ScrollView style={{ maxHeight: 320 }}>
-          {countries.map((c, i) => (
-            <TouchableOpacity
-              key={i}
-              style={st.countryItem}
-              onPress={() => { onSelect(c); onClose(); }}
-            >
-              <Text style={[st.countryItemText, selected?.id === c.id && st.countryItemActive]}>
-                {c.country_name}
-              </Text>
-              {selected?.id === c.id && <Check color={PURPLE} size={18} />}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <TouchableOpacity style={st.modalCloseBtn} onPress={onClose}>
-          <Text style={st.modalCloseText}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  </Modal>
-);
+const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => {
+  const [query, setQuery] = useState('');
+  const filtered = query.trim()
+    ? countries.filter(c => c.country_name.toLowerCase().includes(query.toLowerCase()))
+    : countries;
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
+        <View style={[st.modalSheet, { maxHeight: '80%' }]}>
+          <View style={st.modalHandle} />
+          <Text style={st.modalTitle}>Select Country</Text>
+          <TextInput
+            style={st.countrySearch}
+            placeholder="Search country..."
+            placeholderTextColor="#9CA3AF"
+            value={query}
+            onChangeText={setQuery}
+            autoCorrect={false}
+          />
+          <FlatList
+            data={filtered}
+            keyExtractor={c => c.id}
+            style={{ maxHeight: 320 }}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item: c }) => (
+              <TouchableOpacity
+                style={st.countryItem}
+                onPress={() => { setQuery(''); onSelect(c); onClose(); }}
+              >
+                <Text style={[st.countryItemText, selected?.id === c.id && st.countryItemActive]}>
+                  {c.country_name}
+                </Text>
+                {selected?.id === c.id && <Check color={PURPLE} size={18} />}
+              </TouchableOpacity>
+            )}
+          />
+          <TouchableOpacity style={st.modalCloseBtn} onPress={() => { setQuery(''); onClose(); }}>
+            <Text style={st.modalCloseText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
 
 // ─── Welcome Slides ────────────────────────────────────────────────────────────
 const SLIDES = [
@@ -148,6 +178,8 @@ const SignupScreen = ({ navigation }) => {
   const [lastName, setLastName] = useState('');
   const [mobileNo, setMobileNo] = useState('');
   const [dob, setDob] = useState('');
+  const [dobDate, setDobDate] = useState(null);
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [gender, setGender] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
@@ -168,6 +200,32 @@ const SignupScreen = ({ navigation }) => {
   // Step 5 – KYC
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [panNumber, setPanNumber] = useState('');
+
+  // Inline field validation
+  const IDLE = { status: 'idle', message: '' };
+  const [aadharV, setAadharV] = useState(IDLE);
+  const [panV, setPanV] = useState(IDLE);
+  const [uanV, setUanV] = useState(IDLE);
+  const [pfV, setPfV] = useState(IDLE);
+  const [esiV, setEsiV] = useState(IDLE);
+  const [lwfV, setLwfV] = useState(IDLE);
+  const vTimers = useRef({});
+
+  const validateField = (key, endpoint, value, setV, minLen = 3) => {
+    clearTimeout(vTimers.current[key]);
+    if (!value || value.length < minLen) { setV(IDLE); return; }
+    setV({ status: 'checking', message: '' });
+    vTimers.current[key] = setTimeout(async () => {
+      try {
+        const res = await axios.post(endpoint, { company_code: companyCode, value }, { timeout: 8000 });
+        if (res.data?.success === 1) {
+          setV({ status: res.data.exists ? 'exists' : 'valid', message: res.data.message || '' });
+        } else {
+          setV(IDLE);
+        }
+      } catch (_) { setV(IDLE); }
+    }, 800);
+  };
 
   // Step 6 – Other Details
   const [guardianName, setGuardianName] = useState('');
@@ -197,14 +255,10 @@ const SignupScreen = ({ navigation }) => {
   // Countries list
   const [countries, setCountries] = useState([]);
 
-  useEffect(() => {
-    fetchCountries();
-  }, []);
-
-  const fetchCountries = async () => {
+  const fetchCountries = async (userId) => {
     try {
-      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES);
-      if (res.data?.success && res.data.data) setCountries(res.data.data);
+      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, { params: { user_id: userId } });
+      if (res.data?.success === 1 && Array.isArray(res.data.data)) setCountries(res.data.data);
     } catch (_) {}
   };
 
@@ -233,6 +287,7 @@ const SignupScreen = ({ navigation }) => {
             { text: 'Login', style: 'destructive', onPress: () => navigation.navigate('Login') },
           ]);
         } else if (isSuccess) {
+          fetchCountries(companyCode.trim());
           showAlert('success', 'Valid Email', 'Your email has been verified successfully.', [
             { text: 'OK', onPress: () => setStep(3) },
           ]);
@@ -254,38 +309,41 @@ const SignupScreen = ({ navigation }) => {
   const handleFinalSubmit = async () => {
     setLoading(true);
     try {
+      // Format DOB as YYYY-MM-DD for the API
+      const dobFormatted = dobDate
+        ? `${dobDate.getFullYear()}-${String(dobDate.getMonth() + 1).padStart(2, '0')}-${String(dobDate.getDate()).padStart(2, '0')}`
+        : dob;
+
       const payload = {
         company_code: companyCode,
-        first_name: name,
+        name: name,
         last_name: lastName,
         mobile_no: mobileNo,
         email: email,
-        date_of_birth: dob,
+        date_of_birth: dobFormatted,
         gender: gender,
-        marital_status: maritalStatus,
-        blood_group: bloodGroup,
-        nationality: nationality?.id || null,
-        address: `${address.house} ${address.line2} ${address.city} ${address.state}`.trim(),
+        maritual_status: maritalStatus,
+        blood: bloodGroup,
+        country_id: nationality?.id || null,
+        aadhar: aadhaarNumber,
+        pan_no: panNumber,
+        address: [address.house, address.line2, address.city].filter(Boolean).join(', '),
         pincode: address.pincode,
         district: address.district,
         state: address.state,
-        country: addrCountry?.id || null,
-        kyc_type: 'Aadhar Card',
-        kyc_number: aadhaarNumber,
-        pan_number: panNumber,
-        guardian_name: guardianName,
-        guardian_relation: guardianRelation,
-        bank_name: bankName,
-        branch: branch,
+        guardian: guardianName,
+        relation_guardian: guardianRelation,
+        bank: bankName,
+        bank_branch: branch,
         ifsc_code: ifscCode,
-        account_number: accountNumber,
-        esi_no: esiNo,
+        account_no: accountNumber,
+        esi: esiNo,
         esi_dispensary: esiDispensary,
-        pf_no: pfNo,
-        uan_no: uanNo,
+        pf: pfNo,
+        uan: uanNo,
         prev_member_id: prevMemberId,
-        wps_id: wpsId,
-        lwf_reg_no: lwfRegNo,
+        wps_code: wpsId,
+        lwf_code: lwfRegNo,
         eps_eligibility: epsEligibility ? 'Y' : 'N',
         international_worker: intlWorker ? 'Y' : 'N',
         intl_country: intlWorker && intlCountry ? intlCountry.id : null,
@@ -298,7 +356,7 @@ const SignupScreen = ({ navigation }) => {
       if (photoBase64) payload.profile_pic = `data:image/jpeg;base64,${photoBase64}`;
 
       const res = await axios.post(API_ENDPOINTS.REGISTER, payload, { headers: { 'Content-Type': 'application/json' } });
-      if (res.data?.success) {
+      if (res.data?.success === 1 || res.data?.success === true) {
         setStep(7);
       } else {
         showAlert('error', 'Submission Failed', res.data?.message || 'Could not complete signup. Please try again.');
@@ -325,6 +383,22 @@ const SignupScreen = ({ navigation }) => {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
       setStep(5);
     } else if (step === 5) {
+      if (!aadhaarNumber.trim() || aadhaarNumber.length !== 12) {
+        showAlert('warning', 'Aadhaar Required', 'Please enter a valid 12-digit Aadhaar number.');
+        return;
+      }
+      if (aadharV.status === 'exists') {
+        showAlert('error', 'Aadhaar Already Registered', aadharV.message || 'This Aadhaar number is already registered. Please check and try again.');
+        return;
+      }
+      if (aadharV.status === 'checking') {
+        showAlert('info', 'Please Wait', 'Validating Aadhaar number, please wait a moment.');
+        return;
+      }
+      if (panV.status === 'exists') {
+        showAlert('error', 'PAN Already Registered', panV.message || 'This PAN number is already registered.');
+        return;
+      }
       setStep(6);
     } else if (step === 6) {
       handleFinalSubmit();
@@ -522,7 +596,7 @@ const SignupScreen = ({ navigation }) => {
                 <FloatInput label="First Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee" maxLength={25} />
                 <FloatInput label="Last Name" value={lastName} onChangeText={t => setLastName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Last Name" maxLength={25} />
                 <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
-                <FloatInput label="Date of Birth (DD-MM-YYYY) *" value={dob} onChangeText={t => setDob(t.replace(/[^0-9-]/g, ''))} placeholder="01-01-1998" maxLength={10} />
+                <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
                 <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
                 <PickerRow label="Blood Group" value={bloodGroup} onPress={() => setShowBloodPicker(true)} />
@@ -565,17 +639,27 @@ const SignupScreen = ({ navigation }) => {
                 <FloatInput
                   label="Aadhaar Number *"
                   value={aadhaarNumber}
-                  onChangeText={t => setAadhaarNumber(t.replace(/[^0-9]/g, ''))}
+                  onChangeText={t => {
+                    const v = t.replace(/[^0-9]/g, '');
+                    setAadhaarNumber(v);
+                    validateField('aadhar', API_ENDPOINTS.CHECK_AADHAR, v, setAadharV, 12);
+                  }}
                   keyboardType="number-pad"
                   placeholder="XXXX XXXX XXXX"
                   maxLength={12}
+                  validation={aadharV}
                 />
                 <FloatInput
                   label="PAN Number"
                   value={panNumber}
-                  onChangeText={t => setPanNumber(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())}
+                  onChangeText={t => {
+                    const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                    setPanNumber(v);
+                    validateField('pan', API_ENDPOINTS.CHECK_PAN, v, setPanV, 10);
+                  }}
                   placeholder="ABCDE1234F"
                   maxLength={10}
+                  validation={panV}
                 />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
@@ -611,16 +695,16 @@ const SignupScreen = ({ navigation }) => {
                   <Text style={[st.toggleLabel, { marginBottom: 14 }]}>HR &amp; Compliance</Text>
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => setEsiNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="ESI No" maxLength={20} />
+                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => { const v = t.replace(/[^0-9]/g, ''); setEsiNo(v); validateField('esi', API_ENDPOINTS.CHECK_ESI, v, setEsiV); }} keyboardType="number-pad" placeholder="ESI No" maxLength={20} validation={esiV} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="PF No" value={pfNo} onChangeText={setPfNo} placeholder="PF No" maxLength={22} />
+                      <FloatInput label="PF No" value={pfNo} onChangeText={t => { setPfNo(t); validateField('pf', API_ENDPOINTS.CHECK_PF, t, setPfV); }} placeholder="PF No" maxLength={22} validation={pfV} />
                     </View>
                   </View>
                   <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={setEsiDispensary} placeholder="ESI Dispensary" maxLength={50} />
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => setUanNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="UAN No" maxLength={12} />
+                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => { const v = t.replace(/[^0-9]/g, ''); setUanNo(v); validateField('uan', API_ENDPOINTS.CHECK_UAN, v, setUanV); }} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={setPrevMemberId} placeholder="Prev Member ID" maxLength={30} />
@@ -631,7 +715,7 @@ const SignupScreen = ({ navigation }) => {
                       <FloatInput label="WPS ID" value={wpsId} onChangeText={setWpsId} placeholder="WPS ID" maxLength={20} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="LWF Registration No" value={lwfRegNo} onChangeText={setLwfRegNo} placeholder="LWF Reg No" maxLength={20} />
+                      <FloatInput label="LWF Registration No" value={lwfRegNo} onChangeText={t => { setLwfRegNo(t); validateField('lwf', API_ENDPOINTS.CHECK_LWF, t, setLwfV); }} placeholder="LWF Reg No" maxLength={20} validation={lwfV} />
                     </View>
                   </View>
                   <CheckRow label="EPS Eligibility" value={epsEligibility} onToggle={() => setEpsEligibility(v => !v)} />
@@ -728,6 +812,56 @@ const SignupScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* ── DOB Picker ── */}
+      {showDobPicker && (
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide" onRequestClose={() => setShowDobPicker(false)}>
+            <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={() => setShowDobPicker(false)}>
+              <View style={[st.modalSheet, { paddingBottom: 32 }]}>
+                <View style={st.modalHandle} />
+                <Text style={st.modalTitle}>Date of Birth</Text>
+                <DateTimePicker
+                  mode="date"
+                  display="spinner"
+                  value={dobDate || MAX_DOB}
+                  maximumDate={MAX_DOB}
+                  onChange={(_, date) => {
+                    if (date) {
+                      setDobDate(date);
+                      const d = String(date.getDate()).padStart(2, '0');
+                      const m = String(date.getMonth() + 1).padStart(2, '0');
+                      const y = date.getFullYear();
+                      setDob(`${d}-${m}-${y}`);
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+                <TouchableOpacity style={st.modalCloseBtn} onPress={() => setShowDobPicker(false)}>
+                  <Text style={st.modalCloseText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            mode="date"
+            display="default"
+            value={dobDate}
+            maximumDate={MAX_DOB}
+            onChange={(_, date) => {
+              setShowDobPicker(false);
+              if (date) {
+                setDobDate(date);
+                const d = String(date.getDate()).padStart(2, '0');
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const y = date.getFullYear();
+                setDob(`${d}-${m}-${y}`);
+              }
+            }}
+          />
+        )
+      )}
 
       {/* ── Gender Picker ── */}
       <SimplePickerModal
@@ -884,6 +1018,11 @@ const st = StyleSheet.create({
   modalCloseBtn: { marginTop: 16, height: 52, borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: 26, justifyContent: 'center', alignItems: 'center' },
   modalCloseText: { fontSize: 15, fontWeight: '700', color: '#374151' },
 
+  countrySearch: { height: 44, borderRadius: 10, borderWidth: 1.5, borderColor: '#E5E7EB', paddingHorizontal: 14, fontSize: 14, color: '#111827', marginBottom: 12 },
+  vRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5, marginLeft: 2 },
+  vText: { fontSize: 11, fontWeight: '600' },
+  vDotGreen: { color: '#16A34A', fontSize: 10, marginRight: 5 },
+  vDotRed: { color: '#DC2626', fontSize: 10, marginRight: 5 },
   countryItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   countryItemText: { fontSize: 15, color: '#4B5563', flex: 1 },
   countryItemActive: { color: PURPLE, fontWeight: '700' },
