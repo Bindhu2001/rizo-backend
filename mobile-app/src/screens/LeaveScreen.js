@@ -167,20 +167,20 @@ const FileThumbnail = ({ file, onRemove }) => {
     <View style={ft.wrap}>
       <View style={[ft.thumb, isPDF && { backgroundColor: '#FEE2E2' }]}>
         {isPDF ? <FileText color="#DC2626" size={22} /> : <Text style={ft.ext}>{file.name?.split('.').pop()?.toUpperCase()}</Text>}
+        <TouchableOpacity style={ft.remove} onPress={onRemove}>
+          <X color="#FFF" size={10} />
+        </TouchableOpacity>
       </View>
       <Text style={ft.name} numberOfLines={1}>{file.name}</Text>
-      <TouchableOpacity style={ft.remove} onPress={onRemove}>
-        <X color="#FFF" size={10} />
-      </TouchableOpacity>
     </View>
   );
 };
 const ft = StyleSheet.create({
-  wrap: { width: 72, marginRight: 10, alignItems: 'center', position: 'relative' },
+  wrap: { width: 72, marginRight: 10, alignItems: 'center' },
   thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
   ext: { fontSize: moderateScale(11), fontWeight: '900', color: '#1D4ED8' },
   name: { fontSize: moderateScale(9), color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
-  remove: { position: 'absolute', top: -4, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  remove: { position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
 });
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
@@ -292,10 +292,12 @@ const LeaveScreen = ({ navigation, route }) => {
   const [histFilter, setHistFilter] = useState('all');
   const [histLoading, setHistLoading] = useState(false);
   const [histLeaves, setHistLeaves] = useState([]);
-  const [authorizedById, setAuthorizedById] = useState('');
-  const [authorizedByName, setAuthorizedByName] = useState('');
-  const [approvedByIds, setApprovedByIds] = useState('');
-  const [approvedByName, setApprovedByName] = useState('');
+  const [authorizedByList, setAuthorizedByList] = useState([]);
+  const [approvedByList, setApprovedByList] = useState([]);
+  const [selectedAuthBy, setSelectedAuthBy] = useState(null);
+  const [selectedAppBy, setSelectedAppBy] = useState(null);
+  const [showAuthPicker, setShowAuthPicker] = useState(false);
+  const [showAppPicker, setShowAppPicker] = useState(false);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [calendarTarget, setCalendarTarget] = useState(null);
@@ -335,11 +337,20 @@ const LeaveScreen = ({ navigation, route }) => {
         const d = items.data.data;
         setLeaveBalances(d.leave_types || []);
 
-        setAuthorizedById(d.authorized_by || '');
-        setAuthorizedByName(d.authorized_by_person?.trim() || 'Not Defined');
+        const parsePersons = (idsStr, namesStr) => {
+          if (!idsStr) return [];
+          const ids = String(idsStr).split(',').map(s => s.trim()).filter(Boolean);
+          const names = namesStr ? String(namesStr).split(',').map(s => s.trim()) : [];
+          return ids.map((id, i) => ({ id, name: names[i] || id }));
+        };
 
-        setApprovedByIds(d.approved_by || '');
-        setApprovedByName(d.approved_by_person?.trim() || 'Not Defined');
+        const authList = parsePersons(d.authorized_by, d.authorized_by_person);
+        const appList = parsePersons(d.approved_by, d.approved_by_person);
+
+        setAuthorizedByList(authList);
+        setApprovedByList(appList);
+        setSelectedAuthBy(authList[0] || null);
+        setSelectedAppBy(appList[0] || null);
       }
     } catch (e) { console.log('leave_items error', e.message); }
     finally { setLoading(false); }
@@ -405,8 +416,8 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('to_session', toHalf === 'First Half' ? '1' : '2');
       formData.append('contact_number', contactNo || 'N/A');
       formData.append('duties_handed_over', handoverTo || 'N/A');
-      formData.append('authorized_by', authorizedById || '0');
-      formData.append('approved_by', approvedByIds || '0');
+      formData.append('authorized_by', selectedAuthBy?.id || '0');
+      formData.append('approved_by', selectedAppBy?.id || '0');
 
       // Convert all files to Base64 before sending
       for (let i = 0; i < attachedFiles.length; i++) {
@@ -514,20 +525,38 @@ const LeaveScreen = ({ navigation, route }) => {
         </View>
 
         {/* Authorised By */}
-        <View style={s.inputBox}>
-          <Text style={s.label}>Authorised By</Text>
-          <View style={s.inputRow}>
-            <Text style={s.inputVal}>{authorizedByName}</Text>
+        {authorizedByList.length > 0 && (
+          <View style={s.inputBox}>
+            <Text style={s.label}>Authorised By</Text>
+            {authorizedByList.length === 1 ? (
+              <View style={s.inputRow}>
+                <Text style={s.inputVal}>{selectedAuthBy?.name || 'Not Defined'}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={s.inputRow} onPress={() => setShowAuthPicker(true)}>
+                <Text style={s.inputVal}>{selectedAuthBy?.name || 'Select'}</Text>
+                <ChevronDown color="#9CA3AF" size={16} />
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
+        )}
 
         {/* Approved By */}
-        <View style={s.inputBox}>
-          <Text style={s.label}>Approved By</Text>
-          <View style={s.inputRow}>
-            <Text style={s.inputVal}>{approvedByName}</Text>
+        {approvedByList.length > 0 && (
+          <View style={s.inputBox}>
+            <Text style={s.label}>Approved By</Text>
+            {approvedByList.length === 1 ? (
+              <View style={s.inputRow}>
+                <Text style={s.inputVal}>{selectedAppBy?.name || 'Not Defined'}</Text>
+              </View>
+            ) : (
+              <TouchableOpacity style={s.inputRow} onPress={() => setShowAppPicker(true)}>
+                <Text style={s.inputVal}>{selectedAppBy?.name || 'Select'}</Text>
+                <ChevronDown color="#9CA3AF" size={16} />
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
+        )}
 
         {/* Contact Number */}
         <View style={s.inputBox}>
@@ -620,6 +649,30 @@ const LeaveScreen = ({ navigation, route }) => {
         onSelect={(val) => {
           if (halfTarget === 'FROM') setFromHalf(val);
           else setToHalf(val);
+        }}
+      />
+
+      <SelectionModal
+        visible={showAuthPicker}
+        title="Select Authorised By"
+        options={authorizedByList.map(p => p.name)}
+        selectedValue={selectedAuthBy?.name}
+        onClose={() => setShowAuthPicker(false)}
+        onSelect={(val) => {
+          setSelectedAuthBy(authorizedByList.find(p => p.name === val) || null);
+          setShowAuthPicker(false);
+        }}
+      />
+
+      <SelectionModal
+        visible={showAppPicker}
+        title="Select Approved By"
+        options={approvedByList.map(p => p.name)}
+        selectedValue={selectedAppBy?.name}
+        onClose={() => setShowAppPicker(false)}
+        onSelect={(val) => {
+          setSelectedAppBy(approvedByList.find(p => p.name === val) || null);
+          setShowAppPicker(false);
         }}
       />
 

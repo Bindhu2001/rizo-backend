@@ -57,20 +57,20 @@ const FileThumbnail = ({ file, onRemove }) => {
     <View style={ft.wrap}>
       <View style={[ft.thumb, isPDF && { backgroundColor: '#FEE2E2' }]}>
         {isPDF ? <FileText color="#DC2626" size={22} /> : <Text style={ft.ext}>{file.name?.split('.').pop()?.toUpperCase() || 'IMG'}</Text>}
+        <TouchableOpacity style={ft.remove} onPress={onRemove}>
+          <X color="#FFF" size={10} />
+        </TouchableOpacity>
       </View>
       <Text style={ft.name} numberOfLines={1}>{file.name}</Text>
-      <TouchableOpacity style={ft.remove} onPress={onRemove}>
-        <X color="#FFF" size={10} />
-      </TouchableOpacity>
     </View>
   );
 };
 const ft = StyleSheet.create({
-  wrap: { width: 72, marginRight: 10, alignItems: 'center', position: 'relative' },
+  wrap: { width: 72, marginRight: 10, alignItems: 'center' },
   thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
   ext: { fontSize: moderateScale(11), fontWeight: '900', color: '#1D4ED8' },
   name: { fontSize: moderateScale(9), color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
-  remove: { position: 'absolute', top: -4, right: 0, width: 18, height: 18, borderRadius: 9, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  remove: { position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
 });
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
@@ -518,7 +518,7 @@ const s = StyleSheet.create({
   // Inputs
   inputBox: { marginBottom: 16 },
   label: { fontSize: moderateScale(12), fontWeight: '600', color: '#9CA3AF', marginBottom: 8, marginLeft: 6 },
-  inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, height: 50 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, height: 50, color: '#111827' },
   inputVal: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
   textArea: { height: 100, textAlignVertical: 'top', paddingTop: 16, borderStyle: 'solid' }, // If it's active field we could tint border
 

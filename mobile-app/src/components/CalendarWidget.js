@@ -171,7 +171,7 @@ const CalendarWidget = ({ userId }) => {
               {selectedEvent ? format(selectedEvent.date, 'dd MMM yyyy') : ''}
             </Text>
             
-            <ScrollView style={styles.eventList} showsVerticalScrollIndicator={true}>
+            <ScrollView style={styles.eventList} showsVerticalScrollIndicator={true} indicatorStyle="black">
               {selectedEvent?.events.map((e, idx) => {
                 const isBir = e.type === 'BIR' || e.type === 'BIRTHDAY';
                 const isHol = e.type === 'HOL';
@@ -223,12 +223,12 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: '#FFF', borderRadius: 24, padding: 24 },
   modalDate: { fontSize: 18, fontWeight: '900', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
-  eventList: { marginBottom: 24, maxHeight: 300, minHeight: 60 },
+  eventList: { marginBottom: 24, maxHeight: 300, minHeight: 60, backgroundColor: '#F9FAFB', borderRadius: 12 },
   eventRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12 },
   eventDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   eventName: { fontSize: 15, fontWeight: '800', color: COLORS.text },
   eventType: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-  closeBtn: { backgroundColor: '#F3F4F6', padding: 14, borderRadius: 16, alignItems: 'center' },
+  closeBtn: { backgroundColor: '#E5E7EB', padding: 14, borderRadius: 16, alignItems: 'center' },
   closeBtnText: { color: COLORS.text, fontWeight: '800', fontSize: 14 }
 });
 

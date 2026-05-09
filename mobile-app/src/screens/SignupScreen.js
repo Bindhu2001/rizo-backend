@@ -721,9 +721,6 @@ const SignupScreen = ({ navigation }) => {
                   <CheckRow label="EPS Eligibility" value={epsEligibility} onToggle={() => setEpsEligibility(v => !v)} />
                 </View>
 
-                {/* Country of Origin */}
-                <PickerRow label="Country of Origin" value={originCountry?.country_name} onPress={() => setShowOriginCountryPicker(true)} />
-
                 {/* International Worker */}
                 <View style={st.toggleCard}>
                   <View style={st.toggleRow}>
@@ -732,14 +729,14 @@ const SignupScreen = ({ navigation }) => {
                     </View>
                     <Switch
                       value={intlWorker}
-                      onValueChange={v => { setIntlWorker(v); if (!v) setIntlCountry(null); }}
+                      onValueChange={v => { setIntlWorker(v); if (!v) { setIntlCountry(null); setOriginCountry(null); } }}
                       trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
                       thumbColor={intlWorker ? PURPLE : '#FFF'}
                     />
                   </View>
                   {intlWorker && (
                     <View style={{ marginTop: 12 }}>
-                      <PickerRow label="Country" value={intlCountry?.country_name} onPress={() => setShowIntlCountryPicker(true)} />
+                      <PickerRow label="Country of Origin" value={originCountry?.country_name} onPress={() => setShowOriginCountryPicker(true)} />
                     </View>
                   )}
                 </View>

@@ -1,4 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useContext } from 'react';
+import { OfflineBarContext } from '../../App';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl
@@ -441,6 +442,8 @@ const HomeScreen = ({ navigation, route }) => {
     return msgs;
   };
 
+  const offlineBarVisible = useContext(OfflineBarContext);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -457,6 +460,7 @@ const HomeScreen = ({ navigation, route }) => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primaryDeep]} tintColor={COLORS.primaryDeep} />}
       >
 
+        {offlineBarVisible && <View style={{ height: 32 }} />}
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>

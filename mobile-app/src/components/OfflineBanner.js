@@ -8,7 +8,7 @@ import { getLoggedUser } from '../services/LocalDB';
 
 const { width, height } = Dimensions.get('window');
 
-const OfflineBanner = ({ currentRoute, navigationRef }) => {
+const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
   const [status, setStatus] = useState('online'); // 'online', 'offline', 'restored'
   const insets = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
@@ -16,6 +16,12 @@ const OfflineBanner = ({ currentRoute, navigationRef }) => {
 
   const BAR_SCREENS = ['HomeTab'];
   const SILENT_SCREENS = ['Visits', 'Splash'];
+
+  useEffect(() => {
+    const isBar = BAR_SCREENS.includes(currentRoute);
+    const isSilent = SILENT_SCREENS.includes(currentRoute);
+    onBarVisibleChange?.(status !== 'online' && isBar && !isSilent);
+  }, [status, currentRoute]);
 
   useEffect(() => {
     const checkNetwork = async () => {

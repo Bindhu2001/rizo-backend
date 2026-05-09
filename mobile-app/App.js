@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, createContext } from 'react';
+
+export const OfflineBarContext = createContext(false);
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -95,6 +97,7 @@ function TabNavigator({ route }) {
 // ─── Root App ──────────────────────────────────────────────────────────────
 export default function App() {
   const [currentRoute, setCurrentRoute] = useState(null);
+  const [offlineBarVisible, setOfflineBarVisible] = useState(false);
   const navigationRef = React.useRef(null);
 
   useEffect(() => {
@@ -103,6 +106,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <OfflineBarContext.Provider value={offlineBarVisible}>
       <NavigationContainer
         ref={navigationRef}
         onStateChange={(state) => {
@@ -139,7 +143,8 @@ export default function App() {
           <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} />
         </Stack.Navigator>
       </NavigationContainer>
-      <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} />
+      <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} onBarVisibleChange={setOfflineBarVisible} />
+      </OfflineBarContext.Provider>
     </SafeAreaProvider>
   );
 }
