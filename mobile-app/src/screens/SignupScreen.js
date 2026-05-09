@@ -847,7 +847,7 @@ const SignupScreen = ({ navigation }) => {
           <DateTimePicker
             mode="date"
             display="default"
-            value={dobDate}
+            value={dobDate || MAX_DOB}
             maximumDate={MAX_DOB}
             onChange={(_, date) => {
               setShowDobPicker(false);
