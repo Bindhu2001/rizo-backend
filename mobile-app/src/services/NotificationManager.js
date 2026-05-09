@@ -114,16 +114,18 @@ class NotificationManager {
             const serverStatus = (sLeave.leave_status || sLeave.status || '').toUpperCase();
             const leaveId = sLeave.leave_id || sLeave.id;
             
-            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || serverStatus === 'AUTHORISED') && leaveId) {
+            const isAuthorised = serverStatus === 'AUTHORISED' || serverStatus === 'AUTHORIZED';
+            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isAuthorised) && leaveId) {
                 let title = '';
                 if (serverStatus === 'APPROVED') title = 'Leave Approved ✅';
                 else if (serverStatus === 'REJECTED') title = 'Leave Rejected ❌';
-                else if (serverStatus === 'AUTHORISED') title = 'Leave Authorised 🛡️';
+                else if (isAuthorised) title = 'Leave Authorised 🛡️';
 
                 const dateText = sLeave.from_date || 'your request';
                 const message = `Your leave (${sLeave.leave_name || 'request'}) for ${dateText} was ${serverStatus.toLowerCase()}.`;
                 
-                const uniqueNotifIdRef = `leave_${leaveId}_${serverStatus}`;
+                const normalizedStatus = isAuthorised ? 'AUTHORISED' : serverStatus;
+                const uniqueNotifIdRef = `leave_${leaveId}_${normalizedStatus}`;
 
                 const { initDB } = require('./LocalDB');
                 const db = await initDB();

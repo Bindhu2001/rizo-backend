@@ -197,6 +197,7 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [authBy, setAuthBy] = useState('John Doe');
   const [appBy, setAppBy] = useState('Ajil Walker');
   const [detailModal, setDetailModal] = useState(null);
+  const [removingExpenseId, setRemovingExpenseId] = useState(null);
 
   useEffect(() => {
     if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
@@ -270,6 +271,32 @@ const ExpenseScreen = ({ navigation, route }) => {
     } catch (e) {
       showAlert('error', 'Error', 'Could not open file picker.');
     }
+  };
+
+  const handleRemoveExpense = (expense) => {
+    const expenseId = expense.emp_expenses_pkey;
+    showAlert('warning', 'Remove Expense', 'Are you sure you want to remove this expense?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Remove', style: 'destructive', onPress: async () => {
+          setRemovingExpenseId(expenseId);
+          try {
+            const res = await axios.post(API_ENDPOINTS.EXPENSE_REMOVE, { expense_id: String(expenseId), user_id: user.user_id });
+            if (res.data?.success === 1 || res.data?.success === true) {
+              setDetailModal(null);
+              showAlert('success', 'Removed', 'Expense removed successfully.');
+              fetchExpenses();
+            } else {
+              showAlert('error', 'Failed', res.data?.message || 'Could not remove expense.');
+            }
+          } catch (e) {
+            showAlert('error', 'Error', 'Failed to remove expense. Please try again.');
+          } finally {
+            setRemovingExpenseId(null);
+          }
+        }
+      },
+    ]);
   };
 
   const submitExpense = async () => {
@@ -498,6 +525,19 @@ const ExpenseScreen = ({ navigation, route }) => {
                 )}
 
                 <Text style={dm.amountLabel}>Claimed Amount: <Text style={{ color: '#111827' }}>₹{(!isNaN(parseFloat(detailModal.expenses_amount)) ? parseFloat(detailModal.expenses_amount) : 0).toFixed(2)}</Text></Text>
+
+                {['applied', 'pending', 'p'].includes((detailModal.expense_status || '').toLowerCase()) && (
+                  <TouchableOpacity
+                    style={[dm.removeBtn, removingExpenseId === detailModal.emp_expenses_pkey && { opacity: 0.6 }]}
+                    onPress={() => handleRemoveExpense(detailModal)}
+                    disabled={removingExpenseId === detailModal.emp_expenses_pkey}
+                    activeOpacity={0.75}
+                  >
+                    {removingExpenseId === detailModal.emp_expenses_pkey
+                      ? <ActivityIndicator size="small" color="#DC2626" />
+                      : <Text style={dm.removeBtnText}>Remove Expense</Text>}
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </TouchableOpacity>
@@ -565,7 +605,9 @@ const dm = StyleSheet.create({
   info: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: 8, lineHeight: 18, fontWeight: '500' },
   amountLabel: { fontSize: moderateScale(13), color: '#4B5563', fontWeight: '800', marginTop: 16 },
   fileChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: 8, backgroundColor: '#F9FAFB', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
-  fileChipText: { fontSize: moderateScale(11), color: '#4B5563', fontWeight: '600' }
+  fileChipText: { fontSize: moderateScale(11), color: '#4B5563', fontWeight: '600' },
+  removeBtn: { marginTop: 20, borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  removeBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 });
 
 export default ExpenseScreen;

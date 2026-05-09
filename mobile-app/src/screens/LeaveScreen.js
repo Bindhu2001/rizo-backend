@@ -51,9 +51,11 @@ const h = StyleSheet.create({
 });
 
 // ─── History Card ─────────────────────────────────────────────────────────────
-const HistoryCard = ({ item }) => {
+const HistoryCard = ({ item, onCancel, cancelling }) => {
   const [expanded, setExpanded] = useState(false);
   const sc = statusColor(item.leave_status);
+  const norm = (item.leave_status || '').trim().toLowerCase();
+  const canCancel = norm === 'applied' || norm === 'pending' || norm === 'p';
 
   return (
     <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={hc.card}>
@@ -121,6 +123,20 @@ const HistoryCard = ({ item }) => {
             <View style={[hc.statusTag, { backgroundColor: sc.bg }]}>
               <Text style={[hc.statusTagText, { color: sc.text }]}>{item.leave_status}</Text>
             </View>
+
+            {/* Cancel Button — only for Applied / Pending */}
+            {canCancel && (
+              <TouchableOpacity
+                style={[hc.cancelBtn, cancelling && { opacity: 0.6 }]}
+                onPress={() => onCancel?.(item.leave_id)}
+                disabled={cancelling}
+                activeOpacity={0.75}
+              >
+                {cancelling
+                  ? <ActivityIndicator size="small" color="#DC2626" />
+                  : <Text style={hc.cancelBtnText}>Cancel Leave</Text>}
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -158,6 +174,11 @@ const hc = StyleSheet.create({
   metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700' },
   statusTag: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
   statusTagText: { fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
+  cancelBtn: {
+    marginTop: 12, borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10,
+    paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+  },
+  cancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 });
 
 // ─── File Thumbnail ───────────────────────────────────────────────────────────
@@ -311,6 +332,7 @@ const LeaveScreen = ({ navigation, route }) => {
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
+  const [cancellingId, setCancellingId] = useState(null);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -354,6 +376,34 @@ const LeaveScreen = ({ navigation, route }) => {
       }
     } catch (e) { console.log('leave_items error', e.message); }
     finally { setLoading(false); }
+  };
+
+  const handleCancelLeave = (leaveId) => {
+    Alert.alert(
+      'Cancel Leave',
+      'Are you sure you want to cancel this leave?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+            setCancellingId(leaveId);
+            try {
+              const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: user.user_id, leave_id: String(leaveId) });
+              if (res.data?.success === 1 || res.data?.success === true) {
+                showAlert('success', 'Cancelled', 'Your leave has been cancelled successfully.');
+                fetchHistory(histFilter);
+              } else {
+                showAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
+              }
+            } catch (e) {
+              showAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
+            } finally {
+              setCancellingId(null);
+            }
+          }
+        },
+      ]
+    );
   };
 
   const fetchHistory = async (filter) => {
@@ -706,7 +756,14 @@ const LeaveScreen = ({ navigation, route }) => {
           </View>
         ) : (
           <ScrollView contentContainerStyle={s.scroll}>
-            {histLeaves.map((item, idx) => <HistoryCard key={item.leave_id || idx} item={item} />)}
+            {histLeaves.map((item, idx) => (
+              <HistoryCard
+                key={item.leave_id || idx}
+                item={item}
+                onCancel={handleCancelLeave}
+                cancelling={cancellingId === (item.leave_id)}
+              />
+            ))}
           </ScrollView>
         )}
       </View>

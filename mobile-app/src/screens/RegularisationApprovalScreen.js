@@ -22,6 +22,10 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const [remarks, setRemarks] = useState('');
   const [processing, setProcessing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
+  const [activeTab, setActiveTab] = useState('PENDING');
+  const [historyData, setHistoryData] = useState([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histFilter, setHistFilter] = useState('Approved');
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -54,11 +58,32 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
     }
   };
 
+  const fetchHistory = async (month, filter) => {
+    setHistLoading(true);
+    try {
+      const res = await axios.post(API_ENDPOINTS.REGULARISATION_APPROVED_LIST, {
+        user_id: user.user_id,
+        month_year: `${month}-01`,
+        filter,
+      });
+      setHistoryData(res.data?.success === 1 ? (res.data.data || []) : []);
+    } catch (e) {
+      console.log('Reg approved list error', e);
+      setHistoryData([]);
+    } finally {
+      setHistLoading(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchData(currentMonthStr);
     }, [currentMonthStr])
   );
+
+  useEffect(() => {
+    if (activeTab === 'HISTORY') fetchHistory(currentMonthStr, histFilter);
+  }, [activeTab, currentMonthStr, histFilter]);
 
   const handleAction = async () => {
     if (!remarks.trim()) {
@@ -174,22 +199,109 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={requests}
-        keyExtractor={(item, index) => String(item.id || item.emp_attendance_regularisation_pkey || index)}
-        renderItem={renderItem}
-        contentContainerStyle={s.list}
-        ListEmptyComponent={
-          !loading && (
-            <View style={s.empty}>
-              <ClipboardList color="#D1D5DB" size={60} />
-              <Text style={s.emptyText}>No pending requests</Text>
-            </View>
-          )
-        }
-        refreshing={loading}
-        onRefresh={() => fetchData(currentMonthStr)}
-      />
+      {/* Tab Bar */}
+      <View style={s.tabBar}>
+        {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
+          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
+            <Text style={[s.tabText, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {activeTab === 'PENDING' ? (
+        <FlatList
+          data={requests}
+          keyExtractor={(item, index) => String(item.id || item.emp_attendance_regularisation_pkey || index)}
+          renderItem={renderItem}
+          contentContainerStyle={s.list}
+          ListEmptyComponent={
+            !loading && (
+              <View style={s.empty}>
+                <ClipboardList color="#D1D5DB" size={60} />
+                <Text style={s.emptyText}>No pending requests</Text>
+              </View>
+            )
+          }
+          refreshing={loading}
+          onRefresh={() => fetchData(currentMonthStr)}
+        />
+      ) : (
+        <View style={{ flex: 1 }}>
+          {/* Filter chips */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
+            {[
+              { key: 'Approved',               label: 'Approved',        color: '#16A34A', bg: '#DCFCE7' },
+              { key: 'Rejected',               label: 'Rejected',        color: '#DC2626', bg: '#FEE2E2' },
+              { key: 'CancellationOfApproved', label: 'Cancel Approval', color: '#EA580C', bg: '#FEF3C7' },
+            ].map(f => (
+              <TouchableOpacity
+                key={f.key}
+                style={[s.filterChip, { backgroundColor: histFilter === f.key ? f.color : '#F3F4F6', borderColor: f.color }]}
+                onPress={() => setHistFilter(f.key)}
+              >
+                <Text style={[s.filterChipText, { color: histFilter === f.key ? '#FFF' : f.color }]}>{f.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {histLoading ? (
+            <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
+          ) : (
+            <FlatList
+              data={historyData}
+              keyExtractor={(item, idx) => String(item.id || item.emp_attendance_regularisation_pkey || idx)}
+              contentContainerStyle={s.list}
+              onRefresh={() => fetchHistory(currentMonthStr, histFilter)}
+              refreshing={histLoading}
+              ListEmptyComponent={
+                <View style={s.empty}>
+                  <ClipboardList color="#D1D5DB" size={60} />
+                  <Text style={s.emptyText}>No records found</Text>
+                </View>
+              }
+              renderItem={({ item }) => {
+                const HIST_COLORS = {
+                  Approved:               { side: '#16A34A', bg: '#DCFCE7', text: '#16A34A' },
+                  Rejected:               { side: '#DC2626', bg: '#FEE2E2', text: '#DC2626' },
+                  CancellationOfApproved: { side: '#EA580C', bg: '#FEF3C7', text: '#EA580C' },
+                };
+                const fc = HIST_COLORS[histFilter] || HIST_COLORS.Approved;
+                const sideColor = fc.side;
+                const badgeBg   = fc.bg;
+                const badgeText = fc.text;
+                return (
+                  <View style={s.histCard}>
+                    <View style={[s.histSide, { backgroundColor: sideColor }]} />
+                    <View style={s.histBody}>
+                      <View style={s.histHeader}>
+                        <Text style={s.histEmpName}>{(item.employee_name || '').trim()}</Text>
+                        <View style={[s.histBadge, { backgroundColor: badgeBg }]}>
+                          <Text style={[s.histBadgeText, { color: badgeText }]}>{item.direction || item.type || ''}</Text>
+                        </View>
+                      </View>
+                      <View style={s.histDetail}>
+                        <CalendarIcon size={13} color="#6B7280" />
+                        <Text style={s.histDetailText}>{item.att_date || item.punch_date || ''}</Text>
+                        {(item.LOGTIME || item.actual_time) ? (
+                          <>
+                            <Clock size={13} color="#6B7280" />
+                            <Text style={s.histDetailText}>{item.LOGTIME || item.actual_time}</Text>
+                          </>
+                        ) : null}
+                      </View>
+                      {(item.remarks || item.reason) ? (
+                        <View style={s.histRemarkBox}>
+                          <Text style={s.histRemarkText} numberOfLines={2}>{item.remarks || item.reason}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
+      )}
 
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
@@ -308,6 +420,30 @@ const s = StyleSheet.create({
   sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
   sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
+
+  loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: '#6C5CE7' },
+  tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
+  tabTextActive: { color: '#6C5CE7' },
+
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
+  filterChipText: { fontSize: moderateScale(12), fontWeight: '700' },
+
+  histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 14, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
+  histSide: { width: 6 },
+  histBody: { flex: 1, padding: 14 },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: 8 },
+  histBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
+  histDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  histDetailText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600' },
+  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8 },
+  histRemarkText: { fontSize: moderateScale(11), color: '#6B7280', fontStyle: 'italic' },
 });
 
 export default RegularisationApprovalScreen;

@@ -1,6 +1,6 @@
-﻿import { useState, useCallback } from 'react';
+﻿import { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SectionList,
+  View, Text, StyleSheet, TouchableOpacity, SectionList, FlatList,
   Pressable, ScrollView, KeyboardAvoidingView, Platform,
   Modal, TextInput, ActivityIndicator, StatusBar
 } from 'react-native';
@@ -10,10 +10,25 @@ import {
   ChevronLeft, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
+
+const AUTH_HISTORY_FILTERS = [
+  { key: 'Authorized',               label: 'Authorized',   color: '#6C5CE7', bg: '#F3F0FF' },
+  { key: 'CancellationOfAuthorized', label: 'Cancel Auth',  color: '#EA580C', bg: '#FEF3C7' },
+  { key: 'Rejected',                 label: 'Rejected',     color: '#DC2626', bg: '#FEE2E2' },
+];
+const APPR_HISTORY_FILTERS = [
+  { key: 'Approved',               label: 'Approved',        color: '#16A34A', bg: '#DCFCE7' },
+  { key: 'CancellationOfApproved', label: 'Cancel Approval', color: '#DC2626', bg: '#FEE2E2' },
+  { key: 'Rejected',               label: 'Rejected',        color: '#DC2626', bg: '#FEE2E2' },
+];
+const ALL_HIST_FILTERS = [
+  ...AUTH_HISTORY_FILTERS,
+  ...APPR_HISTORY_FILTERS.filter(f => !AUTH_HISTORY_FILTERS.find(a => a.key === f.key)),
+];
 
 const SECTION_META = {
   authorizer: {
@@ -37,6 +52,13 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
+  const [activeTab, setActiveTab] = useState('PENDING');
+  const [historyData, setHistoryData] = useState([]);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histFilter, setHistFilter] = useState('Authorized');
+  const [cancellingId, setCancellingId] = useState(null);
+  const [userRoles, setUserRoles] = useState({ isAuthorizer: false, isApprover: false });
+  const [histRoleView, setHistRoleView] = useState('AUTH');
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -51,6 +73,11 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       });
       if (res.data?.success) {
         const { authorizer_leaves = [], approver_leaves = [] } = res.data.data || {};
+
+        setUserRoles(prev => ({
+          isAuthorizer: prev.isAuthorizer || authorizer_leaves.length > 0,
+          isApprover: prev.isApprover || approver_leaves.length > 0,
+        }));
 
         // Filter locally since API returns all months
         const filteredAuth = authorizer_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
@@ -71,7 +98,79 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleCancelLeave = (item) => {
+    const leaveId = item.LEAVEENTRYID || item.leave_id || item.LEAVEID;
+    const empUserId =
+      item.USERID || item.user_id ||
+      item.employee_id || item.emp_id ||
+      item.EMP_ID || item.EMP_CODE || item.emp_code;
+    if (!leaveId || !empUserId) {
+      showAlert('error', 'Error', 'Cannot cancel: employee ID not found in this record.');
+      return;
+    }
+    showAlert('warning', 'Cancel Leave', `Cancel the approved leave for ${item.employee_name || 'this employee'}?`, [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+          setCancellingId(leaveId);
+          try {
+            const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: empUserId, leave_id: String(leaveId) });
+            if (res.data?.success === 1 || res.data?.success === true) {
+              showAlert('success', 'Cancelled', 'Leave has been cancelled successfully.');
+              fetchHistory(currentMonthStr, histFilter);
+            } else {
+              showAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
+            }
+          } catch (e) {
+            showAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
+          } finally {
+            setCancellingId(null);
+          }
+        }
+      },
+    ]);
+  };
+
+  const fetchHistory = async (month, filter) => {
+    setHistLoading(true);
+    try {
+      const res = await axios.post(API_ENDPOINTS.LEAVE_APPROVED_LIST, {
+        user_id: user.user_id,
+        selectedLanguage: `${month}-01`,
+        filter,
+      });
+      setHistoryData(res.data?.success === 1 ? (res.data.data || []) : []);
+    } catch (e) {
+      console.log('Leave approved list error', e);
+      setHistoryData([]);
+    } finally {
+      setHistLoading(false);
+    }
+  };
+
   useFocusEffect(useCallback(() => { fetchData(currentMonthStr); }, [currentMonthStr]));
+
+  // When roles are first detected, initialise the role view and default filter
+  useEffect(() => {
+    if (!userRoles.isAuthorizer && userRoles.isApprover) {
+      setHistRoleView('APPR');
+      setHistFilter('Approved');
+    } else if (userRoles.isAuthorizer) {
+      setHistRoleView('AUTH');
+      setHistFilter('Authorized');
+    }
+  }, [userRoles.isAuthorizer, userRoles.isApprover]);
+
+  // When role view tab switches, reset histFilter to first valid filter for that role
+  useEffect(() => {
+    const filters = histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS;
+    const firstKey = filters[0].key;
+    setHistFilter(prev => (prev === firstKey ? prev : firstKey));
+  }, [histRoleView]);
+
+  useEffect(() => {
+    if (activeTab === 'HISTORY') fetchHistory(currentMonthStr, histFilter);
+  }, [activeTab, currentMonthStr, histFilter]);
 
   const pastMonths = [];
   const currentDate = new Date();
@@ -220,34 +319,121 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <View style={s.loaderWrap}>
-          <ActivityIndicator size="large" color={COLORS.primaryDeep} />
-        </View>
-      ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(item, idx) => String(item.leave_id || item.LEAVEENTRYID || idx)}
-          renderItem={renderItem}
-          renderSectionHeader={({ section }) => (
-            <View style={s.sectionHeader}>
-              <Text style={s.sectionHeaderText}>{section.title}</Text>
-              <View style={s.sectionCount}>
-                <Text style={s.sectionCountText}>{section.data.length}</Text>
+      {/* Tab Bar */}
+      <View style={s.tabBar}>
+        {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
+          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
+            <Text style={[s.tabText, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {activeTab === 'PENDING' ? (
+        loading ? (
+          <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
+        ) : (
+          <SectionList
+            sections={sections}
+            keyExtractor={(item, idx) => String(item.leave_id || item.LEAVEENTRYID || idx)}
+            renderItem={renderItem}
+            renderSectionHeader={({ section }) => (
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionHeaderText}>{section.title}</Text>
+                <View style={s.sectionCount}><Text style={s.sectionCountText}>{section.data.length}</Text></View>
               </View>
+            )}
+            contentContainerStyle={s.list}
+            ListEmptyComponent={<View style={s.empty}><ClipboardList color="#D1D5DB" size={60} /><Text style={s.emptyText}>No pending requests</Text></View>}
+            onRefresh={() => fetchData(currentMonthStr)}
+            refreshing={loading}
+            stickySectionHeadersEnabled={false}
+          />
+        )
+      ) : (
+        <View style={{ flex: 1 }}>
+          {/* Role sub-tabs — only shown when user has both roles */}
+          {userRoles.isAuthorizer && userRoles.isApprover && (
+            <View style={s.roleTabBar}>
+              {[{ key: 'AUTH', label: 'Authorizer' }, { key: 'APPR', label: 'Approver' }].map(rt => (
+                <TouchableOpacity
+                  key={rt.key}
+                  style={[s.roleTab, histRoleView === rt.key && s.roleTabActive]}
+                  onPress={() => setHistRoleView(rt.key)}
+                >
+                  <Text style={[s.roleTabText, histRoleView === rt.key && s.roleTabTextActive]}>{rt.label}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           )}
-          contentContainerStyle={s.list}
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <ClipboardList color="#D1D5DB" size={60} />
-              <Text style={s.emptyText}>No pending requests</Text>
-            </View>
-          }
-          onRefresh={() => fetchData(currentMonthStr)}
-          refreshing={loading}
-          stickySectionHeadersEnabled={false}
-        />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
+            {(histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS).map(f => (
+              <TouchableOpacity
+                key={f.key}
+                style={[s.filterChip, { backgroundColor: histFilter === f.key ? f.color : '#F3F4F6', borderColor: f.color }]}
+                onPress={() => setHistFilter(f.key)}
+              >
+                <Text style={[s.filterChipText, { color: histFilter === f.key ? '#FFF' : f.color }]}>{f.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {histLoading ? (
+            <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
+          ) : (
+            <FlatList
+              data={historyData}
+              keyExtractor={(item, idx) => String(item.LEAVEENTRYID || idx)}
+              contentContainerStyle={s.list}
+              onRefresh={() => fetchHistory(currentMonthStr, histFilter)}
+              refreshing={histLoading}
+              ListEmptyComponent={<View style={s.empty}><ClipboardList color="#D1D5DB" size={60} /><Text style={s.emptyText}>No records found</Text></View>}
+              renderItem={({ item }) => {
+                const f = ALL_HIST_FILTERS.find(x => x.key === histFilter) || ALL_HIST_FILTERS[0];
+                return (
+                  <View style={s.histCard}>
+                    <View style={[s.histSide, { backgroundColor: f.color }]} />
+                    <View style={s.histBody}>
+                      <View style={s.histHeader}>
+                        <Text style={s.histEmpName}>{(item.employee_name || '').trim()}</Text>
+                        <View style={[s.histBadge, { backgroundColor: f.bg }]}>
+                          <Text style={[s.histBadgeText, { color: f.color }]}>{(item.leave_type || '').trim()}</Text>
+                        </View>
+                      </View>
+                      <View style={s.histDates}>
+                        <CalendarIcon size={13} color="#6B7280" />
+                        <Text style={s.histDateText}>
+                          {item.FROMDATE}{item.TODATE && item.TODATE !== item.FROMDATE ? ` – ${item.TODATE}` : ''}
+                        </Text>
+                        {item.leave_days ? (
+                          <View style={[s.histDaysBadge, { backgroundColor: f.bg }]}>
+                            <Text style={[s.histDaysText, { color: f.color }]}>{item.leave_days} day{item.leave_days != 1 ? 's' : ''}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      {item.REMARKS ? (
+                        <View style={s.histRemarkBox}>
+                          <Text style={s.histRemarkText} numberOfLines={2}>{item.REMARKS}</Text>
+                        </View>
+                      ) : null}
+                      {(histFilter === 'Approved' || histFilter === 'Authorized') && (
+                        <TouchableOpacity
+                          style={[s.histCancelBtn, cancellingId === (item.LEAVEENTRYID || item.leave_id) && { opacity: 0.6 }]}
+                          onPress={() => handleCancelLeave(item)}
+                          disabled={cancellingId === (item.LEAVEENTRYID || item.leave_id)}
+                          activeOpacity={0.75}
+                        >
+                          {cancellingId === (item.LEAVEENTRYID || item.leave_id)
+                            ? <ActivityIndicator size="small" color="#DC2626" />
+                            : <Text style={s.histCancelBtnText}>Cancel Leave</Text>}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
       )}
 
       {/* Remarks Modal */}
@@ -416,6 +602,41 @@ const s = StyleSheet.create({
     flex: 2, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
   },
   modalConfirmText: { color: '#FFF', fontWeight: '800' },
+
+  tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tabActive: { borderBottomColor: '#6C5CE7' },
+  tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
+  tabTextActive: { color: '#6C5CE7' },
+
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
+  filterChipText: { fontSize: moderateScale(12), fontWeight: '700' },
+
+  roleTabBar: { flexDirection: 'row', backgroundColor: '#F3F4F6', marginHorizontal: 16, marginTop: 10, borderRadius: 10, padding: 3 },
+  roleTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
+  roleTabActive: { backgroundColor: '#FFF', ...SHADOWS.light },
+  roleTabText: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
+  roleTabTextActive: { color: '#6C5CE7', fontWeight: '800' },
+
+  histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 14, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
+  histSide: { width: 6 },
+  histBody: { flex: 1, padding: 14 },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
+  histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: 8 },
+  histBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
+  histDates: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  histDateText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600', flex: 1 },
+  histDaysBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  histDaysText: { fontSize: moderateScale(11), fontWeight: '700' },
+  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8, marginBottom: 8 },
+  histRemarkText: { fontSize: moderateScale(11), color: '#6B7280', fontStyle: 'italic' },
+  histCancelBtn: {
+    borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10,
+    paddingVertical: 9, alignItems: 'center', justifyContent: 'center', marginTop: 4,
+  },
+  histCancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
