@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Rizo",
-    "slug": "rizo-mobile-app",
+    "slug": "rizo-mobile-app-v2",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
@@ -39,9 +39,7 @@
       "favicon": "./assets/logo_with_margin.png"
     },
     "plugins": [
-      [
-        "./plugins/withAgpCompatibility"
-      ],
+      "./plugins/withAgpCompatibility",
       [
         "expo-sqlite"
       ],
@@ -56,6 +54,7 @@
         {
           "android": {
             "kotlinVersion": "2.1.21",
+            "agpVersion": "8.11.0",
             "memory": 4096,
             "newArchEnabled": false
           }
@@ -67,9 +66,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "adfbeacf-66c4-4181-8a8a-b61ca6e1abb2"
+        "projectId": "ab71f607-629d-4fdf-9154-76ebe705596b"
       }
     },
-    "owner": "bindhuv"
+    "owner": "bindhu_13"
   }
 }
