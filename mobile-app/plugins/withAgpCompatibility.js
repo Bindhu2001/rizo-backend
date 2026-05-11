@@ -1,38 +1,74 @@
-const { withProjectBuildGradle } = require('@expo/config-plugins');
+const { withProjectBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
 /**
- * This plugin solves the "No matching variant of project :react-native-screens was found" 
- * error by forcing all subprojects to share the same AGP version attribute.
+ * Clean and Force AGP Compatibility Plugin
  */
 module.exports = function withAgpCompatibility(config) {
-  return withProjectBuildGradle(config, (cfg) => {
+  // 1. Update build.gradle
+  config = withProjectBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
 
-    // 1. Ensure a consistent AGP version in the top-level buildscript
-    cfg.modResults.contents = cfg.modResults.contents.replace(
+    // Clean up ANY previous markers from this or other versions of the plugin
+    const markers = [
+      '// [withAgpCompatibility]',
+      '// [withAgpCompatibility:AGP]',
+      '// [withAgpCompatibility:Rules]',
+      '// [withAgpCompatibility:UniversalFix]',
+      '// [withAgpCompatibility:Fixed]'
+    ];
+    
+    markers.forEach(marker => {
+      if (contents.includes(marker)) {
+        // Simple way to remove: find the block starting with the marker and ending with the next block or end of file
+        // Since we are appending, we can just cut from the first marker found
+        const index = contents.indexOf(marker);
+        contents = contents.substring(0, index);
+      }
+    });
+
+    // Force AGP 8.11.0 in classpath
+    contents = contents.replace(
       /classpath\(['"]com\.android\.tools\.build:gradle(?::[^'"]*)?['"]\)/g,
       "classpath('com.android.tools.build:gradle:8.11.0')"
     );
 
-    // 2. Force the AgpVersionAttr attribute on all configurations in all projects
-    // This makes the consumer (app) and producers (libraries) match even if the libraries
-    // don't explicitly define the attribute.
-    const marker = '// [withAgpCompatibility:UniversalFix]';
-    if (!contents.includes(marker)) {
-      cfg.modResults.contents = cfg.modResults.contents + `
-${marker}
+    // Add the definitive fix
+    const newMarker = '// [withAgpCompatibility:FinalFix]';
+    cfg.modResults.contents = contents + `
+${newMarker}
 allprojects {
     configurations.all {
-        if (it.name != "incrementalScalaAnalysis") { // Avoid conflicts with some plugins
+        if (it.name != "incrementalScalaAnalysis") {
             attributes {
-                attribute(com.android.build.api.attributes.AgpVersionAttr.ATTRIBUTE, objects.named(com.android.build.api.attributes.AgpVersionAttr, "8.11.0"))
+                // Force every project to match the app's expected AGP version attribute
+                attribute(Attribute.of("com.android.build.api.attributes.AgpVersionAttr", String.class), "8.11.0")
             }
         }
     }
 }
 `;
-    }
 
     return cfg;
   });
+
+  // 2. Update gradle.properties (Memory and Kotlin)
+  config = withGradleProperties(config, (cfg) => {
+    cfg.modResults = cfg.modResults.filter(p => 
+      p.key !== 'org.gradle.jvmargs' && 
+      p.key !== 'android.kotlinVersion'
+    );
+    cfg.modResults.push({
+      type: 'property',
+      key: 'org.gradle.jvmargs',
+      value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m',
+    });
+    cfg.modResults.push({
+      type: 'property',
+      key: 'android.kotlinVersion',
+      value: '2.1.21',
+    });
+    return cfg;
+  });
+
+  return config;
 };
