@@ -1,4 +1,4 @@
-const { withProjectBuildGradle, withProperties } = require('@expo/config-plugins');
+const { withProjectBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
 module.exports = function withAgpCompatibility(config) {
   // 1. Fix build.gradle
@@ -38,7 +38,8 @@ allprojects {
   });
 
   // 2. Ensure gradle.properties has enough memory and correct kotlin version
-  config = withProperties(config, (cfg) => {
+  config = withGradleProperties(config, (cfg) => {
+    cfg.modResults = cfg.modResults.filter(p => p.key !== 'org.gradle.jvmargs' && p.key !== 'android.kotlinVersion');
     cfg.modResults.push({
       type: 'property',
       key: 'org.gradle.jvmargs',
