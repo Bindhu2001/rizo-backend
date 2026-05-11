@@ -39,7 +39,6 @@
       "favicon": "./assets/logo_with_margin.png"
     },
     "plugins": [
-      "./plugins/withAgpCompatibility",
       [
         "expo-sqlite"
       ],
@@ -54,7 +53,6 @@
         {
           "android": {
             "kotlinVersion": "2.1.21",
-            "agpVersion": "8.11.0",
             "memory": 4096,
             "newArchEnabled": false
           }
