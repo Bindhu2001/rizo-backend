@@ -40,9 +40,6 @@
     },
     "plugins": [
       [
-        "./plugins/withAgpCompatibility"
-      ],
-      [
         "expo-sqlite"
       ],
       [
