@@ -31,11 +31,12 @@ allprojects {
         // Force the AgpVersionAttr to match what the consumer expects if it's missing or different
         if (project.hasProperty('android')) {
             afterEvaluate {
-                if (configurations.findByName('releaseRuntimeClasspath')) {
-                    configurations.releaseRuntimeClasspath.attributes.attribute(
-                        org.gradle.api.attributes.Attribute.of("com.android.build.api.attributes.AgpVersionAttr", String.class), 
-                        "8.11.0"
-                    )
+                def config = configurations.findByName('releaseRuntimeClasspath')
+                if (config) {
+                    def agpAttr = config.attributes.keySet().find { it.name == 'com.android.build.api.attributes.AgpVersionAttr' }
+                    if (agpAttr) {
+                        config.attributes.attribute(agpAttr, objects.named(agpAttr.type, "8.11.0"))
+                    }
                 }
             }
         }
