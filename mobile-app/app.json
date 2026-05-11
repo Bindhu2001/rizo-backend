@@ -13,13 +13,34 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rizo.mobile"
+      "bundleIdentifier": "com.rizo.mobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking even in background."
+      }
     },
     "android": {
-      "package": "com.rizo.mobile"
+      "package": "com.rizo.mobile",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon_square.png",
+        "backgroundColor": "#FFFFFF"
+      }
     },
     "newArchEnabled": false,
-    "plugins": [],
+    "plugins": [
+      "expo-sqlite",
+      "expo-camera",
+      "expo-image-picker"
+    ],
     "extra": {
       "eas": {
         "projectId": "ab71f607-629d-4fdf-9154-76ebe705596b"
