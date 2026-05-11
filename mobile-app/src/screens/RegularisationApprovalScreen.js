@@ -93,6 +93,24 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
     setProcessing(true);
     try {
+      if (actionModal.type === 'CANCEL') {
+        const res = await axios.post(API_ENDPOINTS.REGULARISATION_CANCEL, {
+          user_id: user.user_id,
+          id: String(actionModal.item.id || actionModal.item.emp_attendance_regularisation_pkey),
+          remarks: remarks.trim(),
+        });
+        if (res.data?.success === 1 || res.data?.success === true) {
+          showAlert('success', 'Cancelled', 'Regularisation cancelled successfully.', [
+            { text: 'OK', onPress: () => fetchHistory(currentMonthStr, histFilter) }
+          ]);
+          setActionModal({ visible: false, item: null, type: '' });
+          setRemarks('');
+        } else {
+          showAlert('error', 'Failed', res.data?.message || 'Could not cancel.');
+        }
+        return;
+      }
+
       const formData = new FormData();
       formData.append('user_id', user.user_id);
       formData.append('id', actionModal.item.id || actionModal.item.emp_attendance_regularisation_pkey);
@@ -294,6 +312,15 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
                           <Text style={s.histRemarkText} numberOfLines={2}>{item.remarks || item.reason}</Text>
                         </View>
                       ) : null}
+                      {histFilter === 'Approved' && (
+                        <TouchableOpacity
+                          style={s.histCancelBtn}
+                          onPress={() => setActionModal({ visible: true, item, type: 'CANCEL' })}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={s.histCancelBtnText}>Cancel Approval</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -306,8 +333,12 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
           <View style={s.modalContent}>
-            <Text style={s.modalTitle}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
-            <Text style={s.modalSub}>Enter remarks for {actionModal.item?.employee_name}</Text>
+            <Text style={s.modalTitle}>
+              {actionModal.type === 'CANCEL' ? 'Cancel' : actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request
+            </Text>
+            <Text style={s.modalSub}>
+              {actionModal.type === 'CANCEL' ? 'Enter reason for cancellation' : `Enter remarks for ${actionModal.item?.employee_name}`}
+            </Text>
             
             <TextInput
               style={s.remarksInput}
@@ -328,8 +359,8 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
                 <Text style={s.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={[s.modalConfirm, actionModal.type === 'REJECT' && { backgroundColor: '#EF4444' }]} 
+              <TouchableOpacity
+                style={[s.modalConfirm, (actionModal.type === 'REJECT' || actionModal.type === 'CANCEL') && { backgroundColor: '#EF4444' }]}
                 onPress={handleAction}
                 disabled={processing}
               >
@@ -442,8 +473,10 @@ const s = StyleSheet.create({
   histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
   histDetail: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
   histDetailText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600' },
-  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8 },
+  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8, marginBottom: 8 },
   histRemarkText: { fontSize: moderateScale(11), color: '#6B7280', fontStyle: 'italic' },
+  histCancelBtn: { borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10, paddingVertical: 9, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  histCancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 });
 
 export default RegularisationApprovalScreen;

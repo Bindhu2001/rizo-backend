@@ -7,7 +7,7 @@ import {
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, XCircle, Calendar as CalendarIcon,
+  ChevronLeft, ChevronDown, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
@@ -55,10 +55,11 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState('PENDING');
   const [historyData, setHistoryData] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
-  const [histFilter, setHistFilter] = useState('Authorized');
+  const [histFilter, setHistFilter] = useState('Approved');
   const [cancellingId, setCancellingId] = useState(null);
+  const [showFilterPicker, setShowFilterPicker] = useState(false);
   const [userRoles, setUserRoles] = useState({ isAuthorizer: false, isApprover: false });
-  const [histRoleView, setHistRoleView] = useState('AUTH');
+  const [histRoleView, setHistRoleView] = useState('APPR');
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -365,17 +366,18 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               ))}
             </View>
           )}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-            {(histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS).map(f => (
-              <TouchableOpacity
-                key={f.key}
-                style={[s.filterChip, { backgroundColor: histFilter === f.key ? f.color : '#F3F4F6', borderColor: f.color }]}
-                onPress={() => setHistFilter(f.key)}
-              >
-                <Text style={[s.filterChipText, { color: histFilter === f.key ? '#FFF' : f.color }]}>{f.label}</Text>
+          {/* Filter Dropdown */}
+          {(() => {
+            const filters = histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS;
+            const active = filters.find(f => f.key === histFilter) || filters[0];
+            return (
+              <TouchableOpacity style={[s.filterDropdown, { borderColor: active.color }]} onPress={() => setShowFilterPicker(true)} activeOpacity={0.75}>
+                <View style={[s.filterDot, { backgroundColor: active.color }]} />
+                <Text style={[s.filterDropdownText, { color: active.color }]}>{active.label}</Text>
+                <ChevronDown color={active.color} size={16} />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            );
+          })()}
 
           {histLoading ? (
             <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
@@ -485,6 +487,31 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Filter Picker Modal */}
+      <Modal visible={showFilterPicker} transparent animationType="slide" statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowFilterPicker(false)}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Select Filter</Text>
+            <ScrollView>
+              {(histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS).map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  style={s.sheetItem}
+                  onPress={() => { setHistFilter(f.key); setShowFilterPicker(false); }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={[s.filterDot, { backgroundColor: f.color }]} />
+                    <Text style={[s.sheetItemText, histFilter === f.key && { color: f.color, fontWeight: '800' }]}>{f.label}</Text>
+                  </View>
+                  {histFilter === f.key && <CheckCircle color={f.color} size={18} />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
       </Modal>
 
       {/* Month Picker Modal */}
@@ -609,9 +636,13 @@ const s = StyleSheet.create({
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
   tabTextActive: { color: '#6C5CE7' },
 
-  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
-  filterChipText: { fontSize: moderateScale(12), fontWeight: '700' },
+  filterDropdown: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
+    marginHorizontal: 16, marginVertical: 10, paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 20, borderWidth: 1.5, backgroundColor: '#FFF', gap: 8,
+  },
+  filterDot: { width: 8, height: 8, borderRadius: 4 },
+  filterDropdownText: { fontSize: moderateScale(13), fontWeight: '700', marginRight: 2 },
 
   roleTabBar: { flexDirection: 'row', backgroundColor: '#F3F4F6', marginHorizontal: 16, marginTop: 10, borderRadius: 10, padding: 3 },
   roleTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },

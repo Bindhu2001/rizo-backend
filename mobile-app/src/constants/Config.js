@@ -32,6 +32,7 @@ export const API_ENDPOINTS = {
   REGULARISATION_HIERARCHY: `${NEWAPP_URL}/regularisation_hierarchy_list`,
   REGULARISATION_APPROVAL_ACTION: `${NEWAPP_URL}/regularisation_approval`,
   REGULARISATION_APPROVED_LIST: `${NEWAPP_URL}/regularisation_approved_list`,
+  REGULARISATION_CANCEL: `${NEWAPP_URL}/regularisation_cancel`,
   LEAVE_HIERARCHY: `${NEWAPP_URL}/leave_hierarchy_list`,
   LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   LEAVE_APPROVED_LIST: `${NEWAPP_URL}/leave_approved_already_lists`,

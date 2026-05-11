@@ -138,7 +138,7 @@ const ClockIcon = () => (
 );
 
 
-const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
+const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise, onCancelReg }) => {
   const punchInRaw = formatPunchTime(item.punch_in_time);
   const punchOutRaw = formatPunchTime(item.punch_out_time);
   
@@ -236,6 +236,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         let bgStyle = { backgroundColor: '#FFF3E0' }, textStyle = { color: '#F97316' }, statusString = 'Pending';
         if (s === 'a' || s === 'approved') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
         else if (s === 'r' || s === 'rejected') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
+        const isPending = s === 'p' || s === 'pending';
 
         return (
           <View key={idx} style={[lc.regBox, bgStyle]}>
@@ -243,8 +244,15 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
               <Text style={lc.regTitle}>Regularisation Status</Text>
               <Text style={lc.regMsg}>{reg.remarks || 'HR team is still reviewing your request'}</Text>
             </View>
-            <View style={[lc.regBadge, { backgroundColor: textStyle.color + '20' }]}>
-              <Text style={[lc.regBadgeText, textStyle]}>{statusString}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 6 }}>
+              <View style={[lc.regBadge, { backgroundColor: textStyle.color + '20' }]}>
+                <Text style={[lc.regBadgeText, textStyle]}>{statusString}</Text>
+              </View>
+              {isPending && onCancelReg && (
+                <TouchableOpacity style={lc.cancelRegBtn} onPress={() => onCancelReg(reg)}>
+                  <Text style={lc.cancelRegBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         );
@@ -281,11 +289,13 @@ const lc = StyleSheet.create({
   chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
   chipText: { fontSize: moderateScale(11), fontWeight: '700', color: '#4F46E5' },
 
-  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 14, borderRadius: 12 },
+  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 14, borderRadius: 12, gap: 10 },
   regTitle: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827' },
   regMsg: { fontSize: moderateScale(11), color: '#6B7280', marginTop: 4, fontWeight: '500', lineHeight: 16 },
-  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginLeft: 10 },
+  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
   regBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
+  cancelRegBtn: { backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  cancelRegBtnText: { fontSize: moderateScale(11), fontWeight: '800', color: '#B91C1C' },
 });
 
 // Analog Time Picker Modal
@@ -535,6 +545,9 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showReasonPicker, setShowReasonPicker] = useState(false);
   const [showMonthPickerMain, setShowMonthPickerMain] = useState(false);
+  const [cancelRegModal, setCancelRegModal] = useState({ visible: false, reg: null });
+  const [cancelRemarks, setCancelRemarks] = useState('');
+  const [cancelProcessing, setCancelProcessing] = useState(false);
 
   useEffect(() => {
     if (route?.params?.initialTab) {
@@ -599,6 +612,34 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     if (!regMap[d]) regMap[d] = [];
     regMap[d].push(r);
   });
+
+  const handleCancelReg = async () => {
+    if (!cancelRemarks.trim()) {
+      showAlert('warning', 'Required', 'Please enter remarks for cancellation.');
+      return;
+    }
+    setCancelProcessing(true);
+    try {
+      const reg = cancelRegModal.reg;
+      const res = await axios.post(API_ENDPOINTS.REGULARISATION_CANCEL, {
+        user_id: user.user_id,
+        id: String(reg.id || reg.emp_attendance_regularisation_pkey),
+        remarks: cancelRemarks.trim(),
+      }, { timeout: 10000 });
+      if (res.data?.success === 1 || res.data?.success === true) {
+        setCancelRegModal({ visible: false, reg: null });
+        setCancelRemarks('');
+        showAlert('success', 'Cancelled', 'Regularisation request cancelled successfully.');
+        fetchData();
+      } else {
+        showAlert('error', 'Failed', res.data?.message || 'Could not cancel request.');
+      }
+    } catch (e) {
+      showAlert('error', 'Error', 'Failed to cancel. Please try again.');
+    } finally {
+      setCancelProcessing(false);
+    }
+  };
 
   const openRegForm = (attItem, dir) => {
     setSelectedDay(attItem);
@@ -767,7 +808,14 @@ const AttendanceRegScreen = ({ navigation, route }) => {
              <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#9CA3AF' }}>No regularised logs found.</Text></View>
           ) : (
              tab === 'REGULARISED' && attLogs.filter(a => (regMap[a.date] || []).length > 0).map((item, i) => (
-               <LogCard key={`reg-${i}`} item={item} isRegularisedTab={true} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
+               <LogCard
+                 key={`reg-${i}`}
+                 item={item}
+                 isRegularisedTab={true}
+                 regsForDate={regMap[item.date] || []}
+                 onRegularise={openRegForm}
+                 onCancelReg={(reg) => { setCancelRegModal({ visible: true, reg }); setCancelRemarks(''); }}
+               />
              ))
           )}
         </ScrollView>
@@ -799,10 +847,60 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      {/* Cancel Regularisation Modal */}
+      <Modal visible={cancelRegModal.visible} transparent animationType="fade" statusBarTranslucent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={cm.overlay}>
+          <View style={cm.card}>
+            <Text style={cm.title}>Cancel Request</Text>
+            <Text style={cm.sub}>Enter reason for cancellation</Text>
+            <TextInput
+              style={cm.input}
+              placeholder="Enter remarks..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              numberOfLines={3}
+              value={cancelRemarks}
+              onChangeText={setCancelRemarks}
+              maxLength={100}
+            />
+            <View style={cm.actions}>
+              <TouchableOpacity
+                style={cm.backBtn}
+                onPress={() => { setCancelRegModal({ visible: false, reg: null }); setCancelRemarks(''); }}
+              >
+                <Text style={cm.backBtnText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[cm.confirmBtn, cancelProcessing && { opacity: 0.6 }]}
+                onPress={handleCancelReg}
+                disabled={cancelProcessing}
+              >
+                {cancelProcessing
+                  ? <ActivityIndicator color="#FFF" />
+                  : <Text style={cm.confirmBtnText}>Confirm</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };
+
+const cm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  card: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%' },
+  title: { fontSize: moderateScale(18), fontWeight: '900', color: '#111827', marginBottom: 8 },
+  sub: { fontSize: moderateScale(14), color: '#6B7280', marginBottom: 20 },
+  input: { backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 90, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24, color: '#000' },
+  actions: { flexDirection: 'row', gap: 12 },
+  backBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#F3F4F6' },
+  backBtnText: { color: '#4B5563', fontWeight: '800' },
+  confirmBtn: { flex: 2, paddingVertical: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#DC2626' },
+  confirmBtnText: { color: '#FFF', fontWeight: '800' },
+});
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
