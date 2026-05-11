@@ -51,7 +51,8 @@
       ],
       "expo-camera",
       "expo-image-picker",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/withDebugLogs"
     ],
     "extra": {
       "eas": {
