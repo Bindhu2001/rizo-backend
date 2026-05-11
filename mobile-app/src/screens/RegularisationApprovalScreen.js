@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput, KeyboardAvoidingView, Platform
@@ -27,6 +27,13 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const [histLoading, setHistLoading] = useState(false);
   const [histFilter, setHistFilter] = useState('Approved');
 
+  const getSafeArray = (data) => {
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data.data)) return data.data;
+    return [];
+  };
+
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
@@ -46,7 +53,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data && res.data.success) {
-        setRequests(res.data.data || []);
+        setRequests(getSafeArray(res.data.data));
       } else {
         setRequests([]);
       }
@@ -66,7 +73,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         month_year: `${month}-01`,
         filter,
       });
-      setHistoryData(res.data?.success === 1 ? (res.data.data || []) : []);
+      setHistoryData(res.data?.success === 1 ? getSafeArray(res.data.data) : []);
     } catch (e) {
       console.log('Reg approved list error', e);
       setHistoryData([]);
