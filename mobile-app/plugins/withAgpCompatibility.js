@@ -5,8 +5,9 @@ const path = require('path');
 /**
  * Expo config plugin to ensure compatibility with AGP 8.11.0.
  * This plugin fixes the "No matching variant ... AgpVersionAttr" error by REMOVING
- * the attribute requirement from build configurations, allowing Gradle to match
- * dependencies even if they don't explicitly declare AGP 8.11.0 compatibility.
+ * the attribute requirement from build configurations.
+ * 
+ * It uses project.state.executed to avoid "Cannot run afterEvaluate" errors.
  */
 module.exports = function withAgpCompatibility(config) {
   return withDangerousMod(config, [
@@ -37,21 +38,24 @@ module.exports = function withAgpCompatibility(config) {
         // 3. Remove any old AGP Fix blocks
         contents = contents.replace(/\/\/\s*Begin AGP Fix[\s\S]*?\/\/\s*End AGP Fix/g, "");
         contents = contents.replace(/allprojects\s*\{\s*configurations\.all\s*\{[\s\S]*?AgpVersionAttr[\s\S]*?\}\s*\}/g, "");
+        contents = contents.replace(/allprojects\s*\{\s*afterEvaluate\s*\{[\s\S]*?AgpVersionAttr[\s\S]*?\}\s*\}\s*\}/g, "");
 
-        // 4. Add the REMOVAL Fix (more robust than forcing)
+        // 4. Add the Lifecycle-aware REMOVAL Fix
         const agpFix = `
 // Begin AGP Fix
-allprojects {
-    // afterEvaluate ensures we catch configurations added by plugins
-    afterEvaluate { project ->
+allprojects { project ->
+    def applyAgpFix = {
         project.configurations.all {
             def agpAttr = attributes.keySet().find { it.name == 'com.android.build.api.attributes.AgpVersionAttr' }
             if (agpAttr) {
-                // Removing the attribute from the selection request allows matching
-                // with any library regardless of its internal AGP version.
                 attributes.removeAttribute(agpAttr)
             }
         }
+    }
+    if (project.state.executed) {
+        applyAgpFix()
+    } else {
+        project.afterEvaluate { applyAgpFix() }
     }
 }
 // End AGP Fix
