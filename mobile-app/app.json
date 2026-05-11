@@ -28,7 +28,9 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon_square.png",
@@ -37,9 +39,18 @@
     },
     "newArchEnabled": false,
     "plugins": [
+      "./plugins/withDebugLogs",
       "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
+        }
+      ],
       "expo-camera",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-notifications",
+      "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
