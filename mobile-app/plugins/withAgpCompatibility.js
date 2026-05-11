@@ -6,10 +6,10 @@ module.exports = function withAgpCompatibility(config) {
     let contents = cfg.modResults.contents;
 
     // Force a consistent AGP version
-    const agpMarker = '// [withAgpCompatibility:AGP]';
-    if (!contents.includes(agpMarker)) {
+    const marker = '// [withAgpCompatibility]';
+    if (!contents.includes(marker)) {
       cfg.modResults.contents = contents + `
-${agpMarker}
+${marker}
 allprojects {
     configurations.all {
         resolutionStrategy.eachDependency { DependencyResolveDetails details ->
@@ -28,10 +28,16 @@ allprojects {
       "classpath('com.android.tools.build:gradle:8.11.0')"
     );
 
-    // Force Kotlin plugin version if missing
+    // Force Kotlin plugin version (using hardcoded version to match gradle.properties)
     cfg.modResults.contents = cfg.modResults.contents.replace(
       /classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin['"]\)/g,
-      "classpath(\"org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion\")"
+      "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21')"
+    );
+    
+    // Also handle the case where it was already replaced with a variable (from my previous buggy run)
+    cfg.modResults.contents = cfg.modResults.contents.replace(
+      /classpath\(["']org\.jetbrains\.kotlin:kotlin-gradle-plugin:\$kotlinVersion["']\)/g,
+      "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21')"
     );
 
     return cfg;
