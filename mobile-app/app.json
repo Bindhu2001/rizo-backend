@@ -38,6 +38,7 @@
     "web": {
       "favicon": "./assets/logo_with_margin.png"
     },
+    "newArchEnabled": false,
     "plugins": [
       [
         "expo-sqlite"
@@ -46,16 +47,6 @@
         "expo-location",
         {
           "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "kotlinVersion": "2.1.21",
-            "memory": 4096,
-            "newArchEnabled": false
-          }
         }
       ],
       "expo-camera",
