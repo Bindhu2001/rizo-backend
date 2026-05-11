@@ -1,46 +1,33 @@
 const { withProjectBuildGradle } = require('@expo/config-plugins');
 
 /**
- * This plugin solves two main issues:
- * 1. "No matching variant" errors caused by AGP 8+ version attributes in native libraries like react-native-screens.
- * 2. Ensures a stable AGP version is used instead of defaulting to a potentially incompatible cutting-edge version.
+ * This plugin solves the "No matching variant of project :react-native-screens was found" 
+ * error by forcing all subprojects to share the same AGP version attribute.
  */
 module.exports = function withAgpCompatibility(config) {
   return withProjectBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
 
-    // 1. Force a stable AGP version (8.7.2 is stable in 2026)
-    // Matches both classpath('...:gradle:version') and classpath('...:gradle')
+    // 1. Ensure a consistent AGP version in the top-level buildscript
     cfg.modResults.contents = cfg.modResults.contents.replace(
       /classpath\(['"]com\.android\.tools\.build:gradle(?::[^'"]*)?['"]\)/g,
-      "classpath('com.android.tools.build:gradle:8.7.2')"
+      "classpath('com.android.tools.build:gradle:8.11.0')"
     );
 
-    // 2. Add compatibility rules for AGP version attributes
-    const marker = '// [withAgpCompatibility:Rules]';
+    // 2. Force the AgpVersionAttr attribute on all configurations in all projects
+    // This makes the consumer (app) and producers (libraries) match even if the libraries
+    // don't explicitly define the attribute.
+    const marker = '// [withAgpCompatibility:UniversalFix]';
     if (!contents.includes(marker)) {
       cfg.modResults.contents = cfg.modResults.contents + `
 ${marker}
 allprojects {
-    dependencies {
-        attributesSchema {
-            attribute(com.android.build.api.attributes.AgpVersionAttr.ATTRIBUTE) {
-                compatibilityRules.add(AgpVersionCompatibilityRule)
-                disambiguationRules.add(AgpVersionDisambiguationRule)
+    configurations.all {
+        if (it.name != "incrementalScalaAnalysis") { // Avoid conflicts with some plugins
+            attributes {
+                attribute(com.android.build.api.attributes.AgpVersionAttr.ATTRIBUTE, objects.named(com.android.build.api.attributes.AgpVersionAttr, "8.11.0"))
             }
         }
-    }
-}
-
-class AgpVersionCompatibilityRule implements AttributeCompatibilityRule<com.android.build.api.attributes.AgpVersionAttr> {
-    void execute(CompatibilityCheckDetails<com.android.build.api.attributes.AgpVersionAttr> details) {
-        details.compatible()
-    }
-}
-
-class AgpVersionDisambiguationRule implements AttributeDisambiguationRule<com.android.build.api.attributes.AgpVersionAttr> {
-    void execute(MultipleCandidatesDetails<com.android.build.api.attributes.AgpVersionAttr> details) {
-        details.closestMatch(details.candidateValues.first())
     }
 }
 `;
