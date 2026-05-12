@@ -1,8 +1,9 @@
 {
   "expo": {
     "name": "Rizo",
-    "slug": "rizo-mobile-app",
+    "slug": "rizo-mobile-app-v2",
     "version": "1.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
     "userInterfaceStyle": "light",
@@ -39,12 +40,8 @@
       "favicon": "./assets/logo_with_margin.png"
     },
     "plugins": [
-      [
-        "./plugins/withAgpCompatibility"
-      ],
-      [
-        "expo-sqlite"
-      ],
+      "./plugins/withAgpCompatibility",
+      "expo-sqlite",
       [
         "expo-location",
         {
@@ -55,21 +52,20 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.1.21",
-            "memory": 4096,
-            "newArchEnabled": false
+            "kotlinVersion": "2.1.21"
           }
         }
       ],
+      "expo-notifications",
       "expo-camera",
       "expo-image-picker",
       "@react-native-community/datetimepicker"
     ],
     "extra": {
       "eas": {
-        "projectId": "adfbeacf-66c4-4181-8a8a-b61ca6e1abb2"
+        "projectId": "ab71f607-629d-4fdf-9154-76ebe705596b"
       }
     },
-    "owner": "bindhuv"
+    "owner": "bindhu_13"
   }
 }

@@ -23,8 +23,14 @@ allprojects {
 
     // Force classpath AGP version
     cfg.modResults.contents = cfg.modResults.contents.replace(
-      /classpath\(['"]com\.android\.tools\.build:gradle:[^'"]*['"]\)/g,
+      /classpath\(['"]com\.android\.tools\.build:gradle(?::[^'"]*)?['"]\)/g,
       "classpath('com.android.tools.build:gradle:8.11.0')"
+    );
+
+    // Force classpath Kotlin version
+    cfg.modResults.contents = cfg.modResults.contents.replace(
+      /classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin(?::[^'"]*)?['"]\)/g,
+      "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21')"
     );
 
     return cfg;
