@@ -7,7 +7,7 @@ import {
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft, XCircle, Calendar as CalendarIcon,
+  ChevronLeft, ChevronDown, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
@@ -15,20 +15,26 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
 
-const AUTH_HISTORY_FILTERS = [
-  { key: 'Authorized',               label: 'Authorized',   color: '#6C5CE7', bg: '#F3F0FF' },
-  { key: 'CancellationOfAuthorized', label: 'Cancel Auth',  color: '#EA580C', bg: '#FEF3C7' },
-  { key: 'Rejected',                 label: 'Rejected',     color: '#DC2626', bg: '#FEE2E2' },
-];
-const APPR_HISTORY_FILTERS = [
-  { key: 'Approved',               label: 'Approved',        color: '#16A34A', bg: '#DCFCE7' },
-  { key: 'CancellationOfApproved', label: 'Cancel Approval', color: '#DC2626', bg: '#FEE2E2' },
-  { key: 'Rejected',               label: 'Rejected',        color: '#DC2626', bg: '#FEE2E2' },
-];
-const ALL_HIST_FILTERS = [
-  ...AUTH_HISTORY_FILTERS,
-  ...APPR_HISTORY_FILTERS.filter(f => !AUTH_HISTORY_FILTERS.find(a => a.key === f.key)),
-];
+const HIST_FILTERS = {
+  Authorized:               { label: 'Authorized',              color: '#6C5CE7', bg: '#F3F0FF' },
+  CancellationOfAuthorized: { label: 'Cancelled by Authorizer', color: '#EA580C', bg: '#FEF3C7' },
+  Approved:                 { label: 'Approved',                color: '#16A34A', bg: '#DCFCE7' },
+  CancellationOfApproved:   { label: 'Cancelled by Approver',   color: '#DC2626', bg: '#FEE2E2' },
+  Rejected:                 { label: 'Rejected',                color: '#DC2626', bg: '#FEE2E2' },
+};
+const DEFAULT_HIST_META = { label: 'Authorized', color: '#6C5CE7', bg: '#F3F0FF' };
+
+// Build the dropdown options for the History tab based on the logged-in user's role(s).
+const buildHistFilterOptions = (roles) => {
+  if (!roles.isAuthorizer && !roles.isApprover) {
+    return ['Authorized', 'CancellationOfAuthorized', 'Rejected'];
+  }
+  const keys = [];
+  if (roles.isAuthorizer) keys.push('Authorized', 'CancellationOfAuthorized');
+  if (roles.isApprover) keys.push('Approved', 'CancellationOfApproved');
+  keys.push('Rejected');
+  return keys;
+};
 
 const SECTION_META = {
   authorizer: {
@@ -56,9 +62,12 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [historyData, setHistoryData] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
   const [histFilter, setHistFilter] = useState('Authorized');
+  const [showHistFilterPicker, setShowHistFilterPicker] = useState(false);
   const [cancellingId, setCancellingId] = useState(null);
   const [userRoles, setUserRoles] = useState({ isAuthorizer: false, isApprover: false });
-  const [histRoleView, setHistRoleView] = useState('AUTH');
+
+  const histFilterOptions = buildHistFilterOptions(userRoles);
+  const histMeta = HIST_FILTERS[histFilter] || DEFAULT_HIST_META;
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -150,23 +159,11 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
   useFocusEffect(useCallback(() => { fetchData(currentMonthStr); }, [currentMonthStr]));
 
-  // When roles are first detected, initialise the role view and default filter
+  // When roles are first detected, default the History filter to this user's role
   useEffect(() => {
-    if (!userRoles.isAuthorizer && userRoles.isApprover) {
-      setHistRoleView('APPR');
-      setHistFilter('Approved');
-    } else if (userRoles.isAuthorizer) {
-      setHistRoleView('AUTH');
-      setHistFilter('Authorized');
-    }
+    if (userRoles.isAuthorizer) setHistFilter('Authorized');
+    else if (userRoles.isApprover) setHistFilter('Approved');
   }, [userRoles.isAuthorizer, userRoles.isApprover]);
-
-  // When role view tab switches, reset histFilter to first valid filter for that role
-  useEffect(() => {
-    const filters = histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS;
-    const firstKey = filters[0].key;
-    setHistFilter(prev => (prev === firstKey ? prev : firstKey));
-  }, [histRoleView]);
 
   useEffect(() => {
     if (activeTab === 'HISTORY') fetchHistory(currentMonthStr, histFilter);
@@ -351,31 +348,12 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         )
       ) : (
         <View style={{ flex: 1 }}>
-          {/* Role sub-tabs — only shown when user has both roles */}
-          {userRoles.isAuthorizer && userRoles.isApprover && (
-            <View style={s.roleTabBar}>
-              {[{ key: 'AUTH', label: 'Authorizer' }, { key: 'APPR', label: 'Approver' }].map(rt => (
-                <TouchableOpacity
-                  key={rt.key}
-                  style={[s.roleTab, histRoleView === rt.key && s.roleTabActive]}
-                  onPress={() => setHistRoleView(rt.key)}
-                >
-                  <Text style={[s.roleTabText, histRoleView === rt.key && s.roleTabTextActive]}>{rt.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-            {(histRoleView === 'AUTH' ? AUTH_HISTORY_FILTERS : APPR_HISTORY_FILTERS).map(f => (
-              <TouchableOpacity
-                key={f.key}
-                style={[s.filterChip, { backgroundColor: histFilter === f.key ? f.color : '#F3F4F6', borderColor: f.color }]}
-                onPress={() => setHistFilter(f.key)}
-              >
-                <Text style={[s.filterChipText, { color: histFilter === f.key ? '#FFF' : f.color }]}>{f.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Role-aware filter dropdown */}
+          <TouchableOpacity style={s.histFilterDropdown} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
+            <View style={[s.histFilterDot, { backgroundColor: histMeta.color }]} />
+            <Text style={s.histFilterText}>{histMeta.label}</Text>
+            <ChevronDown size={18} color="#6B7280" />
+          </TouchableOpacity>
 
           {histLoading ? (
             <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
@@ -388,7 +366,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               refreshing={histLoading}
               ListEmptyComponent={<View style={s.empty}><ClipboardList color="#D1D5DB" size={60} /><Text style={s.emptyText}>No records found</Text></View>}
               renderItem={({ item }) => {
-                const f = ALL_HIST_FILTERS.find(x => x.key === histFilter) || ALL_HIST_FILTERS[0];
+                const f = histMeta;
                 return (
                   <View style={s.histCard}>
                     <View style={[s.histSide, { backgroundColor: f.color }]} />
@@ -507,6 +485,31 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      {/* History Filter Picker Modal */}
+      <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowHistFilterPicker(false)}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Filter History</Text>
+            {histFilterOptions.map((key) => {
+              const meta = HIST_FILTERS[key] || DEFAULT_HIST_META;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={s.sheetItem}
+                  onPress={() => { setHistFilter(key); setShowHistFilterPicker(false); }}
+                >
+                  <View style={s.sheetItemRow}>
+                    <View style={[s.histFilterDot, { backgroundColor: meta.color }]} />
+                    <Text style={[s.sheetItemText, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
@@ -609,15 +612,14 @@ const s = StyleSheet.create({
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
   tabTextActive: { color: '#6C5CE7' },
 
-  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
-  filterChipText: { fontSize: moderateScale(12), fontWeight: '700' },
-
-  roleTabBar: { flexDirection: 'row', backgroundColor: '#F3F4F6', marginHorizontal: 16, marginTop: 10, borderRadius: 10, padding: 3 },
-  roleTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 8 },
-  roleTabActive: { backgroundColor: '#FFF', ...SHADOWS.light },
-  roleTabText: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
-  roleTabTextActive: { color: '#6C5CE7', fontWeight: '800' },
+  histFilterDropdown: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, ...SHADOWS.light,
+  },
+  histFilterDot: { width: 10, height: 10, borderRadius: 5 },
+  histFilterText: { flex: 1, fontSize: moderateScale(14), fontWeight: '700', color: '#374151' },
 
   histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 14, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
   histSide: { width: 6 },
@@ -642,6 +644,7 @@ const s = StyleSheet.create({
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
   sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
   sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
 });

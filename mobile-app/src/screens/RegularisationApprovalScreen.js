@@ -5,11 +5,18 @@ import {
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar as CalendarIcon, ChevronLeft, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronDown, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
+
+const HIST_FILTERS = {
+  Approved:               { label: 'Approved',         color: '#16A34A', bg: '#DCFCE7' },
+  Rejected:               { label: 'Rejected',         color: '#DC2626', bg: '#FEE2E2' },
+  CancellationOfApproved: { label: 'Cancelled Approval', color: '#EA580C', bg: '#FEF3C7' },
+};
+const HIST_FILTER_KEYS = ['Approved', 'Rejected', 'CancellationOfApproved'];
 
 const RegularisationApprovalScreen = ({ navigation, route }) => {
   const user = route?.params?.user;
@@ -26,6 +33,8 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const [historyData, setHistoryData] = useState([]);
   const [histLoading, setHistLoading] = useState(false);
   const [histFilter, setHistFilter] = useState('Approved');
+  const [showHistFilterPicker, setShowHistFilterPicker] = useState(false);
+  const histMeta = HIST_FILTERS[histFilter] || HIST_FILTERS.Approved;
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -227,22 +236,12 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         />
       ) : (
         <View style={{ flex: 1 }}>
-          {/* Filter chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-            {[
-              { key: 'Approved',               label: 'Approved',        color: '#16A34A', bg: '#DCFCE7' },
-              { key: 'Rejected',               label: 'Rejected',        color: '#DC2626', bg: '#FEE2E2' },
-              { key: 'CancellationOfApproved', label: 'Cancel Approval', color: '#EA580C', bg: '#FEF3C7' },
-            ].map(f => (
-              <TouchableOpacity
-                key={f.key}
-                style={[s.filterChip, { backgroundColor: histFilter === f.key ? f.color : '#F3F4F6', borderColor: f.color }]}
-                onPress={() => setHistFilter(f.key)}
-              >
-                <Text style={[s.filterChipText, { color: histFilter === f.key ? '#FFF' : f.color }]}>{f.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Filter dropdown */}
+          <TouchableOpacity style={s.histFilterDropdown} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
+            <View style={[s.histFilterDot, { backgroundColor: histMeta.color }]} />
+            <Text style={s.histFilterText}>{histMeta.label}</Text>
+            <ChevronDown size={18} color="#6B7280" />
+          </TouchableOpacity>
 
           {histLoading ? (
             <View style={s.loaderWrap}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
@@ -260,15 +259,9 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
                 </View>
               }
               renderItem={({ item }) => {
-                const HIST_COLORS = {
-                  Approved:               { side: '#16A34A', bg: '#DCFCE7', text: '#16A34A' },
-                  Rejected:               { side: '#DC2626', bg: '#FEE2E2', text: '#DC2626' },
-                  CancellationOfApproved: { side: '#EA580C', bg: '#FEF3C7', text: '#EA580C' },
-                };
-                const fc = HIST_COLORS[histFilter] || HIST_COLORS.Approved;
-                const sideColor = fc.side;
-                const badgeBg   = fc.bg;
-                const badgeText = fc.text;
+                const sideColor = histMeta.color;
+                const badgeBg   = histMeta.bg;
+                const badgeText = histMeta.color;
                 return (
                   <View style={s.histCard}>
                     <View style={[s.histSide, { backgroundColor: sideColor }]} />
@@ -359,6 +352,30 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
           </View>
         </Pressable>
       </Modal>
+      <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
+        <Pressable style={s.modalOverlay} onPress={() => setShowHistFilterPicker(false)}>
+          <View style={s.sheet}>
+            <View style={s.handle} />
+            <Text style={s.sheetTitle}>Filter History</Text>
+            {HIST_FILTER_KEYS.map((key) => {
+              const meta = HIST_FILTERS[key];
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={s.sheetItem}
+                  onPress={() => { setHistFilter(key); setShowHistFilterPicker(false); }}
+                >
+                  <View style={s.sheetItemRow}>
+                    <View style={[s.histFilterDot, { backgroundColor: meta.color }]} />
+                    <Text style={[s.sheetItemText, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
@@ -418,6 +435,7 @@ const s = StyleSheet.create({
   handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
   sheetTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
   sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
   sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
 
@@ -429,9 +447,14 @@ const s = StyleSheet.create({
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
   tabTextActive: { color: '#6C5CE7' },
 
-  filterRow: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5 },
-  filterChipText: { fontSize: moderateScale(12), fontWeight: '700' },
+  histFilterDropdown: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
+    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, ...SHADOWS.light,
+  },
+  histFilterDot: { width: 10, height: 10, borderRadius: 5 },
+  histFilterText: { flex: 1, fontSize: moderateScale(14), fontWeight: '700', color: '#374151' },
 
   histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 14, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
   histSide: { width: 6 },
