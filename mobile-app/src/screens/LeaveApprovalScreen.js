@@ -152,9 +152,14 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const fetchHistory = async (month, filter) => {
     setHistLoading(true);
     try {
+      // Send the month under several common parameter names so whichever one
+      // the backend honours, the right month is returned.
+      const monthDate = `${month}-01`;
       const res = await axios.post(API_ENDPOINTS.LEAVE_APPROVED_LIST, {
         user_id: user.user_id,
-        selectedLanguage: `${month}-01`,
+        month_year: monthDate,
+        month: monthDate,
+        selectedLanguage: monthDate,
         filter,
       });
       const list = res.data?.success === 1 ? (res.data.data || []) : [];
@@ -172,7 +177,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       const filtered = list.filter((it) =>
         inMonth(it.FROMDATE || it.from_date || it.APPLIEDDATE || it.applied_date)
       );
-      setHistoryData(filtered.length || list.length === 0 ? filtered : list);
+      setHistoryData(filtered);
     } catch (e) {
       console.log('Leave approved list error', e);
       setHistoryData([]);
