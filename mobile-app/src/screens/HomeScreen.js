@@ -298,10 +298,11 @@ const HomeScreen = ({ navigation, route }) => {
 
     // 1. Try fresh from the server
     try {
-      const res = await axios.get(API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS, {
-        params: { user_id: user.user_id },
-        timeout: 8000,
-      });
+      const res = await axios.post(
+        API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS,
+        { user_id: user.user_id },
+        { timeout: 8000 },
+      );
       const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
       console.log('[Punch] config response', raw);
       debug = `HTTP ${res.status} body=${raw.slice(0, 250)}`;
