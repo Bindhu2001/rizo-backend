@@ -287,31 +287,47 @@ const HomeScreen = ({ navigation, route }) => {
   //   M → mobile, allowed from anywhere
   //   O → office, only allowed within 100 m of the office lat/lng
   //   S / W → punching not permitted from this app
+  //
+  // Works online AND offline: the punch config is cached in AsyncStorage
+  // after the first successful online fetch, and GPS works without internet,
+  // so the location gate stays accurate when offline too.
   const checkPunchAllowed = async () => {
-    // 1. Fetch the punch config
-    let data;
+    const cacheKey = `PUNCH_CONFIG_${user.user_id}`;
+    let data = null;
+
+    // 1. Try fresh from the server
     try {
       const res = await axios.get(API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS, {
         params: { user_id: user.user_id },
-        timeout: 10000,
+        timeout: 8000,
       });
       console.log('[Punch] config response', JSON.stringify(res.data));
-      // Some backends return JSON as text — re-parse if so
       const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
       const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
-      if (!ok || !body?.data) {
-        return {
-          allowed: false,
-          message: 'Could not verify your punch eligibility. Please contact HR.',
-        };
+      if (ok && body?.data) {
+        data = body.data;
+        try { await AsyncStorage.setItem(cacheKey, JSON.stringify(data)); } catch (_) {}
       }
-      data = body.data;
     } catch (e) {
-      console.log('[Punch] checkPunchAllowed network error', e?.message);
-      return {
-        allowed: false,
-        message: `Could not reach the server to verify punch eligibility (${e?.message || 'network error'}). Please check your connection and try again.`,
-      };
+      console.log('[Punch] network fetch failed', e?.message);
+    }
+
+    // 2. Fall back to cached config (offline path)
+    if (!data) {
+      try {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          data = JSON.parse(cached);
+          console.log('[Punch] using cached config');
+        }
+      } catch (_) {}
+    }
+
+    // 3. No config at all (offline first-run) → allow so the existing
+    // offline-punch queue keeps working.
+    if (!data) {
+      console.log('[Punch] no config available, allowing offline punch');
+      return { allowed: true };
     }
 
     const t = String(data.punchtype || '').toUpperCase();
@@ -319,17 +335,17 @@ const HomeScreen = ({ navigation, route }) => {
     if (t === 'S' || t === 'W') {
       return { allowed: false, message: 'Punching is not allowed for your account. Please contact HR.' };
     }
-    if (t === 'M') return { allowed: true };          // Mobile — allow anywhere
-    if (t !== 'O') return { allowed: true };          // Unknown type — allow
+    if (t === 'M') return { allowed: true };  // Mobile — anywhere
+    if (t !== 'O') return { allowed: true };  // Unknown — allow
 
-    // Office punch — must be within 100 m of the configured coords
+    // Office punch — GPS check (works offline)
     const officeLat = parseFloat(data.latitude);
     const officeLng = parseFloat(data.longitude);
     if (!isFinite(officeLat) || !isFinite(officeLng)
       || Math.abs(officeLat) > 90 || Math.abs(officeLng) > 180) {
       return {
         allowed: false,
-        message: `Office location is not configured correctly (lat ${data.latitude}, lng ${data.longitude}). Please contact HR.`,
+        message: 'Office location is not configured correctly. Please contact HR.',
       };
     }
 

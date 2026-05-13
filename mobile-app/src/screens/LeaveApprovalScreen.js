@@ -118,10 +118,33 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
   const handleCancelLeave = (item) => {
     const leaveId = item.LEAVEENTRYID || item.leave_id || item.LEAVEID;
-    const empUserId =
-      item.USERID || item.user_id ||
-      item.employee_id || item.emp_id ||
-      item.EMP_ID || item.EMP_CODE || item.emp_code;
+    // Cancel must be done on behalf of the employee who APPLIED for the leave,
+    // not the logged-in approver. The API expects a company-prefixed id
+    // (e.g. "GLET101333"). Try every common field name; if we only get the
+    // numeric portion, prefix it with the logged-in user's company code.
+    const direct =
+      item.USER_ID || item.user_id || item.USERID || item.userid ||
+      item.EMPLOYEE_USER_ID || item.employee_user_id ||
+      item.EMPLOYEE_USERID || item.employee_userid;
+    const numeric =
+      item.employee_id || item.EMPLOYEE_ID || item.emp_id || item.EMP_ID ||
+      item.EMP_CODE || item.emp_code || item.EMP_fkey;
+    const prefixMatch = String(user.user_id || '').match(/^([A-Za-z]+)/);
+    const companyPrefix = prefixMatch ? prefixMatch[1] : '';
+
+    let empUserId = null;
+    if (direct && /^[A-Za-z]+\d+$/.test(String(direct).trim())) {
+      // Already in "GLET101333" form
+      empUserId = String(direct).trim();
+    } else if (direct) {
+      // direct was numeric — combine with company prefix if missing
+      const v = String(direct).trim();
+      empUserId = companyPrefix && /^\d+$/.test(v) ? `${companyPrefix}${v}` : v;
+    } else if (numeric) {
+      const v = String(numeric).trim();
+      empUserId = companyPrefix && /^\d+$/.test(v) ? `${companyPrefix}${v}` : v;
+    }
+
     if (!leaveId || !empUserId) {
       showAlert('error', 'Error', 'Cannot cancel: employee ID not found in this record.');
       return;
