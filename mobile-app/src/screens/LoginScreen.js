@@ -6,7 +6,7 @@ import {
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
-import { Mail, Lock, LogIn, ChevronLeft, ArrowRight } from 'lucide-react-native';
+import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
@@ -18,6 +18,7 @@ const API_URL = API_ENDPOINTS.AUTH;
 const LoginScreen = ({ navigation }) => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
 
@@ -119,9 +120,20 @@ const LoginScreen = ({ navigation }) => {
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
+                  secureTextEntry={!showPassword}
                   placeholderTextColor="#94A3B8"
                 />
+                <TouchableOpacity
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <EyeOff color="#94A3B8" size={20} />
+                  ) : (
+                    <Eye color="#94A3B8" size={20} />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
 
