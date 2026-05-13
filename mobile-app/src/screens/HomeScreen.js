@@ -294,6 +294,7 @@ const HomeScreen = ({ navigation, route }) => {
   const checkPunchAllowed = async () => {
     const cacheKey = `PUNCH_CONFIG_${user.user_id}`;
     let data = null;
+    let debug = '';
 
     // 1. Try fresh from the server
     try {
@@ -301,7 +302,9 @@ const HomeScreen = ({ navigation, route }) => {
         params: { user_id: user.user_id },
         timeout: 8000,
       });
-      console.log('[Punch] config response', JSON.stringify(res.data));
+      const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      console.log('[Punch] config response', raw);
+      debug = `HTTP ${res.status} body=${raw.slice(0, 250)}`;
       const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
       const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
       if (ok && body?.data) {
@@ -310,6 +313,7 @@ const HomeScreen = ({ navigation, route }) => {
       }
     } catch (e) {
       console.log('[Punch] network fetch failed', e?.message);
+      debug = `request error: ${e?.message || 'unknown'}`;
     }
 
     // 2. Fall back to cached config (offline path)
@@ -323,11 +327,14 @@ const HomeScreen = ({ navigation, route }) => {
       } catch (_) {}
     }
 
-    // 3. No config at all (offline first-run) → allow so the existing
-    // offline-punch queue keeps working.
+    // 3. Still no config → block with diagnostic info so we can see what
+    // the device actually received. (Previously this silently allowed which
+    // bypassed the gate whenever the request shape was unexpected.)
     if (!data) {
-      console.log('[Punch] no config available, allowing offline punch');
-      return { allowed: true };
+      return {
+        allowed: false,
+        message: `Could not verify punch eligibility. Please connect to internet and try again. (${debug || 'no response'})`,
+      };
     }
 
     const t = String(data.punchtype || '').toUpperCase();
