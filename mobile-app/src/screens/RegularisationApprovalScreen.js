@@ -34,6 +34,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   const [histLoading, setHistLoading] = useState(false);
   const [histFilter, setHistFilter] = useState('Approved');
   const [showHistFilterPicker, setShowHistFilterPicker] = useState(false);
+  const [cancellingId, setCancellingId] = useState(null);
   const histMeta = HIST_FILTERS[histFilter] || HIST_FILTERS.Approved;
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
@@ -82,6 +83,39 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
     } finally {
       setHistLoading(false);
     }
+  };
+
+  const handleCancelReg = (item) => {
+    const regId = item.id || item.emp_attendance_regularisation_pkey;
+    if (!regId) {
+      showAlert('error', 'Error', 'Cannot cancel: regularisation ID not found in this record.');
+      return;
+    }
+    showAlert('warning', 'Cancel Regularisation', `Cancel the approved regularisation for ${item.employee_name || 'this employee'}?`, [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+          setCancellingId(regId);
+          try {
+            const res = await axios.post(API_ENDPOINTS.REGULARISATION_CANCEL, {
+              user_id: user.user_id,
+              id: String(regId),
+              remarks: 'Cancelled',
+            });
+            if (res.data?.success === 1 || res.data?.success === true) {
+              showAlert('success', 'Cancelled', res.data?.message || 'Regularisation has been cancelled successfully.');
+              fetchHistory(currentMonthStr, histFilter);
+            } else {
+              showAlert('error', 'Cannot Cancel', res.data?.message || 'Could not cancel regularisation.');
+            }
+          } catch (e) {
+            showAlert('error', 'Error', 'Failed to cancel regularisation. Please try again.');
+          } finally {
+            setCancellingId(null);
+          }
+        }
+      },
+    ]);
   };
 
   useFocusEffect(
@@ -287,6 +321,18 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
                           <Text style={s.histRemarkText} numberOfLines={2}>{item.remarks || item.reason}</Text>
                         </View>
                       ) : null}
+                      {histFilter === 'Approved' && (
+                        <TouchableOpacity
+                          style={[s.histCancelBtn, cancellingId === (item.id || item.emp_attendance_regularisation_pkey) && { opacity: 0.6 }]}
+                          onPress={() => handleCancelReg(item)}
+                          disabled={cancellingId === (item.id || item.emp_attendance_regularisation_pkey)}
+                          activeOpacity={0.75}
+                        >
+                          {cancellingId === (item.id || item.emp_attendance_regularisation_pkey)
+                            ? <ActivityIndicator size="small" color="#DC2626" />
+                            : <Text style={s.histCancelBtnText}>Cancel Regularisation</Text>}
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 );
@@ -467,6 +513,11 @@ const s = StyleSheet.create({
   histDetailText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600' },
   histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8 },
   histRemarkText: { fontSize: moderateScale(11), color: '#6B7280', fontStyle: 'italic' },
+  histCancelBtn: {
+    borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10,
+    paddingVertical: 9, alignItems: 'center', justifyContent: 'center', marginTop: 8,
+  },
+  histCancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 });
 
 export default RegularisationApprovalScreen;

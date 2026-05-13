@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator,
+  Image, ActivityIndicator, BackHandler,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,20 +78,34 @@ const ProfileScreen = ({ navigation, route }) => {
     })();
   }, []);
 
+  // Android hardware back: if a section is open, return to the menu;
+  // otherwise close the Profile screen.
+  useEffect(() => {
+    const onBack = () => {
+      if (section) { setSection(null); return true; }
+      navigation.goBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [section, navigation]);
+
   if (!user?.user_id) return null;
 
   const fetchSection = async (endpoint, setter, current) => {
     if (current) return;
     setBusy(true);
     try {
-      const res = await axios.get(`${endpoint}?user_id=${user.user_id}`);
-      if (res.data?.success === 1 || res.data?.success === true) {
+      const res = await axios.post(endpoint, { user_id: user.user_id });
+      const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
+      if (ok) {
         setter(res.data.data || {});
       } else {
+        // No data on server yet — show empty fields rather than an error.
         setter({});
       }
     } catch (e) {
-      console.log('Profile section fetch error', e);
+      console.log('Profile section fetch error', e?.response?.status, e?.message);
       setter({});
       showAlert('error', 'Could Not Load', 'Failed to load these details. Please check your connection and try again.');
     } finally {

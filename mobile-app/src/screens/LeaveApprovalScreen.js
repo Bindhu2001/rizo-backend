@@ -92,8 +92,17 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         const filteredAuth = authorizer_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
         const filteredAppr = approver_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
 
+        // If a LEAVEENTRYID appears in BOTH lists it's already past authorisation —
+        // drop the duplicate from the authoriser section so it only shows as Approve.
+        const apprIds = new Set(
+          filteredAppr.map(l => String(l.LEAVEENTRYID || l.leave_id))
+        );
+        const filteredAuthOnly = filteredAuth.filter(
+          l => !apprIds.has(String(l.LEAVEENTRYID || l.leave_id))
+        );
+
         const built = [];
-        if (filteredAuth.length) built.push({ key: 'authorizer', title: 'Authorise Requests', data: filteredAuth });
+        if (filteredAuthOnly.length) built.push({ key: 'authorizer', title: 'Authorise Requests', data: filteredAuthOnly });
         if (filteredAppr.length) built.push({ key: 'approver', title: 'Approve Requests', data: filteredAppr });
         setSections(built);
       } else {
@@ -148,7 +157,22 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         selectedLanguage: `${month}-01`,
         filter,
       });
-      setHistoryData(res.data?.success === 1 ? (res.data.data || []) : []);
+      const list = res.data?.success === 1 ? (res.data.data || []) : [];
+      // API may return records for all months — keep only the selected month.
+      const inMonth = (d) => {
+        if (!d || typeof d !== 'string') return false;
+        if (d.startsWith(month)) return true; // YYYY-MM-DD
+        const parts = d.split(/[-/]/);
+        if (parts.length === 3 && parts[2].length === 4) {
+          // DD-MM-YYYY → YYYY-MM
+          return `${parts[2]}-${parts[1].padStart(2, '0')}` === month;
+        }
+        return false;
+      };
+      const filtered = list.filter((it) =>
+        inMonth(it.FROMDATE || it.from_date || it.APPLIEDDATE || it.applied_date)
+      );
+      setHistoryData(filtered.length || list.length === 0 ? filtered : list);
     } catch (e) {
       console.log('Leave approved list error', e);
       setHistoryData([]);

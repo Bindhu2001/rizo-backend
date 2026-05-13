@@ -175,7 +175,6 @@ const SignupScreen = ({ navigation }) => {
 
   // Step 3 – Personal
   const [name, setName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [mobileNo, setMobileNo] = useState('');
   const [dob, setDob] = useState('');
   const [dobDate, setDobDate] = useState(null);
@@ -183,11 +182,9 @@ const SignupScreen = ({ navigation }) => {
   const [gender, setGender] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
-  const [nationality, setNationality] = useState(null);
   const [showGenderPicker, setShowGenderPicker] = useState(false);
   const [showMaritalPicker, setShowMaritalPicker] = useState(false);
   const [showBloodPicker, setShowBloodPicker] = useState(false);
-  const [showNationalityPicker, setShowNationalityPicker] = useState(false);
   const [photoUri, setPhotoUri] = useState(null);
   const [photoBase64, setPhotoBase64] = useState('');
   const [showPicModal, setShowPicModal] = useState(false);
@@ -259,7 +256,7 @@ const SignupScreen = ({ navigation }) => {
     try {
       const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, { params: { user_id: userId } });
       if (res.data?.success === 1 && Array.isArray(res.data.data)) setCountries(res.data.data);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
@@ -317,14 +314,13 @@ const SignupScreen = ({ navigation }) => {
       const payload = {
         company_code: companyCode,
         name: name,
-        last_name: lastName,
         mobile_no: mobileNo,
         email: email,
         date_of_birth: dobFormatted,
         gender: gender,
         maritual_status: maritalStatus,
         blood: bloodGroup,
-        country_id: nationality?.id || null,
+        country_id: addrCountry?.id || null,
         aadhar: aadhaarNumber,
         pan_no: panNumber,
         address: [address.house, address.line2, address.city].filter(Boolean).join(', '),
@@ -377,7 +373,6 @@ const SignupScreen = ({ navigation }) => {
       if (!mobileNo.trim() || mobileNo.length < 8) { showAlert('warning', 'Invalid Mobile', 'Please enter a valid mobile number.'); return; }
       if (!dob.trim()) { showAlert('warning', 'DOB Required', 'Please enter your date of birth.'); return; }
       if (!gender) { showAlert('warning', 'Gender Required', 'Please select your gender.'); return; }
-      if (!nationality) { showAlert('warning', 'Nationality Required', 'Please select your nationality.'); return; }
       setStep(4);
     } else if (step === 4) {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
@@ -567,7 +562,7 @@ const SignupScreen = ({ navigation }) => {
                   <Image source={{ uri: photoUri }} style={st.avatarImg} />
                 ) : (
                   <View style={st.avatarPlaceholder}>
-                    <Image source={require('../../assets/signup/picture-updating.png')} style={{ width: 90, height: 90, borderRadius: 45 }} resizeMode="cover" />
+                    <Image source={require('../../assets/signup/placeholdermen.jpeg')} style={{ width: 110, height: 110, borderRadius: 55 }} resizeMode="cover" />
                   </View>
                 )}
                 <View style={st.camBadge}>
@@ -593,17 +588,12 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={st.cardTitle}>Personal Details</Text>
                 <Text style={st.cardSub}>Let's start with your basic information</Text>
-                <FloatInput label="First Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee" maxLength={25} />
-                <FloatInput label="Last Name" value={lastName} onChangeText={t => setLastName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Last Name" maxLength={25} />
+                <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
                 <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
                 <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
                 <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
                 <PickerRow label="Blood Group" value={bloodGroup} onPress={() => setShowBloodPicker(true)} />
-                <PickerRow label="Nationality *" value={nationality?.country_name} onPress={() => setShowNationalityPicker(true)} />
-                <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
-                  {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
-                </TouchableOpacity>
               </>
             )}
 
@@ -888,15 +878,6 @@ const SignupScreen = ({ navigation }) => {
         selected={bloodGroup}
         onClose={() => setShowBloodPicker(false)}
         onSelect={setBloodGroup}
-      />
-
-      {/* ── Nationality Picker ── */}
-      <CountryPickerModal
-        visible={showNationalityPicker}
-        countries={countries}
-        selected={nationality}
-        onClose={() => setShowNationalityPicker(false)}
-        onSelect={setNationality}
       />
 
       {/* ── Address Country Picker ── */}
