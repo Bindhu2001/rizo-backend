@@ -296,10 +296,11 @@ const HomeScreen = ({ navigation, route }) => {
     let data = null;
     let debug = '';
 
-    // 1. Try fresh from the server (endpoint expects GET with query param)
+    // 1. Try fresh from the server (POST with user_id as a query parameter)
     try {
-      const res = await axios.get(
+      const res = await axios.post(
         `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
+        null,
         { timeout: 8000 },
       );
       const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
