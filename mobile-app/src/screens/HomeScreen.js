@@ -288,61 +288,77 @@ const HomeScreen = ({ navigation, route }) => {
   //   O → office, only allowed within 100 m of the office lat/lng
   //   S / W → punching not permitted from this app
   const checkPunchAllowed = async () => {
+    // 1. Fetch the punch config
+    let data;
     try {
       const res = await axios.get(API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS, {
         params: { user_id: user.user_id },
-        timeout: 8000,
+        timeout: 10000,
       });
-      const ok = res.data?.status === true || res.data?.status === 1 || res.data?.status === '1';
-      if (!ok) return { allowed: true };
-
-      const d = res.data.data || {};
-      const t = String(d.punchtype || '').toUpperCase();
-
-      if (t === 'S' || t === 'W') {
-        return { allowed: false, message: 'Punching is not allowed for your account. Please contact HR.' };
-      }
-      if (t !== 'O') return { allowed: true }; // 'M' or anything else → allow
-
-      // Office punch — must be within 100 m of the configured coords
-      const officeLat = parseFloat(d.latitude);
-      const officeLng = parseFloat(d.longitude);
-      if (!isFinite(officeLat) || !isFinite(officeLng)
-        || Math.abs(officeLat) > 90 || Math.abs(officeLng) > 180) {
-        // Office coords are not valid earth coordinates — fail-open so a
-        // backend config error doesn't lock everyone out.
-        return { allowed: true };
-      }
-
-      const { status: perm } = await Location.requestForegroundPermissionsAsync();
-      if (perm !== 'granted') {
-        return { allowed: false, message: 'Location permission is required to punch from the office. Please enable it in settings.' };
-      }
-      let loc = null;
-      try {
-        loc = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 10000)),
-        ]);
-      } catch (_) {
-        try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
-      }
-      if (!loc?.coords) {
-        return { allowed: false, message: "You're not in an accurate location. Please enable GPS and try again." };
-      }
-
-      const dist = haversineMeters(loc.coords.latitude, loc.coords.longitude, officeLat, officeLng);
-      if (dist > 100) {
+      console.log('[Punch] config response', JSON.stringify(res.data));
+      // Some backends return JSON as text — re-parse if so
+      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
+      if (!ok || !body?.data) {
         return {
           allowed: false,
-          message: `You're not in an accurate location. You must be within 100 m of the office (currently ~${Math.round(dist)} m away).`,
+          message: 'Could not verify your punch eligibility. Please contact HR.',
         };
       }
-      return { allowed: true };
+      data = body.data;
     } catch (e) {
-      console.log('[Punch] checkPunchAllowed error', e?.message);
-      return { allowed: true }; // fail-open on network errors
+      console.log('[Punch] checkPunchAllowed network error', e?.message);
+      return {
+        allowed: false,
+        message: `Could not reach the server to verify punch eligibility (${e?.message || 'network error'}). Please check your connection and try again.`,
+      };
     }
+
+    const t = String(data.punchtype || '').toUpperCase();
+
+    if (t === 'S' || t === 'W') {
+      return { allowed: false, message: 'Punching is not allowed for your account. Please contact HR.' };
+    }
+    if (t === 'M') return { allowed: true };          // Mobile — allow anywhere
+    if (t !== 'O') return { allowed: true };          // Unknown type — allow
+
+    // Office punch — must be within 100 m of the configured coords
+    const officeLat = parseFloat(data.latitude);
+    const officeLng = parseFloat(data.longitude);
+    if (!isFinite(officeLat) || !isFinite(officeLng)
+      || Math.abs(officeLat) > 90 || Math.abs(officeLng) > 180) {
+      return {
+        allowed: false,
+        message: `Office location is not configured correctly (lat ${data.latitude}, lng ${data.longitude}). Please contact HR.`,
+      };
+    }
+
+    const { status: perm } = await Location.requestForegroundPermissionsAsync();
+    if (perm !== 'granted') {
+      return { allowed: false, message: 'Location permission is required to punch from the office. Please enable it in settings.' };
+    }
+    let loc = null;
+    try {
+      loc = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 12000)),
+      ]);
+    } catch (_) {
+      try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
+    }
+    if (!loc?.coords) {
+      return { allowed: false, message: "You're not in an accurate location. Please enable GPS and try again." };
+    }
+
+    const dist = haversineMeters(loc.coords.latitude, loc.coords.longitude, officeLat, officeLng);
+    console.log(`[Punch] distance ${Math.round(dist)} m from office (${officeLat},${officeLng})`);
+    if (dist > 100) {
+      return {
+        allowed: false,
+        message: `You're not in an accurate location. You must be within 100 m of the office (currently ~${Math.round(dist)} m away).`,
+      };
+    }
+    return { allowed: true };
   };
 
   const handleSwipeComplete = async () => {
