@@ -226,7 +226,7 @@ const AttendanceScreen = ({ navigation, route }) => {
 
                       <View style={s.punchAddressBox}>
                         <Text style={s.shiftBadgeText} numberOfLines={1}>{p.day_time_desc}</Text>
-                        <Text style={s.addressText} numberOfLines={2}>{p.C3 || 'Location Attached'}</Text>
+                        <Text style={s.addressText}>{p.C3 || 'Location Attached'}</Text>
                       </View>
                     </View>
                   ))
