@@ -10,6 +10,7 @@ import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { getTodayVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
+import { verifyDeviceClock } from '../services/TimeCheck';
 import * as Network from 'expo-network';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -527,6 +528,12 @@ const VisitsScreen = ({ navigation, route }) => {
   const handleSaveNewVisit = async (details) => {
     setProcessing(true);
     try {
+      const clock = await verifyDeviceClock();
+      if (!clock.ok) {
+        setProcessing(false);
+        showAlert('warning', 'Clock Not Synced', clock.message);
+        return;
+      }
       // Ensure DB ready
       await initDB();
 
@@ -561,6 +568,12 @@ const VisitsScreen = ({ navigation, route }) => {
   const handleConfirmStepIn = async (details) => {
     setProcessing(true);
     try {
+      const clock = await verifyDeviceClock();
+      if (!clock.ok) {
+        setProcessing(false);
+        showAlert('warning', 'Clock Not Synced', clock.message);
+        return;
+      }
       const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'step_in', {
         stepInTime: new Date().toISOString(), lat, lng, address
@@ -583,6 +596,13 @@ const VisitsScreen = ({ navigation, route }) => {
     setConfirmVisible(false);
     setProcessing(true);
     try {
+      const clock = await verifyDeviceClock();
+      if (!clock.ok) {
+        setProcessing(false);
+        setPendingVisit(null);
+        showAlert('warning', 'Clock Not Synced', clock.message);
+        return;
+      }
       const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'COMPLETED', {
         endTime: new Date().toISOString(),

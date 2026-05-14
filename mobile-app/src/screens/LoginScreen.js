@@ -11,6 +11,23 @@ import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
+
+// Per-install stable identifier sent as `imei` to the server. Real IMEI is
+// not accessible on modern Android/iOS, so we persist a 15-digit numeric ID
+// in AsyncStorage. Survives app updates; resets if app data is cleared or
+// app is uninstalled. The server registers it on first login and rejects
+// any other device claiming the same user account.
+const getOrCreateDeviceImei = async () => {
+  let id = await AsyncStorage.getItem(DEVICE_IMEI_KEY);
+  if (!id) {
+    id = String(Math.floor(Math.random() * 9e14) + 1e14);
+    await AsyncStorage.setItem(DEVICE_IMEI_KEY, id);
+  }
+  return id;
+};
 
 const { width, height } = Dimensions.get('window');
 const API_URL = API_ENDPOINTS.AUTH;
@@ -38,9 +55,11 @@ const LoginScreen = ({ navigation }) => {
 
       if (isOnline) {
         try {
+          const imei = await getOrCreateDeviceImei();
           const formData = new FormData();
           formData.append('user_id', userId);
           formData.append('password', password);
+          formData.append('imei', imei);
 
           const response = await axios.post(API_URL, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },

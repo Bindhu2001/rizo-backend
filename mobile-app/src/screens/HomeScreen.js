@@ -295,6 +295,7 @@ const HomeScreen = ({ navigation, route }) => {
     const cacheKey = `PUNCH_CONFIG_${user.user_id}`;
     let data = null;
     let debug = '';
+    let serverTimeMs = null;
 
     // 1. Try fresh from the server (POST with user_id as a query parameter)
     try {
@@ -306,6 +307,11 @@ const HomeScreen = ({ navigation, route }) => {
       const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
       console.log('[Punch] config response', raw);
       debug = `HTTP ${res.status} body=${raw.slice(0, 250)}`;
+      const dateHeader = res.headers?.date || res.headers?.Date;
+      if (dateHeader) {
+        const parsed = Date.parse(dateHeader);
+        if (isFinite(parsed)) serverTimeMs = parsed;
+      }
       const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
       const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
       if (ok && body?.data) {
@@ -315,6 +321,20 @@ const HomeScreen = ({ navigation, route }) => {
     } catch (e) {
       console.log('[Punch] network fetch failed', e?.message);
       debug = `request error: ${e?.message || 'unknown'}`;
+    }
+
+    // Block manual time tampering: compare device clock to server clock
+    // (server Date header is authoritative). Allow up to 2 minutes of drift
+    // for normal network jitter / unsynced phones.
+    if (serverTimeMs !== null) {
+      const driftSec = Math.round(Math.abs(Date.now() - serverTimeMs) / 1000);
+      console.log(`[Punch] clock drift ${driftSec}s vs server`);
+      if (driftSec > 120) {
+        return {
+          allowed: false,
+          message: 'Please enable "Automatic date & time" in your phone Settings and try again.',
+        };
+      }
     }
 
     // 2. Fall back to cached config (offline path)
