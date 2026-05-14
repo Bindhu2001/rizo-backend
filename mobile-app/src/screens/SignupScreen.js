@@ -594,6 +594,9 @@ const SignupScreen = ({ navigation }) => {
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
                 <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
                 <PickerRow label="Blood Group" value={bloodGroup} onPress={() => setShowBloodPicker(true)} />
+                <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
+                </TouchableOpacity>
               </>
             )}
 
