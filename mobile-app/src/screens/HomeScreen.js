@@ -40,7 +40,7 @@ const API_URL = API_ENDPOINTS.ATTENDANCE;
 const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 
 const HomeScreen = ({ navigation, route }) => {
-  const user = route?.params?.user;
+  const [user, setUser] = useState(route?.params?.user);
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -78,6 +78,7 @@ const HomeScreen = ({ navigation, route }) => {
       fetchStatus();
       fetchRoles();
       checkOfflinePunches();
+      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); });
       setTimeout(fetchLocation, 1000);
       NotificationManager.checkStatusChanges();
       NotificationManager.registerAndSendToken(user.user_id);
@@ -99,7 +100,7 @@ const HomeScreen = ({ navigation, route }) => {
       unsubscribe();
       clearInterval(syncTimer);
     };
-  }, [navigation]);
+  }, [navigation, user?.user_id]);
 
   if (!user) return null;
 
@@ -263,7 +264,12 @@ const HomeScreen = ({ navigation, route }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchStatus(), fetchRoles(), checkOfflinePunches()]);
+    await Promise.all([
+      fetchStatus(), 
+      fetchRoles(), 
+      checkOfflinePunches(),
+      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); })
+    ]);
     fetchLocation();
     setRefreshing(false);
   };

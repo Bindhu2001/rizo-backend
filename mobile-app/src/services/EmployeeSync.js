@@ -26,7 +26,11 @@ export const syncEmployeeDetails = async (user, navigation) => {
 
     const deviceImei = await AsyncStorage.getItem(DEVICE_IMEI_KEY);
     const serverImei = data.imei != null && data.imei !== '' ? String(data.imei) : null;
+
+    console.log(`[Sync] Comparing Device ID: ${deviceImei} with Server ID: ${serverImei}`);
+
     if (deviceImei && serverImei && deviceImei !== serverImei) {
+      console.log('[Sync] Device ID mismatch! Triggering forced logout...');
       await clearUserSession();
       navigation?.reset?.({ index: 0, routes: [{ name: 'Login' }] });
       return null;
@@ -35,6 +39,7 @@ export const syncEmployeeDetails = async (user, navigation) => {
     return {
       ...user,
       ...data,
+      name: data.name || user.name,
       employee_name: data.name || data.employee_name || user.employee_name,
     };
   } catch (_) {
