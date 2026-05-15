@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -289,6 +290,54 @@ app.post('/api/auth/login', async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ success: 0, error: error.message });
+  }
+});
+
+// ─── Push Notifications ─────────────────────────────────────────────────────
+// Forwards a notification to Expo's push service. Call this from any approver
+// flow (leave / expense / regularisation, approve / reject / cancel) after the
+// status has been persisted. Expo delivers to APNs (iOS) and FCM (Android),
+// so the user is notified even when the app is fully closed.
+//
+// Body:
+// {
+//   "push_token": "ExponentPushToken[xxxxxxxx]",  // required
+//   "title": "Leave Approved",                    // required
+//   "body":  "Your leave for 2026-05-20 was approved.", // required
+//   "data":  { "type": "LEAVE", "status": "APPROVED" }  // optional, free-form
+// }
+app.post('/api/send-push', async (req, res) => {
+  try {
+    const { push_token, title, body, data } = req.body || {};
+    if (!push_token || !title || !body) {
+      return res.status(400).json({ success: 0, error: 'push_token, title and body are required' });
+    }
+    if (!/^ExponentPushToken\[.+\]$/.test(push_token)) {
+      return res.status(400).json({ success: 0, error: 'push_token must look like ExponentPushToken[...]' });
+    }
+
+    const expoRes = await axios.post(
+      'https://exp.host/--/api/v2/push/send',
+      {
+        to: push_token,
+        title,
+        body,
+        data: data || {},
+        sound: 'default',
+        channelId: 'default',
+        priority: 'high',
+      },
+      { headers: { 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip, deflate' }, timeout: 10000 }
+    );
+
+    const ticket = expoRes.data?.data;
+    if (ticket?.status === 'error') {
+      return res.status(502).json({ success: 0, error: ticket.message || 'Expo rejected the push', details: ticket.details });
+    }
+    return res.json({ success: 1, ticket });
+  } catch (error) {
+    console.error('[send-push] error', error?.response?.data || error.message);
+    return res.status(500).json({ success: 0, error: error.message });
   }
 });
 
