@@ -138,16 +138,138 @@ const ClockIcon = () => (
 );
 
 
+// Compute display info for a single regularisation request.
+const buildRegInfo = (reg) => {
+  const s = (reg.reg_status || reg.status || 'p').toLowerCase();
+  let bg = '#FFF3E0', color = '#F97316', label = 'Pending';
+  if (s === 'a' || s === 'approved') { bg = '#F0FDF4'; color = '#16A34A'; label = 'Approved'; }
+  else if (s === 'r' || s === 'rejected') { bg = '#FEF2F2'; color = '#DC2626'; label = 'Rejected'; }
+  else if (s === 'c' || s === 'cancelled' || s === 'canceled') { bg = '#FEF3C7'; color = '#EA580C'; label = 'Cancelled'; }
+
+  const appliedRaw = reg.created_at || reg.applied_at || reg.application_date || reg.created_on || reg.log_date_time || '';
+  let applied = '';
+  if (appliedRaw) {
+    const d = new Date(appliedRaw);
+    if (!isNaN(d.getTime())) {
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      applied = `${dd}-${mm}-${yy} ${hh}:${mi}`;
+    } else {
+      applied = String(appliedRaw);
+    }
+  }
+  return { bg, color, label, applied };
+};
+
 const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
   const punchInRaw = formatPunchTime(item.punch_in_time);
   const punchOutRaw = formatPunchTime(item.punch_out_time);
-  
+
   const d = new Date(item.date || new Date().toISOString());
   const displayMonthDay = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   const hasPunchIn = !!item.punch_in_time;
   const hasPunchOut = !!item.punch_out_time;
 
+  // ── REGULARISED TAB ── status-focused layout (no IN/OUT punch rows) ─────────
+  if (isRegularisedTab) {
+    return (
+      <View style={lc.card}>
+        <View style={lc.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={lc.dateTitle}>{displayMonthDay}</Text>
+            <Text style={lc.shiftText}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
+          </View>
+          <View style={lc.badgeWo}>
+            <Text style={lc.badgeWoText}>{item.status || 'WO'}</Text>
+          </View>
+        </View>
+
+        {(regsForDate || []).map((reg, idx) => {
+          const { bg, color, label, applied } = buildRegInfo(reg);
+          const dir = (reg.direction || reg.type || '').toUpperCase();
+          const reqTime = formatPunchTime(reg.log_time || reg.requested_time || reg.time);
+
+          return (
+            <View key={idx} style={[lc.regStatusCard, { backgroundColor: bg, borderColor: color + '30' }]}>
+              <View style={lc.regStatusHeader}>
+                <View style={lc.regDirChip}>
+                  <Text style={lc.regDirChipText}>{dir === 'OUT' ? 'CLOCK OUT' : 'CLOCK IN'}</Text>
+                </View>
+                <View style={[lc.regStatusBadge, { backgroundColor: color }]}>
+                  <Text style={lc.regStatusBadgeText} numberOfLines={1}>{label.toUpperCase()}</Text>
+                </View>
+              </View>
+
+              <View style={lc.regRow}>
+                <Text style={lc.regRowLabel}>Requested Time</Text>
+                <Text style={lc.regRowVal}>{reqTime || '—'}</Text>
+              </View>
+              {!!reg.reason && (
+                <View style={lc.regRow}>
+                  <Text style={lc.regRowLabel}>Reason</Text>
+                  <Text style={lc.regRowVal} numberOfLines={2}>{reg.reason}</Text>
+                </View>
+              )}
+              {!!reg.remarks && (
+                <View style={lc.regRow}>
+                  <Text style={lc.regRowLabel}>Remarks</Text>
+                  <Text style={lc.regRowVal} numberOfLines={3}>{reg.remarks}</Text>
+                </View>
+              )}
+              {!!applied && (
+                <View style={lc.regRow}>
+                  <Text style={lc.regRowLabel}>Applied On</Text>
+                  <Text style={lc.regRowVal}>{applied}</Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
+  // Find a regularisation request for a given direction (IN/OUT) in this date.
+  const regFor = (dir) =>
+    (regsForDate || []).find((r) => {
+      const d = String(r.direction || r.type || '').toUpperCase();
+      return d === dir;
+    });
+
+  // Renders either a per-row status pill (if a reg request exists) or the
+  // REGULARISE button (if not). Keeps the same screen position so the row
+  // layout never shifts. `variant` controls button styling (primary for
+  // missing punches, secondary for present punches).
+  const renderRowAction = (dir, variant = 'primary') => {
+    const reg = regFor(dir);
+    if (reg) {
+      const { bg, color, label } = buildRegInfo(reg);
+      return (
+        <View style={[lc.statusPill, { backgroundColor: bg, borderColor: color + '40' }]}>
+          <View style={[lc.statusDot, { backgroundColor: color }]} />
+          <Text style={[lc.statusPillText, { color }]} numberOfLines={1}>{label}</Text>
+        </View>
+      );
+    }
+    if (variant === 'secondary') {
+      return (
+        <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, dir)}>
+          <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
+        </TouchableOpacity>
+      );
+    }
+    return (
+      <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, dir)}>
+        <Text style={lc.regBtnActionText}>REGULARISE</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  // ── LOG TAB ── full IN/OUT punch layout with per-row REGULARISE / status ────
   return (
     <View style={lc.card}>
       <View style={lc.headerRow}>
@@ -162,32 +284,24 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 
       <View style={lc.punchContainer}>
         <View style={lc.trackLine} />
-        
+
         {/* IN */}
         <View style={lc.punchRowBox}>
           <View style={lc.iconCol}>
-            {hasPunchIn ? <CheckCircle color="#16A34A" size={18} /> : <Clock color="#DC2626" size={18} strokeWidth={2.5} />}
+            {hasPunchIn ? <CheckCircle color="#16A34A" size={moderateScale(18)} /> : <Clock color="#DC2626" size={moderateScale(18)} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchIn ? (
               <>
                 <Text style={lc.timeVal}>{punchInRaw}</Text>
                 <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
-                {!isRegularisedTab && (
-                  <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, 'IN')}>
-                    <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
-                  </TouchableOpacity>
-                )}
+                {renderRowAction('IN', 'secondary')}
               </>
             ) : (
               <>
                 <Text style={lc.missingHdr}>Clock In</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
-                {!isRegularisedTab && (
-                  <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, 'IN')}>
-                    <Text style={lc.regBtnActionText}>REGULARISE</Text>
-                  </TouchableOpacity>
-                )}
+                {renderRowAction('IN')}
               </>
             )}
           </View>
@@ -197,30 +311,22 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         </View>
 
         {/* OUT */}
-        <View style={[lc.punchRowBox, { marginTop: 32 }]}>
+        <View style={[lc.punchRowBox, { marginTop: moderateScale(32) }]}>
           <View style={[lc.iconCol, { backgroundColor: '#FFF' }]}>
-            {hasPunchOut ? <CheckCircle color="#16A34A" size={18} /> : <Clock color="#DC2626" size={18} strokeWidth={2.5} />}
+            {hasPunchOut ? <CheckCircle color="#16A34A" size={moderateScale(18)} /> : <Clock color="#DC2626" size={moderateScale(18)} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchOut ? (
               <>
                 <Text style={lc.timeVal}>{punchOutRaw}</Text>
                 <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
-                {!isRegularisedTab && (
-                  <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, 'OUT')}>
-                    <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
-                  </TouchableOpacity>
-                )}
+                {renderRowAction('OUT', 'secondary')}
               </>
             ) : (
               <>
                 <Text style={lc.missingHdr}>Clock Out</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
-                {!isRegularisedTab && (
-                  <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, 'OUT')}>
-                    <Text style={lc.regBtnActionText}>REGULARISE</Text>
-                  </TouchableOpacity>
-                )}
+                {renderRowAction('OUT')}
               </>
             )}
           </View>
@@ -229,45 +335,6 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
           </View>
         </View>
       </View>
-
-      {/* Reg Statuses — show on Log tab too so the user sees pending/approved/rejected
-          status with the timestamp at which they applied. */}
-      {(regsForDate || []).map((reg, idx) => {
-        const s = (reg.reg_status || reg.status || 'p').toLowerCase();
-        let bgStyle = { backgroundColor: '#FFF3E0' }, textStyle = { color: '#F97316' }, statusString = 'Pending';
-        if (s === 'a' || s === 'approved') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
-        else if (s === 'r' || s === 'rejected') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
-        else if (s === 'c' || s === 'cancelled' || s === 'canceled') { bgStyle.backgroundColor = '#FEF3C7'; textStyle.color = '#EA580C'; statusString = 'Cancelled'; }
-
-        const appliedRaw = reg.created_at || reg.applied_at || reg.application_date || reg.created_on || reg.log_date_time || '';
-        let appliedText = '';
-        if (appliedRaw) {
-          const d = new Date(appliedRaw);
-          if (!isNaN(d.getTime())) {
-            const dd = String(d.getDate()).padStart(2, '0');
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const yy = d.getFullYear();
-            const hh = String(d.getHours()).padStart(2, '0');
-            const mi = String(d.getMinutes()).padStart(2, '0');
-            appliedText = `${dd}-${mm}-${yy} ${hh}:${mi}`;
-          } else {
-            appliedText = String(appliedRaw);
-          }
-        }
-
-        return (
-          <View key={idx} style={[lc.regBox, bgStyle]}>
-            <View style={{ flex: 1 }}>
-              <Text style={lc.regTitle}>Regularisation Status</Text>
-              <Text style={lc.regMsg}>{reg.remarks || 'HR team is still reviewing your request'}</Text>
-              {!!appliedText && <Text style={lc.regApplied}>Applied: {appliedText}</Text>}
-            </View>
-            <View style={[lc.regBadge, { backgroundColor: textStyle.color + '20' }]}>
-              <Text style={[lc.regBadgeText, textStyle]}>{statusString}</Text>
-            </View>
-          </View>
-        );
-      })}
     </View>
   );
 };
@@ -295,7 +362,22 @@ const lc = StyleSheet.create({
   regBtnActionText: { color: '#FFF', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   regBtnActionSecondary: { backgroundColor: '#F3F4F6', alignSelf: 'flex-start', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), marginTop: moderateScale(10), borderWidth: 1, borderColor: '#E5E7EB' },
   regBtnActionTextSecondary: { color: '#4B5563', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
-  
+
+  // Per-row status pill — sits in the same position as REGULARISE button when
+  // a regularisation request already exists for that direction.
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(6),
+    borderRadius: moderateScale(20),
+    borderWidth: 1,
+    marginTop: moderateScale(10),
+  },
+  statusDot: { width: moderateScale(8), height: moderateScale(8), borderRadius: moderateScale(4), marginRight: moderateScale(6) },
+  statusPillText: { fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.4 },
+
   chipCol: { marginLeft: moderateScale(10) },
   chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: moderateScale(10), paddingVertical: 5, borderRadius: moderateScale(6) },
   chipText: { fontSize: moderateScale(11), fontWeight: '700', color: '#4F46E5' },
@@ -306,6 +388,59 @@ const lc = StyleSheet.create({
   regApplied: { fontSize: moderateScale(10), color: '#9CA3AF', marginTop: 4, fontWeight: '600' },
   regBadge: { paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(6), borderRadius: moderateScale(6), marginLeft: moderateScale(10) },
   regBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
+
+  // Regularised tab — status-focused card body
+  regStatusCard: {
+    marginTop: moderateScale(12),
+    padding: moderateScale(14),
+    borderRadius: moderateScale(14),
+    borderWidth: 1,
+  },
+  regStatusHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: moderateScale(10),
+  },
+  regDirChip: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateScale(4),
+    borderRadius: moderateScale(6),
+  },
+  regDirChipText: {
+    fontSize: moderateScale(10),
+    fontWeight: '800',
+    color: '#4F46E5',
+    letterSpacing: 0.5,
+  },
+  regStatusBadge: {
+    paddingHorizontal: moderateScale(10),
+    paddingVertical: moderateScale(4),
+    borderRadius: moderateScale(6),
+  },
+  regStatusBadgeText: {
+    fontSize: moderateScale(10),
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  regRow: {
+    flexDirection: 'row',
+    paddingVertical: moderateScale(6),
+  },
+  regRowLabel: {
+    width: moderateScale(110),
+    fontSize: moderateScale(11),
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  regRowVal: {
+    flex: 1,
+    fontSize: moderateScale(12),
+    fontWeight: '700',
+    color: '#111827',
+  },
 });
 
 // Analog Time Picker Modal
