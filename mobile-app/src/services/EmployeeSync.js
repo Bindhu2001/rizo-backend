@@ -5,6 +5,8 @@ import { clearUserSession, updateUserProfileLocal } from './LocalDB';
 
 const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
 
+const safeJson = (s) => { try { return JSON.parse(s); } catch (_) { return null; } };
+
 // Fetches the latest employee record from the server.
 // Always returns full profile data (name, designation, etc.).
 // If skipImeiCheck is false (default), also validates the IMEI:
@@ -21,13 +23,20 @@ export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = fals
       `${API_ENDPOINTS.GET_EMPLOYEE_FULL_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
       { timeout: 8000 }
     );
-    const s = res.data?.success;
+    const body = typeof res.data === 'string' ? safeJson(res.data) : res.data;
+    const s = body?.success ?? body?.status;
     const ok = s === 1 || s === true || s === '1' || s === 'true';
-    if (!ok || !res.data?.data) {
-      console.log('[Sync] get_employee_full_details rejected', { success: s, hasData: !!res.data?.data });
+    // Accept body.data OR fall back to body itself if name lives at the root.
+    const data = (body?.data && typeof body.data === 'object') ? body.data
+                 : (body?.name ? body : null);
+    if (!ok || !data) {
+      console.log('[Sync] get_employee_full_details rejected', {
+        success: s,
+        keys: body ? Object.keys(body).slice(0, 10) : null,
+        raw: typeof res.data === 'string' ? res.data.slice(0, 200) : JSON.stringify(res.data).slice(0, 200),
+      });
       return null;
     }
-    const data = res.data.data;
     console.log('[Sync] got details for', user.user_id, '→ name:', data.name, 'joining:', data.joining_date);
 
     // ── IMEI check (only when not skipped, e.g. on HomeScreen) ──────────────
@@ -49,7 +58,15 @@ export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = fals
       if (deviceImei && serverImei && deviceImei !== serverImei) {
         console.log('[Sync] IMEI mismatch — forcing logout');
         await clearUserSession();
-        navigation?.reset?.({ index: 0, routes: [{ name: 'Login' }] });
+        // Walk up to the root navigator so 'Login' (in root stack) is reachable
+        // from screens inside the Tab navigator.
+        let root = navigation;
+        while (root?.getParent?.()) root = root.getParent();
+        try {
+          root?.reset?.({ index: 0, routes: [{ name: 'Login' }] });
+        } catch (err) {
+          console.log('[Sync] reset to Login failed:', err?.message);
+        }
         return null;
       }
     }
