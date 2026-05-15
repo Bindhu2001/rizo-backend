@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, Dimensions, Platform, TouchableOpacit
 import * as Network from 'expo-network';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WifiOff, Home } from 'lucide-react-native';
-import { COLORS, SHADOWS } from './Theme';
+import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { getLoggedUser } from '../services/LocalDB';
 
 const { width, height } = Dimensions.get('window');
@@ -159,14 +159,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   blockerTitle: {
-    fontSize: 22,
+    fontSize: moderateScale(22),
     fontWeight: '900',
     color: COLORS.text,
     marginBottom: 12,
     textAlign: 'center',
   },
   blockerSub: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: COLORS.textLight,
     textAlign: 'center',
     lineHeight: 22,
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   },
   homeButtonText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '700',
   },
 
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   },
   barText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '600',
     letterSpacing: 0.1,
   },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { COLORS, SHADOWS } from './Theme';
+import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths } from 'date-fns';
 import axios from 'axios';
 import { ChevronRight, ChevronLeft } from 'lucide-react-native';
@@ -203,33 +203,33 @@ const CalendarWidget = ({ userId }) => {
 const styles = StyleSheet.create({
   card: { backgroundColor: '#FFF', borderRadius: 24, padding: 16, ...SHADOWS.light },
   calendarHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16, position: 'relative', width: '100%' },
-  monthTitle: { fontSize: 18, fontWeight: '900', color: COLORS.text, textAlign: 'center' },
+  monthTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, textAlign: 'center' },
   prevBtn: { position: 'absolute', left: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
   nextBtn: { position: 'absolute', right: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
-  weekDayText: { fontSize: 13, color: COLORS.textLight, fontWeight: '700', width: 40, textAlign: 'center' },
+  weekDayText: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '700', width: 40, textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', height: 48, justifyContent: 'center', alignItems: 'center' },
   todayCell: { backgroundColor: '#F3E5F5', borderRadius: 12 },
-  dayText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+  dayText: { fontSize: moderateScale(15), fontWeight: '600', color: COLORS.text },
   todayText: { color: COLORS.primaryDeep, fontWeight: '900' },
   indicators: { flexDirection: 'row', marginTop: 2, height: 3 },
   underline: { width: 12, height: 2, borderRadius: 1, marginHorizontal: 1 },
   legend: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12 },
   legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  legendText: { fontSize: 12, color: COLORS.textLight, fontWeight: '600' },
+  legendText: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: '#FFF', borderRadius: 24, padding: 24 },
-  modalDate: { fontSize: 18, fontWeight: '900', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
+  modalDate: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
   eventList: { marginBottom: 24, maxHeight: 300, minHeight: 60, backgroundColor: '#F9FAFB', borderRadius: 12 },
   eventRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12 },
   eventDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
-  eventName: { fontSize: 15, fontWeight: '800', color: COLORS.text },
-  eventType: { fontSize: 12, color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+  eventName: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
+  eventType: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
   closeBtn: { backgroundColor: '#E5E7EB', padding: 14, borderRadius: 16, alignItems: 'center' },
-  closeBtnText: { color: COLORS.text, fontWeight: '800', fontSize: 14 }
+  closeBtnText: { color: COLORS.text, fontWeight: '800', fontSize: moderateScale(14) }
 });
 
 export default CalendarWidget;

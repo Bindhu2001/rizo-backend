@@ -923,10 +923,10 @@ const st = StyleSheet.create({
   dotRow: { flexDirection: 'row', justifyContent: 'center', marginBottom: moderateScale(20) },
   dot: { width: moderateScale(8), height: moderateScale(8), borderRadius: 4, backgroundColor: '#E2E8F0', marginHorizontal: 4 },
   dotActive: { width: moderateScale(24), backgroundColor: PURPLE },
-  slideTitle: { fontSize: 22, fontWeight: '900', color: '#111827', textAlign: 'center', marginBottom: moderateScale(12) },
-  slideSub: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: moderateScale(32) },
+  slideTitle: { fontSize: moderateScale(22), fontWeight: '900', color: '#111827', textAlign: 'center', marginBottom: moderateScale(12) },
+  slideSub: { fontSize: moderateScale(14), color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: moderateScale(32) },
   getStartedBtn: { backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: moderateScale(56), borderRadius: moderateScale(28) },
-  getStartedText: { color: '#FFF', fontSize: 16, fontWeight: '700', marginRight: moderateScale(8) },
+  getStartedText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '700', marginRight: moderateScale(8) },
 
   step1Top: { flex: 0.75, backgroundColor: PURPLE_BG, justifyContent: 'center', alignItems: 'center' },
   backBtnLight: { position: 'absolute', top: Platform.OS === 'ios' ? 56 : 28, left: 16, width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
@@ -934,11 +934,11 @@ const st = StyleSheet.create({
 
   bottomCard: { flex: 1, backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), paddingHorizontal: moderateScale(24), paddingTop: moderateScale(28), ...SHADOWS.medium },
   cardScroll: { paddingBottom: moderateScale(100) },
-  cardTitle: { fontSize: 24, fontWeight: '900', color: '#111827', marginBottom: 4 },
-  cardSub: { fontSize: 14, color: '#6B7280', lineHeight: 20, marginBottom: moderateScale(24) },
+  cardTitle: { fontSize: moderateScale(24), fontWeight: '900', color: '#111827', marginBottom: 4 },
+  cardSub: { fontSize: moderateScale(14), color: '#6B7280', lineHeight: 20, marginBottom: moderateScale(24) },
 
   loginLink: { alignItems: 'center', marginTop: moderateScale(20) },
-  loginLinkText: { fontSize: 14, color: '#6B7280' },
+  loginLinkText: { fontSize: moderateScale(14), color: '#6B7280' },
   loginLinkBold: { color: PURPLE, fontWeight: '700' },
 
   dataTop: { backgroundColor: PURPLE_BG, paddingBottom: 0 },
@@ -947,7 +947,7 @@ const st = StyleSheet.create({
   stepBarRow: { flex: 1, flexDirection: 'row', marginHorizontal: moderateScale(10) },
   stepBarItem: { flex: 1, height: 5, backgroundColor: '#DDD6FE', borderRadius: 3 },
   stepBarActive: { backgroundColor: PURPLE },
-  stepCount: { fontSize: 13, fontWeight: '700', color: PURPLE, width: moderateScale(36), textAlign: 'right' },
+  stepCount: { fontSize: moderateScale(13), fontWeight: '700', color: PURPLE, width: moderateScale(36), textAlign: 'right' },
   dataTopCenter: { alignItems: 'center', justifyContent: 'center', paddingVertical: moderateScale(16), paddingBottom: moderateScale(28) },
   topIllustration: { width: wp(38), height: wp(33) },
 
@@ -955,57 +955,57 @@ const st = StyleSheet.create({
   avatarImg: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), borderWidth: 3, borderColor: '#EDE9FE' },
   avatarPlaceholder: { width: moderateScale(110), height: moderateScale(110), borderRadius: moderateScale(55), backgroundColor: '#EDE9FE', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' },
   camBadge: { position: 'absolute', bottom: 2, right: 2, backgroundColor: PURPLE, width: moderateScale(32), height: moderateScale(32), borderRadius: moderateScale(16), justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFF' },
-  avatarHint: { fontSize: 12, color: '#6D28D9', fontWeight: '600', marginTop: moderateScale(10), textAlign: 'center' },
+  avatarHint: { fontSize: moderateScale(12), color: '#6D28D9', fontWeight: '600', marginTop: moderateScale(10), textAlign: 'center' },
 
   inputWrap: { marginBottom: moderateScale(20), position: 'relative' },
-  floatLabel: { position: 'absolute', top: -9, left: 14, zIndex: 2, backgroundColor: '#FFF', paddingHorizontal: 4, fontSize: 11, color: '#9CA3AF', fontWeight: '600' },
-  input: { backgroundColor: '#FFF', borderRadius: moderateScale(14), paddingHorizontal: moderateScale(16), height: moderateScale(56), fontSize: 15, fontWeight: '600', color: '#111827', borderWidth: 1.5, borderColor: '#E5E7EB' },
+  floatLabel: { position: 'absolute', top: -9, left: 14, zIndex: 2, backgroundColor: '#FFF', paddingHorizontal: 4, fontSize: moderateScale(11), color: '#9CA3AF', fontWeight: '600' },
+  input: { backgroundColor: '#FFF', borderRadius: moderateScale(14), paddingHorizontal: moderateScale(16), height: moderateScale(56), fontSize: moderateScale(15), fontWeight: '600', color: '#111827', borderWidth: 1.5, borderColor: '#E5E7EB' },
   inputRow: { flexDirection: 'row' },
 
   pickerRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: moderateScale(14), paddingHorizontal: moderateScale(16), height: moderateScale(56), borderWidth: 1.5, borderColor: '#E5E7EB' },
-  pickerText: { flex: 1, fontSize: 15, fontWeight: '600', color: '#111827' },
+  pickerText: { flex: 1, fontSize: moderateScale(15), fontWeight: '600', color: '#111827' },
 
   nextBtn: { backgroundColor: PURPLE, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: moderateScale(58), borderRadius: moderateScale(30), marginTop: moderateScale(8), ...SHADOWS.medium },
-  nextBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800', marginRight: moderateScale(8) },
+  nextBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800', marginRight: moderateScale(8) },
 
-  skipNote: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginTop: moderateScale(16), lineHeight: 18 },
+  skipNote: { fontSize: moderateScale(12), color: '#9CA3AF', textAlign: 'center', marginTop: moderateScale(16), lineHeight: 18 },
 
   // Toggle + disability
   toggleCard: { backgroundColor: '#FAFAFA', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), borderWidth: 1, borderColor: '#F3F4F6' },
   toggleRow: { flexDirection: 'row', alignItems: 'center' },
-  toggleLabel: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  toggleLabel: { fontSize: moderateScale(15), fontWeight: '700', color: '#111827' },
 
   checkGroup: { marginTop: moderateScale(14) },
-  checkGroupLabel: { fontSize: 12, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: moderateScale(12) },
+  checkGroupLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: moderateScale(12) },
   checkGroupRow: { flexDirection: 'row', gap: moderateScale(12), flexWrap: 'wrap' },
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(8), paddingVertical: 4 },
   checkBox: { width: moderateScale(22), height: moderateScale(22), borderRadius: moderateScale(6), borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
   checkBoxActive: { backgroundColor: PURPLE, borderColor: PURPLE },
-  checkLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
+  checkLabel: { fontSize: moderateScale(14), fontWeight: '600', color: '#374151' },
 
   // Success
   successCircle: { width: moderateScale(100), height: moderateScale(100), borderRadius: moderateScale(50), backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(24), ...SHADOWS.medium },
-  successTitle: { fontSize: 26, fontWeight: '900', color: '#111827', marginBottom: moderateScale(12) },
-  successSub: { fontSize: 15, color: '#6B7280', textAlign: 'center', lineHeight: 22, paddingHorizontal: moderateScale(32) },
+  successTitle: { fontSize: moderateScale(26), fontWeight: '900', color: '#111827', marginBottom: moderateScale(12) },
+  successSub: { fontSize: moderateScale(15), color: '#6B7280', textAlign: 'center', lineHeight: 22, paddingHorizontal: moderateScale(32) },
 
   // Modals
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(28), borderTopRightRadius: moderateScale(28), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 40 : 24 },
   modalHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
-  modalTitle: { fontSize: 13, fontWeight: '700', color: '#9CA3AF', marginBottom: moderateScale(16), textTransform: 'uppercase', letterSpacing: 0.6 },
+  modalTitle: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF', marginBottom: moderateScale(16), textTransform: 'uppercase', letterSpacing: 0.6 },
   modalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(16) },
   modalDivider: { height: 1, backgroundColor: '#F3F4F6' },
-  modalRowText: { fontSize: 16, fontWeight: '600', color: '#111827', marginLeft: moderateScale(16) },
+  modalRowText: { fontSize: moderateScale(16), fontWeight: '600', color: '#111827', marginLeft: moderateScale(16) },
   modalCloseBtn: { marginTop: moderateScale(16), height: moderateScale(52), borderWidth: 1.5, borderColor: '#E5E7EB', borderRadius: moderateScale(26), justifyContent: 'center', alignItems: 'center' },
-  modalCloseText: { fontSize: 15, fontWeight: '700', color: '#374151' },
+  modalCloseText: { fontSize: moderateScale(15), fontWeight: '700', color: '#374151' },
 
-  countrySearch: { height: moderateScale(44), borderRadius: moderateScale(10), borderWidth: 1.5, borderColor: '#E5E7EB', paddingHorizontal: moderateScale(14), fontSize: 14, color: '#111827', marginBottom: moderateScale(12) },
+  countrySearch: { height: moderateScale(44), borderRadius: moderateScale(10), borderWidth: 1.5, borderColor: '#E5E7EB', paddingHorizontal: moderateScale(14), fontSize: moderateScale(14), color: '#111827', marginBottom: moderateScale(12) },
   vRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5, marginLeft: 2 },
-  vText: { fontSize: 11, fontWeight: '600' },
-  vDotGreen: { color: '#16A34A', fontSize: 10, marginRight: 5 },
-  vDotRed: { color: '#DC2626', fontSize: 10, marginRight: 5 },
+  vText: { fontSize: moderateScale(11), fontWeight: '600' },
+  vDotGreen: { color: '#16A34A', fontSize: moderateScale(10), marginRight: 5 },
+  vDotRed: { color: '#DC2626', fontSize: moderateScale(10), marginRight: 5 },
   countryItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(14), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  countryItemText: { fontSize: 15, color: '#4B5563', flex: 1 },
+  countryItemText: { fontSize: moderateScale(15), color: '#4B5563', flex: 1 },
   countryItemActive: { color: PURPLE, fontWeight: '700' },
 });
 

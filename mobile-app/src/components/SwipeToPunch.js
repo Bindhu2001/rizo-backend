@@ -8,7 +8,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Fingerprint, MapPin, ChevronsRight } from 'lucide-react-native';
-import { COLORS, SHADOWS } from './Theme';
+import { COLORS, SHADOWS, moderateScale } from './Theme';
 
 const SwipeToPunch = ({
   onSwipeComplete,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   swipeText: {
-    fontSize: 12,
+    fontSize: moderateScale(12),
     fontWeight: '900',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   locText: {
-    fontSize: 9,
+    fontSize: moderateScale(9),
     fontWeight: '600',
     marginLeft: 3,
     opacity: 0.8,

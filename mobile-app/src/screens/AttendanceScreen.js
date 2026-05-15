@@ -180,29 +180,27 @@ const AttendanceScreen = ({ navigation, route }) => {
           </View>
 
           <View style={s.infoCol}>
-            <View style={s.punchRow}>
-              <View style={s.punchItem}>
-                <Clock size={14} color="#9CA3AF" />
-                <Text style={s.timeValue}>{punchIn} <Text style={s.timeType}>IN</Text></Text>
-              </View>
-              <View style={[s.punchItem, { marginLeft: 16 }]}>
-                <Clock size={14} color="#9CA3AF" />
-                <Text style={s.timeValue}>{punchOut} <Text style={s.timeType}>OUT</Text></Text>
-              </View>
+            <View style={s.punchItem}>
+              <Clock size={moderateScale(13)} color="#9CA3AF" />
+              <Text style={s.timeValue} numberOfLines={1}>{punchIn} <Text style={s.timeType}>IN</Text></Text>
+            </View>
+            <View style={[s.punchItem, { marginTop: moderateScale(4) }]}>
+              <Clock size={moderateScale(13)} color="#9CA3AF" />
+              <Text style={s.timeValue} numberOfLines={1}>{punchOut} <Text style={s.timeType}>OUT</Text></Text>
             </View>
           </View>
 
           <View style={s.statusGroup}>
             <View style={[s.badge, { backgroundColor: statusBg }]}>
-              <Text style={[s.badgeText, { color: statusColor }]}>{statusLabel}</Text>
+              <Text style={[s.badgeText, { color: statusColor }]} numberOfLines={1}>{statusLabel}</Text>
             </View>
             {!!item.duration && item.duration !== "0" && (
-              <Text style={s.durationText}>{item.duration} mins</Text>
+              <Text style={s.durationText} numberOfLines={1}>{item.duration} mins</Text>
             )}
             {isExpanded ? (
-              <ChevronUp color="#9CA3AF" size={16} />
+              <ChevronUp color="#9CA3AF" size={moderateScale(16)} />
             ) : (
-              <ChevronDown color="#9CA3AF" size={16} />
+              <ChevronDown color="#9CA3AF" size={moderateScale(16)} />
             )}
           </View>
         </TouchableOpacity>
@@ -346,29 +344,28 @@ const s = StyleSheet.create({
 
   card: {
     flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(20),
-    padding: moderateScale(16), marginBottom: moderateScale(16), alignItems: 'center', ...SHADOWS.light
+    padding: moderateScale(14), marginBottom: moderateScale(16), alignItems: 'center', ...SHADOWS.light
   },
   dateBox: {
-    alignItems: 'center', paddingRight: moderateScale(16), borderRightWidth: 1,
-    borderRightColor: '#F3F4F6', width: moderateScale(75)
+    alignItems: 'center', paddingRight: moderateScale(12), borderRightWidth: 1,
+    borderRightColor: '#F3F4F6', width: moderateScale(62)
   },
-  dateNum: { fontSize: moderateScale(28), fontWeight: '900', color: '#111827' },
+  dateNum: { fontSize: moderateScale(26), fontWeight: '900', color: '#111827' },
   monthDayText: { fontSize: moderateScale(10), fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
 
-  infoCol: { flex: 1, paddingLeft: moderateScale(16) },
+  infoCol: { flex: 1, paddingLeft: moderateScale(12), paddingRight: moderateScale(8) },
   shiftTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: moderateScale(8) },
-  punchRow: { flexDirection: 'row', alignItems: 'center' },
   punchItem: { flexDirection: 'row', alignItems: 'center' },
-  timeValue: { fontSize: moderateScale(14), fontWeight: '900', color: '#111827', marginLeft: moderateScale(6) },
-  timeType: { fontSize: moderateScale(11), fontWeight: '700', color: '#9CA3AF' },
+  timeValue: { fontSize: moderateScale(13), fontWeight: '900', color: '#111827', marginLeft: moderateScale(6), flexShrink: 1 },
+  timeType: { fontSize: moderateScale(10), fontWeight: '700', color: '#9CA3AF' },
 
-  badge: { paddingHorizontal: moderateScale(10), paddingVertical: 5, borderRadius: moderateScale(8), minWidth: moderateScale(45), alignItems: 'center' },
-  badgeText: { fontSize: moderateScale(12), fontWeight: '900' },
+  badge: { paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(4), borderRadius: moderateScale(8), minWidth: moderateScale(42), alignItems: 'center' },
+  badgeText: { fontSize: moderateScale(11), fontWeight: '900' },
 
   cardWrapper: { marginBottom: moderateScale(16) },
   cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  statusGroup: { alignItems: 'center', minWidth: moderateScale(60) },
-  durationText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
+  statusGroup: { alignItems: 'center', justifyContent: 'center', width: moderateScale(70) },
+  durationText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6B7280', marginTop: moderateScale(4), marginBottom: moderateScale(2) },
 
   detailSection: {
     backgroundColor: '#F9FAFB',

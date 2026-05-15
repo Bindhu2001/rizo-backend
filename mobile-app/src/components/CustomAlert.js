@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Platform } from 'react-native';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react-native';
-import { SHADOWS } from './Theme';
+import { SHADOWS, moderateScale } from './Theme';
 
 const TYPE_CONFIG = {
   success: {
@@ -162,14 +162,14 @@ const s = StyleSheet.create({
 
   // Text
   title: {
-    fontSize: 20,
+    fontSize: moderateScale(20),
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 8,
     letterSpacing: -0.3,
   },
   message: {
-    fontSize: 14,
+    fontSize: moderateScale(14),
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 22,
@@ -202,7 +202,7 @@ const s = StyleSheet.create({
     borderColor: '#E5E7EB',
   },
   btnText: {
-    fontSize: 15,
+    fontSize: moderateScale(15),
     fontWeight: '700',
   },
   btnTextWhite: { color: '#FFF' },
