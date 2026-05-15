@@ -41,6 +41,9 @@ const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 
 const HomeScreen = ({ navigation, route }) => {
   const [user, setUser] = useState(route?.params?.user);
+  // Always keep a ref to the latest user so focus-listener closures never go stale
+  const userRef = useRef(route?.params?.user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -66,41 +69,45 @@ const HomeScreen = ({ navigation, route }) => {
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
+  // Redirect to Splash if session is cleared
   useEffect(() => {
     if (!user) {
       navigation.replace('Splash');
     }
   }, [user, navigation]);
 
+  // One-time setup on mount
   useEffect(() => {
-    if (!user) return;
+    if (!userRef.current) return;
     initDB().then(() => {
       fetchStatus();
       fetchRoles();
       checkOfflinePunches();
-      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); });
+      // Use ref so we always get the latest user_id
+      syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       setTimeout(fetchLocation, 1000);
       NotificationManager.checkStatusChanges();
-      NotificationManager.registerAndSendToken(user.user_id);
+      NotificationManager.registerAndSendToken(userRef.current.user_id);
     });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Focus listener — always uses userRef.current so it never captures stale data
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
       fetchRoles();
       checkOfflinePunches();
-      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); });
-      // Only re-fetch GPS if 2 minutes have passed since last successful fetch
+      syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       if (Date.now() - lastLocationFetch.current > 120000) {
         fetchLocation();
       }
     });
-
     const syncTimer = setInterval(() => SyncService.syncAll(), 60000);
     return () => {
       unsubscribe();
       clearInterval(syncTimer);
     };
-  }, [navigation, user?.user_id]);
+  }, [navigation]);
 
   if (!user) return null;
 
