@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
   headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20 },
+  scroll: { padding: 20, paddingBottom: 110 },
 
   // Salary Card
   salaryCard: { borderRadius: 30, padding: 24, marginBottom: 32, ...SHADOWS.medium },

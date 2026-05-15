@@ -342,7 +342,7 @@ const s = StyleSheet.create({
   monthText: { fontSize: moderateScale(16), fontWeight: '700', color: '#6C5CE7' },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
-  listContents: { padding: 16, paddingBottom: 40 },
+  listContents: { padding: 16, paddingBottom: 110 },
 
   card: {
     flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20,

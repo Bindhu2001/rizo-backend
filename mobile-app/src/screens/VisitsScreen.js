@@ -697,10 +697,10 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: '#111827' },
-  scroll: { padding: 16, paddingTop: 20 },
+  scroll: { padding: 16, paddingTop: 20, paddingBottom: 110 },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fabWrap: { position: 'absolute', bottom: 30, right: 20, zIndex: 99 },
+  fabWrap: { position: 'absolute', bottom: 100, right: 20, zIndex: 99 },
   fab: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 });
 

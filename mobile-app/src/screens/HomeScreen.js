@@ -813,7 +813,7 @@ const HomeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB', overflow: 'hidden' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
-  scroll: { flexGrow: 1, padding: 20 },
+  scroll: { flexGrow: 1, padding: 20, paddingBottom: 110 },
 
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },

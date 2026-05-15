@@ -308,8 +308,8 @@ const s = StyleSheet.create({
   backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
 
-  scroll: { padding: 20, paddingTop: 12 },
-  formScroll: { padding: 20, paddingTop: 12 },
+  scroll: { padding: 20, paddingTop: 12, paddingBottom: 110 },
+  formScroll: { padding: 20, paddingTop: 12, paddingBottom: 110 },
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   profileCard: {
