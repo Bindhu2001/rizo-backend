@@ -12,7 +12,10 @@ import {
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
+import { syncEmployeeDetails } from '../services/EmployeeSync';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+
+const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
 
 const PURPLE = '#4A148C';
 
@@ -78,6 +81,16 @@ const ProfileScreen = ({ navigation, route }) => {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!user?.user_id) return;
+    const refresh = () => {
+      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); });
+    };
+    refresh();
+    const unsub = navigation.addListener?.('focus', refresh);
+    return () => { if (typeof unsub === 'function') unsub(); };
+  }, [navigation, user?.user_id]);
+
   // Android hardware back: if a section is open, return to the menu;
   // otherwise close the Profile screen.
   useEffect(() => {
@@ -128,11 +141,11 @@ const ProfileScreen = ({ navigation, route }) => {
     ]);
   };
 
-  const getAvatarUri = (customPic) => {
+  const getAvatarSource = (customPic) => {
     const pic = customPic || user.profile_pic;
-    if (!pic) return `https://i.pravatar.cc/150?u=${user.user_id}`;
-    if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return pic;
-    return `${IMAGE_ROOT}/${pic}`;
+    if (!pic) return PLACEHOLDER_AVATAR;
+    if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return { uri: pic };
+    return { uri: `${IMAGE_ROOT}/${pic}` };
   };
 
   // ── Section view wrapper ────────────────────────────────────────────────────
@@ -158,7 +171,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <>
         <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 10 }}>
           <View style={s.avatarWrap}>
-            <Image source={{ uri: getAvatarUri(d.profile_pic) }} style={s.avatarLg} />
+            <Image source={getAvatarSource(d.profile_pic)} style={s.avatarLg} />
           </View>
         </View>
         <Field label="First Name" value={dash(d.name)} />
@@ -242,7 +255,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={s.profileCard}>
           <View style={s.avatarWrap}>
-            <Image source={{ uri: getAvatarUri() }} style={s.avatarLg} />
+            <Image source={getAvatarSource()} style={s.avatarLg} />
           </View>
           <Text style={s.profileName}>{user.employee_name}</Text>
           <Text style={s.profileRole}>{user.designation}</Text>
@@ -304,52 +317,52 @@ const ProfileScreen = ({ navigation, route }) => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8F9FA' },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16), height: moderateScale(60) },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
 
-  scroll: { padding: 20, paddingTop: 12, paddingBottom: 110 },
-  formScroll: { padding: 20, paddingTop: 12, paddingBottom: 110 },
+  scroll: { padding: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: moderateScale(110) },
+  formScroll: { padding: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: moderateScale(110) },
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   profileCard: {
-    backgroundColor: '#FFF', borderRadius: 24, padding: 24, alignItems: 'center',
-    marginBottom: 24, ...SHADOWS.medium,
+    backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), alignItems: 'center',
+    marginBottom: moderateScale(24), ...SHADOWS.medium,
   },
-  avatarWrap: { position: 'relative', marginBottom: 16 },
-  avatarLg: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#FFF', ...SHADOWS.medium },
+  avatarWrap: { position: 'relative', marginBottom: moderateScale(16) },
+  avatarLg: { width: moderateScale(100), height: moderateScale(100), borderRadius: moderateScale(50), borderWidth: 3, borderColor: '#FFF', ...SHADOWS.medium },
   profileName: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, marginBottom: 4 },
-  profileRole: { fontSize: moderateScale(14), color: COLORS.textLight, fontWeight: '600', marginBottom: 12 },
+  profileRole: { fontSize: moderateScale(14), color: COLORS.textLight, fontWeight: '600', marginBottom: moderateScale(12) },
   activeBadge: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#ECFDF5', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginBottom: 16,
+    backgroundColor: '#ECFDF5', paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(6), borderRadius: moderateScale(20), marginBottom: moderateScale(16),
   },
-  activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginRight: 6 },
+  activeDot: { width: moderateScale(8), height: moderateScale(8), borderRadius: 4, backgroundColor: '#10B981', marginRight: moderateScale(6) },
   activeText: { fontSize: moderateScale(11), fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
   idRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   idLabel: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '500' },
   idVal: { fontSize: moderateScale(13), fontWeight: '700', color: COLORS.text },
 
-  cardGroupTitle: { fontSize: moderateScale(13), fontWeight: '700', color: COLORS.textLight, letterSpacing: 0.4, marginBottom: 10, marginLeft: 4, textTransform: 'uppercase' },
+  cardGroupTitle: { fontSize: moderateScale(13), fontWeight: '700', color: COLORS.textLight, letterSpacing: 0.4, marginBottom: moderateScale(10), marginLeft: 4, textTransform: 'uppercase' },
 
-  menuCard: { backgroundColor: '#FFF', borderRadius: 20, marginBottom: 24, ...SHADOWS.light, overflow: 'hidden' },
-  sectionRow: { flexDirection: 'row', alignItems: 'center', padding: 16 },
-  sectionIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  menuCard: { backgroundColor: '#FFF', borderRadius: moderateScale(20), marginBottom: moderateScale(24), ...SHADOWS.light, overflow: 'hidden' },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', padding: moderateScale(16) },
+  sectionIconBox: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(12), justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(14) },
   sectionText: { flex: 1 },
   sectionTitle: { fontSize: moderateScale(15), fontWeight: '700', color: COLORS.text },
   sectionSub: { fontSize: moderateScale(12), color: COLORS.textLight, marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: 16 },
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginHorizontal: moderateScale(16) },
 
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#FFF', paddingVertical: 18, borderRadius: 20,
+    backgroundColor: '#FFF', paddingVertical: moderateScale(18), borderRadius: moderateScale(20),
     borderWidth: 1, borderColor: '#FEE2E2', ...SHADOWS.light,
   },
-  logoutText: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.danger, marginLeft: 10 },
+  logoutText: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.danger, marginLeft: moderateScale(10) },
 
   // Read-only field card
-  fieldCard: { backgroundColor: '#FFF', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 6, ...SHADOWS.light },
-  fieldRow: { paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  fieldCard: { backgroundColor: '#FFF', borderRadius: moderateScale(20), paddingHorizontal: moderateScale(18), paddingVertical: moderateScale(6), ...SHADOWS.light },
+  fieldRow: { paddingVertical: moderateScale(14), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   fieldLabel: { fontSize: moderateScale(12), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.3 },
   fieldValue: { fontSize: moderateScale(15), color: COLORS.text, fontWeight: '600' },
 });

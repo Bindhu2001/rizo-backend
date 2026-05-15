@@ -118,19 +118,19 @@ const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast
 
 const tl = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 0 },
-  left: { alignItems: 'center', width: 28, marginRight: 10 },
+  left: { alignItems: 'center', width: moderateScale(28), marginRight: moderateScale(10) },
   dot: {
-    width: 20, height: 20, borderRadius: 10,
+    width: moderateScale(20), height: moderateScale(20), borderRadius: moderateScale(10),
     backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: '#D1D5DB',
   },
   dotDone: { backgroundColor: '#22C55E', borderColor: '#16A34A' },
   line: { width: 2, flex: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
-  content: { flex: 1, paddingBottom: 14 },
+  content: { flex: 1, paddingBottom: moderateScale(14) },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   time: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
   timePlaceholder: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
-  badge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 6 },
+  badge: { paddingHorizontal: moderateScale(10), paddingVertical: 3, borderRadius: moderateScale(6) },
   badgeText: { fontSize: moderateScale(9), fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
   locRow: { flexDirection: 'row', alignItems: 'flex-start' },
   loc: { fontSize: moderateScale(11), color: '#9CA3AF', flex: 1, lineHeight: 16 },
@@ -239,20 +239,20 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
 };
 
 const cs = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, ...SHADOWS.light },
+  card: { backgroundColor: '#FFF', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), ...SHADOWS.light },
   // Live Card Headers
-  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: moderateScale(6) },
   clientName: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827' },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#FCA5A5' },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', paddingHorizontal: moderateScale(8), paddingVertical: 4, borderRadius: moderateScale(6), borderWidth: 1, borderColor: '#FCA5A5' },
+  liveDot: { width: moderateScale(6), height: moderateScale(6), borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 },
   liveText: { fontSize: moderateScale(10), fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
   liveTimeText: { fontSize: moderateScale(13), color: '#4B5563', marginBottom: 4, fontWeight: '600' },
-  liveLocText: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: 16, lineHeight: 18 },
-  purpleBtnFull: { backgroundColor: '#62338B', paddingVertical: 14, borderRadius: 50, alignItems: 'center' },
+  liveLocText: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: moderateScale(16), lineHeight: 18 },
+  purpleBtnFull: { backgroundColor: '#62338B', paddingVertical: moderateScale(14), borderRadius: moderateScale(50), alignItems: 'center' },
   purpleBtnText: { color: '#FFF', fontSize: moderateScale(13), fontWeight: '800', letterSpacing: 1 },
 
   // Completed Headers
-  compHeader: { marginBottom: 16 },
+  compHeader: { marginBottom: moderateScale(16) },
   date: { fontSize: moderateScale(12), color: '#9CA3AF', marginBottom: 2, marginTop: 4 },
   contactText: { fontSize: moderateScale(12), color: '#9CA3AF' },
   timeline: { marginLeft: 0 },
@@ -286,17 +286,17 @@ const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => (
 );
 
 const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 28 },
-  box: { backgroundColor: '#FFF', borderRadius: 24, padding: 28, width: '100%', alignItems: 'center' },
-  iconWrap: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  banOuter: { width: 44, height: 44, borderRadius: 22, borderWidth: 3.5, borderColor: '#62338B', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  banDiag: { position: 'absolute', width: 3.5, height: 52, backgroundColor: '#62338B', transform: [{ rotate: '45deg' }] },
-  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: 8 },
-  desc: { fontSize: moderateScale(13), color: '#9CA3AF', textAlign: 'center', marginBottom: 28, lineHeight: 20 },
-  row: { flexDirection: 'row', gap: 12, width: '100%' },
-  cancelBtn: { flex: 1, paddingVertical: 15, borderRadius: 50, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: moderateScale(28) },
+  box: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(28), width: '100%', alignItems: 'center' },
+  iconWrap: { width: moderateScale(88), height: moderateScale(88), borderRadius: moderateScale(44), backgroundColor: '#F3E8FF', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(20) },
+  banOuter: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), borderWidth: 3.5, borderColor: '#62338B', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  banDiag: { position: 'absolute', width: 3.5, height: moderateScale(52), backgroundColor: '#62338B', transform: [{ rotate: '45deg' }] },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: moderateScale(8) },
+  desc: { fontSize: moderateScale(13), color: '#9CA3AF', textAlign: 'center', marginBottom: moderateScale(28), lineHeight: 20 },
+  row: { flexDirection: 'row', gap: moderateScale(12), width: '100%' },
+  cancelBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
   cancelText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151' },
-  confirmBtn: { flex: 1, paddingVertical: 15, borderRadius: 50, backgroundColor: '#581C87', alignItems: 'center' },
+  confirmBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: '#581C87', alignItems: 'center' },
   confirmText: { fontSize: moderateScale(14), fontWeight: '800', color: '#FFF' },
 });
 
@@ -318,10 +318,10 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLe
 );
 
 const fi = StyleSheet.create({
-  wrap: { marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 14, paddingTop: 6, paddingBottom: 4 },
+  wrap: { marginBottom: moderateScale(14), borderWidth: 1, borderColor: '#E5E7EB', borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), paddingTop: moderateScale(6), paddingBottom: 4 },
   label: { fontSize: moderateScale(10), fontWeight: '600', color: '#9CA3AF', marginBottom: 2 },
   input: { fontSize: moderateScale(14), color: '#111827', fontWeight: '600', paddingVertical: 2 },
-  multiline: { height: 72, textAlignVertical: 'top' },
+  multiline: { height: moderateScale(72), textAlignVertical: 'top' },
 });
 
 // ─── Going to Meet (Fullscreen START Component) ───────────────────────────
@@ -389,10 +389,10 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           </View>
 
           <View style={sv.formWrap}>
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={20} />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={20} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={50} />
+            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
+            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
           </View>
         </ScrollView>
 
@@ -411,17 +411,17 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 };
 const sv = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: moderateScale(17), fontWeight: '700', color: '#111827' },
-  scroll: { padding: 20 },
-  locChipBox: { backgroundColor: '#F5F3FF', borderRadius: 12, padding: 16, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#EDE9FE' },
-  locWrap: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  locLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: 6 },
-  locText: { fontSize: moderateScale(12), color: '#4C1D95', textAlign: 'center', lineHeight: 18 },
-  formWrap: { backgroundColor: '#FFF', padding: 16, borderRadius: 16, ...SHADOWS.light },
-  footer: { padding: 20, backgroundColor: '#F9FAFB' },
-  startBtn: { backgroundColor: '#62338B', paddingVertical: 18, borderRadius: 50, alignItems: 'center' },
+  scroll: { padding: moderateScale(20) },
+  locChipBox: { backgroundColor: '#F5F3FF', borderRadius: moderateScale(12), padding: moderateScale(16), alignItems: 'center', marginBottom: moderateScale(24), borderWidth: 1, borderColor: '#EDE9FE' },
+  locWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4, alignSelf: 'center' },
+  locLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: moderateScale(6), textAlign: 'center' },
+  locText: { fontSize: moderateScale(12), color: '#4C1D95', textAlign: 'center', lineHeight: 18, width: '100%' },
+  formWrap: { backgroundColor: '#FFF', padding: moderateScale(16), borderRadius: moderateScale(16), ...SHADOWS.light },
+  footer: { padding: moderateScale(20), backgroundColor: '#F9FAFB' },
+  startBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   startBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
@@ -453,10 +453,10 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <Text style={sm.title}>Enter details</Text>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={20} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={20} />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={20} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={50} />
+            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
+            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
 
             <TouchableOpacity
               style={[sm.saveBtn, processing && { opacity: 0.7 }]}
@@ -473,10 +473,10 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
 };
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 30 : 20, maxHeight: '80%' },
-  dragHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: 20, marginLeft: 4 },
-  saveBtn: { backgroundColor: '#62338B', paddingVertical: 18, borderRadius: 50, alignItems: 'center', marginTop: 10 },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), paddingHorizontal: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: Platform.OS === 'ios' ? 30 : 20, maxHeight: '80%' },
+  dragHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: moderateScale(20), marginLeft: 4 },
+  saveBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center', marginTop: moderateScale(10) },
   saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
@@ -694,14 +694,14 @@ const VisitsScreen = ({ navigation, route }) => {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: '#111827' },
-  scroll: { padding: 16, paddingTop: 20, paddingBottom: 110 },
+  scroll: { padding: moderateScale(16), paddingTop: moderateScale(20), paddingBottom: moderateScale(110) },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fabWrap: { position: 'absolute', bottom: 100, right: 20, zIndex: 99 },
-  fab: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+  fab: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(32), backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 });
 
 export default VisitsScreen;

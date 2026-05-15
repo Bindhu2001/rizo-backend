@@ -308,54 +308,54 @@ const SalaryScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60 },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16), height: moderateScale(60) },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
-  headerIcon: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20, paddingBottom: 110 },
+  headerIcon: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
+  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(110) },
 
   // Salary Card
-  salaryCard: { borderRadius: 30, padding: 24, marginBottom: 32, ...SHADOWS.medium },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 30 },
+  salaryCard: { borderRadius: moderateScale(30), padding: moderateScale(24), marginBottom: moderateScale(32), ...SHADOWS.medium },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: moderateScale(30) },
   cardLabel: { fontSize: moderateScale(12), color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 4 },
   amount: { fontSize: moderateScale(32), fontWeight: '900', color: '#FFF' },
-  statusBadge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  statusBadge: { backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(10) },
   statusText: { fontSize: moderateScale(10), color: '#FFF', fontWeight: '800' },
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   nextPayRow: { flexDirection: 'row', alignItems: 'center' },
-  nextPayText: { fontSize: moderateScale(11), color: 'rgba(255,255,255,0.7)', marginLeft: 6, fontWeight: '600' },
-  slipBtn: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, flexDirection: 'row', alignItems: 'center' },
-  slipBtnText: { color: COLORS.primaryDeep, fontWeight: '800', fontSize: moderateScale(12), marginLeft: 8 },
+  nextPayText: { fontSize: moderateScale(11), color: 'rgba(255,255,255,0.7)', marginLeft: moderateScale(6), fontWeight: '600' },
+  slipBtn: { backgroundColor: '#FFF', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(10), borderRadius: moderateScale(14), flexDirection: 'row', alignItems: 'center' },
+  slipBtnText: { color: COLORS.primaryDeep, fontWeight: '800', fontSize: moderateScale(12), marginLeft: moderateScale(8) },
 
   // Bank Card
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: moderateScale(16), paddingHorizontal: 4 },
   sectionTitle: { fontSize: moderateScale(16), fontWeight: '800', color: COLORS.text },
   seeAll: { fontSize: moderateScale(13), color: COLORS.primaryDeep, fontWeight: '700' },
-  bankCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 24, ...SHADOWS.light },
-  bankIcon: { width: 50, height: 50, borderRadius: 16, backgroundColor: '#F5F3FF', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  bankCard: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(24), ...SHADOWS.light },
+  bankIcon: { width: moderateScale(50), height: moderateScale(50), borderRadius: moderateScale(16), backgroundColor: '#F5F3FF', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(16) },
   bankInfo: { flex: 1 },
   bankName: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   accNo: { fontSize: moderateScale(12), color: COLORS.textLight, marginTop: 4, fontWeight: '600' },
-  verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8F5E9', paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(6), borderRadius: moderateScale(10) },
   verifiedText: { fontSize: moderateScale(10), color: '#2ECC71', fontWeight: '800', marginLeft: 4 },
 
   // Stats
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 32 },
-  statCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 16, ...SHADOWS.light },
-  statIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(32) },
+  statCard: { width: '48%', backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(16), ...SHADOWS.light },
+  statIcon: { width: moderateScale(36), height: moderateScale(36), borderRadius: moderateScale(10), justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(12) },
   statVal: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   statLabel: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
 
   // List
-  listCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 8, ...SHADOWS.light },
-  slipItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  slipIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  listCard: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(8), ...SHADOWS.light },
+  slipItem: { flexDirection: 'row', alignItems: 'center', padding: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  slipIcon: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(12), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(16) },
   slipMain: { flex: 1 },
   slipMonth: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   slipDate: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
   slipEnd: { alignItems: 'flex-end', flexDirection: 'row', alignItems: 'center' },
-  slipAmount: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginRight: 15 },
-  downloadBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }
+  slipAmount: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginRight: moderateScale(15) },
+  downloadBtn: { width: moderateScale(30), height: moderateScale(30), borderRadius: moderateScale(15), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }
 });
 
 export default SalaryScreen;

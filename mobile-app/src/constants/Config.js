@@ -41,6 +41,7 @@ export const API_ENDPOINTS = {
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   REGISTER: `${NEWAPP_URL}/register`,
   EMPLOYEE_PUNCH_DETAILS: `${NEWAPP_URL}/getEmployeePunchDetails`,
+  GET_EMPLOYEE_FULL_DETAILS: `${NEWAPP_URL}/get_employee_full_details`,
   GET_EMPLOYEE_PERSONAL: `${NEWAPP_URL}/get_employee_personal_details`,
   GET_EMPLOYEE_DOCUMENTS: `${NEWAPP_URL}/get_employee_documents_details`,
   GET_EMPLOYEE_BANK: `${NEWAPP_URL}/get_employee_bank_details`,

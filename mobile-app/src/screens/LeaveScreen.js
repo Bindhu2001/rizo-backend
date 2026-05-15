@@ -45,8 +45,8 @@ const LeaveHeader = ({ title, onBack }) => (
   </View>
 );
 const h = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, height: 56, backgroundColor: '#FFF' },
-  back: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
+  back: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
 });
 
@@ -146,37 +146,37 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
 
 const hc = StyleSheet.create({
   card: {
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16,
-    marginBottom: 12, overflow: 'hidden', ...SHADOWS.light,
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16),
+    marginBottom: moderateScale(12), overflow: 'hidden', ...SHADOWS.light,
     borderWidth: 1, borderColor: '#F3F4F6',
   },
-  sideBar: { width: 36, justifyContent: 'center', alignItems: 'center' },
+  sideBar: { width: moderateScale(36), justifyContent: 'center', alignItems: 'center' },
   sideText: {
     color: '#FFF', fontSize: moderateScale(8), fontWeight: '900', letterSpacing: 1,
-    transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center',
+    transform: [{ rotate: '-90deg' }], width: moderateScale(80), textAlign: 'center',
   },
-  body: { flex: 1, padding: 14 },
+  body: { flex: 1, padding: moderateScale(14) },
   topRow: { flexDirection: 'row', alignItems: 'flex-start' },
   leaveName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', marginBottom: 3 },
   dateText: { fontSize: moderateScale(12), color: '#6B7280', marginBottom: 3 },
   approverText: { fontSize: moderateScale(11), color: '#9CA3AF', fontWeight: '500' },
-  daysBadge: { alignItems: 'flex-end', marginLeft: 8, justifyContent: 'center' },
+  daysBadge: { alignItems: 'flex-end', marginLeft: moderateScale(8), justifyContent: 'center' },
   daysNum: { fontSize: moderateScale(28), fontWeight: '900', color: COLORS.primaryDeep, lineHeight: 30 },
   daysLabel: { fontSize: moderateScale(10), color: '#9CA3AF', fontWeight: '700', textAlign: 'right' },
   // Expanded
-  expandedBox: { marginTop: 14 },
-  divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: 14 },
-  detailRow: { flexDirection: 'row', marginBottom: 14 },
+  expandedBox: { marginTop: moderateScale(14) },
+  divider: { height: 1, backgroundColor: '#F3F4F6', marginBottom: moderateScale(14) },
+  detailRow: { flexDirection: 'row', marginBottom: moderateScale(14) },
   detailLabel: { fontSize: moderateScale(10), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   detailValue: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
-  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(14) },
   metaLabel: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '600' },
   metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700' },
-  statusTag: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
+  statusTag: { alignSelf: 'flex-start', paddingHorizontal: moderateScale(12), paddingVertical: 5, borderRadius: moderateScale(20) },
   statusTagText: { fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   cancelBtn: {
-    marginTop: 12, borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10,
-    paddingVertical: 10, alignItems: 'center', justifyContent: 'center',
+    marginTop: moderateScale(12), borderWidth: 1.5, borderColor: '#DC2626', borderRadius: moderateScale(10),
+    paddingVertical: moderateScale(10), alignItems: 'center', justifyContent: 'center',
   },
   cancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 });
@@ -197,11 +197,11 @@ const FileThumbnail = ({ file, onRemove }) => {
   );
 };
 const ft = StyleSheet.create({
-  wrap: { width: 72, marginRight: 10, alignItems: 'center' },
-  thumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+  wrap: { width: moderateScale(72), marginRight: moderateScale(10), alignItems: 'center', overflow: 'visible' },
+  thumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', overflow: 'visible' },
   ext: { fontSize: moderateScale(11), fontWeight: '900', color: '#1D4ED8' },
   name: { fontSize: moderateScale(9), color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
-  remove: { position: 'absolute', top: -8, right: -8, width: 22, height: 22, borderRadius: 11, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
+  remove: { position: 'absolute', top: -8, right: -8, width: moderateScale(22), height: moderateScale(22), borderRadius: moderateScale(11), backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center' },
 });
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
@@ -260,16 +260,16 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
   );
 };
 const cal = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
-  box: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.medium },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: moderateScale(24) },
+  box: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), ...SHADOWS.medium },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: moderateScale(20) },
   headerTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827' },
   arrowBtn: { padding: 4 },
-  daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: 10, marginBottom: 10 },
+  daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: moderateScale(10), marginBottom: moderateScale(10) },
   dhText: { flex: 1, textAlign: 'center', fontSize: moderateScale(13), fontWeight: '700', color: '#6B7280' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
-  cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: 20 },
+  cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: moderateScale(20) },
   cellText: { fontSize: moderateScale(14), color: '#111827', fontWeight: '500' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' }
 });
@@ -294,10 +294,10 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
 
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
-  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16 },
-  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
+  handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16) },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   itemText: { fontSize: moderateScale(15), color: '#4B5563' },
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
@@ -451,9 +451,9 @@ const LeaveScreen = ({ navigation, route }) => {
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    if (!reason.trim()) { showAlert('warning', 'Missing Reason', 'Please provide a reason for your leave.'); return; }
+    if (!selectedLeave) { showAlert('warning', 'Leave Type Required', 'Please select a leave type to continue.'); return; }
     if (!fromDate.trim()) { showAlert('warning', 'Date Required', 'Please enter a From Date.'); return; }
-    if (!selectedLeave) return;
+    if (!reason.trim()) { showAlert('warning', 'Missing Reason', 'Please provide a reason for your leave.'); return; }
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -535,7 +535,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
         {/* From Row */}
@@ -655,7 +655,7 @@ const LeaveScreen = ({ navigation, route }) => {
           <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
         </TouchableOpacity>
         {attachedFiles.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(22), marginBottom: moderateScale(16), overflow: 'visible' }} contentContainerStyle={{ overflow: 'visible' }}>
             {attachedFiles.map((f, i) => (
               <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
@@ -794,63 +794,63 @@ const LeaveScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { padding: 20, paddingBottom: 120 },
+  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
 
   // Balance cards
-  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 12, overflow: 'hidden', height: 72, ...SHADOWS.light },
+  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', height: moderateScale(72), ...SHADOWS.light },
   balBar: { width: 5 },
-  balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16) },
   balRatio: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
   balType: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
-  histBtn: { backgroundColor: '#F5F3FF', padding: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 24 },
-  histBtnText: { color: COLORS.primaryDeep, fontWeight: '700', marginRight: 8 },
+  histBtn: { backgroundColor: '#F5F3FF', padding: moderateScale(16), borderRadius: moderateScale(16), flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: moderateScale(24) },
+  histBtnText: { color: COLORS.primaryDeep, fontWeight: '700', marginRight: moderateScale(8) },
 
   // Apply form
-  remBanner: { backgroundColor: '#F5F3FF', paddingVertical: 10, alignItems: 'center' },
+  remBanner: { backgroundColor: '#F5F3FF', paddingVertical: moderateScale(10), alignItems: 'center' },
   remText: { color: COLORS.primaryDeep, fontSize: moderateScale(12), fontWeight: '600' },
-  dateRow: { flexDirection: 'row', marginBottom: 16 },
-  inputBox: { marginBottom: 16 },
-  label: { fontSize: moderateScale(11), fontWeight: '600', color: '#9CA3AF', marginBottom: 6, marginLeft: 2 },
+  dateRow: { flexDirection: 'row', marginBottom: moderateScale(16) },
+  inputBox: { marginBottom: moderateScale(16) },
+  label: { fontSize: moderateScale(11), fontWeight: '600', color: '#9CA3AF', marginBottom: moderateScale(6), marginLeft: 2 },
   inputRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 12, paddingHorizontal: 14, height: 48, color: '#000'
+    borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), height: moderateScale(48), color: '#000'
   },
   inputVal: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
   dateText: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
 
   // Files
-  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, marginBottom: 12 },
+  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(10), marginBottom: moderateScale(12) },
   addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: moderateScale(13) },
-  addMoreThumb: { width: 64, height: 64, borderRadius: 10, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
+  addMoreThumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
   addMorePlus: { fontSize: moderateScale(24), color: '#9CA3AF', fontWeight: '300' },
 
-  submitBtn: { backgroundColor: COLORS.primaryDeep, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  submitBtn: { backgroundColor: COLORS.primaryDeep, height: moderateScale(60), borderRadius: moderateScale(30), justifyContent: 'center', alignItems: 'center', marginTop: moderateScale(8) },
   submitText: { color: '#FFF', fontWeight: '900', fontSize: moderateScale(13), letterSpacing: 1.5 },
 
   // Approver Dropdown
-  ddOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: 32 },
-  ddBox: { backgroundColor: '#FFF', borderRadius: 20, padding: 20, ...SHADOWS.medium },
-  ddTitle: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text, marginBottom: 16 },
-  ddItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  ddOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: moderateScale(32) },
+  ddBox: { backgroundColor: '#FFF', borderRadius: moderateScale(20), padding: moderateScale(20), ...SHADOWS.medium },
+  ddTitle: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text, marginBottom: moderateScale(16) },
+  ddItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: moderateScale(14), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   ddItemText: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text },
 
   // History Tabs
   tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  tab: { flex: 1, paddingVertical: 14, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tab: { flex: 1, paddingVertical: moderateScale(14), alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: COLORS.primaryDeep },
   tabText: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
   tabTextActive: { color: COLORS.primaryDeep },
 
-  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 60 },
-  emptyText: { fontSize: moderateScale(14), color: '#9CA3AF', fontWeight: '600', marginTop: 12 },
+  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: moderateScale(60) },
+  emptyText: { fontSize: moderateScale(14), color: '#9CA3AF', fontWeight: '600', marginTop: moderateScale(12) },
 
   // Success
-  successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#FFF' },
-  successCircle: { width: 140, height: 140, borderRadius: 70, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: 32 },
-  successTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 14 },
-  successSub: { fontSize: moderateScale(14), color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: 50 },
-  goHomeBtn: { width: '100%', height: 54, borderRadius: 30, borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
+  successWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: moderateScale(40), backgroundColor: '#FFF' },
+  successCircle: { width: moderateScale(140), height: moderateScale(140), borderRadius: moderateScale(70), backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(32) },
+  successTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: moderateScale(14) },
+  successSub: { fontSize: moderateScale(14), color: '#6B7280', textAlign: 'center', lineHeight: 22, marginBottom: moderateScale(50) },
+  goHomeBtn: { width: '100%', height: moderateScale(54), borderRadius: moderateScale(30), borderWidth: 1, borderColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center' },
   goHomeText: { color: COLORS.text, fontWeight: '800' },
 });
 

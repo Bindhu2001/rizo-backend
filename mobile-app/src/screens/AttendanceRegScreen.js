@@ -110,9 +110,9 @@ const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChang
 };
 
 const fi = StyleSheet.create({
-  container: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 24, position: 'relative' },
+  container: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: moderateScale(12), paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(14), marginBottom: moderateScale(24), position: 'relative' },
   activeContainer: { borderColor: '#E91E63' },
-  multiline: { height: 120, paddingVertical: 12 },
+  multiline: { height: moderateScale(120), paddingVertical: moderateScale(12) },
   labelContainer: { position: 'absolute', top: -10, left: 12, backgroundColor: '#FFF', paddingHorizontal: 4 },
   label: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '500' },
   activeLabel: { color: '#E91E63', fontWeight: '600' },
@@ -129,8 +129,8 @@ const TargetIcon = ({ color }) => (
   </View>
 );
 const ti = StyleSheet.create({
-  outer: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
-  inner: { width: 8, height: 8, borderRadius: 4 }
+  outer: { width: moderateScale(18), height: moderateScale(18), borderRadius: moderateScale(9), borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
+  inner: { width: moderateScale(8), height: moderateScale(8), borderRadius: 4 }
 });
 
 const ClockIcon = () => (
@@ -230,18 +230,37 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         </View>
       </View>
 
-      {/* Reg Statuses */}
-      {isRegularisedTab && (regsForDate || []).map((reg, idx) => {
+      {/* Reg Statuses — show on Log tab too so the user sees pending/approved/rejected
+          status with the timestamp at which they applied. */}
+      {(regsForDate || []).map((reg, idx) => {
         const s = (reg.reg_status || reg.status || 'p').toLowerCase();
         let bgStyle = { backgroundColor: '#FFF3E0' }, textStyle = { color: '#F97316' }, statusString = 'Pending';
         if (s === 'a' || s === 'approved') { bgStyle.backgroundColor = '#F0FDF4'; textStyle.color = '#16A34A'; statusString = 'Approved'; }
         else if (s === 'r' || s === 'rejected') { bgStyle.backgroundColor = '#FEF2F2'; textStyle.color = '#DC2626'; statusString = 'Rejected'; }
+        else if (s === 'c' || s === 'cancelled' || s === 'canceled') { bgStyle.backgroundColor = '#FEF3C7'; textStyle.color = '#EA580C'; statusString = 'Cancelled'; }
+
+        const appliedRaw = reg.created_at || reg.applied_at || reg.application_date || reg.created_on || reg.log_date_time || '';
+        let appliedText = '';
+        if (appliedRaw) {
+          const d = new Date(appliedRaw);
+          if (!isNaN(d.getTime())) {
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yy = d.getFullYear();
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            appliedText = `${dd}-${mm}-${yy} ${hh}:${mi}`;
+          } else {
+            appliedText = String(appliedRaw);
+          }
+        }
 
         return (
           <View key={idx} style={[lc.regBox, bgStyle]}>
             <View style={{ flex: 1 }}>
               <Text style={lc.regTitle}>Regularisation Status</Text>
               <Text style={lc.regMsg}>{reg.remarks || 'HR team is still reviewing your request'}</Text>
+              {!!appliedText && <Text style={lc.regApplied}>Applied: {appliedText}</Text>}
             </View>
             <View style={[lc.regBadge, { backgroundColor: textStyle.color + '20' }]}>
               <Text style={[lc.regBadgeText, textStyle]}>{statusString}</Text>
@@ -254,37 +273,38 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 };
 
 const lc = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  card: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), marginBottom: moderateScale(16), elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: moderateScale(16) },
   dateTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 2 },
   shiftText: { fontSize: moderateScale(12), fontWeight: '600', color: '#6B7280' },
-  badgeWo: { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeWo: { backgroundColor: '#F9FAFB', borderColor: '#E5E7EB', borderWidth: 1, paddingHorizontal: moderateScale(8), paddingVertical: 4, borderRadius: moderateScale(6) },
   badgeWoText: { fontSize: moderateScale(10), fontWeight: '800', color: '#9CA3AF' },
   
-  punchContainer: { position: 'relative', paddingLeft: 8, marginTop: 10 },
+  punchContainer: { position: 'relative', paddingLeft: moderateScale(8), marginTop: moderateScale(10) },
   trackLine: { position: 'absolute', left: 16.5, top: 20, bottom: 20, width: 2, backgroundColor: '#E5E7EB', borderStyle: 'dotted', zIndex: 0 },
   
   punchRowBox: { flexDirection: 'row', alignItems: 'flex-start', zIndex: 1 },
-  iconCol: { width: 20, alignItems: 'center', backgroundColor: '#FFF', marginTop: 0 },
-  timeCol: { flex: 1, paddingLeft: 16, paddingTop: 1 },
+  iconCol: { width: moderateScale(20), alignItems: 'center', backgroundColor: '#FFF', marginTop: 0 },
+  timeCol: { flex: 1, paddingLeft: moderateScale(16), paddingTop: 1 },
   timeVal: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827' },
-  locText: { fontSize: moderateScale(10), color: '#6B7280', marginTop: 4, lineHeight: 14, paddingRight: 10 },
+  locText: { fontSize: moderateScale(10), color: '#6B7280', marginTop: 4, lineHeight: 14, paddingRight: moderateScale(10) },
   
   missingHdr: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '500' },
   missingVal: { fontSize: moderateScale(13), fontWeight: '900', color: '#DC2626', marginTop: 2 },
-  regBtnAction: { backgroundColor: '#DC2626', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10 },
+  regBtnAction: { backgroundColor: '#DC2626', alignSelf: 'flex-start', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), marginTop: moderateScale(10) },
   regBtnActionText: { color: '#FFF', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
-  regBtnActionSecondary: { backgroundColor: '#F3F4F6', alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, marginTop: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  regBtnActionSecondary: { backgroundColor: '#F3F4F6', alignSelf: 'flex-start', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), marginTop: moderateScale(10), borderWidth: 1, borderColor: '#E5E7EB' },
   regBtnActionTextSecondary: { color: '#4B5563', fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   
-  chipCol: { marginLeft: 10 },
-  chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  chipCol: { marginLeft: moderateScale(10) },
+  chipBg: { backgroundColor: '#EEF2FF', paddingHorizontal: moderateScale(10), paddingVertical: 5, borderRadius: moderateScale(6) },
   chipText: { fontSize: moderateScale(11), fontWeight: '700', color: '#4F46E5' },
 
-  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: 24, padding: 14, borderRadius: 12 },
+  regBox: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(24), padding: moderateScale(14), borderRadius: moderateScale(12) },
   regTitle: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827' },
   regMsg: { fontSize: moderateScale(11), color: '#6B7280', marginTop: 4, fontWeight: '500', lineHeight: 16 },
-  regBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, marginLeft: 10 },
+  regApplied: { fontSize: moderateScale(10), color: '#9CA3AF', marginTop: 4, fontWeight: '600' },
+  regBadge: { paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(6), borderRadius: moderateScale(6), marginLeft: moderateScale(10) },
   regBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
 });
 
@@ -446,21 +466,21 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 
 const tp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  box: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: 320, ...SHADOWS.medium },
-  title: { fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: 20 },
-  displayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 30 },
-  timeBox: { backgroundColor: '#F3F4F6', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12 },
+  box: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: moderateScale(320), ...SHADOWS.medium },
+  title: { fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: moderateScale(20) },
+  displayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(30) },
+  timeBox: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(12), paddingHorizontal: moderateScale(20), borderRadius: moderateScale(12) },
   timeBoxInactive: { backgroundColor: 'transparent' },
   timeNumber: { fontSize: moderateScale(36), fontWeight: '400', color: '#111827' },
   timeNumberInactive: { color: '#6B7280' },
-  colon: { fontSize: moderateScale(36), marginHorizontal: 8, color: '#111827' },
-  ampmBox: { marginLeft: 'auto', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, overflow: 'hidden', flexDirection: 'column' },
-  ampmActive: { backgroundColor: '#F3F4F6', paddingVertical: 10, paddingHorizontal: 12 },
-  ampmInactive: { backgroundColor: '#FFF', paddingVertical: 10, paddingHorizontal: 12 },
+  colon: { fontSize: moderateScale(36), marginHorizontal: moderateScale(8), color: '#111827' },
+  ampmBox: { marginLeft: 'auto', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: moderateScale(8), overflow: 'hidden', flexDirection: 'column' },
+  ampmActive: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(10), paddingHorizontal: moderateScale(12) },
+  ampmInactive: { backgroundColor: '#FFF', paddingVertical: moderateScale(10), paddingHorizontal: moderateScale(12) },
   ampmTextActive: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
   ampmTextInactive: { fontSize: moderateScale(13), fontWeight: '600', color: '#9CA3AF' },
 
-  clockWrap: { alignItems: 'center', marginBottom: 20 },
+  clockWrap: { alignItems: 'center', marginBottom: moderateScale(20) },
   clockFace: { width: 200, height: 200, borderRadius: 100, backgroundColor: '#F9FAFB', position: 'relative' },
   centerDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#6B7280', position: 'absolute', top: 96, left: 96, zIndex: 10 },
   handContainer: { position: 'absolute', width: 2, height: 200, left: 99, top: 0, alignItems: 'center' },
@@ -470,8 +490,8 @@ const tp = StyleSheet.create({
   numText: { fontSize: moderateScale(14), color: '#111827' },
   numTextActive: { color: '#FFF' },
 
-  actions: { flexDirection: 'row', alignItems: 'center', marginTop: 10, justifyContent: 'flex-end', gap: 8 },
-  btn: { paddingHorizontal: 16, paddingVertical: 10 },
+  actions: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(10), justifyContent: 'flex-end', gap: moderateScale(8) },
+  btn: { paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(10) },
   btnText: { fontSize: moderateScale(14), fontWeight: '600', color: '#4B5563' },
 });
 
@@ -495,9 +515,9 @@ const ReasonPickerModal = ({ visible, value, onClose, onConfirm }) => (
 );
 const rp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
-  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
+  handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   itemText: { fontSize: moderateScale(15), color: '#4B5563' },
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
@@ -611,6 +631,9 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   };
 
   const handleSubmit = async () => {
+    if (!reason) { showAlert('warning', 'Reason Required', 'Please select a reason to continue.'); return; }
+    if (!logTime) { showAlert('warning', 'Time Required', 'Please enter the time.'); return; }
+    if (!remarks.trim()) { showAlert('warning', 'Remarks Required', 'Please enter remarks.'); return; }
     setProcessing(true);
     try {
       const payload = {
@@ -618,7 +641,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         direction,
         dates: selectedDay.date,
         log_time: logTime,
-        remarks: remarks || reason,
+        remarks: remarks,
       };
       const res = await axios.post(API_ENDPOINTS.REGULARISE, payload, { timeout: 10000 });
       if (res.data?.success === 1 || res.data?.success === true) {
@@ -637,7 +660,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   // ─── Views ────────────────────────────────────────────────────────
   if (view === 'FORM') {
-    const isSubmitActive = !!remarks.trim() || !!reason;
+    const isSubmitActive = !!reason && !!logTime && !!remarks.trim();
     
     return (
       <SafeAreaView style={s.container}>
@@ -649,42 +672,48 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
-          <View style={s.formWrap}>
-            <FloatingInput
-              label="Reason *"
-              value={reason}
-              editable={false}
-              onPress={() => setShowReasonPicker(true)}
-              icon={<ChevronDown color="#9CA3AF" size={18} />}
-            />
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          style={{ flex: 1 }}
+        >
+          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
+            <View style={s.formWrap}>
+              <FloatingInput
+                label="Reason *"
+                value={reason}
+                editable={false}
+                onPress={() => setShowReasonPicker(true)}
+                icon={<ChevronDown color="#9CA3AF" size={18} />}
+              />
 
-            <FloatingInput
-              label="Enter Time *"
-              value={logTime}
-              onPress={() => setShowTimePicker(true)}
-              editable={false}
-              icon={<ClockIcon />}
-            />
+              <FloatingInput
+                label="Enter Time *"
+                value={logTime}
+                onPress={() => setShowTimePicker(true)}
+                editable={false}
+                icon={<ClockIcon />}
+              />
 
-            <FloatingInput
-              label="Remarks"
-              value={remarks}
-              onChangeText={setRemarks}
-              multiline
-              active={true}
-              maxLength={50}
-            />
+              <FloatingInput
+                label="Remarks *"
+                value={remarks}
+                onChangeText={setRemarks}
+                multiline
+                active={true}
+                maxLength={50}
+              />
 
-            <TouchableOpacity
-              style={[s.submitBtn, isSubmitActive && s.submitBtnActive]}
-              onPress={handleSubmit}
-              disabled={processing || !isSubmitActive}
-            >
-              {processing ? <ActivityIndicator color="#FFF" /> : <Text style={[s.submitText, isSubmitActive && s.submitTextActive]}>SUBMIT REQUEST</Text>}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+              <TouchableOpacity
+                style={[s.submitBtn, isSubmitActive && s.submitBtnActive]}
+                onPress={handleSubmit}
+                disabled={processing}
+              >
+                {processing ? <ActivityIndicator color="#FFF" /> : <Text style={[s.submitText, isSubmitActive && s.submitTextActive]}>SUBMIT REQUEST</Text>}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
         <AnalogTimePicker
           visible={showTimePicker}
@@ -761,7 +790,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       ) : (
         <ScrollView contentContainerStyle={s.listScroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {tab === 'LOG' && attLogs.map((item, i) => (
-            <LogCard key={item.date || i} item={item} isRegularisedTab={false} onRegularise={openRegForm} />
+            <LogCard key={item.date || i} item={item} isRegularisedTab={false} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
           ))}
           {tab === 'REGULARISED' && regLogs.length === 0 ? (
              <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#9CA3AF' }}>No regularised logs found.</Text></View>
@@ -806,41 +835,41 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 60, paddingHorizontal: 8, backgroundColor: '#FFF' },
-  backBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: moderateScale(60), paddingHorizontal: moderateScale(8), backgroundColor: '#FFF' },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(16), fontWeight: '600', color: '#111827' },
 
-  tabBox: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  tabBox: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: moderateScale(20), backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   tabsWrap: { flexDirection: 'row' },
-  tabItem: { paddingVertical: 14, marginRight: 24, position: 'relative' },
+  tabItem: { paddingVertical: moderateScale(14), marginRight: moderateScale(24), position: 'relative' },
   tabLabel: { fontSize: moderateScale(14), fontWeight: '500', color: '#9CA3AF' },
   tabLabelActive: { color: '#E91E63', fontWeight: '700' },
   tabLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 3, backgroundColor: '#E91E63', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
-  monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, marginBottom: 10, alignSelf: 'center' },
+  monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8), borderRadius: moderateScale(12), marginBottom: moderateScale(10), alignSelf: 'center' },
   monthText: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
 
-  listScroll: { padding: 16, paddingBottom: 120 },
+  listScroll: { padding: moderateScale(16), paddingBottom: moderateScale(120) },
 
-  formScroll: { padding: 20, paddingBottom: 120 },
-  formWrap: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, paddingBottom: 40, ...SHADOWS.light, minHeight: Dimensions.get('window').height * 0.7 },
-  submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: 16, borderRadius: 50, alignItems: 'center', marginTop: 'auto' },
+  formScroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
+  formWrap: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: moderateScale(40), ...SHADOWS.light, minHeight: Dimensions.get('window').height * 0.7 },
+  submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), alignItems: 'center', marginTop: 'auto' },
   submitBtnActive: { backgroundColor: '#E91E63' },
   submitText: { color: '#9CA3AF', fontSize: moderateScale(14), fontWeight: '700', letterSpacing: 0.5 },
   submitTextActive: { color: '#FFF' },
 
-  successBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30, backgroundColor: '#FFF' },
-  successAura: { width: 180, height: 180, borderRadius: 90, backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
-  successCircleInner: { width: 90, height: 90, borderRadius: 45, borderWidth: 6, borderColor: '#10B981', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
-  successTitle: { fontSize: moderateScale(20), fontWeight: '800', color: '#111827', marginBottom: 12 },
-  successDesc: { fontSize: moderateScale(13), color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: 40, paddingHorizontal: 10 },
-  homeBtn: { width: '100%', paddingVertical: 16, borderRadius: 50, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', backgroundColor: '#FFF' },
+  successBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: moderateScale(30), backgroundColor: '#FFF' },
+  successAura: { width: moderateScale(180), height: moderateScale(180), borderRadius: moderateScale(90), backgroundColor: '#F0FDF4', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(24) },
+  successCircleInner: { width: moderateScale(90), height: moderateScale(90), borderRadius: moderateScale(45), borderWidth: 6, borderColor: '#10B981', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
+  successTitle: { fontSize: moderateScale(20), fontWeight: '800', color: '#111827', marginBottom: moderateScale(12) },
+  successDesc: { fontSize: moderateScale(13), color: '#6B7280', textAlign: 'center', lineHeight: 20, marginBottom: moderateScale(40), paddingHorizontal: moderateScale(10) },
+  homeBtn: { width: '100%', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', backgroundColor: '#FFF' },
   homeBtnText: { fontSize: moderateScale(15), fontWeight: '700', color: '#111827' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
-  modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
-  monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), maxHeight: Dimensions.get('window').height * 0.5 },
+  modalHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16), textAlign: 'center' },
+  monthItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
   monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
   monthItemTextActive: { color: '#E91E63', fontWeight: '800' },
 });

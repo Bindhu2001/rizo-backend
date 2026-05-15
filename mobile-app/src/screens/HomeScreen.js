@@ -27,6 +27,9 @@ import {
 } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
+import { syncEmployeeDetails } from '../services/EmployeeSync';
+
+const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -84,6 +87,7 @@ const HomeScreen = ({ navigation, route }) => {
       fetchStatus();
       fetchRoles();
       checkOfflinePunches();
+      syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); });
       // Only re-fetch GPS if 2 minutes have passed since last successful fetch
       if (Date.now() - lastLocationFetch.current > 120000) {
         fetchLocation();
@@ -625,11 +629,11 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
               <Image
-                source={{ 
-                  uri: user.profile_pic 
-                    ? (user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}`)
-                    : `https://i.pravatar.cc/100?u=${user.user_id}` 
-                }}
+                source={
+                  user.profile_pic
+                    ? { uri: user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}` }
+                    : PLACEHOLDER_AVATAR
+                }
                 style={styles.avatar}
                 resizeMode="cover"
               />
@@ -813,31 +817,31 @@ const HomeScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB', overflow: 'hidden' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' },
-  scroll: { flexGrow: 1, padding: 20, paddingBottom: 110 },
+  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(110) },
 
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: moderateScale(16) },
   logoAndGreeting: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  headerLogo: { width: 44, height: 44, marginRight: 16, marginLeft: 4 },
+  headerLogo: { width: moderateScale(44), height: moderateScale(44), marginRight: moderateScale(16), marginLeft: 4 },
   greetingHeader: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '600' },
   userNameHeader: { fontSize: moderateScale(24), fontWeight: '900', color: COLORS.text, letterSpacing: -0.5 },
   locationBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   locationText: { fontSize: moderateScale(11), color: COLORS.textLight, marginLeft: 4, fontWeight: '600', flexShrink: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
-  headerIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginRight: 10, ...SHADOWS.light },
-  offlineDot: { position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: 5, backgroundColor: COLORS.primary, borderWidth: 1.5, borderColor: '#FFF' },
-  avatarCircle: { width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
+  headerIcon: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(10), ...SHADOWS.light },
+  offlineDot: { position: 'absolute', top: 10, right: 10, width: moderateScale(9), height: moderateScale(9), borderRadius: 5, backgroundColor: COLORS.primary, borderWidth: 1.5, borderColor: '#FFF' },
+  avatarCircle: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), overflow: 'hidden', borderWidth: 2, borderColor: '#FFF', ...SHADOWS.light },
   avatar: { width: '100%', height: '100%' },
 
-  swipeBoxContainer: { marginBottom: 20 },
-  swipeBox: { height: 68, width: '100%', alignSelf: 'center' },
+  swipeBoxContainer: { marginBottom: moderateScale(20) },
+  swipeBox: { height: moderateScale(68), width: '100%', alignSelf: 'center' },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginTop: 10,
+    borderRadius: moderateScale(12),
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: moderateScale(14),
+    marginTop: moderateScale(10),
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
@@ -848,60 +852,60 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
-  punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, ...SHADOWS.light },
-  punchedInLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingLeft: 12 },
-  punchedInTextStack: { marginLeft: 12, flex: 1, marginRight: 8 },
+  punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: moderateScale(68), borderRadius: moderateScale(34), alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), ...SHADOWS.light },
+  punchedInLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingLeft: moderateScale(12) },
+  punchedInTextStack: { marginLeft: moderateScale(12), flex: 1, marginRight: moderateScale(8) },
   punchedInTime: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.text, marginBottom: 1 },
   punchedInLoc: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
-  clockOutBtn: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#FFD1D1', justifyContent: 'center', alignItems: 'center' },
+  clockOutBtn: { width: moderateScale(52), height: moderateScale(52), borderRadius: moderateScale(26), backgroundColor: '#FFD1D1', justifyContent: 'center', alignItems: 'center' },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 24 },
-  gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, ...SHADOWS.light },
-  gridIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: moderateScale(24) },
+  gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), marginBottom: moderateScale(16), ...SHADOWS.light },
+  gridIcon: { width: moderateScale(40), height: moderateScale(40), borderRadius: moderateScale(12), justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(12) },
   gridVal: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   gridLabel: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '500' },
 
-  sectionLabel: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: 12, marginLeft: 4, textTransform: 'uppercase' },
-  approvalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 },
-  approvalCard: { width: '48%', backgroundColor: '#FFF', borderRadius: 24, padding: 20, ...SHADOWS.light },
-  approvalIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  sectionLabel: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: moderateScale(12), marginLeft: 4, textTransform: 'uppercase' },
+  approvalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(24) },
+  approvalCard: { width: '48%', backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), ...SHADOWS.light },
+  approvalIconBox: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(14), justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(14) },
   approvalTitle: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   approvalSub: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600' },
 
   // Visit Button
   visitButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 24, ...SHADOWS.light
+    backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), marginBottom: moderateScale(24), ...SHADOWS.light
   },
   visitButtonLeft: { flexDirection: 'row', alignItems: 'center' },
-  visitIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  visitIconBox: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(14), backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(16) },
   visitBtnTitle: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   visitBtnSub: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '600' },
 
   // Events Dropdown
-  eventsSection: { backgroundColor: '#FFF', borderRadius: 24, overflow: 'hidden', ...SHADOWS.light, marginBottom: 16 },
-  eventsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 18 },
+  eventsSection: { backgroundColor: '#FFF', borderRadius: moderateScale(24), overflow: 'hidden', ...SHADOWS.light, marginBottom: moderateScale(16) },
+  eventsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: moderateScale(18) },
   eventsHeaderLeft: { flexDirection: 'row', alignItems: 'center' },
-  eventsSectionTitle: { fontSize: moderateScale(16), fontWeight: '800', color: COLORS.text, marginLeft: 10 },
-  eventsBody: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: 18, paddingBottom: 12, paddingTop: 4 },
-  eventsLoading: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
-  eventsLoadingText: { marginLeft: 10, color: COLORS.textLight, fontWeight: '600' },
-  eventsEmpty: { color: COLORS.textLight, textAlign: 'center', paddingVertical: 20, fontWeight: '600' },
-  eventRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  eventDot: { width: 10, height: 10, borderRadius: 5, marginRight: 14 },
+  eventsSectionTitle: { fontSize: moderateScale(16), fontWeight: '800', color: COLORS.text, marginLeft: moderateScale(10) },
+  eventsBody: { borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingHorizontal: moderateScale(18), paddingBottom: moderateScale(12), paddingTop: 4 },
+  eventsLoading: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(16) },
+  eventsLoadingText: { marginLeft: moderateScale(10), color: COLORS.textLight, fontWeight: '600' },
+  eventsEmpty: { color: COLORS.textLight, textAlign: 'center', paddingVertical: moderateScale(20), fontWeight: '600' },
+  eventRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(10), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  eventDot: { width: moderateScale(10), height: moderateScale(10), borderRadius: 5, marginRight: moderateScale(14) },
   eventName: { fontSize: moderateScale(14), fontWeight: '800', color: COLORS.text },
   eventMeta: { fontSize: moderateScale(11), color: COLORS.textLight, marginTop: 2, fontWeight: '600' },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: 32, padding: 24, alignItems: 'center' },
-  modalPowerCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#FFE4E4' },
-  modalTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: 10 },
-  modalSub: { fontSize: moderateScale(14), color: COLORS.textLight, textAlign: 'center', lineHeight: 20, marginBottom: 32 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: moderateScale(20) },
+  modalCard: { width: '100%', backgroundColor: '#FFF', borderRadius: moderateScale(32), padding: moderateScale(24), alignItems: 'center' },
+  modalPowerCircle: { width: moderateScale(80), height: moderateScale(80), borderRadius: moderateScale(40), backgroundColor: '#FFF0F0', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(20), borderWidth: 1, borderColor: '#FFE4E4' },
+  modalTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: moderateScale(10) },
+  modalSub: { fontSize: moderateScale(14), color: COLORS.textLight, textAlign: 'center', lineHeight: 20, marginBottom: moderateScale(32) },
   modalBtns: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
-  cancelBtn: { flex: 1, paddingVertical: 16, marginRight: 12, borderRadius: 16, borderWidth: 1, borderColor: '#EEF2F7', alignItems: 'center', backgroundColor: '#F9FAFB' },
+  cancelBtn: { flex: 1, paddingVertical: moderateScale(16), marginRight: moderateScale(12), borderRadius: moderateScale(16), borderWidth: 1, borderColor: '#EEF2F7', alignItems: 'center', backgroundColor: '#F9FAFB' },
   cancelBtnText: { color: COLORS.textLight, fontWeight: '700' },
-  logoutBtn: { flex: 1, paddingVertical: 16, borderRadius: 16, backgroundColor: COLORS.danger, alignItems: 'center' },
+  logoutBtn: { flex: 1, paddingVertical: moderateScale(16), borderRadius: moderateScale(16), backgroundColor: COLORS.danger, alignItems: 'center' },
   logoutBtnText: { color: '#FFF', fontWeight: '800' },
 });
 

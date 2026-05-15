@@ -7,7 +7,7 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale, wp } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
@@ -188,34 +188,34 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   safeArea: { flex: 1 },
-  content: { flex: 1, padding: 30, justifyContent: 'center' },
+  content: { flex: 1, padding: moderateScale(30), justifyContent: 'center' },
   formContainer: { width: '100%', alignItems: 'center' },
-  
-  headerGroup: { alignItems: 'center', marginBottom: 50, width: '100%' },
+
+  headerGroup: { alignItems: 'center', marginBottom: moderateScale(50), width: '100%' },
   mainLogo: {
-    width: 200,
-    height: 120,
+    width: wp(50),
+    height: wp(30),
   },
 
-  inputGroup: { width: '100%', marginBottom: 40 },
-  inputBox: { 
-    flexDirection: 'row', alignItems: 'center', height: 60, 
-    backgroundColor: '#F9FAFB', borderRadius: 15, paddingHorizontal: 20, 
-    marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9' 
+  inputGroup: { width: '100%', marginBottom: moderateScale(40) },
+  inputBox: {
+    flexDirection: 'row', alignItems: 'center', height: moderateScale(60),
+    backgroundColor: '#F9FAFB', borderRadius: moderateScale(15), paddingHorizontal: moderateScale(20),
+    marginBottom: moderateScale(16), borderWidth: 1, borderColor: '#F1F5F9'
   },
-  input: { flex: 1, marginLeft: 12, fontSize: moderateScale(16), fontWeight: '700', color: '#000' },
-  
-  loginBtn: { 
-    width: '100%', height: 60, backgroundColor: COLORS.primaryDeep || '#4A148C', borderRadius: 30, 
-    justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium 
+  input: { flex: 1, marginLeft: moderateScale(12), fontSize: moderateScale(16), fontWeight: '700', color: '#000' },
+
+  loginBtn: {
+    width: '100%', height: moderateScale(60), backgroundColor: COLORS.primaryDeep || '#4A148C', borderRadius: moderateScale(30),
+    justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium
   },
   btnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '900', letterSpacing: 2 },
-  
-  signupLink: { marginTop: 32, alignItems: 'center' },
+
+  signupLink: { marginTop: moderateScale(32), alignItems: 'center' },
   signupLabel: { color: '#64748B', fontSize: moderateScale(14), fontWeight: '600' },
   signupText: { color: COLORS.primaryDeep || '#4A148C', fontWeight: '900' },
 
-  footer: { alignItems: 'center', paddingBottom: 20 },
+  footer: { alignItems: 'center', paddingBottom: moderateScale(20) },
   footerText: { fontSize: moderateScale(10), color: '#94A3B8', fontWeight: '800', letterSpacing: 1.5 },
 });
 

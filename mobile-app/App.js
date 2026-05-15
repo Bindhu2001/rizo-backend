@@ -96,7 +96,7 @@ function TabNavigator({ route }) {
 
 // ─── Root App ──────────────────────────────────────────────────────────────
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState(null);
+  const [currentRoute, setCurrentRoute] = useState('Splash');
   const [offlineBarVisible, setOfflineBarVisible] = useState(false);
   const navigationRef = React.useRef(null);
 

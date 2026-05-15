@@ -468,7 +468,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
           <View style={s.modalContent}>
             <Text style={s.modalTitle}>
               {actionModal.actionType === 'REJECT'
@@ -572,131 +572,131 @@ const s = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, height: 60, backgroundColor: '#FFF',
+    paddingHorizontal: moderateScale(16), height: moderateScale(60), backgroundColor: '#FFF',
   },
   headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
-  backBtn: { width: 44, height: 44, justifyContent: 'center' },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center' },
 
-  monthBar: { padding: 16, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  monthBar: { padding: moderateScale(16), backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20) },
   monthText: { fontSize: moderateScale(14), fontWeight: '700', color: '#6C5CE7' },
 
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  list: { padding: 16, paddingBottom: 40 },
+  list: { padding: moderateScale(16), paddingBottom: moderateScale(40) },
 
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', marginBottom: 12, marginTop: 4,
+    flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(12), marginTop: 4,
   },
   sectionHeaderText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151', flex: 1 },
   sectionCount: {
-    backgroundColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2,
+    backgroundColor: '#E5E7EB', borderRadius: moderateScale(12), paddingHorizontal: moderateScale(8), paddingVertical: 2,
   },
   sectionCountText: { fontSize: moderateScale(12), fontWeight: '800', color: '#374151' },
 
   card: {
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16,
-    marginBottom: 16, overflow: 'hidden', ...SHADOWS.light,
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16),
+    marginBottom: moderateScale(16), overflow: 'hidden', ...SHADOWS.light,
     borderWidth: 1, borderColor: '#F3F4F6',
   },
-  sideBar: { width: 36, justifyContent: 'center', alignItems: 'center' },
+  sideBar: { width: moderateScale(36), justifyContent: 'center', alignItems: 'center' },
   sideText: {
     color: '#FFF', fontSize: moderateScale(8), fontWeight: '900', letterSpacing: 1,
-    transform: [{ rotate: '-90deg' }], width: 80, textAlign: 'center',
+    transform: [{ rotate: '-90deg' }], width: moderateScale(80), textAlign: 'center',
   },
-  cardBody: { flex: 1, padding: 14 },
+  cardBody: { flex: 1, padding: moderateScale(14) },
 
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  empInfo: { flex: 1, marginRight: 8 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(10) },
+  empInfo: { flex: 1, marginRight: moderateScale(8) },
   empName: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
   empId: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
-  typeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
+  typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8), alignSelf: 'flex-start' },
   typeText: { fontSize: moderateScale(11), fontWeight: '800' },
 
-  detailsRow: { flexDirection: 'row', marginBottom: 10, gap: 16, flexWrap: 'wrap' },
-  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailsRow: { flexDirection: 'row', marginBottom: moderateScale(10), gap: moderateScale(16), flexWrap: 'wrap' },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6) },
   detailText: { fontSize: moderateScale(13), color: '#4B5563', fontWeight: '600' },
 
   reasonBox: {
-    flexDirection: 'row', backgroundColor: '#F9FAFB', padding: 10,
-    borderRadius: 10, gap: 8, marginBottom: 14,
+    flexDirection: 'row', backgroundColor: '#F9FAFB', padding: moderateScale(10),
+    borderRadius: moderateScale(10), gap: moderateScale(8), marginBottom: moderateScale(14),
   },
   reasonText: { fontSize: moderateScale(12), color: '#6B7280', flex: 1, fontStyle: 'italic' },
 
-  actions: { flexDirection: 'row', gap: 12 },
+  actions: { flexDirection: 'row', gap: moderateScale(12) },
   actionBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 12, borderRadius: 12, gap: 8,
+    paddingVertical: moderateScale(12), borderRadius: moderateScale(12), gap: moderateScale(8),
   },
   approveBtnText: { fontWeight: '800', fontSize: moderateScale(14) },
   rejectBtn: { backgroundColor: '#FEF2F2', borderColor: '#FECACA', borderWidth: 1 },
   rejectBtnText: { color: '#B91C1C', fontWeight: '800', fontSize: moderateScale(14) },
 
-  empty: { alignItems: 'center', marginTop: 100 },
-  emptyText: { marginTop: 12, fontSize: moderateScale(15), color: '#9CA3AF', fontWeight: '600' },
+  empty: { alignItems: 'center', marginTop: moderateScale(100) },
+  emptyText: { marginTop: moderateScale(12), fontSize: moderateScale(15), color: '#9CA3AF', fontWeight: '600' },
 
   modalOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center', alignItems: 'center', padding: 20,
+    justifyContent: 'center', alignItems: 'center', padding: moderateScale(20),
   },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%' },
-  modalTitle: { fontSize: moderateScale(18), fontWeight: '900', color: '#111827', marginBottom: 8 },
-  modalSub: { fontSize: moderateScale(14), color: '#6B7280', marginBottom: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: '100%' },
+  modalTitle: { fontSize: moderateScale(18), fontWeight: '900', color: '#111827', marginBottom: moderateScale(8) },
+  modalSub: { fontSize: moderateScale(14), color: '#6B7280', marginBottom: moderateScale(20) },
   remarksInput: {
-    backgroundColor: '#F9FAFB', borderRadius: 12, padding: 16, height: 100,
-    textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 24,
+    backgroundColor: '#F9FAFB', borderRadius: moderateScale(12), padding: moderateScale(16), height: moderateScale(100),
+    textAlignVertical: 'top', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: moderateScale(24),
     color: '#000',
   },
-  modalActions: { flexDirection: 'row', gap: 12 },
+  modalActions: { flexDirection: 'row', gap: moderateScale(12) },
   modalCancel: {
-    flex: 1, paddingVertical: 14, borderRadius: 12,
+    flex: 1, paddingVertical: moderateScale(14), borderRadius: moderateScale(12),
     alignItems: 'center', backgroundColor: '#F3F4F6',
   },
   modalCancelText: { color: '#4B5563', fontWeight: '800' },
   modalConfirm: {
-    flex: 2, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
+    flex: 2, paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center',
   },
   modalConfirmText: { color: '#FFF', fontWeight: '800' },
 
   tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  tab: { flex: 1, paddingVertical: moderateScale(12), alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: '#6C5CE7' },
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
   tabTextActive: { color: '#6C5CE7' },
 
   histFilterDropdown: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    flexDirection: 'row', alignItems: 'center', gap: moderateScale(10),
+    marginHorizontal: moderateScale(16), marginTop: moderateScale(12), marginBottom: 4,
     backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, ...SHADOWS.light,
+    borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(11), ...SHADOWS.light,
   },
-  histFilterDot: { width: 10, height: 10, borderRadius: 5 },
+  histFilterDot: { width: moderateScale(10), height: moderateScale(10), borderRadius: 5 },
   histFilterText: { flex: 1, fontSize: moderateScale(14), fontWeight: '700', color: '#374151' },
 
-  histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, marginBottom: 14, overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
-  histSide: { width: 6 },
-  histBody: { flex: 1, padding: 14 },
-  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: 8 },
-  histBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  histCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(14), overflow: 'hidden', ...SHADOWS.light, borderWidth: 1, borderColor: '#F3F4F6' },
+  histSide: { width: moderateScale(6) },
+  histBody: { flex: 1, padding: moderateScale(14) },
+  histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: moderateScale(8) },
+  histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: moderateScale(8) },
+  histBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(8) },
   histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
-  histDates: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8, flexWrap: 'wrap' },
+  histDates: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6), marginBottom: moderateScale(8), flexWrap: 'wrap' },
   histDateText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600', flex: 1 },
-  histDaysBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  histDaysBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 2, borderRadius: moderateScale(6) },
   histDaysText: { fontSize: moderateScale(11), fontWeight: '700' },
-  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8, marginBottom: 8 },
+  histRemarkBox: { backgroundColor: '#F9FAFB', borderRadius: moderateScale(8), padding: moderateScale(8), marginBottom: moderateScale(8) },
   histRemarkText: { fontSize: moderateScale(11), color: '#6B7280', fontStyle: 'italic' },
   histCancelBtn: {
-    borderWidth: 1.5, borderColor: '#DC2626', borderRadius: 10,
-    paddingVertical: 9, alignItems: 'center', justifyContent: 'center', marginTop: 4,
+    borderWidth: 1.5, borderColor: '#DC2626', borderRadius: moderateScale(10),
+    paddingVertical: moderateScale(9), alignItems: 'center', justifyContent: 'center', marginTop: 4,
   },
   histCancelBtnText: { fontSize: moderateScale(13), fontWeight: '800', color: '#DC2626', letterSpacing: 0.5 },
 
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },
-  handle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
-  sheetItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
-  sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },
+  handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  sheetTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16), textAlign: 'center' },
+  sheetItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
+  sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(10) },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
   sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
 });

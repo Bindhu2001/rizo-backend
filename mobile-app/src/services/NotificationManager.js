@@ -115,16 +115,19 @@ class NotificationManager {
             const leaveId = sLeave.leave_id || sLeave.id;
             
             const isAuthorised = serverStatus === 'AUTHORISED' || serverStatus === 'AUTHORIZED';
-            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isAuthorised) && leaveId) {
+            const isCancelled = serverStatus === 'CANCELLED' || serverStatus === 'CANCELED';
+            if ((serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isAuthorised || isCancelled) && leaveId) {
                 let title = '';
                 if (serverStatus === 'APPROVED') title = 'Leave Approved ✅';
                 else if (serverStatus === 'REJECTED') title = 'Leave Rejected ❌';
                 else if (isAuthorised) title = 'Leave Authorised 🛡️';
+                else if (isCancelled) title = 'Leave Cancelled ⚠️';
 
                 const dateText = sLeave.from_date || 'your request';
-                const message = `Your leave (${sLeave.leave_name || 'request'}) for ${dateText} was ${serverStatus.toLowerCase()}.`;
-                
-                const normalizedStatus = isAuthorised ? 'AUTHORISED' : serverStatus;
+                const action = isCancelled ? 'cancelled' : serverStatus.toLowerCase();
+                const message = `Your leave (${sLeave.leave_name || 'request'}) for ${dateText} was ${action}.`;
+
+                const normalizedStatus = isAuthorised ? 'AUTHORISED' : (isCancelled ? 'CANCELLED' : serverStatus);
                 const uniqueNotifIdRef = `leave_${leaveId}_${normalizedStatus}`;
 
                 const { initDB } = require('./LocalDB');
@@ -164,12 +167,18 @@ class NotificationManager {
           const serverRegs = res.data.data;
           for (const sReg of serverRegs) {
             const serverStatus = sReg.status?.toUpperCase() || 'PENDING';
-            if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED') {
-              const title = `Regularization ${serverStatus === 'APPROVED' ? 'Approved' : 'Rejected'}`;
+            const isCancelled = serverStatus === 'CANCELLED' || serverStatus === 'CANCELED';
+            if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled) {
+              let title;
+              if (serverStatus === 'APPROVED') title = 'Regularization Approved ✅';
+              else if (serverStatus === 'REJECTED') title = 'Regularization Rejected ❌';
+              else title = 'Regularization Cancelled ⚠️';
               const dateText = sReg.punch_date || 'your request';
-              const message = `Your attendance regularization for ${dateText} was ${serverStatus.toLowerCase()}.`;
+              const action = isCancelled ? 'cancelled' : serverStatus.toLowerCase();
+              const message = `Your attendance regularization for ${dateText} was ${action}.`;
 
-              const uniqueNotifIdRef = `reg_${sReg.id}_${serverStatus}`;
+              const normalizedStatus = isCancelled ? 'CANCELLED' : serverStatus;
+              const uniqueNotifIdRef = `reg_${sReg.id}_${normalizedStatus}`;
 
               const { initDB } = require('./LocalDB');
               const db = await initDB();
@@ -200,12 +209,18 @@ class NotificationManager {
         const serverExpenses = res.data.data;
         for (const sExp of serverExpenses) {
           const serverStatus = sExp.expense_status?.toUpperCase() || 'PENDING';
-          if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED') {
-            const title = `Expense ${serverStatus === 'APPROVED' ? 'Approved' : 'Rejected'}`;
+          const isCancelled = serverStatus === 'CANCELLED' || serverStatus === 'CANCELED';
+          if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled) {
+            let title;
+            if (serverStatus === 'APPROVED') title = 'Expense Approved ✅';
+            else if (serverStatus === 'REJECTED') title = 'Expense Rejected ❌';
+            else title = 'Expense Cancelled ⚠️';
             const dateText = sExp.expense_date || 'your request';
-            const message = `Your expense request for ${dateText} was ${serverStatus.toLowerCase()}.`;
+            const action = isCancelled ? 'cancelled' : serverStatus.toLowerCase();
+            const message = `Your expense request for ${dateText} was ${action}.`;
 
-            const uniqueNotifIdRef = `exp_${sExp.emp_expenses_pkey}_${serverStatus}`;
+            const normalizedStatus = isCancelled ? 'CANCELLED' : serverStatus;
+            const uniqueNotifIdRef = `exp_${sExp.emp_expenses_pkey}_${normalizedStatus}`;
 
             const { initDB } = require('./LocalDB');
             const db = await initDB();

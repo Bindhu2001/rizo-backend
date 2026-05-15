@@ -329,89 +329,89 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, height: 60, backgroundColor: '#FFF'
+    paddingHorizontal: moderateScale(16), height: moderateScale(60), backgroundColor: '#FFF'
   },
-  backBtn: { width: 44, height: 44, justifyContent: 'center' },
+  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center' },
   headerTitle: { fontSize: moderateScale(20), fontWeight: '800', color: COLORS.text },
 
-  monthBar: { paddingVertical: 15, alignItems: 'center', backgroundColor: '#FFF' },
+  monthBar: { paddingVertical: moderateScale(15), alignItems: 'center', backgroundColor: '#FFF' },
   monthDropdown: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF',
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25
+    paddingHorizontal: moderateScale(20), paddingVertical: moderateScale(10), borderRadius: moderateScale(25)
   },
   monthText: { fontSize: moderateScale(16), fontWeight: '700', color: '#6C5CE7' },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
-  listContents: { padding: 16, paddingBottom: 110 },
+  listContents: { padding: moderateScale(16), paddingBottom: moderateScale(110) },
 
   card: {
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 20,
-    padding: 16, marginBottom: 16, alignItems: 'center', ...SHADOWS.light
+    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(20),
+    padding: moderateScale(16), marginBottom: moderateScale(16), alignItems: 'center', ...SHADOWS.light
   },
   dateBox: {
-    alignItems: 'center', paddingRight: 16, borderRightWidth: 1,
-    borderRightColor: '#F3F4F6', width: 75
+    alignItems: 'center', paddingRight: moderateScale(16), borderRightWidth: 1,
+    borderRightColor: '#F3F4F6', width: moderateScale(75)
   },
   dateNum: { fontSize: moderateScale(28), fontWeight: '900', color: '#111827' },
   monthDayText: { fontSize: moderateScale(10), fontWeight: '800', color: '#9CA3AF', marginTop: -2 },
 
-  infoCol: { flex: 1, paddingLeft: 16 },
-  shiftTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: 8 },
+  infoCol: { flex: 1, paddingLeft: moderateScale(16) },
+  shiftTitle: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: moderateScale(8) },
   punchRow: { flexDirection: 'row', alignItems: 'center' },
   punchItem: { flexDirection: 'row', alignItems: 'center' },
-  timeValue: { fontSize: moderateScale(14), fontWeight: '900', color: '#111827', marginLeft: 6 },
+  timeValue: { fontSize: moderateScale(14), fontWeight: '900', color: '#111827', marginLeft: moderateScale(6) },
   timeType: { fontSize: moderateScale(11), fontWeight: '700', color: '#9CA3AF' },
 
-  badge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, minWidth: 45, alignItems: 'center' },
+  badge: { paddingHorizontal: moderateScale(10), paddingVertical: 5, borderRadius: moderateScale(8), minWidth: moderateScale(45), alignItems: 'center' },
   badgeText: { fontSize: moderateScale(12), fontWeight: '900' },
 
-  cardWrapper: { marginBottom: 16 },
+  cardWrapper: { marginBottom: moderateScale(16) },
   cardExpanded: { marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  statusGroup: { alignItems: 'center', minWidth: 60 },
+  statusGroup: { alignItems: 'center', minWidth: moderateScale(60) },
   durationText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6B7280', marginTop: 4, marginBottom: 2 },
 
   detailSection: {
     backgroundColor: '#F9FAFB',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: moderateScale(20),
+    borderBottomRightRadius: moderateScale(20),
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: '#F3F4F6',
-    padding: 16,
-    paddingTop: 8,
+    padding: moderateScale(16),
+    paddingTop: moderateScale(8),
     ...SHADOWS.light
   },
-  detailTitle: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  detailTitle: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.text, marginBottom: moderateScale(12), textTransform: 'uppercase', letterSpacing: 0.5 },
   punchDetailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 8,
+    padding: moderateScale(10),
+    borderRadius: moderateScale(12),
+    marginBottom: moderateScale(8),
     borderWidth: 1,
     borderColor: '#F3F4F6'
   },
-  punchTimeBox: { width: 85, borderRightWidth: 1, borderRightColor: '#F3F4F6', paddingRight: 8 },
+  punchTimeBox: { width: moderateScale(85), borderRightWidth: 1, borderRightColor: '#F3F4F6', paddingRight: moderateScale(8) },
   punchTimeVal: { fontSize: moderateScale(13), fontWeight: '800', color: '#111827' },
-  pBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
+  pBadge: { paddingHorizontal: moderateScale(6), paddingVertical: 2, borderRadius: 4, alignSelf: 'flex-start', marginTop: 4 },
   pBadgeText: { fontSize: moderateScale(10), fontWeight: '900' },
 
-  punchAddressBox: { flex: 1, paddingHorizontal: 12 },
+  punchAddressBox: { flex: 1, paddingHorizontal: moderateScale(12) },
   shiftBadgeText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
   addressText: { fontSize: moderateScale(11), color: '#6B7280', fontWeight: '600' },
-  syncBox: { width: 24, alignItems: 'center' },
-  noDetailText: { fontSize: moderateScale(12), color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
+  syncBox: { width: moderateScale(24), alignItems: 'center' },
+  noDetailText: { fontSize: moderateScale(12), color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: moderateScale(10) },
 
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 20, ...SHADOWS.light },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: moderateScale(40) },
+  emptyCircle: { width: moderateScale(80), height: moderateScale(80), borderRadius: moderateScale(40), backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(20), ...SHADOWS.light },
   emptyTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: Dimensions.get('window').height * 0.5 },
-  modalHandle: { width: 40, height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: 16, textAlign: 'center' },
-  monthItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), maxHeight: Dimensions.get('window').height * 0.5 },
+  modalHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
+  modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16), textAlign: 'center' },
+  monthItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
   monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
   monthItemTextActive: { color: '#6C5CE7', fontWeight: '800' },
 });
