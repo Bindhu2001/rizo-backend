@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Image, StatusBar
@@ -12,6 +12,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncEmployeeDetails } from '../services/EmployeeSync';
 
 const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
 
@@ -69,8 +70,12 @@ const LoginScreen = ({ navigation }) => {
           if (response.data && response.data.success === 1) {
             const user = response.data.data;
             if (user && user.user_id) {
-              await saveUserLocally(user, password);
-              navigation.replace('Main', { user });
+              // Fetch full details (name, profile_pic, etc.) immediately after login
+              const fullUser = await syncEmployeeDetails(user, navigation);
+              const finalUser = fullUser || user;
+              
+              await saveUserLocally(finalUser, password);
+              navigation.replace('Main', { user: finalUser });
               return;
             }
           }
