@@ -212,8 +212,8 @@ export const updateUserProfileLocal = async (userId, data) => {
   const database = await initDB();
   try {
     await database.runAsync(
-      `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ?, profile_pic = ?, date_of_birth = ? WHERE user_id = ?`,
-      [data.employee_name, data.department, data.designation, data.email, data.phone, data.profile_pic, data.date_of_birth, userId]
+      `UPDATE user_profile SET employee_name = ?, department = ?, designation = ?, email = ?, phone = ?, profile_pic = ?, date_of_birth = ?, joining_date = ? WHERE user_id = ?`,
+      [data.employee_name || '', data.department || '', data.designation || '', data.email || '', data.phone || '', data.profile_pic || '', data.date_of_birth || '', data.joining_date || '', userId]
     );
   } catch (e) {
     console.error('[LocalDB] updateUserProfileLocal failed:', e);

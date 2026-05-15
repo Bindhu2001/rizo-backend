@@ -21,9 +21,14 @@ export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = fals
       `${API_ENDPOINTS.GET_EMPLOYEE_FULL_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
       { timeout: 8000 }
     );
-    const ok = res.data?.success === 1 || res.data?.success === true;
-    if (!ok || !res.data?.data) return null;
+    const s = res.data?.success;
+    const ok = s === 1 || s === true || s === '1' || s === 'true';
+    if (!ok || !res.data?.data) {
+      console.log('[Sync] get_employee_full_details rejected', { success: s, hasData: !!res.data?.data });
+      return null;
+    }
     const data = res.data.data;
+    console.log('[Sync] got details for', user.user_id, '→ name:', data.name, 'joining:', data.joining_date);
 
     // ── IMEI check (only when not skipped, e.g. on HomeScreen) ──────────────
     if (!skipImeiCheck) {
