@@ -17,12 +17,15 @@ const safeJson = (s) => { try { return JSON.parse(s); } catch (_) { return null;
 //   null on network failure
 //   null after triggering a forced logout on IMEI mismatch
 export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = false) => {
-  if (!user?.user_id) return null;
+  if (!user?.user_id) {
+    console.log('[Sync] aborted — no user_id on input');
+    return null;
+  }
+  const url = `${API_ENDPOINTS.GET_EMPLOYEE_FULL_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`;
+  console.log('[Sync] POST', url);
   try {
-    const res = await axios.get(
-      `${API_ENDPOINTS.GET_EMPLOYEE_FULL_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
-      { timeout: 8000 }
-    );
+    const res = await axios.post(url, null, { timeout: 8000 });
+    console.log('[Sync] HTTP', res.status, 'for', user.user_id);
     const body = typeof res.data === 'string' ? safeJson(res.data) : res.data;
     const s = body?.success ?? body?.status;
     const ok = s === 1 || s === true || s === '1' || s === 'true';
@@ -32,12 +35,13 @@ export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = fals
     if (!ok || !data) {
       console.log('[Sync] get_employee_full_details rejected', {
         success: s,
+        message: body?.message,
         keys: body ? Object.keys(body).slice(0, 10) : null,
-        raw: typeof res.data === 'string' ? res.data.slice(0, 200) : JSON.stringify(res.data).slice(0, 200),
+        raw: typeof res.data === 'string' ? res.data.slice(0, 300) : JSON.stringify(res.data).slice(0, 300),
       });
       return null;
     }
-    console.log('[Sync] got details for', user.user_id, '→ name:', data.name, 'joining:', data.joining_date);
+    console.log('[Sync] got details for', user.user_id, '→ name:', data.name, '| designation:', data.designation, '| joining:', data.joining_date);
 
     // ── IMEI check (only when not skipped, e.g. on HomeScreen) ──────────────
     if (!skipImeiCheck) {

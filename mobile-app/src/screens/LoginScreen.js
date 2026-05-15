@@ -12,7 +12,6 @@ import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { syncEmployeeDetails } from '../services/EmployeeSync';
 
 const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
 
@@ -64,19 +63,26 @@ const LoginScreen = ({ navigation }) => {
 
           const response = await axios.post(API_URL, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
-            timeout: 12000 
+            timeout: 12000
           });
 
-          if (response.data && response.data.success === 1) {
+          const loginSuccess = response.data && (
+            response.data.success === 1 ||
+            response.data.success === true ||
+            response.data.success === '1' ||
+            response.data.success === 'true'
+          );
+          if (loginSuccess) {
             const user = response.data.data;
             if (user && user.user_id) {
-              // Fetch full details (name, profile_pic, etc.) immediately after login
-              // skipImeiCheck=true: don't redirect during login, just get the data
-              const fullUser = await syncEmployeeDetails(user, null, true);
-              const finalUser = fullUser || user;
-              
-              await saveUserLocally(finalUser, password);
-              navigation.replace('Main', { user: finalUser });
+              // IMEI status from login: "registered" (new device) or "verified" (matches stored).
+              // Backend rejects mismatched IMEI by returning success: 0, so reaching here means OK.
+              const imeiStatus = user?.imei?.status;
+              console.log('[Login] success | user_id:', user.user_id, '| imei status:', imeiStatus);
+
+              // Do NOT call get_employee_full_details here — that happens on Home page load.
+              await saveUserLocally(user, password);
+              navigation.replace('Main', { user });
               return;
             }
           }
