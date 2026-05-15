@@ -71,7 +71,8 @@ const LoginScreen = ({ navigation }) => {
             const user = response.data.data;
             if (user && user.user_id) {
               // Fetch full details (name, profile_pic, etc.) immediately after login
-              const fullUser = await syncEmployeeDetails(user, navigation);
+              // skipImeiCheck=true: don't redirect during login, just get the data
+              const fullUser = await syncEmployeeDetails(user, null, true);
               const finalUser = fullUser || user;
               
               await saveUserLocally(finalUser, password);
