@@ -194,8 +194,11 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showAuthPicker, setShowAuthPicker] = useState(false);
   const [showAppPicker, setShowAppPicker] = useState(false);
-  const [authBy, setAuthBy] = useState('John Doe');
-  const [appBy, setAppBy] = useState('Ajil Walker');
+  // authBy / appBy hold the full selected person object: { key, name, emp_id }
+  const [authBy, setAuthBy] = useState(null);
+  const [appBy, setAppBy] = useState(null);
+  const [authPersons, setAuthPersons] = useState([]);
+  const [appPersons, setAppPersons] = useState([]);
   const [detailModal, setDetailModal] = useState(null);
   const [removingExpenseId, setRemovingExpenseId] = useState(null);
 
@@ -205,21 +208,27 @@ const ExpenseScreen = ({ navigation, route }) => {
 
   if (!user) return null;
 
-  const tempAuths = ['John Doe', 'Sarah Miller', 'Alex Walker'];
-  const tempApps = ['Ajil Walker', 'Michael Smith', 'HR Dept'];
-
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchExpenses();
     setRefreshing(false);
   };
 
+  // Normalises both authorized_persons (emp_key) and approved_persons (key)
+  // into a single { key, name, emp_id } shape so the picker behaves uniformly.
+  const normalizePerson = (p) => ({
+    key: String(p.key ?? p.emp_key ?? ''),
+    name: (p.name || '').trim(),
+    emp_id: p.emp_id || '',
+  });
+
   const fetchExpenses = async () => {
     setLoading(true);
     try {
-      const [expRes, typeRes] = await Promise.all([
+      const [expRes, typeRes, approverRes] = await Promise.all([
         axios.post(API_ENDPOINTS.GET_SUBMITTED_EXPENSES, { user_id: user.user_id }).catch(() => null),
-        axios.post(API_ENDPOINTS.GET_EXPENSE_TYPES, { user_id: user.user_id }).catch(() => null)
+        axios.post(API_ENDPOINTS.GET_EXPENSE_TYPES, { user_id: user.user_id }).catch(() => null),
+        axios.post(`${API_ENDPOINTS.APPROVERS}?user_id=${encodeURIComponent(user.user_id)}`, null).catch(() => null),
       ]);
 
       if (expRes?.data?.success && Array.isArray(expRes?.data?.data)) {
@@ -234,6 +243,16 @@ const ExpenseScreen = ({ navigation, route }) => {
           name: t.expense_type_name
         }));
         setExpenseTypes(mappedTypes);
+      }
+
+      if (approverRes?.data?.success) {
+        const auths = (approverRes.data.data?.authorized_persons || []).map(normalizePerson);
+        const apps = (approverRes.data.data?.approved_persons || []).map(normalizePerson);
+        setAuthPersons(auths);
+        setAppPersons(apps);
+        // Default selection on first load (only if user hasn't picked yet)
+        setAuthBy(prev => prev || auths[0] || null);
+        setAppBy(prev => prev || apps[0] || null);
       }
     } catch (e) {
       console.log('Error fetching expenses:', e);
@@ -316,8 +335,8 @@ const ExpenseScreen = ({ navigation, route }) => {
       formData.append('expenses_amount', amount);
       formData.append('remarks', remarks);
       formData.append('purpose', purpose);
-      formData.append('authorized_by', '0'); // Mocked
-      formData.append('approved_by', '0'); // Mocked
+      formData.append('authorized_by', authBy?.key || '0');
+      formData.append('approved_by', appBy?.key || '0');
 
       // Convert all files to Base64 before sending
       for (let i = 0; i < attachedFiles.length; i++) {
@@ -429,7 +448,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             <View style={s.inputBox}>
               <Text style={s.label}>Authorised By</Text>
               <TouchableOpacity style={s.inputRow} onPress={() => setShowAuthPicker(true)}>
-                <Text style={s.inputVal}>{authBy}</Text>
+                <Text style={[s.inputVal, !authBy && { color: '#9CA3AF' }]}>{authBy?.name || 'Select Authoriser'}</Text>
                 <ChevronDown color="#9CA3AF" size={16} />
               </TouchableOpacity>
             </View>
@@ -438,7 +457,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             <View style={s.inputBox}>
               <Text style={s.label}>Approved By</Text>
               <TouchableOpacity style={s.inputRow} onPress={() => setShowAppPicker(true)}>
-                <Text style={s.inputVal}>{appBy}</Text>
+                <Text style={[s.inputVal, !appBy && { color: '#9CA3AF' }]}>{appBy?.name || 'Select Approver'}</Text>
                 <ChevronDown color="#9CA3AF" size={16} />
               </TouchableOpacity>
             </View>
@@ -497,8 +516,8 @@ const ExpenseScreen = ({ navigation, route }) => {
 
       {/* Pickers */}
       <SelectionModal visible={showTypePicker} title="Select Expense Type" options={expenseTypes} selectedValue={expenseType?.id} labelKey="name" valueKey="id" onClose={() => setShowTypePicker(false)} onSelect={(t) => setExpenseType(t)} />
-      <SelectionModal visible={showAuthPicker} title="Authorised By" options={tempAuths} selectedValue={authBy} onClose={() => setShowAuthPicker(false)} onSelect={setAuthBy} />
-      <SelectionModal visible={showAppPicker} title="Approved By" options={tempApps} selectedValue={appBy} onClose={() => setShowAppPicker(false)} onSelect={setAppBy} />
+      <SelectionModal visible={showAuthPicker} title="Authorised By" options={authPersons} selectedValue={authBy?.key} labelKey="name" valueKey="key" onClose={() => setShowAuthPicker(false)} onSelect={setAuthBy} />
+      <SelectionModal visible={showAppPicker} title="Approved By" options={appPersons} selectedValue={appBy?.key} labelKey="name" valueKey="key" onClose={() => setShowAppPicker(false)} onSelect={setAppBy} />
 
       <CalendarModal visible={showDatePicker} selectedDate={expenseDate} onClose={() => setShowDatePicker(false)} onConfirm={(d) => { setExpenseDate(d); setShowDatePicker(false); }} />
 

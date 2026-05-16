@@ -12,6 +12,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTheme } from '../components/ThemeContext';
 
 const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
 
@@ -33,6 +34,7 @@ const { width, height } = Dimensions.get('window');
 const API_URL = API_ENDPOINTS.AUTH;
 
 const LoginScreen = ({ navigation }) => {
+  const theme = useTheme();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -113,46 +115,46 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.content}
         >
           <View style={styles.formContainer}>
             {/* TOP LOGO */}
             <View style={styles.headerGroup}>
-              <Image 
-                source={require('../../assets/rizo.png')} 
-                style={styles.mainLogo} 
+              <Image
+                source={require('../../assets/rizo.png')}
+                style={styles.mainLogo}
                 resizeMode="contain"
               />
             </View>
 
             {/* INPUT FIELDS */}
             <View style={styles.inputGroup}>
-              <View style={styles.inputBox}>
-                <Mail color="#94A3B8" size={20} />
+              <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Mail color={theme.textMuted} size={20} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   placeholder="User ID"
                   value={userId}
                   onChangeText={setUserId}
                   autoCapitalize="none"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={theme.textMuted}
                 />
               </View>
 
-              <View style={styles.inputBox}>
-                <Lock color="#94A3B8" size={20} />
+              <View style={[styles.inputBox, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Lock color={theme.textMuted} size={20} />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.text }]}
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={theme.textMuted}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword((v) => !v)}
@@ -160,9 +162,9 @@ const LoginScreen = ({ navigation }) => {
                   accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
-                    <EyeOff color="#94A3B8" size={20} />
+                    <EyeOff color={theme.textMuted} size={20} />
                   ) : (
-                    <Eye color="#94A3B8" size={20} />
+                    <Eye color={theme.textMuted} size={20} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -182,16 +184,16 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.signupLink} onPress={() => navigation.navigate('Signup')}>
-              <Text style={styles.signupLabel}>Don't have an account? <Text style={styles.signupText}>Join Rizo</Text></Text>
+              <Text style={[styles.signupLabel, { color: theme.textLight }]}>Don't have an account? <Text style={styles.signupText}>Join Rizo</Text></Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      
+
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>POWERED BY RIZO SOLUTIONS</Text>
+        <Text style={[styles.footerText, { color: theme.textMuted }]}>POWERED BY RIZO SOLUTIONS</Text>
       </View>
     </View>
   );

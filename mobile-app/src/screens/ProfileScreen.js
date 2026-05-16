@@ -14,6 +14,7 @@ import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+import { useTheme } from '../components/ThemeContext';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
 
@@ -56,6 +57,7 @@ const SectionHeader = ({ title, onBack }) => (
 
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 const ProfileScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const [user, setUser] = useState(route?.params?.user);
   const [section, setSection] = useState(null);
   const [alertCfg, setAlertCfg] = useState(null);
@@ -243,40 +245,40 @@ const ProfileScreen = ({ navigation, route }) => {
 
   // ── MAIN PROFILE VIEW ───────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Profile</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Profile</Text>
         <View style={{ width: 44 }} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        <View style={s.profileCard}>
+        <View style={[s.profileCard, { backgroundColor: theme.card }]}>
           <View style={s.avatarWrap}>
             <Image source={getAvatarSource()} style={s.avatarLg} />
           </View>
-          <Text style={s.profileName}>{user.employee_name}</Text>
-          <Text style={s.profileRole}>{user.designation}</Text>
+          <Text style={[s.profileName, { color: theme.text }]}>{user.employee_name}</Text>
+          <Text style={[s.profileRole, { color: theme.textLight }]}>{user.designation}</Text>
           <View style={s.activeBadge}>
             <View style={s.activeDot} />
             <Text style={s.activeText}>ACTIVE</Text>
           </View>
           <View style={s.idRow}>
-            <Text style={s.idLabel}>Employee ID  </Text>
-            <Text style={s.idVal}>{user.user_id}</Text>
+            <Text style={[s.idLabel, { color: theme.textLight }]}>Employee ID  </Text>
+            <Text style={[s.idVal, { color: theme.text }]}>{user.user_id}</Text>
           </View>
           {user.joining_date ? (
             <View style={s.idRow}>
-              <Text style={s.idLabel}>Joined  </Text>
-              <Text style={s.idVal}>{user.joining_date}</Text>
+              <Text style={[s.idLabel, { color: theme.textLight }]}>Joined  </Text>
+              <Text style={[s.idVal, { color: theme.text }]}>{user.joining_date}</Text>
             </View>
           ) : null}
         </View>
 
-        <Text style={s.cardGroupTitle}>Profile Information</Text>
-        <View style={s.menuCard}>
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Profile Information</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
           <SectionItem
             iconBg="#EEF2FF" icon={<User color="#4F46E5" size={20} />}
             title="Personal Details" subtitle="Name, contact & basic info"
@@ -300,7 +302,7 @@ const ProfileScreen = ({ navigation, route }) => {
           />
         </View>
 
-        <TouchableOpacity style={s.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+        <TouchableOpacity style={[s.logoutBtn, { backgroundColor: theme.card }]} onPress={handleLogout} activeOpacity={0.8}>
           <LogOut color={COLORS.danger} size={20} />
           <Text style={s.logoutText}>Logout</Text>
         </TouchableOpacity>

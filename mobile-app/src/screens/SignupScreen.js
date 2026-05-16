@@ -240,8 +240,6 @@ const SignupScreen = ({ navigation }) => {
   const [lwfRegNo, setLwfRegNo] = useState('');
   const [epsEligibility, setEpsEligibility] = useState(false);
   const [intlWorker, setIntlWorker] = useState(false);
-  const [intlCountry, setIntlCountry] = useState(null);
-  const [showIntlCountryPicker, setShowIntlCountryPicker] = useState(false);
   const [originCountry, setOriginCountry] = useState(null);
   const [showOriginCountryPicker, setShowOriginCountryPicker] = useState(false);
   const [physHandicap, setPhysHandicap] = useState(false);
@@ -337,13 +335,13 @@ const SignupScreen = ({ navigation }) => {
         esi_dispensary: esiDispensary,
         pf: pfNo,
         uan: uanNo,
-        prev_member_id: prevMemberId,
+        previous_member_id: prevMemberId,
         wps_code: wpsId,
         lwf_code: lwfRegNo,
-        eps_eligibility: epsEligibility ? 'Y' : 'N',
+        eps: epsEligibility ? 'Y' : 'N',
         international_worker: intlWorker ? 'Y' : 'N',
-        intl_country: intlWorker && intlCountry ? intlCountry.id : null,
-        country_of_origin: originCountry?.id || null,
+        // Country of origin only sent when international_worker = Y.
+        country_origin: intlWorker && originCountry?.id ? originCountry.id : null,
         physical_handicap: physHandicap ? 'Y' : 'N',
         locomotive: physHandicap && locomotive ? 'Y' : 'N',
         hearing: physHandicap && hearing ? 'Y' : 'N',
@@ -378,8 +376,8 @@ const SignupScreen = ({ navigation }) => {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
       setStep(5);
     } else if (step === 5) {
-      if (!aadhaarNumber.trim() || aadhaarNumber.length !== 12) {
-        showAlert('warning', 'Aadhaar Required', 'Please enter a valid 12-digit Aadhaar number.');
+      if (!aadhaarNumber.trim() || !/^\d{12}$/.test(aadhaarNumber)) {
+        showAlert('warning', 'Aadhaar Required', 'Aadhaar must be exactly 12 digits.');
         return;
       }
       if (aadharV.status === 'exists') {
@@ -390,12 +388,42 @@ const SignupScreen = ({ navigation }) => {
         showAlert('info', 'Please Wait', 'Validating Aadhaar number, please wait a moment.');
         return;
       }
+      // PAN is optional; validate format only if entered.
+      if (panNumber.trim() && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNumber)) {
+        showAlert('warning', 'Invalid PAN', 'PAN must be in the format ABCDE1234F (5 letters, 4 digits, 1 letter).');
+        return;
+      }
       if (panV.status === 'exists') {
         showAlert('error', 'PAN Already Registered', panV.message || 'This PAN number is already registered.');
         return;
       }
       setStep(6);
     } else if (step === 6) {
+      // All step-6 fields are optional, but if filled they must match format.
+      if (ifscCode.trim() && !/^[A-Z0-9]{4,12}$/.test(ifscCode)) {
+        showAlert('warning', 'Invalid IFSC', 'IFSC must be 4-12 alphanumeric characters.');
+        return;
+      }
+      if (accountNumber.trim() && !/^\d+$/.test(accountNumber)) {
+        showAlert('warning', 'Invalid Account Number', 'Account Number must contain only digits.');
+        return;
+      }
+      if (esiNo.trim() && !/^\d{10}$/.test(esiNo)) {
+        showAlert('warning', 'Invalid ESI', 'ESI must be exactly 10 digits.');
+        return;
+      }
+      if (pfNo.trim() && !/^[A-Za-z0-9]+$/.test(pfNo)) {
+        showAlert('warning', 'Invalid PF', 'PF Number must be alphanumeric.');
+        return;
+      }
+      if (uanNo.trim() && !/^\d{12}$/.test(uanNo)) {
+        showAlert('warning', 'Invalid UAN', 'UAN must be exactly 12 digits.');
+        return;
+      }
+      if (lwfRegNo.trim() && !/^[A-Za-z0-9]{5,15}$/.test(lwfRegNo)) {
+        showAlert('warning', 'Invalid LWF', 'LWF must be 5-15 alphanumeric characters.');
+        return;
+      }
       handleFinalSubmit();
     }
   };
@@ -498,7 +526,7 @@ const SignupScreen = ({ navigation }) => {
               <View style={{ marginTop: 28 }}>
                 <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
               </View>
-              <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, ''))} keyboardType="email-address" placeholder="employee@gmail.com" maxLength={100} />
+              <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase())} keyboardType="email-address" autoCapitalize="none" placeholder="employee@gmail.com" maxLength={100} />
               <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                 {loading ? <ActivityIndicator color="#FFF" /> : (
                   <>
@@ -635,7 +663,13 @@ const SignupScreen = ({ navigation }) => {
                   onChangeText={t => {
                     const v = t.replace(/[^0-9]/g, '');
                     setAadhaarNumber(v);
-                    validateField('aadhar', API_ENDPOINTS.CHECK_AADHAR, v, setAadharV, 12);
+                    if (v.length === 0) {
+                      setAadharV(IDLE);
+                    } else if (v.length < 12) {
+                      setAadharV({ status: 'error', message: 'Aadhaar must be exactly 12 digits!' });
+                    } else {
+                      validateField('aadhar', API_ENDPOINTS.CHECK_AADHAR, v, setAadharV, 12);
+                    }
                   }}
                   keyboardType="number-pad"
                   placeholder="XXXX XXXX XXXX"
@@ -648,7 +682,13 @@ const SignupScreen = ({ navigation }) => {
                   onChangeText={t => {
                     const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
                     setPanNumber(v);
-                    validateField('pan', API_ENDPOINTS.CHECK_PAN, v, setPanV, 10);
+                    if (v.length === 0) {
+                      setPanV(IDLE);
+                    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v)) {
+                      setPanV({ status: 'error', message: 'Invalid PAN format! (e.g. ABCDE1234F)' });
+                    } else {
+                      validateField('pan', API_ENDPOINTS.CHECK_PAN, v, setPanV, 10);
+                    }
                   }}
                   placeholder="ABCDE1234F"
                   maxLength={10}
@@ -677,10 +717,10 @@ const SignupScreen = ({ navigation }) => {
                 {/* Bank */}
                 <View style={st.toggleCard}>
                   <Text style={[st.toggleLabel, { marginBottom: 14 }]}>Bank Details</Text>
-                  <FloatInput label="Bank Name" value={bankName} onChangeText={setBankName} placeholder="Bank Name" maxLength={50} />
-                  <FloatInput label="Branch" value={branch} onChangeText={setBranch} placeholder="Branch" maxLength={50} />
-                  <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => setIfscCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="SBIN0001234" maxLength={11} />
-                  <FloatInput label="Account Number" value={accountNumber} onChangeText={t => setAccountNumber(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Account Number" maxLength={20} />
+                  <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Bank Name" maxLength={50} />
+                  <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Branch" maxLength={50} />
+                  <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => setIfscCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="SBIN0001234" maxLength={12} />
+                  <FloatInput label="Account Number" value={accountNumber} onChangeText={t => setAccountNumber(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Account Number" maxLength={18} />
                 </View>
 
                 {/* HR / Compliance */}
@@ -688,27 +728,45 @@ const SignupScreen = ({ navigation }) => {
                   <Text style={[st.toggleLabel, { marginBottom: 14 }]}>HR &amp; Compliance</Text>
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => { const v = t.replace(/[^0-9]/g, ''); setEsiNo(v); validateField('esi', API_ENDPOINTS.CHECK_ESI, v, setEsiV); }} keyboardType="number-pad" placeholder="ESI No" maxLength={20} validation={esiV} />
+                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => {
+                        const v = t.replace(/[^0-9]/g, '');
+                        setEsiNo(v);
+                        if (v.length === 0) setEsiV(IDLE);
+                        else if (v.length < 10) setEsiV({ status: 'error', message: 'ESI must be exactly 10 digits!' });
+                        else validateField('esi', API_ENDPOINTS.CHECK_ESI, v, setEsiV);
+                      }} keyboardType="number-pad" placeholder="ESI No" maxLength={10} validation={esiV} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="PF No" value={pfNo} onChangeText={t => { setPfNo(t); validateField('pf', API_ENDPOINTS.CHECK_PF, t, setPfV); }} placeholder="PF No" maxLength={22} validation={pfV} />
+                      <FloatInput label="PF No" value={pfNo} onChangeText={t => { const v = t.replace(/[^A-Za-z0-9]/g, ''); setPfNo(v); validateField('pf', API_ENDPOINTS.CHECK_PF, v, setPfV); }} placeholder="PF No" maxLength={22} validation={pfV} />
                     </View>
                   </View>
-                  <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={setEsiDispensary} placeholder="ESI Dispensary" maxLength={50} />
+                  <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={t => setEsiDispensary(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="ESI Dispensary" maxLength={50} />
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => { const v = t.replace(/[^0-9]/g, ''); setUanNo(v); validateField('uan', API_ENDPOINTS.CHECK_UAN, v, setUanV); }} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
+                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => {
+                        const v = t.replace(/[^0-9]/g, '');
+                        setUanNo(v);
+                        if (v.length === 0) setUanV(IDLE);
+                        else if (v.length < 12) setUanV({ status: 'error', message: 'UAN must be exactly 12 digits!' });
+                        else validateField('uan', API_ENDPOINTS.CHECK_UAN, v, setUanV);
+                      }} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={setPrevMemberId} placeholder="Prev Member ID" maxLength={30} />
+                      <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={t => setPrevMemberId(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Prev Member ID" maxLength={15} />
                     </View>
                   </View>
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="WPS ID" value={wpsId} onChangeText={setWpsId} placeholder="WPS ID" maxLength={20} />
+                      <FloatInput label="WPS ID" value={wpsId} onChangeText={t => setWpsId(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="WPS ID" maxLength={15} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="LWF Registration No" value={lwfRegNo} onChangeText={t => { setLwfRegNo(t); validateField('lwf', API_ENDPOINTS.CHECK_LWF, t, setLwfV); }} placeholder="LWF Reg No" maxLength={20} validation={lwfV} />
+                      <FloatInput label="LWF Registration No" value={lwfRegNo} onChangeText={t => {
+                        const v = t.replace(/[^A-Za-z0-9]/g, '');
+                        setLwfRegNo(v);
+                        if (v.length === 0) setLwfV(IDLE);
+                        else if (v.length < 5) setLwfV({ status: 'error', message: 'LWF must be 5-15 alphanumeric characters!' });
+                        else validateField('lwf', API_ENDPOINTS.CHECK_LWF, v, setLwfV);
+                      }} placeholder="LWF Reg No" maxLength={15} validation={lwfV} />
                     </View>
                   </View>
                   <CheckRow label="EPS Eligibility" value={epsEligibility} onToggle={() => setEpsEligibility(v => !v)} />
@@ -722,7 +780,7 @@ const SignupScreen = ({ navigation }) => {
                     </View>
                     <Switch
                       value={intlWorker}
-                      onValueChange={v => { setIntlWorker(v); if (!v) { setIntlCountry(null); setOriginCountry(null); } }}
+                      onValueChange={v => { setIntlWorker(v); if (!v) setOriginCountry(null); }}
                       trackColor={{ false: '#E5E7EB', true: '#EDE9FE' }}
                       thumbColor={intlWorker ? PURPLE : '#FFF'}
                     />
@@ -901,14 +959,6 @@ const SignupScreen = ({ navigation }) => {
         onSelect={setOriginCountry}
       />
 
-      {/* ── International Worker Country Picker ── */}
-      <CountryPickerModal
-        visible={showIntlCountryPicker}
-        countries={countries}
-        selected={intlCountry}
-        onClose={() => setShowIntlCountryPicker(false)}
-        onSelect={setIntlCountry}
-      />
     </SafeAreaView>
   );
 };

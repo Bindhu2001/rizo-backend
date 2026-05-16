@@ -2,10 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, Dimensions, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLoggedUser } from '../services/LocalDB';
+import { useTheme } from '../components/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const SplashScreen = ({ navigation }) => {
+  const theme = useTheme();
   // Target width for the entire logo assembly (responsive)
   const LOGO_ASSEMBLY_WIDTH = SCREEN_WIDTH * 0.85;
   const ORIGINAL_CANVAS_WIDTH = 1284;
@@ -166,8 +168,8 @@ const SplashScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <View style={[styles.canvas, { width: LOGO_ASSEMBLY_WIDTH, height: 600 * SCALE }]}>
         
         {/* r, i, z */}

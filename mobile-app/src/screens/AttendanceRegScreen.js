@@ -17,6 +17,15 @@ import { format } from 'date-fns';
 const formatPunchTime = (isoOrFull) => {
   if (!isoOrFull || isoOrFull === '---') return '---';
   try {
+    // Plain "HH:MM" or "HH:MM:SS" (no date part) — format directly.
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(String(isoOrFull).trim())) {
+      const [hStr, mStr] = String(isoOrFull).trim().split(':');
+      let h = parseInt(hStr, 10);
+      const m = parseInt(mStr, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12 || 12;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`;
+    }
     const d = new Date(isoOrFull.replace(' ', 'T'));
     if (isNaN(d.getTime())) return isoOrFull.split(' ')[1]?.slice(0, 5) || isoOrFull;
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -191,7 +200,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
         {(regsForDate || []).map((reg, idx) => {
           const { bg, color, label, applied } = buildRegInfo(reg);
           const dir = (reg.direction || reg.type || '').toUpperCase();
-          const reqTime = formatPunchTime(reg.log_time || reg.requested_time || reg.time);
+          const reqTime = formatPunchTime(reg.punch_time || reg.log_time || reg.requested_time || reg.time);
 
           return (
             <View key={idx} style={[lc.regStatusCard, { backgroundColor: bg, borderColor: color + '30' }]}>
@@ -824,7 +833,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
               <FloatingInput
                 label="Enter Time *"
-                value={logTime}
+                value={formatPunchTime(logTime)}
                 onPress={() => setShowTimePicker(true)}
                 editable={false}
                 icon={<ClockIcon />}

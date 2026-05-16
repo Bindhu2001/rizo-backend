@@ -26,7 +26,8 @@ import RegularisationApprovalScreen from './src/screens/RegularisationApprovalSc
 import LeaveApprovalScreen from './src/screens/LeaveApprovalScreen';
 
 import OfflineBanner from './src/components/OfflineBanner';
-import { COLORS, SHADOWS } from './src/components/Theme';
+import { SHADOWS } from './src/components/Theme';
+import { ThemeProvider, useTheme } from './src/components/ThemeContext';
 import { initDB } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
 import NotificationManager from './src/services/NotificationManager';
@@ -37,15 +38,16 @@ const Stack = createNativeStackNavigator();
 // ─── Tab Navigator (Main App) ──────────────────────────────────────────────
 function TabNavigator({ route }) {
   const insets = useSafeAreaInsets();
-  
+  const theme = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primaryDeep,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarActiveTintColor: theme.primaryDeep,
+        tabBarInactiveTintColor: theme.textMuted,
         tabBarStyle: {
-          backgroundColor: COLORS.white,
+          backgroundColor: theme.tabBarBg,
           borderTopWidth: 0,
           height: 64 + insets.bottom,
           paddingBottom: insets.bottom || 12,
@@ -94,24 +96,19 @@ function TabNavigator({ route }) {
   );
 }
 
-// ─── Root App ──────────────────────────────────────────────────────────────
-export default function App() {
+// ─── Inner app tree — has access to useTheme (it's inside ThemeProvider) ───
+function AppContent() {
+  const theme = useTheme();
   const [currentRoute, setCurrentRoute] = useState('Splash');
   const [offlineBarVisible, setOfflineBarVisible] = useState(false);
   const navigationRef = React.useRef(null);
 
-  useEffect(() => {
-    NotificationManager.setup();
-  }, []);
-
   return (
-    <SafeAreaProvider>
-      <OfflineBarContext.Provider value={offlineBarVisible}>
+    <OfflineBarContext.Provider value={offlineBarVisible}>
       <NavigationContainer
         ref={navigationRef}
         onStateChange={(state) => {
           const route = state?.routes[state.index];
-          // Handle nested navigators (like TabNavigator)
           let currentName = route?.name;
           let currentState = route?.state;
           while (currentState) {
@@ -124,7 +121,7 @@ export default function App() {
       >
         <Stack.Navigator
           initialRouteName="Splash"
-          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: COLORS.background } }}
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}
         >
           <Stack.Screen name="Splash" component={SplashScreen} />
           <Stack.Screen name="Welcome" component={WelcomeScreen} />
@@ -144,7 +141,21 @@ export default function App() {
         </Stack.Navigator>
       </NavigationContainer>
       <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} onBarVisibleChange={setOfflineBarVisible} />
-      </OfflineBarContext.Provider>
+    </OfflineBarContext.Provider>
+  );
+}
+
+// ─── Root App ──────────────────────────────────────────────────────────────
+export default function App() {
+  useEffect(() => {
+    NotificationManager.setup();
+  }, []);
+
+  return (
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

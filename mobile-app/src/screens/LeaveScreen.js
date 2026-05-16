@@ -13,7 +13,6 @@ import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { API_ENDPOINTS } from '../constants/Config';
@@ -469,16 +468,21 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('authorized_by', selectedAuthBy?.id || '0');
       formData.append('approved_by', selectedAppBy?.id || '0');
 
-      // Convert all files to Base64 before sending
+      // Send attachments as real multipart binary uploads under the field
+      // name `document` (matches backend). React Native's fetch/axios accepts
+      // a { uri, name, type } object on FormData and uploads the file as-is.
       for (let i = 0; i < attachedFiles.length; i++) {
         const file = attachedFiles[i];
-        try {
-          const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
-          const mime = file.mimeType || 'image/jpeg';
-          formData.append(`file_${i}`, `data:${mime};base64,${base64}`);
-        } catch (fileErr) {
-          console.log(`Error reading file ${i}:`, fileErr);
-        }
+        const ext = file.name?.split('.').pop()?.toLowerCase();
+        const mime = file.mimeType
+          || (ext === 'pdf' ? 'application/pdf'
+              : ext === 'png' ? 'image/png'
+              : 'image/jpeg');
+        formData.append('document', {
+          uri: file.uri,
+          name: file.name || `document_${i}.${ext || 'jpg'}`,
+          type: mime,
+        });
       }
 
       const res = await axios.post(API_ENDPOINTS.LEAVES, formData, { headers: { 'Content-Type': 'multipart/form-data' } });

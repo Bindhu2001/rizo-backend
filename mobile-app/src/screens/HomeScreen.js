@@ -28,6 +28,7 @@ import {
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
+import { useTheme } from '../components/ThemeContext';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
 
@@ -40,6 +41,7 @@ const API_URL = API_ENDPOINTS.ATTENDANCE;
 const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 
 const HomeScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const [user, setUser] = useState(route?.params?.user);
   // Always keep a ref to the latest user so focus-listener closures never go stale
   const userRef = useRef(route?.params?.user);
@@ -610,7 +612,7 @@ const HomeScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -622,11 +624,11 @@ const HomeScreen = ({ navigation, route }) => {
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>
             <View>
-              <Text style={styles.greetingHeader}>{getGreeting()}</Text>
-              <Text style={styles.userNameHeader} numberOfLines={1}>{user.employee_name || user.name}</Text>
+              <Text style={[styles.greetingHeader, { color: theme.textLight }]}>{getGreeting()}</Text>
+              <Text style={[styles.userNameHeader, { color: theme.text }]} numberOfLines={1}>{user.employee_name || user.name}</Text>
               <View style={styles.locationBadge}>
-                <MapPin color={COLORS.textLight} size={14} strokeWidth={2.5} />
-                <Text style={[styles.locationText, { fontWeight: '700', color: '#6B7280' }]} numberOfLines={1}>{locationName || 'Fetching location...'}</Text>
+                <MapPin color={theme.textLight} size={14} strokeWidth={2.5} />
+                <Text style={[styles.locationText, { fontWeight: '700', color: theme.textLight }]} numberOfLines={1}>{locationName || 'Fetching location...'}</Text>
               </View>
             </View>
           </View>
@@ -636,8 +638,8 @@ const HomeScreen = ({ navigation, route }) => {
                 <History color="#FFF" size={18} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.headerIcon} onPress={() => navigation.navigate('Notifications')}>
-              <Bell color={COLORS.text} size={22} />
+            <TouchableOpacity style={[styles.headerIcon, { backgroundColor: theme.card }]} onPress={() => navigation.navigate('Notifications')}>
+              <Bell color={theme.text} size={22} />
               {offlineCount > 0 && <View style={styles.offlineDot} />}
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
@@ -679,61 +681,61 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* 2×2 GRID */}
         <View style={styles.grid}>
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance', { user })}>
+          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Attendance', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#E3F2FD' }]}>
               <Clock color="#2196F3" size={20} />
             </View>
-            <Text style={styles.gridVal}>Attendance</Text>
-            <Text style={styles.gridLabel}>View History</Text>
+            <Text style={[styles.gridVal, { color: theme.text }]}>Attendance</Text>
+            <Text style={[styles.gridLabel, { color: theme.textLight }]}>View History</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Salary', { user })}>
+          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Salary', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#FFF9C4' }]}>
               <DollarSign color="#F1C40F" size={20} />
             </View>
-            <Text style={styles.gridVal}>Salary</Text>
-            <Text style={styles.gridLabel}>Check Payroll</Text>
+            <Text style={[styles.gridVal, { color: theme.text }]}>Salary</Text>
+            <Text style={[styles.gridLabel, { color: theme.textLight }]}>Check Payroll</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Leave', { user })}>
+          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Leave', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#F3E5F5' }]}>
               <Briefcase color={COLORS.primaryDeep} size={20} />
             </View>
-            <Text style={styles.gridVal}>Leave</Text>
-            <Text style={styles.gridLabel}>Apply / View</Text>
+            <Text style={[styles.gridVal, { color: theme.text }]}>Leave</Text>
+            <Text style={[styles.gridLabel, { color: theme.textLight }]}>Apply / View</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard} activeOpacity={0.7} onPress={() => navigation.navigate('Expense', { user })}>
+          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Expense', { user })}>
             <View style={[styles.gridIcon, { backgroundColor: '#FFEBEE' }]}>
               <FileText color="#E91E63" size={20} />
             </View>
-            <Text style={styles.gridVal}>Expense</Text>
-            <Text style={styles.gridLabel}>Add / Track</Text>
+            <Text style={[styles.gridVal, { color: theme.text }]}>Expense</Text>
+            <Text style={[styles.gridLabel, { color: theme.textLight }]}>Add / Track</Text>
           </TouchableOpacity>
         </View>
 
         {/* APPROVALS ROW */}
         {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
           <>
-            <Text style={styles.sectionLabel}>Approvals</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textLight }]}>Approvals</Text>
             <View style={styles.approvalRow}>
               {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
-                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveApproval', { user })}>
+                <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveApproval', { user })}>
                   <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
                     <CheckCircle color="#16A34A" size={22} />
                   </View>
-                  <Text style={styles.approvalTitle}>Leave</Text>
-                  <Text style={styles.approvalSub}>Approval</Text>
+                  <Text style={[styles.approvalTitle, { color: theme.text }]}>Leave</Text>
+                  <Text style={[styles.approvalSub, { color: theme.textLight }]}>Approval</Text>
                 </TouchableOpacity>
               )}
 
               {roles.is_employee_hierarchy && (
-                <TouchableOpacity style={styles.approvalCard} activeOpacity={0.7} onPress={() => navigation.navigate('RegularisationApproval', { user })}>
+                <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('RegularisationApproval', { user })}>
                   <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
                     <ClipboardList color="#F97316" size={22} />
                   </View>
-                  <Text style={styles.approvalTitle}>Regularisation</Text>
-                  <Text style={styles.approvalSub}>Approval</Text>
+                  <Text style={[styles.approvalTitle, { color: theme.text }]}>Regularisation</Text>
+                  <Text style={[styles.approvalSub, { color: theme.textLight }]}>Approval</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -742,7 +744,7 @@ const HomeScreen = ({ navigation, route }) => {
 
         {/* CLIENT VISIT */}
         <TouchableOpacity
-          style={styles.visitButton}
+          style={[styles.visitButton, { backgroundColor: theme.card }]}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('Visits', { user })}
         >
@@ -751,16 +753,16 @@ const HomeScreen = ({ navigation, route }) => {
               <Navigation color="#FFF" size={20} />
             </View>
             <View>
-              <Text style={styles.visitBtnTitle}>Client Visit</Text>
-              <Text style={styles.visitBtnSub}>Track your client meetings</Text>
+              <Text style={[styles.visitBtnTitle, { color: theme.text }]}>Client Visit</Text>
+              <Text style={[styles.visitBtnSub, { color: theme.textLight }]}>Track your client meetings</Text>
             </View>
           </View>
-          <ChevronRight color={COLORS.textLight} size={20} />
+          <ChevronRight color={theme.textLight} size={20} />
         </TouchableOpacity>
 
         {/* REGULARIZATION */}
         <TouchableOpacity
-          style={[styles.visitButton, { marginBottom: 24, marginTop: -12 }]}
+          style={[styles.visitButton, { backgroundColor: theme.card, marginBottom: 24, marginTop: -12 }]}
           activeOpacity={0.8}
           onPress={() => navigation.navigate('AttendanceReg', { user, initialTab: 'LOG' })}
         >
@@ -769,23 +771,23 @@ const HomeScreen = ({ navigation, route }) => {
               <History color="#FFF" size={20} />
             </View>
             <View>
-              <Text style={styles.visitBtnTitle}>Regularization</Text>
-              <Text style={styles.visitBtnSub}>Late In / Early Out requests</Text>
+              <Text style={[styles.visitBtnTitle, { color: theme.text }]}>Regularization</Text>
+              <Text style={[styles.visitBtnSub, { color: theme.textLight }]}>Late In / Early Out requests</Text>
             </View>
           </View>
-          <ChevronRight color={COLORS.textLight} size={20} />
+          <ChevronRight color={theme.textLight} size={20} />
         </TouchableOpacity>
 
         {/* UPCOMING EVENTS DROPDOWN */}
-        <View style={styles.eventsSection}>
+        <View style={[styles.eventsSection, { backgroundColor: theme.card }]}>
           <TouchableOpacity style={styles.eventsHeader} onPress={toggleEvents} activeOpacity={0.8}>
             <View style={styles.eventsHeaderLeft}>
               <CalendarIcon color={COLORS.primaryDeep} size={20} />
-              <Text style={styles.eventsSectionTitle}>Upcoming Events</Text>
+              <Text style={[styles.eventsSectionTitle, { color: theme.text }]}>Upcoming Events</Text>
             </View>
             {eventsOpen
-              ? <ChevronUp color={COLORS.textLight} size={20} />
-              : <ChevronDown color={COLORS.textLight} size={20} />
+              ? <ChevronUp color={theme.textLight} size={20} />
+              : <ChevronDown color={theme.textLight} size={20} />
             }
           </TouchableOpacity>
 
