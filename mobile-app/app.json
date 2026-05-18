@@ -6,7 +6,7 @@
     "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/logo_with_margin.png",
       "resizeMode": "contain",
