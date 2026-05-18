@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator, BackHandler,
+  Image, ActivityIndicator, BackHandler, Switch,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
-  MapPin, CreditCard, FileText, ClipboardList,
+  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
@@ -300,6 +300,27 @@ const ProfileScreen = ({ navigation, route }) => {
             onPress={() => openSection('other')}
             last
           />
+        </View>
+
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Preferences</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          <View style={s.sectionRow}>
+            <View style={[s.sectionIconBox, { backgroundColor: theme.isDark ? '#1E293B' : '#F1F5F9' }]}>
+              {theme.isDark
+                ? <Moon color="#A78BFA" size={20} />
+                : <Sun color="#F59E0B" size={20} />}
+            </View>
+            <View style={s.sectionText}>
+              <Text style={[s.sectionTitle, { color: theme.text }]}>Dark Mode</Text>
+              <Text style={[s.sectionSub, { color: theme.textLight }]}>{theme.isDark ? 'Dark theme enabled' : 'Light theme enabled'}</Text>
+            </View>
+            <Switch
+              value={theme.isDark}
+              onValueChange={theme.toggleTheme}
+              trackColor={{ false: '#E5E7EB', true: '#7C3AED' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
         </View>
 
         <TouchableOpacity style={[s.logoutBtn, { backgroundColor: theme.card }]} onPress={handleLogout} activeOpacity={0.8}>

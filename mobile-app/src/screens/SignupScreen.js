@@ -268,12 +268,28 @@ const SignupScreen = ({ navigation }) => {
   // Countries list
   const [countries, setCountries] = useState([]);
 
-  const fetchCountries = async (userId) => {
+  const fetchCountries = async (companyCode) => {
     try {
-      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, { params: { user_id: userId } });
-      if (res.data?.success === 1 && Array.isArray(res.data.data)) setCountries(res.data.data);
-    } catch (_) { }
+      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, {
+        params: { user_id: companyCode },
+        timeout: 10000,
+      });
+      const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
+      if (ok && Array.isArray(res.data.data) && res.data.data.length > 0) {
+        setCountries(res.data.data);
+      } else if (Array.isArray(res.data.data) && res.data.data.length > 0) {
+        // fallback: use data even if success flag is unexpected
+        setCountries(res.data.data);
+      } else {
+        console.warn('[fetchCountries] unexpected response:', JSON.stringify(res.data));
+      }
+    } catch (e) {
+      console.warn('[fetchCountries] error:', e.message);
+    }
   };
+
+  // Pre-fetch countries on mount so the picker is ready regardless of step timing
+  useEffect(() => { fetchCountries(''); }, []);
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
@@ -392,6 +408,7 @@ const SignupScreen = ({ navigation }) => {
       setStep(4);
     } else if (step === 4) {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
+      if (!addrCountry) { showAlert('warning', 'Country Required', 'Please select your country to continue.'); return; }
       setStep(5);
     } else if (step === 5) {
       if (!aadhaarNumber.trim() || !/^\d{12}$/.test(aadhaarNumber)) {
@@ -663,7 +680,7 @@ const SignupScreen = ({ navigation }) => {
                 </View>
                 <FloatInput label="District" value={address.district} onChangeText={t => setAddress({ ...address, district: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="District" maxLength={30} />
                 <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={30} />
-                <PickerRow label="Country" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
+                <PickerRow label="Country *" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>

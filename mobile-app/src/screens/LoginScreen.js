@@ -125,11 +125,13 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.formContainer}>
             {/* TOP LOGO */}
             <View style={styles.headerGroup}>
-              <Image
-                source={require('../../assets/rizo.png')}
-                style={styles.mainLogo}
-                resizeMode="contain"
-              />
+              <View style={styles.logoBg}>
+                <Image
+                  source={require('../../assets/rizo.png')}
+                  style={styles.mainLogo}
+                  resizeMode="contain"
+                />
+              </View>
             </View>
 
             {/* INPUT FIELDS */}
@@ -206,9 +208,16 @@ const styles = StyleSheet.create({
   formContainer: { width: '100%', alignItems: 'center' },
 
   headerGroup: { alignItems: 'center', marginBottom: moderateScale(50), width: '100%' },
+  logoBg: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: moderateScale(20),
+    paddingHorizontal: moderateScale(24),
+    paddingVertical: moderateScale(16),
+    ...SHADOWS.light,
+  },
   mainLogo: {
     width: wp(50),
-    height: wp(30),
+    height: wp(22),
   },
 
   inputGroup: { width: '100%', marginBottom: moderateScale(40) },

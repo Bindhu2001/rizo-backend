@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useContext } from 'react';
 import { OfflineBarContext } from '../../App';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl
+  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl, BackHandler
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,6 +46,12 @@ const HomeScreen = ({ navigation, route }) => {
   // Always keep a ref to the latest user so focus-listener closures never go stale
   const userRef = useRef(route?.params?.user);
   useEffect(() => { userRef.current = user; }, [user]);
+
+  // Block Android back button on Home — there is nowhere to go back to
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);

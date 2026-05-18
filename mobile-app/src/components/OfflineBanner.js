@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, Platform, TouchableOpacity } from 'react-native';
 import * as Network from 'expo-network';
+import { CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WifiOff, Home } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
@@ -96,13 +97,16 @@ const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
             onPress={async () => {
               try {
                 const user = await getLoggedUser();
-                if (user?.user_id) {
-                  navigationRef?.current?.navigate('Main', { user, screen: 'HomeTab' });
-                } else {
-                  navigationRef?.current?.navigate('Main', { screen: 'HomeTab' });
-                }
+                navigationRef?.current?.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Main', params: { user: user || undefined, screen: 'HomeTab' } }],
+                  })
+                );
               } catch (_) {
-                navigationRef?.current?.navigate('Main', { screen: 'HomeTab' });
+                navigationRef?.current?.dispatch(
+                  CommonActions.reset({ index: 0, routes: [{ name: 'Main', params: { screen: 'HomeTab' } }] })
+                );
               }
             }}
           >

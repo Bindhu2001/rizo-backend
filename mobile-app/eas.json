@@ -7,11 +7,17 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "distribution": "internal"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "ios": {
+        "distribution": "store"
       }
     },
     "apk": {
