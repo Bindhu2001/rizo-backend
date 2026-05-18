@@ -209,11 +209,9 @@ const styles = StyleSheet.create({
 
   headerGroup: { alignItems: 'center', marginBottom: moderateScale(50), width: '100%' },
   logoBg: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: moderateScale(20),
+    backgroundColor: 'transparent',
     paddingHorizontal: moderateScale(24),
     paddingVertical: moderateScale(16),
-    ...SHADOWS.light,
   },
   mainLogo: {
     width: wp(50),

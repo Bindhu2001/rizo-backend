@@ -319,7 +319,6 @@ const HomeScreen = ({ navigation, route }) => {
   const checkPunchAllowed = async () => {
     const cacheKey = `PUNCH_CONFIG_${user.user_id}`;
     let data = null;
-    let debug = '';
     let serverTimeMs = null;
 
     // 1. Try fresh from the server (POST with user_id as a query parameter)
@@ -331,7 +330,6 @@ const HomeScreen = ({ navigation, route }) => {
       );
       const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
       console.log('[Punch] config response', raw);
-      debug = `HTTP ${res.status} body=${raw.slice(0, 250)}`;
       const dateHeader = res.headers?.date || res.headers?.Date;
       if (dateHeader) {
         const parsed = Date.parse(dateHeader);
@@ -373,14 +371,9 @@ const HomeScreen = ({ navigation, route }) => {
       } catch (_) {}
     }
 
-    // 3. Still no config → block with diagnostic info so we can see what
-    // the device actually received. (Previously this silently allowed which
-    // bypassed the gate whenever the request shape was unexpected.)
+    // 3. Still no config → allow (offline fallback: device has no cache yet)
     if (!data) {
-      return {
-        allowed: false,
-        message: `Could not verify punch eligibility. Please connect to internet and try again. (${debug || 'no response'})`,
-      };
+      return { allowed: true };
     }
 
     const t = String(data.punchtype || '').toUpperCase();

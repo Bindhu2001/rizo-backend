@@ -268,18 +268,13 @@ const SignupScreen = ({ navigation }) => {
   // Countries list
   const [countries, setCountries] = useState([]);
 
-  const fetchCountries = async (companyCode) => {
+  const fetchCountries = async () => {
     try {
-      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, {
-        params: { user_id: companyCode },
-        timeout: 10000,
-      });
+      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, { timeout: 10000 });
       const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
-      if (ok && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        setCountries(res.data.data);
-      } else if (Array.isArray(res.data.data) && res.data.data.length > 0) {
-        // fallback: use data even if success flag is unexpected
-        setCountries(res.data.data);
+      const raw = res.data?.data;
+      if (ok && Array.isArray(raw) && raw.length > 0) {
+        setCountries(raw.map(c => ({ id: c.id_countries, country_name: c.name })));
       } else {
         console.warn('[fetchCountries] unexpected response:', JSON.stringify(res.data));
       }
@@ -288,8 +283,7 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-  // Pre-fetch countries on mount so the picker is ready regardless of step timing
-  useEffect(() => { fetchCountries(''); }, []);
+  useEffect(() => { fetchCountries(); }, []);
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
@@ -316,7 +310,6 @@ const SignupScreen = ({ navigation }) => {
             { text: 'Login', style: 'destructive', onPress: () => navigation.navigate('Login') },
           ]);
         } else if (isSuccess) {
-          fetchCountries(companyCode.trim());
           showAlert('success', 'Valid Email', 'Your email has been verified successfully.', [
             { text: 'OK', onPress: () => setStep(3) },
           ]);

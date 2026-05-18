@@ -24,33 +24,39 @@ const PURPLE = '#4A148C';
 const yesNo = (v) => (String(v).toUpperCase() === 'Y' || v === true ? 'Yes' : 'No');
 const dash = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '—');
 
-const Field = ({ label, value }) => (
-  <View style={s.fieldRow}>
-    <Text style={s.fieldLabel}>{label}</Text>
-    <Text style={s.fieldValue}>{value}</Text>
-  </View>
-);
+const Field = ({ label, value }) => {
+  const theme = useTheme();
+  return (
+    <View style={[s.fieldRow, { borderBottomColor: theme.divider }]}>
+      <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{label}</Text>
+      <Text style={[s.fieldValue, { color: theme.text }]}>{value}</Text>
+    </View>
+  );
+};
 
-const SectionItem = ({ iconBg, icon, title, subtitle, onPress, last }) => (
-  <>
-    <TouchableOpacity style={s.sectionRow} onPress={onPress} activeOpacity={0.7}>
-      <View style={[s.sectionIconBox, { backgroundColor: iconBg }]}>{icon}</View>
-      <View style={s.sectionText}>
-        <Text style={s.sectionTitle}>{title}</Text>
-        <Text style={s.sectionSub}>{subtitle}</Text>
-      </View>
-      <ChevronRight color="#9CA3AF" size={20} />
-    </TouchableOpacity>
-    {!last && <View style={s.divider} />}
-  </>
-);
+const SectionItem = ({ iconBg, icon, title, subtitle, onPress, last }) => {
+  const theme = useTheme();
+  return (
+    <>
+      <TouchableOpacity style={s.sectionRow} onPress={onPress} activeOpacity={0.7}>
+        <View style={[s.sectionIconBox, { backgroundColor: iconBg }]}>{icon}</View>
+        <View style={s.sectionText}>
+          <Text style={[s.sectionTitle, { color: theme.text }]}>{title}</Text>
+          <Text style={[s.sectionSub, { color: theme.textLight }]}>{subtitle}</Text>
+        </View>
+        <ChevronRight color={theme.textMuted} size={20} />
+      </TouchableOpacity>
+      {!last && <View style={[s.divider, { backgroundColor: theme.divider }]} />}
+    </>
+  );
+};
 
-const SectionHeader = ({ title, onBack }) => (
+const SectionHeader = ({ title, onBack, theme }) => (
   <View style={s.header}>
     <TouchableOpacity onPress={onBack} style={s.backBtn}>
-      <ChevronLeft color={COLORS.text} size={28} />
+      <ChevronLeft color={theme?.text || COLORS.text} size={28} />
     </TouchableOpacity>
-    <Text style={s.headerTitle}>{title}</Text>
+    <Text style={[s.headerTitle, { color: theme?.text || COLORS.text }]}>{title}</Text>
     <View style={{ width: 44 }} />
   </View>
 );
@@ -152,13 +158,13 @@ const ProfileScreen = ({ navigation, route }) => {
 
   // ── Section view wrapper ────────────────────────────────────────────────────
   const renderSectionView = (title, children) => (
-    <SafeAreaView style={s.container}>
-      <SectionHeader title={title} onBack={() => setSection(null)} />
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <SectionHeader title={title} onBack={() => setSection(null)} theme={theme} />
       {busy ? (
         <View style={s.loaderWrap}><ActivityIndicator size="large" color={PURPLE} /></View>
       ) : (
         <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false}>
-          <View style={s.fieldCard}>{children}</View>
+          <View style={[s.fieldCard, { backgroundColor: theme.card }]}>{children}</View>
           <View style={{ height: 32 }} />
         </ScrollView>
       )}

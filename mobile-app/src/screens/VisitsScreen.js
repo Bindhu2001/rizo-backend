@@ -346,6 +346,8 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   const [locText, setLocText] = useState('');
   const [locCoords, setLocCoords] = useState({ lat: 0, lng: 0 });
   const [fetchingLoc, setFetchingLoc] = useState(false);
+  const [alertCfg, setAlertCfg] = useState(null);
+  const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
   useEffect(() => {
     if (!visible) return;
@@ -418,6 +420,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: theme.textMuted }]}>START</Text>}
           </TouchableOpacity>
         </View>
+        <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       </SafeAreaView>
     </Modal>
   );
