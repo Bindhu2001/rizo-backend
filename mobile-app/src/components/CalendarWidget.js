@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
+import { useTheme } from './ThemeContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths } from 'date-fns';
 import axios from 'axios';
 import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const CalendarWidget = ({ userId }) => {
+  const theme = useTheme();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -104,22 +106,22 @@ const CalendarWidget = ({ userId }) => {
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.card }]}>
       <View style={styles.calendarHeader}>
         {!isCurrentMonth() && (
-          <TouchableOpacity onPress={handlePrevMonth} style={styles.prevBtn}>
+          <TouchableOpacity onPress={handlePrevMonth} style={[styles.prevBtn, { backgroundColor: theme.cardSoft }]}>
             <ChevronLeft color={COLORS.primaryDeep} size={20} />
           </TouchableOpacity>
         )}
-        <Text style={styles.monthTitle}>{format(currentDate, 'MMMM yyyy')}</Text>
-        <TouchableOpacity onPress={handleNextMonth} style={styles.nextBtn}>
+        <Text style={[styles.monthTitle, { color: theme.text }]}>{format(currentDate, 'MMMM yyyy')}</Text>
+        <TouchableOpacity onPress={handleNextMonth} style={[styles.nextBtn, { backgroundColor: theme.cardSoft }]}>
           <ChevronRight color={COLORS.primaryDeep} size={20} />
         </TouchableOpacity>
       </View>
       
       <View style={styles.headerRow}>
         {weekDays.map((d, i) => (
-          <Text key={i} style={styles.weekDayText}>{d}</Text>
+          <Text key={i} style={[styles.weekDayText, { color: theme.textLight }]}>{d}</Text>
         ))}
       </View>
 
@@ -134,9 +136,9 @@ const CalendarWidget = ({ userId }) => {
           const isToday = isSameDay(day, new Date());
 
           return (
-            <TouchableOpacity 
-              key={idx} 
-              style={[styles.cell, isToday && styles.todayCell]}
+            <TouchableOpacity
+              key={idx}
+              style={[styles.cell, isToday && [styles.todayCell, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E5F5' }]]}
               onPress={() => {
                 if (dayEvents.length > 0) {
                   setSelectedEvent({ date: day, events: dayEvents });
@@ -144,7 +146,7 @@ const CalendarWidget = ({ userId }) => {
               }}
               disabled={dayEvents.length === 0}
             >
-              <Text style={[styles.dayText, isToday && styles.todayText]}>
+              <Text style={[styles.dayText, { color: theme.text }, isToday && styles.todayText]}>
                 {format(day, 'd')}
               </Text>
               
@@ -158,20 +160,20 @@ const CalendarWidget = ({ userId }) => {
         })}
       </View>
 
-      <View style={styles.legend}>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#E91E63' }]} /><Text style={styles.legendText}>Birthday</Text></View>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#2196F3' }]} /><Text style={styles.legendText}>Anniv.</Text></View>
-        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#FF9800' }]} /><Text style={styles.legendText}>Holiday</Text></View>
+      <View style={[styles.legend, { borderTopColor: theme.divider }]}>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#E91E63' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Birthday</Text></View>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#2196F3' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Anniv.</Text></View>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#FF9800' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Holiday</Text></View>
       </View>
 
       <Modal visible={!!selectedEvent} transparent animationType="fade" statusBarTranslucent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalDate}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalDate, { color: theme.text }]}>
               {selectedEvent ? format(selectedEvent.date, 'dd MMM yyyy') : ''}
             </Text>
             
-            <ScrollView style={styles.eventList} showsVerticalScrollIndicator={true} indicatorStyle="black">
+            <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
               {selectedEvent?.events.map((e, idx) => {
                 const isBir = e.type === 'BIR' || e.type === 'BIRTHDAY';
                 const isHol = e.type === 'HOL';
@@ -179,19 +181,19 @@ const CalendarWidget = ({ userId }) => {
                 const typeText = isBir ? 'Birthday' : isHol ? 'Holiday' : 'Work Anniversary';
                 
                 return (
-                  <View key={idx} style={styles.eventRow}>
+                  <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
                     <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
                     <View style={{ flex: 1 }}>
-                       <Text style={styles.eventName} numberOfLines={2}>{e.name || 'Unknown'}</Text>
-                       <Text style={styles.eventType}>{typeText}</Text>
+                       <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || 'Unknown'}</Text>
+                       <Text style={[styles.eventType, { color: theme.textLight }]}>{typeText}</Text>
                     </View>
                   </View>
                 );
               })}
             </ScrollView>
 
-            <TouchableOpacity style={styles.closeBtn} onPress={() => setSelectedEvent(null)}>
-              <Text style={styles.closeBtnText}>Close</Text>
+            <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.border }]} onPress={() => setSelectedEvent(null)}>
+              <Text style={[styles.closeBtnText, { color: theme.text }]}>Close</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,13 +1,15 @@
 ﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, StatusBar } from 'react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
 const WelcomeScreen = ({ navigation }) => {
+  const theme = useTheme();
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       
       <View style={styles.content}>
         {/* TOP LOGO (The Ring) */}
@@ -34,7 +36,7 @@ const WelcomeScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>POWERED BY RIZO SOLUTIONS</Text>
+        <Text style={[styles.footerText, { color: theme.textMuted }]}>POWERED BY RIZO SOLUTIONS</Text>
       </View>
     </View>
   );

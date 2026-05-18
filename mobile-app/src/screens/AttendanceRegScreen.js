@@ -10,7 +10,8 @@ import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
 
@@ -68,40 +69,41 @@ const fmtDisplayDate = (isoDate) => {
 
 // Floating Label Input
 const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChangeText, placeholder, editable, onIconPress, maxLength }) => {
+  const theme = useTheme();
   const Container = (onPress && !editable) ? TouchableOpacity : View;
-  
+
   return (
-    <Container 
-      activeOpacity={(onPress && !editable) ? 0.7 : 1} 
-      onPress={!editable ? onPress : undefined} 
-      style={[fi.container, active && fi.activeContainer, multiline && fi.multiline]}
+    <Container
+      activeOpacity={(onPress && !editable) ? 0.7 : 1}
+      onPress={!editable ? onPress : undefined}
+      style={[fi.container, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }, active && fi.activeContainer, multiline && fi.multiline]}
     >
-      <View style={fi.labelContainer}>
-        <Text style={[fi.label, active && fi.activeLabel]}>{label}</Text>
+      <View style={[fi.labelContainer, { backgroundColor: theme.card }]}>
+        <Text style={[fi.label, { color: theme.textMuted }, active && fi.activeLabel]}>{label}</Text>
       </View>
       {multiline ? (
         <TextInput
-          style={fi.inputArea}
+          style={[fi.inputArea, { color: theme.text }]}
           value={value}
           onChangeText={onChangeText}
           multiline
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor={theme.textMuted}
           maxLength={maxLength}
         />
       ) : (
         <View style={fi.row}>
           {editable ? (
             <TextInput
-              style={fi.singleInput}
+              style={[fi.singleInput, { color: theme.text }]}
               value={value}
               onChangeText={onChangeText}
               placeholder={placeholder}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.textMuted}
               maxLength={maxLength}
             />
           ) : (
-            <Text style={fi.value}>{value}</Text>
+            <Text style={[fi.value, { color: theme.text }]}>{value}</Text>
           )}
           {icon && (
             onIconPress ? (
@@ -142,9 +144,10 @@ const ti = StyleSheet.create({
   inner: { width: moderateScale(8), height: moderateScale(8), borderRadius: 4 }
 });
 
-const ClockIcon = () => (
-  <Clock color="#000" size={18} strokeWidth={2} />
-);
+const ClockIcon = () => {
+  const theme = useTheme();
+  return <Clock color={theme.text} size={18} strokeWidth={2} />;
+};
 
 
 // Compute display info for a single regularisation request.
@@ -174,6 +177,7 @@ const buildRegInfo = (reg) => {
 };
 
 const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
+  const theme = useTheme();
   const punchInRaw = formatPunchTime(item.punch_in_time);
   const punchOutRaw = formatPunchTime(item.punch_out_time);
 
@@ -186,14 +190,14 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
   // ── REGULARISED TAB ── status-focused layout (no IN/OUT punch rows) ─────────
   if (isRegularisedTab) {
     return (
-      <View style={lc.card}>
+      <View style={[lc.card, { backgroundColor: theme.card }]}>
         <View style={lc.headerRow}>
           <View style={{ flex: 1 }}>
-            <Text style={lc.dateTitle}>{displayMonthDay}</Text>
-            <Text style={lc.shiftText}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
+            <Text style={[lc.dateTitle, { color: theme.text }]}>{displayMonthDay}</Text>
+            <Text style={[lc.shiftText, { color: theme.textLight }]}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
           </View>
-          <View style={lc.badgeWo}>
-            <Text style={lc.badgeWoText}>{item.status || 'WO'}</Text>
+          <View style={[lc.badgeWo, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+            <Text style={[lc.badgeWoText, { color: theme.textMuted }]}>{item.status || 'WO'}</Text>
           </View>
         </View>
 
@@ -280,35 +284,35 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 
   // ── LOG TAB ── full IN/OUT punch layout with per-row REGULARISE / status ────
   return (
-    <View style={lc.card}>
+    <View style={[lc.card, { backgroundColor: theme.card }]}>
       <View style={lc.headerRow}>
         <View>
-          <Text style={lc.dateTitle}>{displayMonthDay}</Text>
-          <Text style={lc.shiftText}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
+          <Text style={[lc.dateTitle, { color: theme.text }]}>{displayMonthDay}</Text>
+          <Text style={[lc.shiftText, { color: theme.textLight }]}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
         </View>
-        <View style={lc.badgeWo}>
-          <Text style={lc.badgeWoText}>{item.status || 'WO'}</Text>
+        <View style={[lc.badgeWo, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+          <Text style={[lc.badgeWoText, { color: theme.textMuted }]}>{item.status || 'WO'}</Text>
         </View>
       </View>
 
       <View style={lc.punchContainer}>
-        <View style={lc.trackLine} />
+        <View style={[lc.trackLine, { backgroundColor: theme.border }]} />
 
         {/* IN */}
         <View style={lc.punchRowBox}>
-          <View style={lc.iconCol}>
+          <View style={[lc.iconCol, { backgroundColor: theme.card }]}>
             {hasPunchIn ? <CheckCircle color="#16A34A" size={moderateScale(18)} /> : <Clock color="#DC2626" size={moderateScale(18)} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchIn ? (
               <>
-                <Text style={lc.timeVal}>{punchInRaw}</Text>
-                <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+                <Text style={[lc.timeVal, { color: theme.text }]}>{punchInRaw}</Text>
+                <Text style={[lc.locText, { color: theme.textLight }]}>Location: {item.location || 'Not Available'}</Text>
                 {renderRowAction('IN', 'secondary')}
               </>
             ) : (
               <>
-                <Text style={lc.missingHdr}>Clock In</Text>
+                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Clock In</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
                 {renderRowAction('IN')}
               </>
@@ -321,19 +325,19 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
 
         {/* OUT */}
         <View style={[lc.punchRowBox, { marginTop: moderateScale(32) }]}>
-          <View style={[lc.iconCol, { backgroundColor: '#FFF' }]}>
+          <View style={[lc.iconCol, { backgroundColor: theme.card }]}>
             {hasPunchOut ? <CheckCircle color="#16A34A" size={moderateScale(18)} /> : <Clock color="#DC2626" size={moderateScale(18)} strokeWidth={2.5} />}
           </View>
           <View style={lc.timeCol}>
             {hasPunchOut ? (
               <>
-                <Text style={lc.timeVal}>{punchOutRaw}</Text>
-                <Text style={lc.locText}>Location: {item.location || 'Not Available'}</Text>
+                <Text style={[lc.timeVal, { color: theme.text }]}>{punchOutRaw}</Text>
+                <Text style={[lc.locText, { color: theme.textLight }]}>Location: {item.location || 'Not Available'}</Text>
                 {renderRowAction('OUT', 'secondary')}
               </>
             ) : (
               <>
-                <Text style={lc.missingHdr}>Clock Out</Text>
+                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Clock Out</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
                 {renderRowAction('OUT')}
               </>
@@ -454,6 +458,7 @@ const lc = StyleSheet.create({
 
 // Analog Time Picker Modal
 const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
+  const theme = useTheme();
   const [isAm, setIsAm] = useState(true);
   const [hour, setHour] = useState(7);
   const [minute, setMinute] = useState(0);
@@ -524,51 +529,51 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-      <View style={tp.overlay}>
-        <View style={tp.box}>
-          <Text style={tp.title}>SELECT TIME</Text>
+      <View style={[tp.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={[tp.box, { backgroundColor: theme.card }]}>
+          <Text style={[tp.title, { color: theme.textLight }]}>SELECT TIME</Text>
 
           <View style={tp.displayRow}>
             <TouchableOpacity
-              style={mode === 'hour' ? tp.timeBox : tp.timeBoxInactive}
+              style={mode === 'hour' ? [tp.timeBox, { backgroundColor: theme.cardSoft }] : tp.timeBoxInactive}
               onPress={() => setMode('hour')}
             >
-              <Text style={[tp.timeNumber, mode !== 'hour' && tp.timeNumberInactive]}>
+              <Text style={[tp.timeNumber, { color: theme.text }, mode !== 'hour' && { color: theme.textLight }]}>
                 {String(hour).padStart(2, '0')}
               </Text>
             </TouchableOpacity>
-            <Text style={tp.colon}>:</Text>
+            <Text style={[tp.colon, { color: theme.text }]}>:</Text>
             <TouchableOpacity
-              style={mode === 'minute' ? tp.timeBox : tp.timeBoxInactive}
+              style={mode === 'minute' ? [tp.timeBox, { backgroundColor: theme.cardSoft }] : tp.timeBoxInactive}
               onPress={() => setMode('minute')}
             >
-              <Text style={[tp.timeNumber, mode !== 'minute' && tp.timeNumberInactive]}>
+              <Text style={[tp.timeNumber, { color: theme.text }, mode !== 'minute' && { color: theme.textLight }]}>
                 {String(minute).padStart(2, '0')}
               </Text>
             </TouchableOpacity>
-            <View style={tp.ampmBox}>
-              <TouchableOpacity style={isAm ? tp.ampmActive : tp.ampmInactive} onPress={() => setIsAm(true)}>
-                <Text style={isAm ? tp.ampmTextActive : tp.ampmTextInactive}>AM</Text>
+            <View style={[tp.ampmBox, { borderColor: theme.border }]}>
+              <TouchableOpacity style={isAm ? [tp.ampmActive, { backgroundColor: theme.cardSoft }] : [tp.ampmInactive, { backgroundColor: theme.card }]} onPress={() => setIsAm(true)}>
+                <Text style={isAm ? [tp.ampmTextActive, { color: theme.text }] : [tp.ampmTextInactive, { color: theme.textMuted }]}>AM</Text>
               </TouchableOpacity>
-              <View style={{ height: 1, backgroundColor: '#E5E7EB' }} />
-              <TouchableOpacity style={!isAm ? tp.ampmActive : tp.ampmInactive} onPress={() => setIsAm(false)}>
-                <Text style={!isAm ? tp.ampmTextActive : tp.ampmTextInactive}>PM</Text>
+              <View style={{ height: 1, backgroundColor: theme.border }} />
+              <TouchableOpacity style={!isAm ? [tp.ampmActive, { backgroundColor: theme.cardSoft }] : [tp.ampmInactive, { backgroundColor: theme.card }]} onPress={() => setIsAm(false)}>
+                <Text style={!isAm ? [tp.ampmTextActive, { color: theme.text }] : [tp.ampmTextInactive, { color: theme.textMuted }]}>PM</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Clock Face */}
           <View style={tp.clockWrap}>
-            <View 
-              style={tp.clockFace}
+            <View
+              style={[tp.clockFace, { backgroundColor: theme.cardSoft }]}
               onStartShouldSetResponder={() => true}
               onResponderGrant={handleTouch}
               onResponderMove={handleTouch}
               onResponderRelease={handleRelease}
             >
-              <View style={tp.centerDot} />
+              <View style={[tp.centerDot, { backgroundColor: theme.textLight }]} />
               <View style={[tp.handContainer, { transform: [{ rotate: `${handAngle}deg` }] }]}>
-                <View style={tp.hand} />
+                <View style={[tp.hand, { backgroundColor: theme.textLight }]} />
               </View>
 
               <View pointerEvents="none" style={StyleSheet.absoluteFill}>
@@ -577,8 +582,8 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
                       const { x, y } = getPos(n);
                       const active = n === hour;
                       return (
-                        <View key={n} style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}>
-                          <Text style={[tp.numText, active && tp.numTextActive]}>{n}</Text>
+                        <View key={n} style={[tp.numNode, { left: x, top: y }, active && [tp.numNodeActive, { backgroundColor: theme.textLight }]]}>
+                          <Text style={[tp.numText, { color: theme.text }, active && tp.numTextActive]}>{n}</Text>
                         </View>
                       );
                     })
@@ -586,8 +591,8 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
                       const { x, y } = getPos(idx);
                       const active = m === minute;
                       return (
-                        <View key={m} style={[tp.numNode, { left: x, top: y }, active && tp.numNodeActive]}>
-                          <Text style={[tp.numText, active && tp.numTextActive]}>
+                        <View key={m} style={[tp.numNode, { left: x, top: y }, active && [tp.numNodeActive, { backgroundColor: theme.textLight }]]}>
+                          <Text style={[tp.numText, { color: theme.text }, active && tp.numTextActive]}>
                             {String(m).padStart(2, '0')}
                           </Text>
                         </View>
@@ -599,8 +604,8 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
           </View>
 
           <View style={tp.actions}>
-            <TouchableOpacity onPress={onClose} style={tp.btn}><Text style={tp.btnText}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity onPress={handleOk} style={tp.btn}><Text style={tp.btnText}>Ok</Text></TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={tp.btn}><Text style={[tp.btnText, { color: theme.textLight }]}>Cancel</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleOk} style={tp.btn}><Text style={[tp.btnText, { color: theme.textLight }]}>Ok</Text></TouchableOpacity>
           </View>
         </View>
       </View>
@@ -640,23 +645,26 @@ const tp = StyleSheet.create({
 });
 
 // Reason Picker Modal
-const ReasonPickerModal = ({ visible, value, onClose, onConfirm }) => (
+const ReasonPickerModal = ({ visible, value, onClose, onConfirm }) => {
+  const theme = useTheme();
+  return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-    <Pressable style={rp.overlay} onPress={onClose}>
-      <View style={rp.sheet}>
-        <View style={rp.handle} />
+    <Pressable style={[rp.overlay, { backgroundColor: theme.modalOverlay }]} onPress={onClose}>
+      <View style={[rp.sheet, { backgroundColor: theme.card }]}>
+        <View style={[rp.handle, { backgroundColor: theme.border }]} />
         <ScrollView>
           {REASONS.map((r) => (
-            <TouchableOpacity key={r} style={rp.item} onPress={() => { onConfirm(r); onClose(); }}>
-              <Text style={[rp.itemText, r === value && rp.itemTextActive]}>{r}</Text>
-              {r === value && <Check color="#111827" size={20} />}
+            <TouchableOpacity key={r} style={[rp.item, { borderBottomColor: theme.divider }]} onPress={() => { onConfirm(r); onClose(); }}>
+              <Text style={[rp.itemText, { color: theme.textLight }, r === value && { color: theme.text, fontWeight: '600' }]}>{r}</Text>
+              {r === value && <Check color={theme.text} size={20} />}
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
     </Pressable>
   </Modal>
-);
+  );
+};
 const rp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
@@ -668,6 +676,7 @@ const rp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AttendanceRegScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   useEffect(() => {
@@ -807,12 +816,12 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     const isSubmitActive = !!reason && !!logTime && !!remarks.trim();
     
     return (
-      <SafeAreaView style={s.container}>
-        <View style={s.headerBar}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+        <View style={[s.headerBar, { backgroundColor: theme.bg }]}>
           <TouchableOpacity onPress={() => setView('MAIN')} style={s.backBtn}>
-            <ChevronLeft color="#333" size={28} />
+            <ChevronLeft color={theme.text} size={28} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Regularise Attendance</Text>
+          <Text style={[s.headerTitle, { color: theme.text }]}>Regularise Attendance</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -822,13 +831,13 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           style={{ flex: 1 }}
         >
           <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
-            <View style={s.formWrap}>
+            <View style={[s.formWrap, { backgroundColor: theme.card }]}>
               <FloatingInput
                 label="Reason *"
                 value={reason}
                 editable={false}
                 onPress={() => setShowReasonPicker(true)}
-                icon={<ChevronDown color="#9CA3AF" size={18} />}
+                icon={<ChevronDown color={theme.textMuted} size={18} />}
               />
 
               <FloatingInput
@@ -849,11 +858,11 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               />
 
               <TouchableOpacity
-                style={[s.submitBtn, isSubmitActive && s.submitBtnActive]}
+                style={[s.submitBtn, { backgroundColor: theme.cardSoft }, isSubmitActive && s.submitBtnActive]}
                 onPress={handleSubmit}
                 disabled={processing}
               >
-                {processing ? <ActivityIndicator color="#FFF" /> : <Text style={[s.submitText, isSubmitActive && s.submitTextActive]}>SUBMIT REQUEST</Text>}
+                {processing ? <ActivityIndicator color="#FFF" /> : <Text style={[s.submitText, { color: theme.textMuted }, isSubmitActive && s.submitTextActive]}>SUBMIT REQUEST</Text>}
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -878,18 +887,18 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   if (view === 'SUCCESS') {
     return (
-      <SafeAreaView style={s.container}>
-        <View style={s.successBox}>
-          <View style={s.successAura}>
-            <View style={s.successCircleInner}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+        <View style={[s.successBox, { backgroundColor: theme.bg }]}>
+          <View style={[s.successAura, { backgroundColor: theme.isDark ? '#14532D' : '#F0FDF4' }]}>
+            <View style={[s.successCircleInner, { backgroundColor: theme.card }]}>
                <Check color="#10B981" size={48} strokeWidth={3} />
             </View>
           </View>
-          <Text style={s.successTitle}>Request Sent Successfully!</Text>
-          <Text style={s.successDesc}>Your Regularisation request has been sent successfully, We will get back to you shortly!</Text>
+          <Text style={[s.successTitle, { color: theme.text }]}>Request Sent Successfully!</Text>
+          <Text style={[s.successDesc, { color: theme.textLight }]}>Your Regularisation request has been sent successfully, We will get back to you shortly!</Text>
 
-          <TouchableOpacity style={s.homeBtn} onPress={() => setView('MAIN')} activeOpacity={0.7}>
-            <Text style={s.homeBtnText}>Go Back Home</Text>
+          <TouchableOpacity style={[s.homeBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setView('MAIN')} activeOpacity={0.7}>
+            <Text style={[s.homeBtnText, { color: theme.text }]}>Go Back Home</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -897,35 +906,35 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.headerBar}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <View style={[s.headerBar, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color="#333" size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Attendance</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Attendance</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={s.tabBox}>
+      <View style={[s.tabBox, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <View style={s.tabsWrap}>
           <TouchableOpacity style={s.tabItem} onPress={() => setTab('LOG')}>
-            <Text style={[s.tabLabel, tab === 'LOG' && s.tabLabelActive]}>Log</Text>
+            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'LOG' && s.tabLabelActive]}>Log</Text>
             {tab === 'LOG' && <View style={s.tabLine} />}
           </TouchableOpacity>
 
           <TouchableOpacity style={s.tabItem} onPress={() => setTab('REGULARISED')}>
-            <Text style={[s.tabLabel, tab === 'REGULARISED' && s.tabLabelActive]}>Regularised</Text>
+            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'REGULARISED' && s.tabLabelActive]}>Regularised</Text>
             {tab === 'REGULARISED' && <View style={s.tabLine} />}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
-          style={s.monthDropdown}
+        <TouchableOpacity
+          style={[s.monthDropdown, { backgroundColor: theme.cardSoft }]}
           activeOpacity={0.7}
           onPress={() => setShowMonthPickerMain(true)}
         >
-          <Text style={s.monthText}>{fmtMonth(selectedMonth)}</Text>
-          <ChevronDown color={COLORS.primary} size={16} style={{ marginLeft: 4 }} />
+          <Text style={[s.monthText, { color: theme.text }]}>{fmtMonth(selectedMonth)}</Text>
+          <ChevronDown color={theme.primary} size={16} style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </View>
 
@@ -937,7 +946,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
             <LogCard key={item.date || i} item={item} isRegularisedTab={false} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
           ))}
           {tab === 'REGULARISED' && regLogs.length === 0 ? (
-             <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: '#9CA3AF' }}>No regularised logs found.</Text></View>
+             <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textMuted }}>No regularised logs found.</Text></View>
           ) : (
              tab === 'REGULARISED' && attLogs.filter(a => (regMap[a.date] || []).length > 0).map((item, i) => (
                <LogCard key={`reg-${i}`} item={item} isRegularisedTab={true} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
@@ -948,23 +957,23 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
       {/* ── Month Picker Modal for Regularisation Screen ── */}
       <Modal visible={showMonthPickerMain} transparent animationType="slide" onRequestClose={() => setShowMonthPickerMain(false)} statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPickerMain(false)}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>Select Month</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPickerMain(false)}>
+          <View style={[s.modalSheet, { backgroundColor: theme.card }]}>
+            <View style={[s.modalHandle, { backgroundColor: theme.border }]} />
+            <Text style={[s.modalTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {pastMonthsInfo.map((m) => {
                 const isActive = m.key === `${selectedMonth.getFullYear()}-${selectedMonth.getMonth()}`;
                 return (
-                  <TouchableOpacity 
-                    key={m.key} 
-                    style={s.monthItem} 
+                  <TouchableOpacity
+                    key={m.key}
+                    style={[s.monthItem, { borderBottomColor: theme.divider }]}
                     onPress={() => {
                       setSelectedMonth(m.date);
                       setShowMonthPickerMain(false);
                     }}
                   >
-                    <Text style={[s.monthItemText, isActive && s.monthItemTextActive]}>{m.label}</Text>
+                    <Text style={[s.monthItemText, { color: theme.textLight }, isActive && s.monthItemTextActive]}>{m.label}</Text>
                   </TouchableOpacity>
                 );
               })}

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import { getTodayVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import { verifyDeviceClock } from '../services/TimeCheck';
@@ -94,27 +95,30 @@ const getAddress = async () => {
 };
 
 // ─── Timeline Step Row (For Completed Visits) ─────────────────────────
-const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast }) => (
+const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast }) => {
+  const theme = useTheme();
+  return (
   <View style={tl.row}>
     <View style={tl.left}>
-      <View style={[tl.dot, done && tl.dotDone]}>
+      <View style={[tl.dot, { backgroundColor: theme.border, borderColor: theme.border }, done && tl.dotDone]}>
         {done && <CheckCircle color="#FFF" size={10} strokeWidth={3} />}
       </View>
-      {!isLast && <View style={tl.line} />}
+      {!isLast && <View style={[tl.line, { backgroundColor: theme.border }]} />}
     </View>
     <View style={tl.content}>
       <View style={tl.topRow}>
-        {time ? <Text style={tl.time}>{time}</Text> : <Text style={tl.timePlaceholder}>--:--:--</Text>}
+        {time ? <Text style={[tl.time, { color: theme.text }]}>{time}</Text> : <Text style={[tl.timePlaceholder, { color: theme.textMuted }]}>--:--:--</Text>}
         <View style={[tl.badge, { backgroundColor: labelBg }]}>
           <Text style={[tl.badgeText, { color: labelColor }]}>{label}</Text>
         </View>
       </View>
       <View style={tl.locRow}>
-        <Text style={tl.loc} numberOfLines={2}>Location: {location}</Text>
+        <Text style={[tl.loc, { color: theme.textMuted }]} numberOfLines={2}>Location: {location}</Text>
       </View>
     </View>
   </View>
-);
+  );
+};
 
 const tl = StyleSheet.create({
   row: { flexDirection: 'row', marginBottom: 0 },
@@ -138,6 +142,7 @@ const tl = StyleSheet.create({
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
 const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
+  const theme = useTheme();
   const isLive = visit.status === 'REACHED' || visit.status === 'step_in';
 
   // Resolve any stored lat/lng addresses to human-readable format
@@ -179,16 +184,16 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
 
   if (isLive) {
     return (
-      <View style={[cs.card, { borderColor: '#E5E7EB', borderWidth: 1 }]}>
+      <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
         <View style={cs.cardHeader}>
-          <Text style={cs.clientName}>{visit.client_name}</Text>
+          <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
           <View style={cs.liveBadge}>
             <Animated.View style={[cs.liveDot, { transform: [{ scale: pulse }] }]} />
             <Text style={cs.liveText}>LIVE</Text>
           </View>
         </View>
-        <Text style={cs.liveTimeText}>{fmtTime(visit.start_time)} {fmtDate(visit.start_time)}</Text>
-        <Text style={cs.liveLocText}>Location: {resolvedLocation}</Text>
+        <Text style={[cs.liveTimeText, { color: theme.textLight }]}>{fmtTime(visit.start_time)} {fmtDate(visit.start_time)}</Text>
+        <Text style={[cs.liveLocText, { color: theme.textLight }]}>Location: {resolvedLocation}</Text>
 
         <TouchableOpacity
           style={[cs.purpleBtnFull, processing && { opacity: 0.6 }]}
@@ -216,11 +221,11 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
   const dateStr = visit.created_at ? fmtDate(visit.created_at) : '';
 
   return (
-    <View style={cs.card}>
+    <View style={[cs.card, { backgroundColor: theme.card }]}>
       <View style={cs.compHeader}>
-        <Text style={cs.clientName}>{visit.client_name}</Text>
-        <Text style={cs.date}>{dateStr}</Text>
-        <Text style={cs.contactText}>{contactPerson}: {contactNo}</Text>
+        <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
+        <Text style={[cs.date, { color: theme.textMuted }]}>{dateStr}</Text>
+        <Text style={[cs.contactText, { color: theme.textMuted }]}>{contactPerson}: {contactNo}</Text>
       </View>
 
       <View style={cs.timeline}>
@@ -265,16 +270,18 @@ const BanIcon = () => (
   </View>
 );
 
-const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => (
+const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
+  const theme = useTheme();
+  return (
   <Modal visible={visible} transparent animationType="fade">
-    <View style={cm.overlay}>
-      <View style={cm.box}>
-        <View style={cm.iconWrap}><BanIcon /></View>
-        <Text style={cm.title}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
-        <Text style={cm.desc}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
+    <View style={[cm.overlay, { backgroundColor: theme.modalOverlay }]}>
+      <View style={[cm.box, { backgroundColor: theme.card }]}>
+        <View style={[cm.iconWrap, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E8FF' }]}><BanIcon /></View>
+        <Text style={[cm.title, { color: theme.text }]}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
+        <Text style={[cm.desc, { color: theme.textMuted }]}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
         <View style={cm.row}>
-          <TouchableOpacity style={cm.cancelBtn} onPress={onCancel} activeOpacity={0.8} disabled={processing}>
-            <Text style={cm.cancelText}>No, Go back</Text>
+          <TouchableOpacity style={[cm.cancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={onCancel} activeOpacity={0.8} disabled={processing}>
+            <Text style={[cm.cancelText, { color: theme.text }]}>No, Go back</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[cm.confirmBtn, processing && { opacity: 0.6 }]} onPress={onConfirm} activeOpacity={0.8} disabled={processing}>
             {processing ? <ActivityIndicator color="#FFF" /> : <Text style={cm.confirmText}>Yes, Confirm</Text>}
@@ -283,7 +290,8 @@ const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => (
       </View>
     </View>
   </Modal>
-);
+  );
+};
 
 const cm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: moderateScale(28) },
@@ -302,20 +310,24 @@ const cm = StyleSheet.create({
 
 
 // ─── Input Components ────────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength }) => (
-  <View style={fi.wrap}>
-    <Text style={fi.label}>{label}</Text>
+const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength }) => {
+  const theme = useTheme();
+  return (
+  <View style={[fi.wrap, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}>
+    <Text style={[fi.label, { color: theme.textMuted }]}>{label}</Text>
     <TextInput
-      style={[fi.input, multiline && fi.multiline]}
+      style={[fi.input, { color: theme.text }, multiline && fi.multiline]}
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType || 'default'}
       multiline={multiline}
       numberOfLines={multiline ? 3 : 1}
       maxLength={maxLength}
+      placeholderTextColor={theme.textMuted}
     />
   </View>
-);
+  );
+};
 
 const fi = StyleSheet.create({
   wrap: { marginBottom: moderateScale(14), borderWidth: 1, borderColor: '#E5E7EB', borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), paddingTop: moderateScale(6), paddingBottom: 4 },
@@ -326,6 +338,7 @@ const fi = StyleSheet.create({
 
 // ─── Going to Meet (Fullscreen START Component) ───────────────────────────
 const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
+  const theme = useTheme();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -366,12 +379,12 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={sv.container}>
-        <View style={sv.headerRow}>
+      <SafeAreaView style={[sv.container, { backgroundColor: theme.bg }]}>
+        <View style={[sv.headerRow, { backgroundColor: theme.bg }]}>
           <TouchableOpacity onPress={() => { reset(); onClose(); }} style={sv.backBtn}>
-            <ChevronLeft color="#111827" size={28} />
+            <ChevronLeft color={theme.text} size={28} />
           </TouchableOpacity>
-          <Text style={sv.title}>Going to Meet</Text>
+          <Text style={[sv.title, { color: theme.text }]}>Going to Meet</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -388,7 +401,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             )}
           </View>
 
-          <View style={sv.formWrap}>
+          <View style={[sv.formWrap, { backgroundColor: theme.card }]}>
             <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
             <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
@@ -396,13 +409,13 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           </View>
         </ScrollView>
 
-        <View style={sv.footer}>
+        <View style={[sv.footer, { backgroundColor: theme.bg }]}>
           <TouchableOpacity
-            style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: '#F3F4F6' }]}
+            style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: theme.cardSoft }]}
             onPress={handleSave}
             disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
           >
-            {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: '#9CA3AF' }]}>START</Text>}
+            {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: theme.textMuted }]}>START</Text>}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -427,6 +440,7 @@ const sv = StyleSheet.create({
 
 // ─── Enter Details (Bottom Sheet for STEP IN) ────────────────────────────────
 const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
+  const theme = useTheme();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -446,11 +460,11 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={sm.overlay}>
+      <View style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
-        <View style={sm.sheet}>
-          <View style={sm.dragHandle} />
-          <Text style={sm.title}>Enter details</Text>
+        <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+          <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
+          <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
             <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
@@ -482,6 +496,7 @@ const sm = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const VisitsScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   // All hooks must be declared before any conditional return
@@ -623,12 +638,12 @@ const VisitsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color="#111827" size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>My Customer Visits</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>My Customer Visits</Text>
         <View style={{ width: 44 }} />
       </View>
 

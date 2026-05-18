@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, Platform } from 'react-native';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react-native';
 import { SHADOWS, moderateScale } from './Theme';
+import { useTheme } from './ThemeContext';
 
 const TYPE_CONFIG = {
   success: {
@@ -47,6 +48,7 @@ const TYPE_CONFIG = {
  * Button shape: { text: 'OK', style: 'default' | 'cancel' | 'destructive', onPress: () => {} }
  */
 const CustomAlert = ({ config, onClose }) => {
+  const theme = useTheme();
   if (!config) return null;
 
   const { type = 'info', title, message, buttons } = config;
@@ -70,8 +72,8 @@ const CustomAlert = ({ config, onClose }) => {
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <View style={s.overlay}>
-        <View style={s.card}>
+      <View style={[s.overlay, { backgroundColor: theme.modalOverlay }]}>
+        <View style={[s.card, { backgroundColor: theme.card }]}>
 
           {/* Icon ring */}
           <View style={[s.iconOuter, { backgroundColor: outerBg }]}>
@@ -84,7 +86,7 @@ const CustomAlert = ({ config, onClose }) => {
           <Text style={[s.title, { color: titleColor }]}>{title}</Text>
 
           {/* Message */}
-          {!!message && <Text style={s.message}>{message}</Text>}
+          {!!message && <Text style={[s.message, { color: theme.textLight }]}>{message}</Text>}
 
           {/* Buttons */}
           <View style={[s.btnRow, resolvedButtons.length === 1 && { justifyContent: 'center' }]}>
@@ -100,7 +102,7 @@ const CustomAlert = ({ config, onClose }) => {
                     resolvedButtons.length === 1 && { flex: 0, minWidth: 140 },
                     i > 0 && { marginLeft: 10 },
                     isDestructive && s.btnDestructive,
-                    isCancel && s.btnCancel,
+                    isCancel && [s.btnCancel, { backgroundColor: theme.cardSoft, borderColor: theme.border }],
                     !isDestructive && !isCancel && s.btnPrimary,
                   ]}
                   onPress={() => handlePress(btn)}
@@ -109,7 +111,7 @@ const CustomAlert = ({ config, onClose }) => {
                     style={[
                       s.btnText,
                       isDestructive && s.btnTextWhite,
-                      isCancel && s.btnTextGray,
+                      isCancel && { color: theme.text },
                       !isDestructive && !isCancel && s.btnTextWhite,
                     ]}
                   >

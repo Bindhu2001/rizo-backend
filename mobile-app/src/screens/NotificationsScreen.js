@@ -6,11 +6,13 @@ import {
   ChevronLeft, ChevronRight
 } from 'lucide-react-native';
 import { COLORS, SIZES, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import { getLoggedUser, getNotificationsLocal, markNotificationsAsReadLocal } from '../services/LocalDB';
 import NotificationManager from '../services/NotificationManager';
 
 // ─── Inline Calendar Picker ───────────────────────────────────────────────────
 const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
+  const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
 
   const year = currentMonth.getFullYear();
@@ -33,20 +35,20 @@ const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <TouchableOpacity style={dp.overlay} activeOpacity={1} onPress={onClose}>
-        <View style={dp.box}>
+      <TouchableOpacity style={[dp.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+        <View style={[dp.box, { backgroundColor: theme.card }]}>
           <View style={dp.header}>
             <TouchableOpacity onPress={() => setCurrentMonth(new Date(year, month - 1, 1))} style={dp.arrowBtn}>
-               <ChevronLeft color="#111827" size={20} />
+               <ChevronLeft color={theme.text} size={20} />
             </TouchableOpacity>
-            <Text style={dp.headerTitle}>{monthNames[month]} {year}</Text>
+            <Text style={[dp.headerTitle, { color: theme.text }]}>{monthNames[month]} {year}</Text>
             <TouchableOpacity onPress={() => setCurrentMonth(new Date(year, month + 1, 1))} style={dp.arrowBtn}>
-               <ChevronRight color="#111827" size={20} />
+               <ChevronRight color={theme.text} size={20} />
             </TouchableOpacity>
           </View>
-          <View style={dp.daysHeader}>
+          <View style={[dp.daysHeader, { borderBottomColor: theme.divider }]}>
             {['Su','Mo','Tu','We','Th','Fr','Sa'].map(x => (
-              <Text key={x} style={dp.dhText}>{x}</Text>
+              <Text key={x} style={[dp.dhText, { color: theme.textLight }]}>{x}</Text>
             ))}
           </View>
           <View style={dp.grid}>
@@ -60,7 +62,7 @@ const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
                   onPress={() => d && handleSelect(d)}
                   disabled={!d}
                 >
-                  <Text style={[dp.cellText, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
+                  <Text style={[dp.cellText, { color: theme.text }, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -88,6 +90,7 @@ const dp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const NotificationsScreen = ({ navigation }) => {
+  const theme = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -183,7 +186,7 @@ const NotificationsScreen = ({ navigation }) => {
     const isUnread = item.is_read === 0;
     return (
       <TouchableOpacity
-        style={[styles.notifCard, isUnread && styles.unreadNotif]}
+        style={[styles.notifCard, { backgroundColor: theme.card, borderColor: theme.border }, isUnread && styles.unreadNotif]}
         activeOpacity={0.7}
         onPress={() => handleNotifClick(item)}
       >
@@ -192,8 +195,8 @@ const NotificationsScreen = ({ navigation }) => {
         </View>
         <View style={styles.notifMain}>
           <View style={styles.notifTop}>
-            <Text style={[styles.notifTitle, isUnread && styles.unreadTitle]}>{item.title}</Text>
-            <Text style={styles.notifTime}>{formatTime(item.created_at)}</Text>
+            <Text style={[styles.notifTitle, { color: theme.text }, isUnread && styles.unreadTitle]}>{item.title}</Text>
+            <Text style={[styles.notifTime, { color: theme.textMuted }]}>{formatTime(item.created_at)}</Text>
           </View>
         </View>
         {isUnread && <View style={styles.unreadDot} />}
@@ -202,18 +205,18 @@ const NotificationsScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
         <TouchableOpacity
           style={[styles.headerIcon, selectedDate && styles.headerIconActive]}
           onPress={() => setShowCalendar(true)}
         >
-          <Calendar color={selectedDate ? COLORS.primaryDeep : COLORS.text} size={22} />
+          <Calendar color={selectedDate ? COLORS.primaryDeep : theme.text} size={22} />
         </TouchableOpacity>
       </View>
 
@@ -230,8 +233,8 @@ const NotificationsScreen = ({ navigation }) => {
         </View>
       )}
 
-      <View style={styles.summaryBar}>
-        <Text style={styles.summaryText}>{unreadCount} Unread Notifications</Text>
+      <View style={[styles.summaryBar, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
+        <Text style={[styles.summaryText, { color: theme.textLight }]}>{unreadCount} Unread Notifications</Text>
         <TouchableOpacity onPress={handleMarkAllRead}>
           <Text style={styles.markAll}>Mark all as read</Text>
         </TouchableOpacity>
@@ -252,11 +255,11 @@ const NotificationsScreen = ({ navigation }) => {
           onRefresh={onRefresh}
           ListEmptyComponent={(
             <View style={styles.emptyGroup}>
-              <Bell color={COLORS.textMuted} size={60} style={{ marginBottom: 20 }} />
-              <Text style={styles.emptyTitle}>
+              <Bell color={theme.textMuted} size={60} style={{ marginBottom: 20 }} />
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 {selectedDate ? 'No notifications on this date' : 'All caught up!'}
               </Text>
-              <Text style={styles.emptySub}>
+              <Text style={[styles.emptySub, { color: theme.textLight }]}>
                 {selectedDate ? `Nothing found for ${formatDateLabel(selectedDate)}` : 'No new notifications for you'}
               </Text>
             </View>
@@ -273,18 +276,18 @@ const NotificationsScreen = ({ navigation }) => {
 
       {/* Notification Detail Modal */}
       <Modal visible={!!selectedNotif} transparent animationType="fade" onRequestClose={() => setSelectedNotif(null)} statusBarTranslucent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[styles.modalCard, { backgroundColor: theme.card }]}>
             <View style={[styles.modalIconBox, { backgroundColor: selectedNotif ? getBgColorForType(selectedNotif.message) : '#FFF3E0' }]}>
               {selectedNotif ? getIconForType(selectedNotif.message) : null}
             </View>
-            <Text style={styles.modalTitle}>{selectedNotif?.title}</Text>
-            <Text style={styles.modalTime}>{selectedNotif ? formatTime(selectedNotif.created_at) : ''}</Text>
-            <Text style={styles.modalMessage}>{selectedNotif?.message}</Text>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{selectedNotif?.title}</Text>
+            <Text style={[styles.modalTime, { color: theme.textMuted }]}>{selectedNotif ? formatTime(selectedNotif.created_at) : ''}</Text>
+            <Text style={[styles.modalMessage, { color: theme.textLight }]}>{selectedNotif?.message}</Text>
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalBackBtn} onPress={handleMarkRead}>
-                <ChevronLeft color={COLORS.text} size={18} />
-                <Text style={styles.modalBackText}>Back</Text>
+              <TouchableOpacity style={[styles.modalBackBtn, { borderColor: theme.border }]} onPress={handleMarkRead}>
+                <ChevronLeft color={theme.text} size={18} />
+                <Text style={[styles.modalBackText, { color: theme.text }]}>Back</Text>
               </TouchableOpacity>
             </View>
           </View>

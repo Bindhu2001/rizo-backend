@@ -11,6 +11,7 @@ import {
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -48,6 +49,7 @@ const SECTION_META = {
 };
 
 const LeaveApprovalScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   const [loading, setLoading] = useState(true);
@@ -281,7 +283,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const renderItem = ({ item, section }) => {
     const meta = SECTION_META[section.key];
     return (
-      <View style={s.card}>
+      <View style={[s.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         {/* Coloured Sidebar */}
         <View style={[s.sideBar, { backgroundColor: meta.side }]}>
           <Text style={s.sideText}>{meta.label}</Text>
@@ -291,8 +293,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           {/* Header */}
           <View style={s.cardHeader}>
             <View style={s.empInfo}>
-              <Text style={s.empName}>{item.employee_name || item.emp_name || 'Employee'}</Text>
-              <Text style={s.empId}>{item.employee_id || item.emp_id || ''}</Text>
+              <Text style={[s.empName, { color: theme.text }]}>{item.employee_name || item.emp_name || 'Employee'}</Text>
+              <Text style={[s.empId, { color: theme.textLight }]}>{item.employee_id || item.emp_id || ''}</Text>
             </View>
             <View style={[s.typeBadge, { backgroundColor: meta.bg }]}>
               <Text style={[s.typeText, { color: meta.text }]}>
@@ -304,23 +306,23 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           {/* Dates */}
           <View style={s.detailsRow}>
             <View style={s.detailItem}>
-              <CalendarIcon size={14} color="#6B7280" />
-              <Text style={s.detailText}>
+              <CalendarIcon size={14} color={theme.textLight} />
+              <Text style={[s.detailText, { color: theme.textLight }]}>
                 {item.from_date || item.FROMDATE}{(item.to_date || item.TODATE) && (item.to_date || item.TODATE) !== (item.from_date || item.FROMDATE) ? ` – ${item.to_date || item.TODATE}` : ''}
               </Text>
             </View>
             {(item.no_of_days || item.leave_days) != null && (
               <View style={s.detailItem}>
-                <Clock size={14} color="#6B7280" />
-                <Text style={s.detailText}>{item.no_of_days || item.leave_days} day{(item.no_of_days || item.leave_days) != 1 ? 's' : ''}</Text>
+                <Clock size={14} color={theme.textLight} />
+                <Text style={[s.detailText, { color: theme.textLight }]}>{item.no_of_days || item.leave_days} day{(item.no_of_days || item.leave_days) != 1 ? 's' : ''}</Text>
               </View>
             )}
           </View>
 
           {/* Reason */}
-          <View style={s.reasonBox}>
-            <Info size={14} color="#9CA3AF" />
-            <Text style={s.reasonText}>{item.reason || 'No reason provided'}</Text>
+          <View style={[s.reasonBox, { backgroundColor: theme.cardSoft }]}>
+            <Info size={14} color={theme.textMuted} />
+            <Text style={[s.reasonText, { color: theme.textLight }]}>{item.reason || 'No reason provided'}</Text>
           </View>
 
           {/* Buttons */}
@@ -350,18 +352,18 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Leave Approvals</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Leave Approvals</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={s.monthBar}>
+      <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
           <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
           <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
@@ -369,10 +371,10 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       </View>
 
       {/* Tab Bar */}
-      <View style={s.tabBar}>
+      <View style={[s.tabBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
           <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
-            <Text style={[s.tabText, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -387,12 +389,12 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             renderItem={renderItem}
             renderSectionHeader={({ section }) => (
               <View style={s.sectionHeader}>
-                <Text style={s.sectionHeaderText}>{section.title}</Text>
-                <View style={s.sectionCount}><Text style={s.sectionCountText}>{section.data.length}</Text></View>
+                <Text style={[s.sectionHeaderText, { color: theme.text }]}>{section.title}</Text>
+                <View style={[s.sectionCount, { backgroundColor: theme.cardSoft }]}><Text style={[s.sectionCountText, { color: theme.text }]}>{section.data.length}</Text></View>
               </View>
             )}
             contentContainerStyle={s.list}
-            ListEmptyComponent={<View style={s.empty}><ClipboardList color="#D1D5DB" size={60} /><Text style={s.emptyText}>No pending requests</Text></View>}
+            ListEmptyComponent={<View style={s.empty}><ClipboardList color={theme.textMuted} size={60} /><Text style={[s.emptyText, { color: theme.textMuted }]}>No pending requests</Text></View>}
             onRefresh={() => fetchData(currentMonthStr)}
             refreshing={loading}
             stickySectionHeadersEnabled={false}
@@ -401,10 +403,10 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       ) : (
         <View style={{ flex: 1 }}>
           {/* Role-aware filter dropdown */}
-          <TouchableOpacity style={s.histFilterDropdown} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={[s.histFilterDropdown, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
             <View style={[s.histFilterDot, { backgroundColor: histMeta.color }]} />
-            <Text style={s.histFilterText}>{histMeta.label}</Text>
-            <ChevronDown size={18} color="#6B7280" />
+            <Text style={[s.histFilterText, { color: theme.text }]}>{histMeta.label}</Text>
+            <ChevronDown size={18} color={theme.textLight} />
           </TouchableOpacity>
 
           {histLoading ? (
@@ -416,22 +418,22 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               contentContainerStyle={s.list}
               onRefresh={() => fetchHistory(currentMonthStr, histFilter)}
               refreshing={histLoading}
-              ListEmptyComponent={<View style={s.empty}><ClipboardList color="#D1D5DB" size={60} /><Text style={s.emptyText}>No records found</Text></View>}
+              ListEmptyComponent={<View style={s.empty}><ClipboardList color={theme.textMuted} size={60} /><Text style={[s.emptyText, { color: theme.textMuted }]}>No records found</Text></View>}
               renderItem={({ item }) => {
                 const f = histMeta;
                 return (
-                  <View style={s.histCard}>
+                  <View style={[s.histCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={[s.histSide, { backgroundColor: f.color }]} />
                     <View style={s.histBody}>
                       <View style={s.histHeader}>
-                        <Text style={s.histEmpName}>{(item.employee_name || '').trim()}</Text>
+                        <Text style={[s.histEmpName, { color: theme.text }]}>{(item.employee_name || '').trim()}</Text>
                         <View style={[s.histBadge, { backgroundColor: f.bg }]}>
                           <Text style={[s.histBadgeText, { color: f.color }]}>{(item.leave_type || '').trim()}</Text>
                         </View>
                       </View>
                       <View style={s.histDates}>
-                        <CalendarIcon size={13} color="#6B7280" />
-                        <Text style={s.histDateText}>
+                        <CalendarIcon size={13} color={theme.textLight} />
+                        <Text style={[s.histDateText, { color: theme.textLight }]}>
                           {item.FROMDATE}{item.TODATE && item.TODATE !== item.FROMDATE ? ` – ${item.TODATE}` : ''}
                         </Text>
                         {item.leave_days ? (
@@ -441,8 +443,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
                         ) : null}
                       </View>
                       {item.REMARKS ? (
-                        <View style={s.histRemarkBox}>
-                          <Text style={s.histRemarkText} numberOfLines={2}>{item.REMARKS}</Text>
+                        <View style={[s.histRemarkBox, { backgroundColor: theme.cardSoft }]}>
+                          <Text style={[s.histRemarkText, { color: theme.textLight }]} numberOfLines={2}>{item.REMARKS}</Text>
                         </View>
                       ) : null}
                       {(histFilter === 'Approved' || histFilter === 'Authorized') && (
@@ -468,21 +470,21 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
-          <View style={s.modalContent}>
-            <Text style={s.modalTitle}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[s.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[s.modalTitle, { color: theme.text }]}>
               {actionModal.actionType === 'REJECT'
                 ? 'Reject'
                 : SECTION_META[actionModal.sectionKey]?.btnLabel || 'Confirm'} Request
             </Text>
-            <Text style={s.modalSub}>
+            <Text style={[s.modalSub, { color: theme.textLight }]}>
               Enter remarks for {actionModal.item?.employee_name || actionModal.item?.emp_name || 'employee'}
             </Text>
 
             <TextInput
-              style={s.remarksInput}
+              style={[s.remarksInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
               placeholder="Enter remarks here..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.textMuted}
               multiline
               numberOfLines={4}
               value={remarks}
@@ -491,8 +493,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             />
 
             <View style={s.modalActions}>
-              <TouchableOpacity style={s.modalCancel} onPress={closeModal}>
-                <Text style={s.modalCancelText}>Cancel</Text>
+              <TouchableOpacity style={[s.modalCancel, { backgroundColor: theme.cardSoft }]} onPress={closeModal}>
+                <Text style={[s.modalCancelText, { color: theme.textLight }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -519,18 +521,18 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Month Picker Modal */}
       <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPicker(false)}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.sheetTitle}>Select Month</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
+          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+            <View style={[s.handle, { backgroundColor: theme.border }]} />
+            <Text style={[s.sheetTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView>
               {pastMonths.map((m) => (
                 <TouchableOpacity
                   key={m.value}
-                  style={s.sheetItem}
+                  style={[s.sheetItem, { borderBottomColor: theme.divider }]}
                   onPress={() => { setCurrentMonthStr(m.value); setShowMonthPicker(false); }}
                 >
-                  <Text style={[s.sheetItemText, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
+                  <Text style={[s.sheetItemText, { color: theme.textLight }, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -539,21 +541,21 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       </Modal>
       {/* History Filter Picker Modal */}
       <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowHistFilterPicker(false)}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.sheetTitle}>Filter History</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowHistFilterPicker(false)}>
+          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+            <View style={[s.handle, { backgroundColor: theme.border }]} />
+            <Text style={[s.sheetTitle, { color: theme.text }]}>Filter History</Text>
             {histFilterOptions.map((key) => {
               const meta = HIST_FILTERS[key] || DEFAULT_HIST_META;
               return (
                 <TouchableOpacity
                   key={key}
-                  style={s.sheetItem}
+                  style={[s.sheetItem, { borderBottomColor: theme.divider }]}
                   onPress={() => { setHistFilter(key); setShowHistFilterPicker(false); }}
                 >
                   <View style={s.sheetItemRow}>
                     <View style={[s.histFilterDot, { backgroundColor: meta.color }]} />
-                    <Text style={[s.sheetItemText, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
+                    <Text style={[s.sheetItemText, { color: theme.textLight }, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
                   </View>
                 </TouchableOpacity>
               );

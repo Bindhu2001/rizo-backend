@@ -9,6 +9,7 @@ import {
   Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { initDB } from '../services/LocalDB';
@@ -27,6 +28,7 @@ const formatPunchTime = (isoOrFull) => {
 };
 
 const AttendanceScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   const [loading, setLoading] = useState(true);
@@ -170,23 +172,23 @@ const AttendanceScreen = ({ navigation, route }) => {
     return (
       <View style={s.cardWrapper}>
         <TouchableOpacity
-          style={[s.card, isExpanded && s.cardExpanded]}
+          style={[s.card, { backgroundColor: theme.card }, isExpanded && s.cardExpanded]}
           activeOpacity={0.9}
           onPress={handleExpandToggle}
         >
-          <View style={s.dateBox}>
-            <Text style={s.dateNum}>{dateNum}</Text>
-            <Text style={s.monthDayText}>{monthDay}</Text>
+          <View style={[s.dateBox, { borderRightColor: theme.divider }]}>
+            <Text style={[s.dateNum, { color: theme.text }]}>{dateNum}</Text>
+            <Text style={[s.monthDayText, { color: theme.textMuted }]}>{monthDay}</Text>
           </View>
 
           <View style={s.infoCol}>
             <View style={s.punchItem}>
-              <Clock size={moderateScale(13)} color="#9CA3AF" />
-              <Text style={s.timeValue} numberOfLines={1}>{punchIn} <Text style={s.timeType}>IN</Text></Text>
+              <Clock size={moderateScale(13)} color={theme.textMuted} />
+              <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchIn} <Text style={[s.timeType, { color: theme.textMuted }]}>IN</Text></Text>
             </View>
             <View style={[s.punchItem, { marginTop: moderateScale(4) }]}>
-              <Clock size={moderateScale(13)} color="#9CA3AF" />
-              <Text style={s.timeValue} numberOfLines={1}>{punchOut} <Text style={s.timeType}>OUT</Text></Text>
+              <Clock size={moderateScale(13)} color={theme.textMuted} />
+              <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchOut} <Text style={[s.timeType, { color: theme.textMuted }]}>OUT</Text></Text>
             </View>
           </View>
 
@@ -195,28 +197,28 @@ const AttendanceScreen = ({ navigation, route }) => {
               <Text style={[s.badgeText, { color: statusColor }]} numberOfLines={1}>{statusLabel}</Text>
             </View>
             {!!item.duration && item.duration !== "0" && (
-              <Text style={s.durationText} numberOfLines={1}>{item.duration} mins</Text>
+              <Text style={[s.durationText, { color: theme.textLight }]} numberOfLines={1}>{item.duration} mins</Text>
             )}
             {isExpanded ? (
-              <ChevronUp color="#9CA3AF" size={moderateScale(16)} />
+              <ChevronUp color={theme.textMuted} size={moderateScale(16)} />
             ) : (
-              <ChevronDown color="#9CA3AF" size={moderateScale(16)} />
+              <ChevronDown color={theme.textMuted} size={moderateScale(16)} />
             )}
           </View>
         </TouchableOpacity>
 
         {isExpanded && (
-          <View style={s.detailSection}>
-            <Text style={s.detailTitle}>Detailed Punch History</Text>
+          <View style={[s.detailSection, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+            <Text style={[s.detailTitle, { color: theme.text }]}>Detailed Punch History</Text>
             {fetchingDevicePunches && !hasDevicePunches ? (
               <ActivityIndicator size="small" color="#6C5CE7" style={{ marginVertical: 10 }} />
             ) : (
               <>
                 {hasDevicePunches ? (
                   currentDevicePunches.map((p, idx) => (
-                    <View key={idx} style={s.punchDetailRow}>
-                      <View style={s.punchTimeBox}>
-                        <Text style={s.punchTimeVal}>{formatPunchTime(p.LOGDATE)}</Text>
+                    <View key={idx} style={[s.punchDetailRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                      <View style={[s.punchTimeBox, { borderRightColor: theme.divider }]}>
+                        <Text style={[s.punchTimeVal, { color: theme.text }]}>{formatPunchTime(p.LOGDATE)}</Text>
                         <View style={[s.pBadge, { backgroundColor: p.C1?.toUpperCase() === 'IN' ? '#E8F5E9' : '#FCE4EC' }]}>
                           <Text style={[s.pBadgeText, { color: p.C1?.toUpperCase() === 'IN' ? '#1B5E20' : '#C2185B' }]}>{p.C1?.toUpperCase()}</Text>
                         </View>
@@ -224,12 +226,12 @@ const AttendanceScreen = ({ navigation, route }) => {
 
                       <View style={s.punchAddressBox}>
                         <Text style={s.shiftBadgeText} numberOfLines={1}>{p.day_time_desc}</Text>
-                        <Text style={s.addressText}>{p.C3 || 'Location Attached'}</Text>
+                        <Text style={[s.addressText, { color: theme.textLight }]}>{p.C3 || 'Location Attached'}</Text>
                       </View>
                     </View>
                   ))
                 ) : (
-                  <Text style={s.noDetailText}>No individual punch records found for this date.</Text>
+                  <Text style={[s.noDetailText, { color: theme.textMuted }]}>No individual punch records found for this date.</Text>
                 )}
               </>
             )}
@@ -240,20 +242,20 @@ const AttendanceScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
       {/* ── Header ── */}
-      <View style={s.header}>
+      <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Attendance History</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Attendance History</Text>
         <View style={{ width: 44 }} />
       </View>
 
       {/* ── Month Selector ── */}
-      <View style={s.monthBar}>
+      <View style={[s.monthBar, { backgroundColor: theme.bg }]}>
         <TouchableOpacity
           style={s.monthDropdown}
           activeOpacity={0.7}
@@ -266,7 +268,7 @@ const AttendanceScreen = ({ navigation, route }) => {
       </View>
 
       {/* ── List ── */}
-      <View style={s.listContainer}>
+      <View style={[s.listContainer, { backgroundColor: theme.bg }]}>
         {loading ? (
           <View style={s.center}>
             <ActivityIndicator size="large" color="#6C5CE7" />
@@ -282,10 +284,10 @@ const AttendanceScreen = ({ navigation, route }) => {
             onRefresh={onRefresh}
             ListEmptyComponent={
               <View style={s.center}>
-                <View style={s.emptyCircle}>
-                  <Clock color="#9CA3AF" size={40} />
+                <View style={[s.emptyCircle, { backgroundColor: theme.card }]}>
+                  <Clock color={theme.textMuted} size={40} />
                 </View>
-                <Text style={s.emptyTitle}>No History Found</Text>
+                <Text style={[s.emptyTitle, { color: theme.text }]}>No History Found</Text>
               </View>
             }
           />
@@ -294,23 +296,23 @@ const AttendanceScreen = ({ navigation, route }) => {
 
       {/* ── Month Picker Modal ── */}
       <Modal visible={showMonthPicker} transparent animationType="slide" onRequestClose={() => setShowMonthPicker(false)} statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPicker(false)}>
-          <View style={s.modalSheet}>
-            <View style={s.modalHandle} />
-            <Text style={s.modalTitle}>Select Month</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
+          <View style={[s.modalSheet, { backgroundColor: theme.card }]}>
+            <View style={[s.modalHandle, { backgroundColor: theme.border }]} />
+            <Text style={[s.modalTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {pastMonths.map((m) => {
                 const isActive = m.value === currentMonthStr;
                 return (
                   <TouchableOpacity
                     key={m.value}
-                    style={s.monthItem}
+                    style={[s.monthItem, { borderBottomColor: theme.divider }]}
                     onPress={() => {
                       setCurrentMonthStr(m.value);
                       setShowMonthPicker(false);
                     }}
                   >
-                    <Text style={[s.monthItemText, isActive && s.monthItemTextActive]}>{m.label}</Text>
+                    <Text style={[s.monthItemText, { color: theme.textLight }, isActive && s.monthItemTextActive]}>{m.label}</Text>
                   </TouchableOpacity>
                 );
               })}

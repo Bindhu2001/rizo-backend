@@ -4,11 +4,13 @@ import * as Network from 'expo-network';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WifiOff, Home } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
+import { useTheme } from './ThemeContext';
 import { getLoggedUser } from '../services/LocalDB';
 
 const { width, height } = Dimensions.get('window');
 
 const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
+  const theme = useTheme();
   const [status, setStatus] = useState('online'); // 'online', 'offline', 'restored'
   const insets = useSafeAreaInsets();
   const slideAnim = React.useRef(new Animated.Value(-100)).current;
@@ -82,13 +84,13 @@ const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
   // 1. Full Screen Blocker UI (all pages except Home/Visits/Splash)
   if (!isBarScreen && status === 'offline') {
     return (
-      <Animated.View style={[styles.blockerContainer, { opacity: fadeAnim }]}>
-        <View style={styles.blockerCard}>
-          <View style={styles.iconCircle}>
+      <Animated.View style={[styles.blockerContainer, { opacity: fadeAnim, backgroundColor: theme.isDark ? 'rgba(15,23,42,0.98)' : 'rgba(249, 250, 251, 0.98)' }]}>
+        <View style={[styles.blockerCard, { backgroundColor: theme.card }]}>
+          <View style={[styles.iconCircle, { backgroundColor: theme.isDark ? '#4C1D24' : '#FEF2F2' }]}>
             <WifiOff color={COLORS.danger} size={48} strokeWidth={1.5} />
           </View>
-          <Text style={styles.blockerTitle}>No Internet Connection</Text>
-          <Text style={styles.blockerSub}>This page requires an active internet connection to function properly.</Text>
+          <Text style={[styles.blockerTitle, { color: theme.text }]}>No Internet Connection</Text>
+          <Text style={[styles.blockerSub, { color: theme.textLight }]}>This page requires an active internet connection to function properly.</Text>
           <TouchableOpacity
             style={styles.homeButton}
             onPress={async () => {

@@ -10,6 +10,7 @@ import {
   ChevronRight, CheckCircle, Clock, Paperclip, X, FileText
 } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -34,12 +35,12 @@ const statusColor = (s) => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const LeaveHeader = ({ title, onBack }) => (
-  <View style={h.header}>
+const LeaveHeader = ({ title, onBack, theme }) => (
+  <View style={[h.header, theme && { backgroundColor: theme.bg }]}>
     <TouchableOpacity onPress={onBack} style={h.back}>
-      <ChevronLeft color={COLORS.text} size={26} />
+      <ChevronLeft color={theme ? theme.text : COLORS.text} size={26} />
     </TouchableOpacity>
-    <Text style={h.title}>{title}</Text>
+    <Text style={[h.title, theme && { color: theme.text }]}>{title}</Text>
     <View style={{ width: 44 }} />
   </View>
 );
@@ -51,13 +52,14 @@ const h = StyleSheet.create({
 
 // ─── History Card ─────────────────────────────────────────────────────────────
 const HistoryCard = ({ item, onCancel, cancelling }) => {
+  const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const sc = statusColor(item.leave_status);
   const norm = (item.leave_status || '').trim().toLowerCase();
   const canCancel = norm === 'applied' || norm === 'pending' || norm === 'p';
 
   return (
-    <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={hc.card}>
+    <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={[hc.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Coloured Sidebar */}
       <View style={[hc.sideBar, { backgroundColor: sc.side }]}>
         <Text style={hc.sideText}>{(item.leave_status || '').toUpperCase()}</Text>
@@ -67,32 +69,32 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
         {/* ── Collapsed Row ── */}
         <View style={hc.topRow}>
           <View style={{ flex: 1 }}>
-            <Text style={hc.leaveName}>{item.leave_name?.trim()}</Text>
-            <Text style={hc.dateText}>{item.from_date}</Text>
+            <Text style={[hc.leaveName, { color: theme.text }]}>{item.leave_name?.trim()}</Text>
+            <Text style={[hc.dateText, { color: theme.textLight }]}>{item.from_date}</Text>
             {item.approved_by_person
-              ? <Text style={hc.approverText}>Approved By : {item.approved_by_person?.trim()}</Text>
+              ? <Text style={[hc.approverText, { color: theme.textMuted }]}>Approved By : {item.approved_by_person?.trim()}</Text>
               : null}
           </View>
           <View style={hc.daysBadge}>
-            <Text style={hc.daysNum}>{item.leave_count}</Text>
-            <Text style={hc.daysLabel}>Days</Text>
+            <Text style={[hc.daysNum, { color: theme.primaryDeep }]}>{item.leave_count}</Text>
+            <Text style={[hc.daysLabel, { color: theme.textMuted }]}>Days</Text>
           </View>
         </View>
 
         {/* ── Expanded Detail ── */}
         {expanded && (
           <View style={hc.expandedBox}>
-            <View style={hc.divider} />
+            <View style={[hc.divider, { backgroundColor: theme.divider }]} />
 
             {/* Row 1: Leave Date + Applied On */}
             <View style={hc.detailRow}>
               <View style={{ flex: 1 }}>
-                <Text style={hc.detailLabel}>Leave Date</Text>
-                <Text style={hc.detailValue}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
+                <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Leave Date</Text>
+                <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={hc.detailLabel}>Applied On</Text>
-                <Text style={hc.detailValue}>{item.from_date}</Text>
+                <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Applied On</Text>
+                <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}</Text>
               </View>
             </View>
 
@@ -100,22 +102,22 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
             <View style={hc.detailRow}>
               {item.authorized_by_person ? (
                 <View style={{ flex: 1 }}>
-                  <Text style={hc.detailLabel}>Authorised By</Text>
-                  <Text style={hc.detailValue}>{item.authorized_by_person?.trim()}</Text>
+                  <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Authorised By</Text>
+                  <Text style={[hc.detailValue, { color: theme.text }]}>{item.authorized_by_person?.trim()}</Text>
                 </View>
               ) : null}
               {item.approved_by_person ? (
                 <View style={{ flex: 1 }}>
-                  <Text style={hc.detailLabel}>Approved By</Text>
-                  <Text style={hc.detailValue}>{item.approved_by_person?.trim()}</Text>
+                  <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Approved By</Text>
+                  <Text style={[hc.detailValue, { color: theme.text }]}>{item.approved_by_person?.trim()}</Text>
                 </View>
               ) : null}
             </View>
 
             {/* Leave Days */}
             <View style={hc.metaRow}>
-              <Text style={hc.metaLabel}>Leave Days :</Text>
-              <Text style={hc.metaValue}> {item.leave_count} Days</Text>
+              <Text style={[hc.metaLabel, { color: theme.textLight }]}>Leave Days :</Text>
+              <Text style={[hc.metaValue, { color: theme.text }]}> {item.leave_count} Days</Text>
             </View>
 
             {/* Status Tag */}
@@ -182,16 +184,17 @@ const hc = StyleSheet.create({
 
 // ─── File Thumbnail ───────────────────────────────────────────────────────────
 const FileThumbnail = ({ file, onRemove }) => {
+  const theme = useTheme();
   const isPDF = file.mimeType === 'application/pdf' || file.name?.endsWith('.pdf');
   return (
     <View style={ft.wrap}>
-      <View style={[ft.thumb, isPDF && { backgroundColor: '#FEE2E2' }]}>
+      <View style={[ft.thumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }, isPDF && { backgroundColor: '#FEE2E2' }]}>
         {isPDF ? <FileText color="#DC2626" size={22} /> : <Text style={ft.ext}>{file.name?.split('.').pop()?.toUpperCase()}</Text>}
         <TouchableOpacity style={ft.remove} onPress={onRemove}>
           <X color="#FFF" size={10} />
         </TouchableOpacity>
       </View>
-      <Text style={ft.name} numberOfLines={1}>{file.name}</Text>
+      <Text style={[ft.name, { color: theme.textLight }]} numberOfLines={1}>{file.name}</Text>
     </View>
   );
 };
@@ -205,6 +208,7 @@ const ft = StyleSheet.create({
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
 const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
+  const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -228,15 +232,15 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <TouchableOpacity style={cal.overlay} activeOpacity={1} onPress={onClose}>
-        <View style={cal.box}>
+      <TouchableOpacity style={[cal.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+        <View style={[cal.box, { backgroundColor: theme.card }]}>
           <View style={cal.header}>
-            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24} /></TouchableOpacity>
-            <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
-            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24} /></TouchableOpacity>
+            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color={theme.text} size={24} /></TouchableOpacity>
+            <Text style={[cal.headerTitle, { color: theme.text }]}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
+            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color={theme.text} size={24} /></TouchableOpacity>
           </View>
-          <View style={cal.daysHeader}>
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
+          <View style={[cal.daysHeader, { borderBottomColor: theme.divider }]}>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={[cal.dhText, { color: theme.textLight }]}>{x}</Text>)}
           </View>
           <View style={cal.grid}>
             {days.map((d, i) => {
@@ -248,7 +252,7 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
                   onPress={() => d && handleSelect(d)}
                   disabled={!d}
                 >
-                  <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                  <Text style={[cal.cellText, { color: theme.text }, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -274,22 +278,25 @@ const cal = StyleSheet.create({
 });
 
 // ─── Half Picker Modal ───────────────────────────────────────────────────────
-const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title }) => (
+const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title }) => {
+  const theme = useTheme();
+  return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-    <TouchableOpacity style={sm.overlay} activeOpacity={1} onPress={onClose}>
-      <View style={sm.sheet}>
-        <View style={sm.handle} />
-        {title && <Text style={sm.title}>{title}</Text>}
+    <TouchableOpacity style={[sm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+      <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+        <View style={[sm.handle, { backgroundColor: theme.border }]} />
+        {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
         {options.map(opt => (
-          <TouchableOpacity key={opt} style={sm.item} onPress={() => { onSelect(opt); onClose(); }}>
-            <Text style={[sm.itemText, opt === selectedValue && sm.itemTextActive]}>{opt}</Text>
-            {opt === selectedValue && <CheckCircle color={COLORS.primaryDeep} size={20} />}
+          <TouchableOpacity key={opt} style={[sm.item, { borderBottomColor: theme.divider }]} onPress={() => { onSelect(opt); onClose(); }}>
+            <Text style={[sm.itemText, { color: theme.textLight }, opt === selectedValue && { color: theme.text, fontWeight: '600' }]}>{opt}</Text>
+            {opt === selectedValue && <CheckCircle color={theme.primaryDeep} size={20} />}
           </TouchableOpacity>
         ))}
       </View>
     </TouchableOpacity>
   </Modal>
-);
+  );
+};
 
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
@@ -303,6 +310,7 @@ const sm = StyleSheet.create({
 
 // ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   const [view, setView] = useState('DASHBOARD');
@@ -501,7 +509,7 @@ const LeaveScreen = ({ navigation, route }) => {
   // ─── VIEWS ────────────────────────────────────────────────────────────────────
   const DashboardView = () => (
     <View style={{ flex: 1 }}>
-      <LeaveHeader title="Leaves" onBack={() => navigation.goBack()} />
+      <LeaveHeader title="Leaves" onBack={() => navigation.goBack()} theme={theme} />
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
       ) : (
@@ -512,14 +520,14 @@ const LeaveScreen = ({ navigation, route }) => {
             const bal = parseFloat(item.leave_balance) || 0;
             const total = taken + bal;
             return (
-              <TouchableOpacity key={item.leave_id} style={s.balCard} onPress={() => { setSelectedLeave(item); setView('APPLY'); }}>
+              <TouchableOpacity key={item.leave_id} style={[s.balCard, { backgroundColor: theme.card }]} onPress={() => { setSelectedLeave(item); setView('APPLY'); }}>
                 <View style={[s.balBar, { backgroundColor: colors[idx % colors.length] }]} />
                 <View style={s.balBody}>
                   <View>
-                    <Text style={s.balRatio}>{taken}/{total}</Text>
-                    <Text style={s.balType}>{item.leave_name?.trim()}</Text>
+                    <Text style={[s.balRatio, { color: theme.text }]}>{taken}/{total}</Text>
+                    <Text style={[s.balType, { color: theme.textLight }]}>{item.leave_name?.trim()}</Text>
                   </View>
-                  <ChevronRight color="#9CA3AF" size={20} />
+                  <ChevronRight color={theme.textMuted} size={20} />
                 </View>
               </TouchableOpacity>
             );
@@ -535,7 +543,7 @@ const LeaveScreen = ({ navigation, route }) => {
 
   const ApplyView = () => (
     <View style={{ flex: 1 }}>
-      <LeaveHeader title={`Apply ${selectedLeave?.leave_name?.trim() || ''}`} onBack={() => setView('DASHBOARD')} />
+      <LeaveHeader title={`Apply ${selectedLeave?.leave_name?.trim() || ''}`} onBack={() => setView('DASHBOARD')} theme={theme} />
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
@@ -545,17 +553,17 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* From Row */}
         <View style={s.dateRow}>
           <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
-            <Text style={s.label}>From Date *</Text>
-            <TouchableOpacity style={s.inputRow} onPress={() => setCalendarTarget('FROM')}>
-              <Text style={[s.dateText, !fromDate && { color: '#9CA3AF' }]}>{fromDate || 'YYYY-MM-DD'}</Text>
-              <CalendarIcon color="#9CA3AF" size={16} />
+            <Text style={[s.label, { color: theme.textMuted }]}>From Date *</Text>
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setCalendarTarget('FROM')}>
+              <Text style={[s.dateText, { color: theme.text }, !fromDate && { color: theme.textMuted }]}>{fromDate || 'YYYY-MM-DD'}</Text>
+              <CalendarIcon color={theme.textMuted} size={16} />
             </TouchableOpacity>
           </View>
           <View style={[s.inputBox, { flex: 1 }]}>
-            <Text style={s.label}> </Text>
-            <TouchableOpacity style={s.inputRow} onPress={() => setHalfTarget('FROM')}>
-              <Text style={s.inputVal}>{fromHalf}</Text>
-              <ChevronDown color="#9CA3AF" size={16} />
+            <Text style={[s.label, { color: theme.textMuted }]}> </Text>
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setHalfTarget('FROM')}>
+              <Text style={[s.inputVal, { color: theme.text }]}>{fromHalf}</Text>
+              <ChevronDown color={theme.textMuted} size={16} />
             </TouchableOpacity>
           </View>
         </View>
@@ -563,17 +571,17 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* To Row */}
         <View style={s.dateRow}>
           <View style={[s.inputBox, { flex: 1.2, marginRight: 8 }]}>
-            <Text style={s.label}>To Date</Text>
-            <TouchableOpacity style={s.inputRow} onPress={() => setCalendarTarget('TO')}>
-              <Text style={[s.dateText, !toDate && { color: '#9CA3AF' }]}>{toDate || 'YYYY-MM-DD'}</Text>
-              <CalendarIcon color="#9CA3AF" size={16} />
+            <Text style={[s.label, { color: theme.textMuted }]}>To Date</Text>
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setCalendarTarget('TO')}>
+              <Text style={[s.dateText, { color: theme.text }, !toDate && { color: theme.textMuted }]}>{toDate || 'YYYY-MM-DD'}</Text>
+              <CalendarIcon color={theme.textMuted} size={16} />
             </TouchableOpacity>
           </View>
           <View style={[s.inputBox, { flex: 1 }]}>
-            <Text style={s.label}> </Text>
-            <TouchableOpacity style={s.inputRow} onPress={() => setHalfTarget('TO')}>
-              <Text style={s.inputVal}>{toHalf}</Text>
-              <ChevronDown color="#9CA3AF" size={16} />
+            <Text style={[s.label, { color: theme.textMuted }]}> </Text>
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setHalfTarget('TO')}>
+              <Text style={[s.inputVal, { color: theme.text }]}>{toHalf}</Text>
+              <ChevronDown color={theme.textMuted} size={16} />
             </TouchableOpacity>
           </View>
         </View>
@@ -581,15 +589,15 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* Authorised By */}
         {authorizedByList.length > 0 && (
           <View style={s.inputBox}>
-            <Text style={s.label}>Authorised By</Text>
+            <Text style={[s.label, { color: theme.textMuted }]}>Authorised By</Text>
             {authorizedByList.length === 1 ? (
-              <View style={s.inputRow}>
-                <Text style={s.inputVal}>{selectedAuthBy?.name || 'Not Defined'}</Text>
+              <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Not Defined'}</Text>
               </View>
             ) : (
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowAuthPicker(true)}>
-                <Text style={s.inputVal}>{selectedAuthBy?.name || 'Select'}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Select'}</Text>
+                <ChevronDown color={theme.textMuted} size={16} />
               </TouchableOpacity>
             )}
           </View>
@@ -598,15 +606,15 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* Approved By */}
         {approvedByList.length > 0 && (
           <View style={s.inputBox}>
-            <Text style={s.label}>Approved By</Text>
+            <Text style={[s.label, { color: theme.textMuted }]}>Approved By</Text>
             {approvedByList.length === 1 ? (
-              <View style={s.inputRow}>
-                <Text style={s.inputVal}>{selectedAppBy?.name || 'Not Defined'}</Text>
+              <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAppBy?.name || 'Not Defined'}</Text>
               </View>
             ) : (
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowAppPicker(true)}>
-                <Text style={s.inputVal}>{selectedAppBy?.name || 'Select'}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAppBy?.name || 'Select'}</Text>
+                <ChevronDown color={theme.textMuted} size={16} />
               </TouchableOpacity>
             )}
           </View>
@@ -614,41 +622,41 @@ const LeaveScreen = ({ navigation, route }) => {
 
         {/* Contact Number */}
         <View style={s.inputBox}>
-          <Text style={s.label}>Contact Number</Text>
+          <Text style={[s.label, { color: theme.textMuted }]}>Contact Number</Text>
           <TextInput
-            style={s.inputRow}
+            style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
             value={contactNo}
             onChangeText={setContactNo}
             placeholder="+91 0000000000"
             keyboardType="phone-pad"
-            placeholderTextColor="#D1D5DB"
+            placeholderTextColor={theme.textMuted}
             maxLength={20}
           />
         </View>
 
         {/* Duties Handed Over */}
         <View style={s.inputBox}>
-          <Text style={s.label}>Duties Handed Over To</Text>
+          <Text style={[s.label, { color: theme.textMuted }]}>Duties Handed Over To</Text>
           <TextInput
-            style={s.inputRow}
+            style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
             value={handoverTo}
             onChangeText={setHandoverTo}
             placeholder="e.g. Handed over to Team Lead"
-            placeholderTextColor="#D1D5DB"
+            placeholderTextColor={theme.textMuted}
             maxLength={20}
           />
         </View>
 
         {/* Reason */}
         <View style={s.inputBox}>
-          <Text style={s.label}>Reason *</Text>
+          <Text style={[s.label, { color: theme.textMuted }]}>Reason *</Text>
           <TextInput
-            style={[s.inputRow, { height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
+            style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text, height: 90, textAlignVertical: 'top', paddingTop: 12 }]}
             value={reason}
             onChangeText={setReason}
             multiline
             placeholder="Enter reason..."
-            placeholderTextColor="#D1D5DB"
+            placeholderTextColor={theme.textMuted}
             maxLength={50}
           />
         </View>
@@ -663,8 +671,8 @@ const LeaveScreen = ({ navigation, route }) => {
             {attachedFiles.map((f, i) => (
               <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
-            <TouchableOpacity style={s.addMoreThumb} onPress={pickFile}>
-              <Text style={s.addMorePlus}>+</Text>
+            <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
+              <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
             </TouchableOpacity>
           </ScrollView>
         )}
@@ -742,12 +750,12 @@ const LeaveScreen = ({ navigation, route }) => {
     ];
     return (
       <View style={{ flex: 1 }}>
-        <LeaveHeader title="Leave History" onBack={() => setView('DASHBOARD')} />
+        <LeaveHeader title="Leave History" onBack={() => setView('DASHBOARD')} theme={theme} />
         {/* Tab Bar */}
-        <View style={s.tabBar}>
+        <View style={[s.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
           {tabs.map(t => (
             <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive]} onPress={() => { setHistFilter(t.key); fetchHistory(t.key); }}>
-              <Text style={[s.tabText, histFilter === t.key && s.tabTextActive]}>{t.label}</Text>
+              <Text style={[s.tabText, { color: theme.textMuted }, histFilter === t.key && s.tabTextActive]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -755,8 +763,8 @@ const LeaveScreen = ({ navigation, route }) => {
           <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
         ) : histLeaves.length === 0 ? (
           <View style={s.emptyWrap}>
-            <Clock color="#D1D5DB" size={48} />
-            <Text style={s.emptyText}>No leaves found</Text>
+            <Clock color={theme.textMuted} size={48} />
+            <Text style={[s.emptyText, { color: theme.textMuted }]}>No leaves found</Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={s.scroll}>
@@ -775,18 +783,18 @@ const LeaveScreen = ({ navigation, route }) => {
   };
 
   const SuccessView = () => (
-    <View style={s.successWrap}>
-      <View style={s.successCircle}><CheckCircle color="#22C55E" size={80} strokeWidth={1.5} /></View>
-      <Text style={s.successTitle}>Request Sent Successfully!</Text>
-      <Text style={s.successSub}>Your leave request has been sent successfully. We will get back to you shortly!</Text>
-      <TouchableOpacity style={s.goHomeBtn} onPress={() => { setView('DASHBOARD'); fetchAll(); }}>
-        <Text style={s.goHomeText}>Go Back Home</Text>
+    <View style={[s.successWrap, { backgroundColor: theme.bg }]}>
+      <View style={[s.successCircle, { backgroundColor: theme.isDark ? '#14532D' : '#F0FDF4' }]}><CheckCircle color="#22C55E" size={80} strokeWidth={1.5} /></View>
+      <Text style={[s.successTitle, { color: theme.text }]}>Request Sent Successfully!</Text>
+      <Text style={[s.successSub, { color: theme.textLight }]}>Your leave request has been sent successfully. We will get back to you shortly!</Text>
+      <TouchableOpacity style={[s.goHomeBtn, { borderColor: theme.border }]} onPress={() => { setView('DASHBOARD'); fetchAll(); }}>
+        <Text style={[s.goHomeText, { color: theme.text }]}>Go Back Home</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
       {view === 'DASHBOARD' && DashboardView()}
       {view === 'APPLY' && ApplyView()}
       {view === 'HISTORY' && HistoryView()}

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Print from 'expo-print';
@@ -17,6 +18,7 @@ import * as Sharing from 'expo-sharing';
 const { width } = Dimensions.get('window');
 
 const SalaryScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -197,13 +199,13 @@ const SalaryScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Salary Slip</Text>
+        <Text style={[styles.headerTitle, { color: theme.text }]}>Salary Slip</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -234,28 +236,28 @@ const SalaryScreen = ({ navigation, route }) => {
 
           {/* Quick Stats */}
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <View style={[styles.statIcon, { backgroundColor: '#E1F5FE' }]}><Wallet color="#039BE5" size={18} /></View>
-              <Text style={styles.statVal}>₹{(grossSalary * 12).toLocaleString('en-IN') || '---'}</Text>
-              <Text style={styles.statLabel}>Annual CTC Configured</Text>
+              <Text style={[styles.statVal, { color: theme.text }]}>₹{(grossSalary * 12).toLocaleString('en-IN') || '---'}</Text>
+              <Text style={[styles.statLabel, { color: theme.textLight }]}>Annual CTC Configured</Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: theme.card }]}>
               <View style={[styles.statIcon, { backgroundColor: '#E8F5E9' }]}><ArrowUpRight color="#2ECC71" size={18} /></View>
-              <Text style={styles.statVal}>{salarySlips.length}</Text>
-              <Text style={styles.statLabel}>Slips Generated</Text>
+              <Text style={[styles.statVal, { color: theme.text }]}>{salarySlips.length}</Text>
+              <Text style={[styles.statLabel, { color: theme.textLight }]}>Slips Generated</Text>
             </View>
           </View>
 
           {/* Payout History */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Payout History</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Payout History</Text>
             <TouchableOpacity onPress={fetchSalaryData}><Text style={styles.seeAll}>Refresh</Text></TouchableOpacity>
           </View>
 
-          <View style={styles.listCard}>
+          <View style={[styles.listCard, { backgroundColor: theme.card }]}>
             {salarySlips.length === 0 ? (
               <View style={{ padding: 20, alignItems: 'center' }}>
-                <Text style={{ color: COLORS.textLight }}>No salary slips found</Text>
+                <Text style={{ color: theme.textLight }}>No salary slips found</Text>
               </View>
             ) : salarySlips.map((slip, index) => {
               // Calculate rough amount for display if possible
@@ -275,21 +277,21 @@ const SalaryScreen = ({ navigation, route }) => {
               }
 
               return (
-                <TouchableOpacity onPress={() => handleDownloadPdf(slip)} key={slip.month || index} style={[styles.slipItem, index === salarySlips.length - 1 && { borderBottomWidth: 0 }]}>
-                  <View style={styles.slipIcon}>
-                    <FileText color={COLORS.textLight} size={20} />
+                <TouchableOpacity onPress={() => handleDownloadPdf(slip)} key={slip.month || index} style={[styles.slipItem, { borderBottomColor: theme.divider }, index === salarySlips.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={[styles.slipIcon, { backgroundColor: theme.cardSoft }]}>
+                    <FileText color={theme.textLight} size={20} />
                   </View>
                   <View style={styles.slipMain}>
-                    <Text style={styles.slipMonth}>{formatMonth(slip.month)}</Text>
-                    <Text style={styles.slipDate}>Slip available</Text>
+                    <Text style={[styles.slipMonth, { color: theme.text }]}>{formatMonth(slip.month)}</Text>
+                    <Text style={[styles.slipDate, { color: theme.textLight }]}>Slip available</Text>
                   </View>
                   <View style={styles.slipEnd}>
-                    <Text style={styles.slipAmount}>₹{dispAmountStr}</Text>
-                    <TouchableOpacity style={styles.downloadBtn} onPress={() => handleDownloadPdf(slip)} disabled={downloadingId === slip.month}>
+                    <Text style={[styles.slipAmount, { color: theme.text }]}>₹{dispAmountStr}</Text>
+                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.cardSoft }]} onPress={() => handleDownloadPdf(slip)} disabled={downloadingId === slip.month}>
                       {downloadingId === slip.month ? (
                         <ActivityIndicator size="small" color={COLORS.primaryDeep} />
                       ) : (
-                        <Download color={COLORS.textMuted} size={14} />
+                        <Download color={theme.textMuted} size={14} />
                       )}
                     </TouchableOpacity>
                   </View>

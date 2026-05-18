@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const { width } = Dimensions.get('window');
@@ -35,12 +36,12 @@ const statusColor = (s) => {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const Header = ({ title, onBack }) => (
-  <View style={h.header}>
+const Header = ({ title, onBack, theme }) => (
+  <View style={[h.header, theme && { backgroundColor: theme.bg }]}>
     <TouchableOpacity onPress={onBack} style={h.back}>
-      <ChevronLeft color={COLORS.text} size={26} />
+      <ChevronLeft color={theme ? theme.text : COLORS.text} size={26} />
     </TouchableOpacity>
-    <Text style={h.title}>{title}</Text>
+    <Text style={[h.title, theme && { color: theme.text }]}>{title}</Text>
     <View style={{ width: 44 }} />
   </View>
 );
@@ -52,16 +53,17 @@ const h = StyleSheet.create({
 
 // ─── File Thumbnail ───────────────────────────────────────────────────────────
 const FileThumbnail = ({ file, onRemove }) => {
+  const theme = useTheme();
   const isPDF = file.mimeType === 'application/pdf' || file.name?.endsWith('.pdf');
   return (
     <View style={ft.wrap}>
-      <View style={[ft.thumb, isPDF && { backgroundColor: '#FEE2E2' }]}>
+      <View style={[ft.thumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }, isPDF && { backgroundColor: '#FEE2E2' }]}>
         {isPDF ? <FileText color="#DC2626" size={22} /> : <Text style={ft.ext}>{file.name?.split('.').pop()?.toUpperCase() || 'IMG'}</Text>}
         <TouchableOpacity style={ft.remove} onPress={onRemove}>
           <X color="#FFF" size={10} />
         </TouchableOpacity>
       </View>
-      <Text style={ft.name} numberOfLines={1}>{file.name}</Text>
+      <Text style={[ft.name, { color: theme.textLight }]} numberOfLines={1}>{file.name}</Text>
     </View>
   );
 };
@@ -75,6 +77,7 @@ const ft = StyleSheet.create({
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
 const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
+  const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -97,22 +100,22 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <TouchableOpacity style={cal.overlay} activeOpacity={1} onPress={onClose}>
-        <View style={cal.box}>
+      <TouchableOpacity style={[cal.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+        <View style={[cal.box, { backgroundColor: theme.card }]}>
           <View style={cal.header}>
-            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color="#111827" size={24} /></TouchableOpacity>
-            <Text style={cal.headerTitle}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
-            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color="#111827" size={24} /></TouchableOpacity>
+            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color={theme.text} size={24} /></TouchableOpacity>
+            <Text style={[cal.headerTitle, { color: theme.text }]}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
+            <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color={theme.text} size={24} /></TouchableOpacity>
           </View>
-          <View style={cal.daysHeader}>
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={cal.dhText}>{x}</Text>)}
+          <View style={[cal.daysHeader, { borderBottomColor: theme.divider }]}>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(x => <Text key={x} style={[cal.dhText, { color: theme.textLight }]}>{x}</Text>)}
           </View>
           <View style={cal.grid}>
             {days.map((d, i) => {
               const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` === selectedDate;
               return (
                 <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected]} onPress={() => d && handleSelect(d)} disabled={!d}>
-                  <Text style={[cal.cellText, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                  <Text style={[cal.cellText, { color: theme.text }, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -138,21 +141,23 @@ const cal = StyleSheet.create({
 });
 
 // ─── Selection Modal ───────────────────────────────────────────────────────
-const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title, labelKey = 'label', valueKey = 'value' }) => (
+const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title, labelKey = 'label', valueKey = 'value' }) => {
+  const theme = useTheme();
+  return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-    <TouchableOpacity style={sm.overlay} activeOpacity={1} onPress={onClose}>
-      <View style={sm.sheet}>
-        <View style={sm.handle} />
-        {title && <Text style={sm.title}>{title}</Text>}
+    <TouchableOpacity style={[sm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+      <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+        <View style={[sm.handle, { backgroundColor: theme.border }]} />
+        {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
         <ScrollView style={{ maxHeight: 300 }}>
           {options.map((opt, i) => {
             const isStr = typeof opt === 'string';
             const val = isStr ? opt : opt[valueKey];
             const lab = isStr ? opt : opt[labelKey];
             return (
-              <TouchableOpacity key={i} style={sm.item} onPress={() => { onSelect(opt); onClose(); }}>
-                <Text style={[sm.itemText, val === selectedValue && sm.itemTextActive]}>{lab}</Text>
-                {val === selectedValue && <CheckCircle color={COLORS.primaryDeep} size={20} />}
+              <TouchableOpacity key={i} style={[sm.item, { borderBottomColor: theme.divider }]} onPress={() => { onSelect(opt); onClose(); }}>
+                <Text style={[sm.itemText, { color: theme.textLight }, val === selectedValue && { color: theme.text, fontWeight: '600' }]}>{lab}</Text>
+                {val === selectedValue && <CheckCircle color={theme.primaryDeep} size={20} />}
               </TouchableOpacity>
             )
           })}
@@ -160,7 +165,8 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
       </View>
     </TouchableOpacity>
   </Modal>
-);
+  );
+};
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24 },
@@ -173,6 +179,7 @@ const sm = StyleSheet.create({
 
 // ─── ExpenseScreen ─────────────────────────────────────────────────────────────
 const ExpenseScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
 
   const [view, setView] = useState('LIST');
@@ -368,16 +375,16 @@ const ExpenseScreen = ({ navigation, route }) => {
   const ExpenseCard = ({ item }) => {
     const sc = statusColor(item.expense_status);
     return (
-      <TouchableOpacity onPress={() => setDetailModal(item)} activeOpacity={0.8} style={c.card}>
+      <TouchableOpacity onPress={() => setDetailModal(item)} activeOpacity={0.8} style={[c.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={[c.sideBar, { backgroundColor: sc.side }]}>
           <Text style={[c.sideText, { color: sc.text }]}>{(item.expense_status || 'Applied').toUpperCase()}</Text>
         </View>
         <View style={c.body}>
           <View style={c.row}>
             <View style={{ flex: 1 }}>
-              <Text style={c.title}>{item.expense_type_name || `Expense Type ${item.expense_type}`}</Text>
-              <Text style={c.date}>{item.expense_date}</Text>
-              <Text style={c.remarks} numberOfLines={1}>Remarks : {item.remarks || 'None'}</Text>
+              <Text style={[c.title, { color: theme.text }]}>{item.expense_type_name || `Expense Type ${item.expense_type}`}</Text>
+              <Text style={[c.date, { color: theme.textLight }]}>{item.expense_date}</Text>
+              <Text style={[c.remarks, { color: theme.textMuted }]} numberOfLines={1}>Remarks : {item.remarks || 'None'}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', justifyContent: 'center' }}>
               <Text style={c.amount}>₹{(!isNaN(parseFloat(item.expenses_amount)) ? parseFloat(item.expenses_amount) : 0).toFixed(2)}</Text>
@@ -389,18 +396,18 @@ const ExpenseScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={s.container}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
       {view === 'LIST' && (
         <View style={{ flex: 1 }}>
-          <Header title="Expenses" onBack={() => navigation.goBack()} />
+          <Header title="Expenses" onBack={() => navigation.goBack()} theme={theme} />
           {loading ? (
             <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
           ) : (
             <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
               {expenses.length === 0 ? (
                 <View style={s.emptyWrap}>
-                  <FileText color="#D1D5DB" size={48} style={{ marginBottom: 16 }} />
-                  <Text style={{ color: '#9CA3AF', fontWeight: '600' }}>No expenses submitted yet</Text>
+                  <FileText color={theme.textMuted} size={48} style={{ marginBottom: 16 }} />
+                  <Text style={{ color: theme.textMuted, fontWeight: '600' }}>No expenses submitted yet</Text>
                 </View>
               ) : (
                 expenses.map((exp, idx) => <ExpenseCard key={exp.emp_expenses_pkey || String(idx)} item={exp} />)
@@ -416,62 +423,62 @@ const ExpenseScreen = ({ navigation, route }) => {
 
       {view === 'APPLY' && (
         <View style={{ flex: 1 }}>
-          <Header title="Create Expenses" onBack={() => setView('LIST')} />
+          <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
             {/* Expense Type */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Expense Type *</Text>
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowTypePicker(true)}>
-                <Text style={[s.inputVal, !expenseType && { color: '#9CA3AF' }]}>{expenseType?.name || 'Select Type'}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Expense Type *</Text>
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowTypePicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }, !expenseType && { color: theme.textMuted }]}>{expenseType?.name || 'Select Type'}</Text>
+                <ChevronDown color={theme.textMuted} size={16} />
               </TouchableOpacity>
             </View>
 
             {/* Amount */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Amount (₹) *</Text>
-              <TextInput style={s.inputRow} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor="#D1D5DB" maxLength={20} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Amount (₹) *</Text>
+              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor={theme.textMuted} maxLength={20} />
             </View>
 
             {/* Date */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Select Date *</Text>
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowDatePicker(true)}>
-                <Text style={[s.inputVal, !expenseDate && { color: '#9CA3AF' }]}>{expenseDate || 'YYYY-MM-DD'}</Text>
-                <CalendarIcon color="#9CA3AF" size={16} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Select Date *</Text>
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowDatePicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }, !expenseDate && { color: theme.textMuted }]}>{expenseDate || 'YYYY-MM-DD'}</Text>
+                <CalendarIcon color={theme.textMuted} size={16} />
               </TouchableOpacity>
             </View>
 
             {/* Authorised By */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Authorised By</Text>
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowAuthPicker(true)}>
-                <Text style={[s.inputVal, !authBy && { color: '#9CA3AF' }]}>{authBy?.name || 'Select Authoriser'}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Authorised By</Text>
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }, !authBy && { color: theme.textMuted }]}>{authBy?.name || 'Select Authoriser'}</Text>
+                <ChevronDown color={theme.textMuted} size={16} />
               </TouchableOpacity>
             </View>
 
             {/* Approved By */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Approved By</Text>
-              <TouchableOpacity style={s.inputRow} onPress={() => setShowAppPicker(true)}>
-                <Text style={[s.inputVal, !appBy && { color: '#9CA3AF' }]}>{appBy?.name || 'Select Approver'}</Text>
-                <ChevronDown color="#9CA3AF" size={16} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Approved By</Text>
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
+                <Text style={[s.inputVal, { color: theme.text }, !appBy && { color: theme.textMuted }]}>{appBy?.name || 'Select Approver'}</Text>
+                <ChevronDown color={theme.textMuted} size={16} />
               </TouchableOpacity>
             </View>
 
             {/* Remarks */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Remarks *</Text>
-              <TextInput style={[s.inputRow, s.textArea]} value={remarks} onChangeText={setRemarks} multiline placeholder="Enter remarks..." placeholderTextColor="#D1D5DB" maxLength={50} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Remarks *</Text>
+              <TextInput style={[s.inputRow, s.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={remarks} onChangeText={setRemarks} multiline placeholder="Enter remarks..." placeholderTextColor={theme.textMuted} maxLength={50} />
             </View>
 
             {/* Purpose */}
             <View style={s.inputBox}>
-              <Text style={s.label}>Purpose</Text>
-              <TextInput style={[s.inputRow, s.textArea]} value={purpose} onChangeText={setPurpose} multiline placeholder="Enter purpose..." placeholderTextColor="#D1D5DB" maxLength={50} />
+              <Text style={[s.label, { color: theme.textMuted }]}>Purpose</Text>
+              <TextInput style={[s.inputRow, s.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={purpose} onChangeText={setPurpose} multiline placeholder="Enter purpose..." placeholderTextColor={theme.textMuted} maxLength={50} />
             </View>
 
             {/* Files */}
@@ -486,8 +493,8 @@ const ExpenseScreen = ({ navigation, route }) => {
                   {attachedFiles.map((f, i) => (
                     <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
                   ))}
-                  <TouchableOpacity style={s.addMoreThumb} onPress={pickFile}>
-                    <Text style={s.addMorePlus}>+</Text>
+                  <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
+                    <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
                   </TouchableOpacity>
                 </ScrollView>
               )}
@@ -504,12 +511,12 @@ const ExpenseScreen = ({ navigation, route }) => {
       )}
 
       {view === 'SUCCESS' && (
-        <View style={s.successWrap}>
-          <View style={s.successCircle}><CheckCircle color="#10B981" size={80} strokeWidth={2} /></View>
-          <Text style={s.successTitle}>Request Sent Successfully!</Text>
-          <Text style={s.successSub}>Your expense request has been sent successfully, We will get back to you shortly!</Text>
-          <TouchableOpacity style={s.goHomeBtn} onPress={() => { setView('LIST'); fetchExpenses(); }}>
-            <Text style={s.goHomeText}>Go Back Home</Text>
+        <View style={[s.successWrap, { backgroundColor: theme.bg }]}>
+          <View style={[s.successCircle, { backgroundColor: theme.isDark ? '#14532D' : '#F0FDF4' }]}><CheckCircle color="#10B981" size={80} strokeWidth={2} /></View>
+          <Text style={[s.successTitle, { color: theme.text }]}>Request Sent Successfully!</Text>
+          <Text style={[s.successSub, { color: theme.textLight }]}>Your expense request has been sent successfully, We will get back to you shortly!</Text>
+          <TouchableOpacity style={[s.goHomeBtn, { borderColor: theme.border }]} onPress={() => { setView('LIST'); fetchExpenses(); }}>
+            <Text style={[s.goHomeText, { color: theme.text }]}>Go Back Home</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -524,28 +531,28 @@ const ExpenseScreen = ({ navigation, route }) => {
       {/* Detail Expanding Modal */}
       {detailModal && (
         <Modal visible={!!detailModal} transparent animationType="fade" onRequestClose={() => setDetailModal(null)} statusBarTranslucent>
-          <TouchableOpacity style={dm.overlay} activeOpacity={1} onPress={() => setDetailModal(null)}>
-            <View style={dm.card}>
+          <TouchableOpacity style={[dm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setDetailModal(null)}>
+            <View style={[dm.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={[dm.sideBar, { backgroundColor: statusColor(detailModal.expense_status).side }]}>
                 <Text style={[dm.sideText, { color: statusColor(detailModal.expense_status).text }]}>{(detailModal.expense_status || 'Applied').toUpperCase()}</Text>
               </View>
               <View style={dm.body}>
-                <Text style={dm.title}>{detailModal.expense_type_name}</Text>
-                <Text style={dm.date}>{detailModal.expense_date}</Text>
+                <Text style={[dm.title, { color: theme.text }]}>{detailModal.expense_type_name}</Text>
+                <Text style={[dm.date, { color: theme.textLight }]}>{detailModal.expense_date}</Text>
 
-                <Text style={dm.info}>Authorised By : {detailModal.authorized_by || 'John Doe'}</Text>
-                <Text style={dm.info}>Approved By : {detailModal.approved_by || 'Ajil'}</Text>
-                <Text style={dm.info}>Remarks : {detailModal.remarks}</Text>
+                <Text style={[dm.info, { color: theme.textLight }]}>Authorised By : {detailModal.authorized_by || 'John Doe'}</Text>
+                <Text style={[dm.info, { color: theme.textLight }]}>Approved By : {detailModal.approved_by || 'Ajil'}</Text>
+                <Text style={[dm.info, { color: theme.textLight }]}>Remarks : {detailModal.remarks}</Text>
 
                 {/* Example files if present. API returned `image:""` so let's check it */}
                 {!!detailModal.image && (
-                  <View style={dm.fileChip}>
+                  <View style={[dm.fileChip, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                     <FileText color="#DC2626" size={14} style={{ marginRight: 6 }} />
-                    <Text style={dm.fileChipText}>Attachment</Text>
+                    <Text style={[dm.fileChipText, { color: theme.textLight }]}>Attachment</Text>
                   </View>
                 )}
 
-                <Text style={dm.amountLabel}>Claimed Amount: <Text style={{ color: '#111827' }}>₹{(!isNaN(parseFloat(detailModal.expenses_amount)) ? parseFloat(detailModal.expenses_amount) : 0).toFixed(2)}</Text></Text>
+                <Text style={[dm.amountLabel, { color: theme.textLight }]}>Claimed Amount: <Text style={{ color: theme.text }}>₹{(!isNaN(parseFloat(detailModal.expenses_amount)) ? parseFloat(detailModal.expenses_amount) : 0).toFixed(2)}</Text></Text>
 
                 {['applied', 'pending', 'p'].includes((detailModal.expense_status || '').toLowerCase()) && (
                   <TouchableOpacity

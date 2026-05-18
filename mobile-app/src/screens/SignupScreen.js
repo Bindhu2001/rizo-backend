@@ -11,6 +11,7 @@ import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'l
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { SHADOWS, moderateScale, wp } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const MAX_DOB = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })();
@@ -20,108 +21,124 @@ const PURPLE = '#4A148C';
 const PURPLE_BG = '#F5F0FF';
 
 // ─── Floating Label Input ──────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '', validation }) => (
+const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '', validation }) => {
+  const theme = useTheme();
+  return (
   <View style={st.inputWrap}>
-    <Text style={st.floatLabel}>{label}</Text>
+    <Text style={[st.floatLabel, { backgroundColor: theme.card, color: theme.textMuted }]}>{label}</Text>
     <TextInput
-      style={[st.input, validation?.status === 'exists' && { borderColor: '#DC2626' }, validation?.status === 'valid' && { borderColor: '#16A34A' }]}
+      style={[st.input, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.inputBorder }, validation?.status === 'exists' && { borderColor: '#DC2626' }, validation?.status === 'valid' && { borderColor: '#16A34A' }]}
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType}
       secureTextEntry={secureTextEntry}
       placeholder={placeholder}
-      placeholderTextColor="#CBD5E0"
+      placeholderTextColor={theme.textMuted}
       maxLength={maxLength}
     />
     {validation?.status && validation.status !== 'idle' && (
       <View style={st.vRow}>
         {validation.status === 'checking'
-          ? <ActivityIndicator size="small" color="#9CA3AF" style={{ marginRight: 5 }} />
+          ? <ActivityIndicator size="small" color={theme.textMuted} style={{ marginRight: 5 }} />
           : <Text style={validation.status === 'valid' ? st.vDotGreen : st.vDotRed}>●</Text>}
-        <Text style={[st.vText, validation.status === 'valid' && { color: '#16A34A' }, (validation.status === 'exists' || validation.status === 'error') && { color: '#DC2626' }, validation.status === 'checking' && { color: '#9CA3AF' }]}>
+        <Text style={[st.vText, { color: theme.textLight }, validation.status === 'valid' && { color: '#16A34A' }, (validation.status === 'exists' || validation.status === 'error') && { color: '#DC2626' }, validation.status === 'checking' && { color: theme.textMuted }]}>
           {validation.status === 'checking' ? 'Checking...' : validation.message}
         </Text>
       </View>
     )}
   </View>
-);
+  );
+};
 
 // ─── Picker Row (dropdown trigger) ────────────────────────────────────────────
-const PickerRow = ({ label, value, onPress }) => (
+const PickerRow = ({ label, value, onPress }) => {
+  const theme = useTheme();
+  return (
   <View style={st.inputWrap}>
-    <Text style={st.floatLabel}>{label}</Text>
-    <TouchableOpacity style={st.pickerRow} onPress={onPress} activeOpacity={0.75}>
-      <Text style={[st.pickerText, !value && { color: '#CBD5E0' }]}>{value || `Select ${label}`}</Text>
-      <ChevronDown color="#9CA3AF" size={18} />
+    <Text style={[st.floatLabel, { backgroundColor: theme.card, color: theme.textMuted }]}>{label}</Text>
+    <TouchableOpacity style={[st.pickerRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={onPress} activeOpacity={0.75}>
+      <Text style={[st.pickerText, { color: theme.text }, !value && { color: theme.textMuted }]}>{value || `Select ${label}`}</Text>
+      <ChevronDown color={theme.textMuted} size={18} />
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 // ─── Checkbox Row ──────────────────────────────────────────────────────────────
-const CheckRow = ({ label, value, onToggle }) => (
+const CheckRow = ({ label, value, onToggle }) => {
+  const theme = useTheme();
+  return (
   <TouchableOpacity style={st.checkRow} onPress={onToggle} activeOpacity={0.75}>
-    <View style={[st.checkBox, value && st.checkBoxActive]}>
+    <View style={[st.checkBox, { backgroundColor: theme.card, borderColor: theme.border }, value && st.checkBoxActive]}>
       {value && <Check color="#FFF" size={13} strokeWidth={3} />}
     </View>
-    <Text style={st.checkLabel}>{label}</Text>
+    <Text style={[st.checkLabel, { color: theme.text }]}>{label}</Text>
   </TouchableOpacity>
-);
+  );
+};
 
 // ─── Step Progress Bar ─────────────────────────────────────────────────────────
-const StepBar = ({ current, total }) => (
+const StepBar = ({ current, total }) => {
+  const theme = useTheme();
+  return (
   <View style={st.stepBarRow}>
     {Array.from({ length: total }).map((_, i) => (
       <View
         key={i}
-        style={[st.stepBarItem, i < current && st.stepBarActive, { marginRight: i < total - 1 ? 6 : 0 }]}
+        style={[st.stepBarItem, { backgroundColor: theme.border }, i < current && st.stepBarActive, { marginRight: i < total - 1 ? 6 : 0 }]}
       />
     ))}
   </View>
-);
+  );
+};
 
 // ─── Simple Option Picker Modal ────────────────────────────────────────────────
-const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelect }) => (
+const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelect }) => {
+  const theme = useTheme();
+  return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-    <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
-      <View style={st.modalSheet}>
-        <View style={st.modalHandle} />
-        <Text style={st.modalTitle}>{title}</Text>
+    <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+      <View style={[st.modalSheet, { backgroundColor: theme.card }]}>
+        <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
+        <Text style={[st.modalTitle, { color: theme.textMuted }]}>{title}</Text>
         <ScrollView style={{ maxHeight: 320 }}>
           {options.map((opt, i) => (
             <TouchableOpacity
               key={i}
-              style={st.countryItem}
+              style={[st.countryItem, { borderBottomColor: theme.divider }]}
               onPress={() => { onSelect(opt); onClose(); }}
             >
-              <Text style={[st.countryItemText, selected === opt && st.countryItemActive]}>{opt}</Text>
+              <Text style={[st.countryItemText, { color: theme.textLight }, selected === opt && st.countryItemActive]}>{opt}</Text>
               {selected === opt && <Check color={PURPLE} size={18} />}
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <TouchableOpacity style={st.modalCloseBtn} onPress={onClose}>
-          <Text style={st.modalCloseText}>Cancel</Text>
+        <TouchableOpacity style={[st.modalCloseBtn, { borderColor: theme.border }]} onPress={onClose}>
+          <Text style={[st.modalCloseText, { color: theme.text }]}>Cancel</Text>
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
   </Modal>
-);
+  );
+};
 
 // ─── Country Picker Modal ──────────────────────────────────────────────────────
 const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => {
+  const theme = useTheme();
   const [query, setQuery] = useState('');
   const filtered = query.trim()
     ? countries.filter(c => c.country_name.toLowerCase().includes(query.toLowerCase()))
     : countries;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={onClose}>
-        <View style={[st.modalSheet, { maxHeight: '80%' }]}>
-          <View style={st.modalHandle} />
-          <Text style={st.modalTitle}>Select Country</Text>
+      <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+        <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%' }]}>
+          <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
+          <Text style={[st.modalTitle, { color: theme.textMuted }]}>Select Country</Text>
           <TextInput
-            style={st.countrySearch}
+            style={[st.countrySearch, { backgroundColor: theme.inputBg, color: theme.text, borderColor: theme.inputBorder }]}
             placeholder="Search country..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={theme.textMuted}
             value={query}
             onChangeText={setQuery}
             autoCorrect={false}
@@ -133,18 +150,18 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
             keyboardShouldPersistTaps="handled"
             renderItem={({ item: c }) => (
               <TouchableOpacity
-                style={st.countryItem}
+                style={[st.countryItem, { borderBottomColor: theme.divider }]}
                 onPress={() => { setQuery(''); onSelect(c); onClose(); }}
               >
-                <Text style={[st.countryItemText, selected?.id === c.id && st.countryItemActive]}>
+                <Text style={[st.countryItemText, { color: theme.textLight }, selected?.id === c.id && st.countryItemActive]}>
                   {c.country_name}
                 </Text>
                 {selected?.id === c.id && <Check color={PURPLE} size={18} />}
               </TouchableOpacity>
             )}
           />
-          <TouchableOpacity style={st.modalCloseBtn} onPress={() => { setQuery(''); onClose(); }}>
-            <Text style={st.modalCloseText}>Cancel</Text>
+          <TouchableOpacity style={[st.modalCloseBtn, { borderColor: theme.border }]} onPress={() => { setQuery(''); onClose(); }}>
+            <Text style={[st.modalCloseText, { color: theme.text }]}>Cancel</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -161,6 +178,7 @@ const SLIDES = [
 
 // ─── SignupScreen ──────────────────────────────────────────────────────────────
 const SignupScreen = ({ navigation }) => {
+  const theme = useTheme();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -470,8 +488,8 @@ const SignupScreen = ({ navigation }) => {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 0) {
     return (
-      <View style={st.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={PURPLE_BG} />
+      <View style={[st.container, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <FlatList
           data={SLIDES}
           horizontal
@@ -480,17 +498,17 @@ const SignupScreen = ({ navigation }) => {
           onMomentumScrollEnd={e => setCarouselIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
           renderItem={({ item }) => (
             <View style={{ width }}>
-              <View style={st.carouselTop}>
+              <View style={[st.carouselTop, { backgroundColor: theme.bg }]}>
                 <Image source={item.img} style={st.carouselImg} resizeMode="contain" />
               </View>
-              <View style={st.carouselCard}>
+              <View style={[st.carouselCard, { backgroundColor: theme.card }]}>
                 <View style={st.dotRow}>
                   {SLIDES.map((_, i) => (
-                    <View key={i} style={[st.dot, carouselIndex === i && st.dotActive]} />
+                    <View key={i} style={[st.dot, { backgroundColor: theme.border }, carouselIndex === i && st.dotActive]} />
                   ))}
                 </View>
-                <Text style={st.slideTitle}>{item.title}</Text>
-                <Text style={st.slideSub}>{item.subtitle}</Text>
+                <Text style={[st.slideTitle, { color: theme.text }]}>{item.title}</Text>
+                <Text style={[st.slideSub, { color: theme.textLight }]}>{item.subtitle}</Text>
                 <TouchableOpacity style={st.getStartedBtn} onPress={() => setStep(1)}>
                   <Text style={st.getStartedText}>Get Started</Text>
                   <ChevronRight color="#FFF" size={20} />
@@ -509,20 +527,20 @@ const SignupScreen = ({ navigation }) => {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 1) {
     return (
-      <View style={st.container}>
-        <StatusBar barStyle="dark-content" backgroundColor={PURPLE_BG} />
+      <View style={[st.container, { backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-          <View style={st.step1Top}>
+          <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
-              <ChevronLeft color={PURPLE} size={28} />
+              <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
             </TouchableOpacity>
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
-          <View style={st.bottomCard}>
+          <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
-              <Text style={st.cardTitle}>Hello,</Text>
-              <Text style={st.cardSub}>Enter your details to continue</Text>
+              <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
+              <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
                 <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
               </View>
@@ -536,7 +554,7 @@ const SignupScreen = ({ navigation }) => {
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={st.loginLink} onPress={() => navigation.navigate('Login')}>
-                <Text style={st.loginLinkText}>Already have an account? <Text style={st.loginLinkBold}>Login</Text></Text>
+                <Text style={[st.loginLinkText, { color: theme.textLight }]}>Already have an account? <Text style={[st.loginLinkBold, { color: theme.primary }]}>Login</Text></Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -550,13 +568,13 @@ const SignupScreen = ({ navigation }) => {
   // ════════════════════════════════════════════════════════════════════════════
   if (step === 7) {
     return (
-      <SafeAreaView style={[st.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }]}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
+      <SafeAreaView style={[st.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.bg }]}>
+        <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <View style={st.successCircle}>
           <Check color="#FFF" size={44} strokeWidth={3} />
         </View>
-        <Text style={st.successTitle}>Profile Complete!</Text>
-        <Text style={st.successSub}>Your account has been created successfully. You can now login.</Text>
+        <Text style={[st.successTitle, { color: theme.text }]}>Profile Complete!</Text>
+        <Text style={[st.successSub, { color: theme.textLight }]}>Your account has been created successfully. You can now login.</Text>
         <TouchableOpacity style={[st.nextBtn, { width: width - 80, marginTop: 40 }]} onPress={() => navigation.navigate('Login')}>
           <Text style={st.nextBtnText}>Go to Login</Text>
           <ChevronRight color="#FFF" size={20} />
@@ -569,17 +587,17 @@ const SignupScreen = ({ navigation }) => {
   // ── STEPS 3 / 4 / 5 / 6  —  purple top + white card bottom
   // ════════════════════════════════════════════════════════════════════════════
   return (
-    <SafeAreaView style={st.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={PURPLE_BG} />
+    <SafeAreaView style={[st.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
 
       {/* ── PURPLE TOP SECTION ── */}
-      <View style={st.dataTop}>
+      <View style={[st.dataTop, { backgroundColor: theme.bg }]}>
         <View style={st.dataTopBar}>
           <TouchableOpacity onPress={prevStep} style={st.dataBackBtn}>
-            <ChevronLeft color={PURPLE} size={28} />
+            <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
           </TouchableOpacity>
           <StepBar current={getStepNum()} total={4} />
-          <Text style={st.stepCount}>{getStepNum()} / 4</Text>
+          <Text style={[st.stepCount, { color: theme.isDark ? theme.text : PURPLE }]}>{getStepNum()} / 4</Text>
         </View>
 
         <View style={st.dataTopCenter}>
@@ -597,7 +615,7 @@ const SignupScreen = ({ navigation }) => {
                   <Camera color="#FFF" size={14} />
                 </View>
               </TouchableOpacity>
-              <Text style={st.avatarHint}>{photoUri ? 'Tap to change photo' : 'Tap to add profile photo'}</Text>
+              <Text style={[st.avatarHint, { color: theme.isDark ? theme.textLight : '#6D28D9' }]}>{photoUri ? 'Tap to change photo' : 'Tap to add profile photo'}</Text>
             </>
           )}
           {step === 4 && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
@@ -608,14 +626,14 @@ const SignupScreen = ({ navigation }) => {
 
       {/* ── WHITE CARD BOTTOM ── */}
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-        <View style={st.bottomCard}>
+        <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
             {/* ══ STEP 3 — PERSONAL DETAILS ══ */}
             {step === 3 && (
               <>
-                <Text style={st.cardTitle}>Personal Details</Text>
-                <Text style={st.cardSub}>Let's start with your basic information</Text>
+                <Text style={[st.cardTitle, { color: theme.text }]}>Personal Details</Text>
+                <Text style={[st.cardSub, { color: theme.textLight }]}>Let's start with your basic information</Text>
                 <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
                 <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
                 <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
@@ -631,8 +649,8 @@ const SignupScreen = ({ navigation }) => {
             {/* ══ STEP 4 — ADDRESS DETAILS ══ */}
             {step === 4 && (
               <>
-                <Text style={st.cardTitle}>Address Details</Text>
-                <Text style={st.cardSub}>This information will be used for official records</Text>
+                <Text style={[st.cardTitle, { color: theme.text }]}>Address Details</Text>
+                <Text style={[st.cardSub, { color: theme.textLight }]}>This information will be used for official records</Text>
                 <FloatInput label="House / Flat Name" value={address.house} onChangeText={t => setAddress({ ...address, house: t })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
                 <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t })} placeholder="Near City Mall" maxLength={60} />
                 <View style={st.inputRow}>
@@ -655,8 +673,8 @@ const SignupScreen = ({ navigation }) => {
             {/* ══ STEP 5 — KYC (Aadhaar Number only) ══ */}
             {step === 5 && (
               <>
-                <Text style={st.cardTitle}>KYC Details</Text>
-                <Text style={st.cardSub}>Enter your Aadhaar card number</Text>
+                <Text style={[st.cardTitle, { color: theme.text }]}>KYC Details</Text>
+                <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your Aadhaar card number</Text>
                 <FloatInput
                   label="Aadhaar Number *"
                   value={aadhaarNumber}
@@ -697,26 +715,26 @@ const SignupScreen = ({ navigation }) => {
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
-                <Text style={st.skipNote}>You can update your documents later from your profile.</Text>
+                <Text style={[st.skipNote, { color: theme.textMuted }]}>You can update your documents later from your profile.</Text>
               </>
             )}
 
             {/* ══ STEP 6 — OTHER DETAILS ══ */}
             {step === 6 && (
               <>
-                <Text style={st.cardTitle}>Other Details</Text>
-                <Text style={st.cardSub}>Enter your details to complete signup to Rizo</Text>
+                <Text style={[st.cardTitle, { color: theme.text }]}>Other Details</Text>
+                <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to complete signup to Rizo</Text>
 
                 {/* Guardian */}
-                <View style={st.toggleCard}>
-                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>Guardian Details</Text>
+                <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+                  <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Guardian Details</Text>
                   <FloatInput label="Guardian Name" value={guardianName} onChangeText={t => setGuardianName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Guardian Name" maxLength={40} />
                   <FloatInput label="Relation" value={guardianRelation} onChangeText={setGuardianRelation} placeholder="Father / Mother / Spouse" maxLength={30} />
                 </View>
 
                 {/* Bank */}
-                <View style={st.toggleCard}>
-                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>Bank Details</Text>
+                <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+                  <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Bank Details</Text>
                   <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Bank Name" maxLength={50} />
                   <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Branch" maxLength={50} />
                   <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => setIfscCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="SBIN0001234" maxLength={12} />
@@ -724,8 +742,8 @@ const SignupScreen = ({ navigation }) => {
                 </View>
 
                 {/* HR / Compliance */}
-                <View style={st.toggleCard}>
-                  <Text style={[st.toggleLabel, { marginBottom: 14 }]}>HR &amp; Compliance</Text>
+                <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+                  <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>HR &amp; Compliance</Text>
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
                       <FloatInput label="ESI No" value={esiNo} onChangeText={t => {
@@ -773,10 +791,10 @@ const SignupScreen = ({ navigation }) => {
                 </View>
 
                 {/* International Worker */}
-                <View style={st.toggleCard}>
+                <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <View style={st.toggleRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={st.toggleLabel}>International Worker</Text>
+                      <Text style={[st.toggleLabel, { color: theme.text }]}>International Worker</Text>
                     </View>
                     <Switch
                       value={intlWorker}
@@ -793,10 +811,10 @@ const SignupScreen = ({ navigation }) => {
                 </View>
 
                 {/* Physically Handicapped */}
-                <View style={st.toggleCard}>
+                <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <View style={st.toggleRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={st.toggleLabel}>Physically Handicapped</Text>
+                      <Text style={[st.toggleLabel, { color: theme.text }]}>Physically Handicapped</Text>
                     </View>
                     <Switch
                       value={physHandicap}
@@ -807,7 +825,7 @@ const SignupScreen = ({ navigation }) => {
                   </View>
                   {physHandicap && (
                     <View style={st.checkGroup}>
-                      <Text style={st.checkGroupLabel}>Types of Disability</Text>
+                      <Text style={[st.checkGroupLabel, { color: theme.textLight }]}>Types of Disability</Text>
                       <View style={st.checkGroupRow}>
                         <CheckRow label="Locomotive" value={locomotive} onToggle={() => setLocomotive(v => !v)} />
                         <CheckRow label="Hearing" value={hearing} onToggle={() => setHearing(v => !v)} />
@@ -832,30 +850,30 @@ const SignupScreen = ({ navigation }) => {
 
       {/* ── Photo Modal ── */}
       <Modal visible={showPicModal} transparent animationType="slide">
-        <View style={st.modalOverlay}>
-          <View style={st.modalSheet}>
-            <View style={st.modalHandle} />
-            <Text style={st.modalTitle}>Profile Photo</Text>
+        <View style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[st.modalSheet, { backgroundColor: theme.card }]}>
+            <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
+            <Text style={[st.modalTitle, { color: theme.textMuted }]}>Profile Photo</Text>
             <TouchableOpacity style={st.modalRow} onPress={() => pickImage(true)}>
-              <Image source={require('../../assets/signup/camera-01.png')} style={{ width: 22, height: 22, tintColor: '#111827' }} resizeMode="contain" />
-              <Text style={st.modalRowText}>Take a Photo</Text>
+              <Image source={require('../../assets/signup/camera-01.png')} style={{ width: 22, height: 22, tintColor: theme.text }} resizeMode="contain" />
+              <Text style={[st.modalRowText, { color: theme.text }]}>Take a Photo</Text>
             </TouchableOpacity>
-            <View style={st.modalDivider} />
+            <View style={[st.modalDivider, { backgroundColor: theme.divider }]} />
             <TouchableOpacity style={st.modalRow} onPress={() => pickImage(false)}>
-              <Image source={require('../../assets/signup/upload-04.png')} style={{ width: 22, height: 22, tintColor: '#111827' }} resizeMode="contain" />
-              <Text style={st.modalRowText}>Choose from Gallery</Text>
+              <Image source={require('../../assets/signup/upload-04.png')} style={{ width: 22, height: 22, tintColor: theme.text }} resizeMode="contain" />
+              <Text style={[st.modalRowText, { color: theme.text }]}>Choose from Gallery</Text>
             </TouchableOpacity>
             {photoUri && (
               <>
-                <View style={st.modalDivider} />
+                <View style={[st.modalDivider, { backgroundColor: theme.divider }]} />
                 <TouchableOpacity style={st.modalRow} onPress={() => { setPhotoUri(null); setPhotoBase64(''); setShowPicModal(false); }}>
                   <Trash2 size={22} color="#DC2626" />
                   <Text style={[st.modalRowText, { color: '#DC2626' }]}>Remove Photo</Text>
                 </TouchableOpacity>
               </>
             )}
-            <TouchableOpacity style={st.modalCloseBtn} onPress={() => setShowPicModal(false)}>
-              <Text style={st.modalCloseText}>Cancel</Text>
+            <TouchableOpacity style={[st.modalCloseBtn, { borderColor: theme.border }]} onPress={() => setShowPicModal(false)}>
+              <Text style={[st.modalCloseText, { color: theme.text }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -865,10 +883,10 @@ const SignupScreen = ({ navigation }) => {
       {showDobPicker && (
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="slide" onRequestClose={() => setShowDobPicker(false)}>
-            <TouchableOpacity style={st.modalOverlay} activeOpacity={1} onPress={() => setShowDobPicker(false)}>
-              <View style={[st.modalSheet, { paddingBottom: 32 }]}>
-                <View style={st.modalHandle} />
-                <Text style={st.modalTitle}>Date of Birth</Text>
+            <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDobPicker(false)}>
+              <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: 32 }]}>
+                <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
+                <Text style={[st.modalTitle, { color: theme.textMuted }]}>Date of Birth</Text>
                 <DateTimePicker
                   mode="date"
                   display="spinner"
@@ -885,8 +903,8 @@ const SignupScreen = ({ navigation }) => {
                   }}
                   style={{ width: '100%' }}
                 />
-                <TouchableOpacity style={st.modalCloseBtn} onPress={() => setShowDobPicker(false)}>
-                  <Text style={st.modalCloseText}>Done</Text>
+                <TouchableOpacity style={[st.modalCloseBtn, { borderColor: theme.border }]} onPress={() => setShowDobPicker(false)}>
+                  <Text style={[st.modalCloseText, { color: theme.text }]}>Done</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

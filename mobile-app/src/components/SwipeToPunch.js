@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Fingerprint, MapPin, ChevronsRight } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
+import { useTheme } from './ThemeContext';
 
 const SwipeToPunch = ({
   onSwipeComplete,
@@ -20,6 +21,7 @@ const SwipeToPunch = ({
   locationName = '',
   punchTime = null,
 }) => {
+  const theme = useTheme();
   const [swipeWidth, setSwipeWidth] = useState(0);
   const buttonWidth = trackHeight - padding * 2;
   const maxSlide = Math.max(0, swipeWidth - buttonWidth - padding * 2);
@@ -94,9 +96,13 @@ const SwipeToPunch = ({
     })
   ).current;
 
-  const trackColor = isPunchedIn ? '#F8F1F5' : '#E8F5E9';
+  const trackColor = theme.isDark
+    ? (isPunchedIn ? '#3F1F2F' : '#1F3A24')
+    : (isPunchedIn ? '#F8F1F5' : '#E8F5E9');
   const buttonColor = isPunchedIn ? '#E91E63' : '#39B54A';
-  const textColor = isPunchedIn ? '#8E7D8A' : '#39B54A';
+  const textColor = theme.isDark
+    ? (isPunchedIn ? '#F8BBD0' : '#A5D6A7')
+    : (isPunchedIn ? '#8E7D8A' : '#39B54A');
 
   let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO IN';
   if (loading) {

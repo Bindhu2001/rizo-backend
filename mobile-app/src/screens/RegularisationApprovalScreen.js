@@ -7,6 +7,7 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronDown, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -19,6 +20,7 @@ const HIST_FILTERS = {
 const HIST_FILTER_KEYS = ['Approved', 'Rejected', 'CancellationOfApproved'];
 
 const RegularisationApprovalScreen = ({ navigation, route }) => {
+  const theme = useTheme();
   const user = route?.params?.user;
   const [loading, setLoading] = useState(true);
   const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
@@ -174,11 +176,11 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   }
 
   const renderItem = ({ item }) => (
-    <View style={s.card}>
+    <View style={[s.card, { backgroundColor: theme.card }]}>
       <View style={s.cardHeader}>
         <View style={s.empInfo}>
-          <Text style={s.empName}>{item.employee_name}</Text>
-          <Text style={s.empId}>{item.empid || item.employee_id}</Text>
+          <Text style={[s.empName, { color: theme.text }]}>{item.employee_name}</Text>
+          <Text style={[s.empId, { color: theme.textLight }]}>{item.empid || item.employee_id}</Text>
         </View>
         <View style={[s.typeBadge, { backgroundColor: (item.direction || item.type) === 'Late In' ? '#FFF3E0' : '#E3F2FD' }]}>
           <Text style={[s.typeText, { color: (item.direction || item.type) === 'Late In' ? '#E65100' : '#1565C0' }]}>{item.direction || item.type}</Text>
@@ -187,21 +189,21 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
       <View style={s.detailsRow}>
         <View style={s.detailItem}>
-          <CalendarIcon size={14} color="#6B7280" />
-          <Text style={s.detailText}>{item.att_date || item.punch_date}</Text>
+          <CalendarIcon size={14} color={theme.textLight} />
+          <Text style={[s.detailText, { color: theme.textLight }]}>{item.att_date || item.punch_date}</Text>
         </View>
         <View style={s.detailItem}>
-          <Clock size={14} color="#6B7280" />
-          <Text style={s.detailText}>
+          <Clock size={14} color={theme.textLight} />
+          <Text style={[s.detailText, { color: theme.textLight }]}>
             {item.LOGTIME || item.actual_time || '--:--'}
             {item.expected_time ? ` → ${item.expected_time}` : ''}
           </Text>
         </View>
       </View>
 
-      <View style={s.reasonBox}>
-        <Info size={14} color="#9CA3AF" />
-        <Text style={s.reasonText}>{item.remarks || item.reason || 'No reason provided'}</Text>
+      <View style={[s.reasonBox, { backgroundColor: theme.cardSoft }]}>
+        <Info size={14} color={theme.textMuted} />
+        <Text style={[s.reasonText, { color: theme.textLight }]}>{item.remarks || item.reason || 'No reason provided'}</Text>
       </View>
 
       <View style={s.actions}>
@@ -225,17 +227,17 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      <View style={s.header}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
+      <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={COLORS.text} size={28} />
+          <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Reg. Approvals</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Reg. Approvals</Text>
         <View style={{ width: 44 }} />
       </View>
 
-      <View style={s.monthBar}>
+      <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
            <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
            <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
@@ -243,10 +245,10 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       </View>
 
       {/* Tab Bar */}
-      <View style={s.tabBar}>
+      <View style={[s.tabBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
           <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
-            <Text style={[s.tabText, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -260,8 +262,8 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
           ListEmptyComponent={
             !loading && (
               <View style={s.empty}>
-                <ClipboardList color="#D1D5DB" size={60} />
-                <Text style={s.emptyText}>No pending requests</Text>
+                <ClipboardList color={theme.textMuted} size={60} />
+                <Text style={[s.emptyText, { color: theme.textMuted }]}>No pending requests</Text>
               </View>
             )
           }
@@ -271,10 +273,10 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       ) : (
         <View style={{ flex: 1 }}>
           {/* Filter dropdown */}
-          <TouchableOpacity style={s.histFilterDropdown} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
+          <TouchableOpacity style={[s.histFilterDropdown, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowHistFilterPicker(true)} activeOpacity={0.8}>
             <View style={[s.histFilterDot, { backgroundColor: histMeta.color }]} />
-            <Text style={s.histFilterText}>{histMeta.label}</Text>
-            <ChevronDown size={18} color="#6B7280" />
+            <Text style={[s.histFilterText, { color: theme.text }]}>{histMeta.label}</Text>
+            <ChevronDown size={18} color={theme.textLight} />
           </TouchableOpacity>
 
           {histLoading ? (
@@ -288,8 +290,8 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
               refreshing={histLoading}
               ListEmptyComponent={
                 <View style={s.empty}>
-                  <ClipboardList color="#D1D5DB" size={60} />
-                  <Text style={s.emptyText}>No records found</Text>
+                  <ClipboardList color={theme.textMuted} size={60} />
+                  <Text style={[s.emptyText, { color: theme.textMuted }]}>No records found</Text>
                 </View>
               }
               renderItem={({ item }) => {
@@ -297,28 +299,28 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
                 const badgeBg   = histMeta.bg;
                 const badgeText = histMeta.color;
                 return (
-                  <View style={s.histCard}>
+                  <View style={[s.histCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={[s.histSide, { backgroundColor: sideColor }]} />
                     <View style={s.histBody}>
                       <View style={s.histHeader}>
-                        <Text style={s.histEmpName}>{(item.employee_name || '').trim()}</Text>
+                        <Text style={[s.histEmpName, { color: theme.text }]}>{(item.employee_name || '').trim()}</Text>
                         <View style={[s.histBadge, { backgroundColor: badgeBg }]}>
                           <Text style={[s.histBadgeText, { color: badgeText }]}>{item.direction || item.type || ''}</Text>
                         </View>
                       </View>
                       <View style={s.histDetail}>
-                        <CalendarIcon size={13} color="#6B7280" />
-                        <Text style={s.histDetailText}>{item.att_date || item.punch_date || ''}</Text>
+                        <CalendarIcon size={13} color={theme.textLight} />
+                        <Text style={[s.histDetailText, { color: theme.textLight }]}>{item.att_date || item.punch_date || ''}</Text>
                         {(item.LOGTIME || item.actual_time) ? (
                           <>
-                            <Clock size={13} color="#6B7280" />
-                            <Text style={s.histDetailText}>{item.LOGTIME || item.actual_time}</Text>
+                            <Clock size={13} color={theme.textLight} />
+                            <Text style={[s.histDetailText, { color: theme.textLight }]}>{item.LOGTIME || item.actual_time}</Text>
                           </>
                         ) : null}
                       </View>
                       {(item.remarks || item.reason) ? (
-                        <View style={s.histRemarkBox}>
-                          <Text style={s.histRemarkText} numberOfLines={2}>{item.remarks || item.reason}</Text>
+                        <View style={[s.histRemarkBox, { backgroundColor: theme.cardSoft }]}>
+                          <Text style={[s.histRemarkText, { color: theme.textLight }]} numberOfLines={2}>{item.remarks || item.reason}</Text>
                         </View>
                       ) : null}
                       {histFilter === 'Approved' && (
@@ -343,15 +345,15 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       )}
 
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
-          <View style={s.modalContent}>
-            <Text style={s.modalTitle}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
-            <Text style={s.modalSub}>Enter remarks for {actionModal.item?.employee_name}</Text>
-            
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[s.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[s.modalTitle, { color: theme.text }]}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
+            <Text style={[s.modalSub, { color: theme.textLight }]}>Enter remarks for {actionModal.item?.employee_name}</Text>
+
             <TextInput
-              style={s.remarksInput}
+              style={[s.remarksInput, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]}
               placeholder="Enter remarks here..."
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={theme.textMuted}
               multiline
               numberOfLines={4}
               value={remarks}
@@ -360,15 +362,15 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
             />
 
             <View style={s.modalActions}>
-              <TouchableOpacity 
-                style={s.modalCancel} 
+              <TouchableOpacity
+                style={[s.modalCancel, { backgroundColor: theme.cardSoft }]}
                 onPress={() => { setActionModal({ visible: false, item: null, type: '' }); setRemarks(''); }}
               >
-                <Text style={s.modalCancelText}>Cancel</Text>
+                <Text style={[s.modalCancelText, { color: theme.textLight }]}>Cancel</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[s.modalConfirm, actionModal.type === 'REJECT' && { backgroundColor: '#EF4444' }]} 
+
+              <TouchableOpacity
+                style={[s.modalConfirm, actionModal.type === 'REJECT' && { backgroundColor: '#EF4444' }]}
                 onPress={handleAction}
                 disabled={processing}
               >
@@ -380,18 +382,18 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       </Modal>
 
       <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowMonthPicker(false)}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.sheetTitle}>Select Month</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
+          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+            <View style={[s.handle, { backgroundColor: theme.border }]} />
+            <Text style={[s.sheetTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView>
               {pastMonths.map((m) => (
-                <TouchableOpacity 
-                  key={m.value} 
-                  style={s.sheetItem} 
+                <TouchableOpacity
+                  key={m.value}
+                  style={[s.sheetItem, { borderBottomColor: theme.divider }]}
                   onPress={() => { setCurrentMonthStr(m.value); setShowMonthPicker(false); }}
                 >
-                  <Text style={[s.sheetItemText, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
+                  <Text style={[s.sheetItemText, { color: theme.textLight }, currentMonthStr === m.value && s.sheetItemActive]}>{m.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -399,21 +401,21 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
         </Pressable>
       </Modal>
       <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
-        <Pressable style={s.modalOverlay} onPress={() => setShowHistFilterPicker(false)}>
-          <View style={s.sheet}>
-            <View style={s.handle} />
-            <Text style={s.sheetTitle}>Filter History</Text>
+        <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowHistFilterPicker(false)}>
+          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+            <View style={[s.handle, { backgroundColor: theme.border }]} />
+            <Text style={[s.sheetTitle, { color: theme.text }]}>Filter History</Text>
             {HIST_FILTER_KEYS.map((key) => {
               const meta = HIST_FILTERS[key];
               return (
                 <TouchableOpacity
                   key={key}
-                  style={s.sheetItem}
+                  style={[s.sheetItem, { borderBottomColor: theme.divider }]}
                   onPress={() => { setHistFilter(key); setShowHistFilterPicker(false); }}
                 >
                   <View style={s.sheetItemRow}>
                     <View style={[s.histFilterDot, { backgroundColor: meta.color }]} />
-                    <Text style={[s.sheetItemText, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
+                    <Text style={[s.sheetItemText, { color: theme.textLight }, histFilter === key && s.sheetItemActive]}>{meta.label}</Text>
                   </View>
                 </TouchableOpacity>
               );
