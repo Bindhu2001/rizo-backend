@@ -765,9 +765,27 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     });
   }
 
+  const normalizeDate = (d) => {
+    if (!d) return null;
+    const s = String(d).trim();
+    // Already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    // DD-MM-YYYY or DD/MM/YYYY
+    const dmy = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+    if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+    // YYYY/MM/DD
+    const ymd = s.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+    if (ymd) return `${ymd[1]}-${ymd[2]}-${ymd[3]}`;
+    // Try JS Date as last resort
+    const parsed = new Date(s);
+    if (!isNaN(parsed)) return format(parsed, 'yyyy-MM-dd');
+    return s;
+  };
+
   const regMap = {};
   regLogs.forEach(r => {
-    const d = r.date || r.dates;
+    const raw = r.date || r.dates;
+    const d = normalizeDate(raw);
     if (!d) return;
     if (!regMap[d]) regMap[d] = [];
     regMap[d].push(r);

@@ -7,6 +7,7 @@ import { WifiOff, Home } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import { getLoggedUser } from '../services/LocalDB';
+import SyncService from '../services/SyncService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,6 +50,7 @@ const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
           }).start();
         } else if (!isActuallyOffline && status === 'offline') {
           setStatus('restored');
+          SyncService.syncAll().catch(() => {});
           setTimeout(() => {
             Animated.parallel([
               Animated.timing(slideAnim, {

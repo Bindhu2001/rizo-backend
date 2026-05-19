@@ -47,11 +47,11 @@ const HomeScreen = ({ navigation, route }) => {
   const userRef = useRef(route?.params?.user);
   useEffect(() => { userRef.current = user; }, [user]);
 
-  // Block Android back button on Home — there is nowhere to go back to
+  // Block Android back button only when HomeScreen is the focused screen
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => navigation.isFocused());
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -62,6 +62,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [offlineCount, setOfflineCount] = useState(0);
   const lastActionTime = useRef(0);
   const lastLocationFetch = useRef(0);
+  const lastConfigFetch = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
@@ -319,26 +320,32 @@ const HomeScreen = ({ navigation, route }) => {
     let data = null;
     let serverTimeMs = null;
 
-    // 1. Try live fetch — always call when online, save to LocalDB
-    try {
-      const res = await axios.post(
-        `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
-        null,
-        { timeout: 8000 },
-      );
-      const dateHeader = res.headers?.date || res.headers?.Date;
-      if (dateHeader) {
-        const parsed = Date.parse(dateHeader);
-        if (isFinite(parsed)) serverTimeMs = parsed;
+    // 1. Try live fetch — skip if config was fetched less than 10 minutes ago
+    const configAge = Date.now() - lastConfigFetch.current;
+    if (configAge > 600000) {
+      try {
+        const res = await axios.post(
+          `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
+          null,
+          { timeout: 6000 },
+        );
+        const dateHeader = res.headers?.date || res.headers?.Date;
+        if (dateHeader) {
+          const parsed = Date.parse(dateHeader);
+          if (isFinite(parsed)) serverTimeMs = parsed;
+        }
+        const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
+        if (ok && body?.data) {
+          data = body.data;
+          lastConfigFetch.current = Date.now();
+          try { await savePunchConfig(user.user_id, data); } catch (_) {}
+        }
+      } catch (e) {
+        console.log('[Punch] network fetch failed', e?.message);
       }
-      const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-      const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
-      if (ok && body?.data) {
-        data = body.data;
-        try { await savePunchConfig(user.user_id, data); } catch (_) {}
-      }
-    } catch (e) {
-      console.log('[Punch] network fetch failed', e?.message);
+    } else {
+      console.log('[Punch] using cached config (age ' + Math.round(configAge / 1000) + 's)');
     }
 
     // Clock drift check (server Date header vs device clock, allow 2 min jitter)
@@ -414,8 +421,8 @@ const HomeScreen = ({ navigation, route }) => {
     let loc = null;
     try {
       loc = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 12000)),
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 8000)),
       ]);
     } catch (_) {
       try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
@@ -475,26 +482,29 @@ const HomeScreen = ({ navigation, route }) => {
         setPunchMessage('Fetching your location...');
       }
 
+      // Use last-known location immediately for speed, then upgrade with fresh GPS
       try {
-        // 10s timeout — GPS needs warm-up time especially after being turned on
-        loc = await Promise.race([
+        const lastLoc = await Location.getLastKnownPositionAsync();
+        if (lastLoc?.coords) {
+          loc = lastLoc;
+          console.log(`[Punch] Last-known location: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+        }
+      } catch (_) {}
+
+      try {
+        // 5s timeout — use last-known as fallback above if this times out
+        const fresh = await Promise.race([
           Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]);
-        console.log(`[Punch] Location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
+        loc = fresh;
+        console.log(`[Punch] Fresh location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
         if (isOffline) setPunchMessage('Location found — saving punch...');
       } catch (_) {
-        // Try last-known position before giving up
-        try {
-          const lastLoc = await Location.getLastKnownPositionAsync();
-          if (lastLoc) {
-            loc = lastLoc;
-            console.log(`[Punch] Using last-known location: ${loc.coords.latitude}, ${loc.coords.longitude}`);
-            if (isOffline) setPunchMessage('Using last known location — saving punch...');
-          } else {
-            if (isOffline) setPunchMessage('Saving punch (location unavailable)...');
-          }
-        } catch (e) {
+        if (loc.coords.latitude !== 0) {
+          console.log(`[Punch] GPS timed out, using last-known location`);
+          if (isOffline) setPunchMessage('Using last known location — saving punch...');
+        } else {
           if (isOffline) setPunchMessage('Saving punch (location unavailable)...');
         }
       }

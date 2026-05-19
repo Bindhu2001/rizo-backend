@@ -80,6 +80,10 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
   const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
 
+  useEffect(() => {
+    if (visible) setCurrentMonth(selectedDate ? new Date(selectedDate) : new Date());
+  }, [visible]);
+
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const firstDayIndex = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
   const days = [];
@@ -333,7 +337,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 
     setSubmitting(true);
     try {
-      const affectedMonth = `${expenseDate.slice(0, 7)}-01`;
+      const affectedMonth = expenseDate;
       const formData = new FormData();
       formData.append('user_id', user.user_id);
       formData.append('expense_type', expenseType.id);
@@ -372,12 +376,20 @@ const ExpenseScreen = ({ navigation, route }) => {
     }
   };
 
+  const resolvedStatus = (item) => {
+    const s = (item.expense_status || '').trim().toLowerCase();
+    if ((s === 'authorised' || s === 'authorized') && item.authorized_by && item.approved_by && item.authorized_by === item.approved_by) {
+      return 'Approved';
+    }
+    return item.expense_status;
+  };
+
   const ExpenseCard = ({ item }) => {
-    const sc = statusColor(item.expense_status);
+    const sc = statusColor(resolvedStatus(item));
     return (
       <TouchableOpacity onPress={() => setDetailModal(item)} activeOpacity={0.8} style={[c.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={[c.sideBar, { backgroundColor: sc.side }]}>
-          <Text style={[c.sideText, { color: sc.text }]}>{(item.expense_status || 'Applied').toUpperCase()}</Text>
+          <Text style={[c.sideText, { color: sc.text }]}>{(resolvedStatus(item) || 'Applied').toUpperCase()}</Text>
         </View>
         <View style={c.body}>
           <View style={c.row}>
@@ -439,7 +451,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             {/* Amount */}
             <View style={s.inputBox}>
               <Text style={[s.label, { color: theme.textMuted }]}>Amount (₹) *</Text>
-              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={setAmount} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor={theme.textMuted} maxLength={20} />
+              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor={theme.textMuted} maxLength={20} />
             </View>
 
             {/* Date */}
@@ -533,8 +545,8 @@ const ExpenseScreen = ({ navigation, route }) => {
         <Modal visible={!!detailModal} transparent animationType="fade" onRequestClose={() => setDetailModal(null)} statusBarTranslucent>
           <TouchableOpacity style={[dm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setDetailModal(null)}>
             <View style={[dm.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[dm.sideBar, { backgroundColor: statusColor(detailModal.expense_status).side }]}>
-                <Text style={[dm.sideText, { color: statusColor(detailModal.expense_status).text }]}>{(detailModal.expense_status || 'Applied').toUpperCase()}</Text>
+              <View style={[dm.sideBar, { backgroundColor: statusColor(resolvedStatus(detailModal)).side }]}>
+                <Text style={[dm.sideText, { color: statusColor(resolvedStatus(detailModal)).text }]}>{(resolvedStatus(detailModal) || 'Applied').toUpperCase()}</Text>
               </View>
               <View style={dm.body}>
                 <Text style={[dm.title, { color: theme.text }]}>{detailModal.expense_type_name}</Text>

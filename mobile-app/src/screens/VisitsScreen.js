@@ -465,25 +465,27 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
-        <View style={[sm.sheet, { backgroundColor: theme.card }]}>
-          <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
-          <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+          <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+            <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
+            <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
-          <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
+            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+              <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+              <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
+              <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+              <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
 
-            <TouchableOpacity
-              style={[sm.saveBtn, processing && { opacity: 0.7 }]}
-              onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
-              disabled={processing}
-            >
-              {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
+              <TouchableOpacity
+                style={[sm.saveBtn, processing && { opacity: 0.7 }]}
+                onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
+                disabled={processing}
+              >
+                {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );

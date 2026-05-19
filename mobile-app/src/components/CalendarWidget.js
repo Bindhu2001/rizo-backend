@@ -80,23 +80,44 @@ const CalendarWidget = ({ userId }) => {
     const dayNumber = parseInt(format(day, 'd'), 10);
     const dayMonthName = format(day, 'MMMM');
     const dayMonthShort = format(day, 'MMM');
-    
+    const monthNum = parseInt(format(day, 'M'), 10);
+
     try {
       return events.filter(e => {
         if (!e || !e.date_month) return false;
-        
-        const dm = String(e.date_month);
+
+        const dm = String(e.date_month).trim();
+
         if (dm.includes('-')) {
-            const parts = dm.split('-');
-            if (parts.length === 2) {
-               const evMonth = parts[0];
-               const evDay = parseInt(parts[1], 10);
-               return (evMonth === dayMonthName || evMonth === dayMonthShort) && evDay === dayNumber;
-            } else if (parts.length === 3) {
-               return isSameDay(new Date(dm), day);
+          const parts = dm.split('-');
+          if (parts.length === 2) {
+            const p0 = parts[0].trim();
+            const p1 = parts[1].trim();
+            // "Month-Day" e.g. "May-15"
+            if (isNaN(parseInt(p0, 10))) {
+              return (p0 === dayMonthName || p0 === dayMonthShort) && parseInt(p1, 10) === dayNumber;
             }
+            // "Day-Month" e.g. "15-May"
+            if (isNaN(parseInt(p1, 10))) {
+              return (p1 === dayMonthName || p1 === dayMonthShort) && parseInt(p0, 10) === dayNumber;
+            }
+            // "MM-DD" e.g. "05-15"
+            return parseInt(p0, 10) === monthNum && parseInt(p1, 10) === dayNumber;
+          } else if (parts.length === 3) {
+            try { return isSameDay(new Date(dm), day); } catch (_) { return false; }
+          }
         }
-        
+
+        if (dm.includes('/')) {
+          const parts = dm.split('/');
+          if (parts.length === 3) {
+            // YYYY/MM/DD or DD/MM/YYYY
+            const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), c = parseInt(parts[2], 10);
+            if (a > 31) return b === monthNum && c === dayNumber; // YYYY/MM/DD
+            return c > 31 ? a === dayNumber && b === monthNum : false; // DD/MM/YYYY
+          }
+        }
+
         return parseInt(dm, 10) === dayNumber;
       });
     } catch (err) {
