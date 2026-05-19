@@ -23,7 +23,7 @@ import CalendarWidget from '../components/CalendarWidget';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
   savePunchLocal, getTodayLocalHistory, getLastPunchType,
-  getPendingCount, initDB
+  getPendingCount, initDB, savePunchConfig, getPunchConfig
 } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
@@ -66,6 +66,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
+  const [msgIndex, setMsgIndex] = useState(0);
+  const msgFade = useRef(new Animated.Value(1)).current;
   const [punchInTime, setPunchInTime] = useState(null);
   const [punchInAddress, setPunchInAddress] = useState('');
   const [roles, setRoles] = useState({
@@ -296,7 +298,7 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   // ── Punch ─────────────────────────────────────────────────────────────────
-  // Distance between two GPS points in metres (Haversine).
+
   const haversineMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371000;
     const toRad = (x) => (x * Math.PI) / 180;
@@ -307,29 +309,23 @@ const HomeScreen = ({ navigation, route }) => {
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
-  // Returns { allowed: bool, message?: string } based on the employee's
-  // configured punchtype:
-  //   M → mobile, allowed from anywhere
-  //   O → office, only allowed within 100 m of the office lat/lng
-  //   S / W → punching not permitted from this app
-  //
-  // Works online AND offline: the punch config is cached in AsyncStorage
-  // after the first successful online fetch, and GPS works without internet,
-  // so the location gate stays accurate when offline too.
+  // Fetch punch config from server (store in LocalDB for offline use).
+  // punchtype:
+  //   M → mobile, anywhere
+  //   O → single office, within 100 m of data.latitude/longitude
+  //   A → all branches, within 100 m of ANY branch location
+  //   S / W → not permitted
   const checkPunchAllowed = async () => {
-    const cacheKey = `PUNCH_CONFIG_${user.user_id}`;
     let data = null;
     let serverTimeMs = null;
 
-    // 1. Try fresh from the server (POST with user_id as a query parameter)
+    // 1. Try live fetch — always call when online, save to LocalDB
     try {
       const res = await axios.post(
         `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
         null,
         { timeout: 8000 },
       );
-      const raw = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
-      console.log('[Punch] config response', raw);
       const dateHeader = res.headers?.date || res.headers?.Date;
       if (dateHeader) {
         const parsed = Date.parse(dateHeader);
@@ -339,62 +335,78 @@ const HomeScreen = ({ navigation, route }) => {
       const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
       if (ok && body?.data) {
         data = body.data;
-        try { await AsyncStorage.setItem(cacheKey, JSON.stringify(data)); } catch (_) {}
+        try { await savePunchConfig(user.user_id, data); } catch (_) {}
       }
     } catch (e) {
       console.log('[Punch] network fetch failed', e?.message);
-      debug = `request error: ${e?.message || 'unknown'}`;
     }
 
-    // Block manual time tampering: compare device clock to server clock
-    // (server Date header is authoritative). Allow up to 2 minutes of drift
-    // for normal network jitter / unsynced phones.
+    // Clock drift check (server Date header vs device clock, allow 2 min jitter)
     if (serverTimeMs !== null) {
       const driftSec = Math.round(Math.abs(Date.now() - serverTimeMs) / 1000);
-      console.log(`[Punch] clock drift ${driftSec}s vs server`);
+      console.log(`[Punch] clock drift ${driftSec}s`);
       if (driftSec > 120) {
-        return {
-          allowed: false,
-          message: 'Please enable "Automatic date & time" in your phone Settings and try again.',
-        };
+        return { allowed: false, message: 'Please enable "Automatic date & time" in your phone Settings and try again.' };
       }
     }
 
-    // 2. Fall back to cached config (offline path)
+    // 2. Offline fallback — read from LocalDB
     if (!data) {
       try {
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-          data = JSON.parse(cached);
-          console.log('[Punch] using cached config');
-        }
+        const cached = await getPunchConfig(user.user_id);
+        if (cached) { data = cached; console.log('[Punch] using LocalDB cached config'); }
       } catch (_) {}
     }
 
-    // 3. Still no config → allow (offline fallback: device has no cache yet)
-    if (!data) {
-      return { allowed: true };
-    }
+    // 3. No config at all → allow (first install, never online)
+    if (!data) return { allowed: true };
 
     const t = String(data.punchtype || '').toUpperCase();
 
     if (t === 'S' || t === 'W') {
       return { allowed: false, message: 'Punching is not allowed for your account. Please contact HR.' };
     }
-    if (t === 'M') return { allowed: true };  // Mobile — anywhere
-    if (t !== 'O') return { allowed: true };  // Unknown — allow
+    if (t === 'M') return { allowed: true };
+    if (t !== 'O' && t !== 'A') return { allowed: true }; // unknown type → allow
 
-    // Office punch — GPS check (works offline)
-    const officeLat = parseFloat(data.latitude);
-    const officeLng = parseFloat(data.longitude);
-    if (!isFinite(officeLat) || !isFinite(officeLng)
-      || Math.abs(officeLat) > 90 || Math.abs(officeLng) > 180) {
-      return {
-        allowed: false,
-        message: 'Office location is not configured correctly. Please contact HR.',
-      };
+    // Build list of office locations to validate against
+    let offices = [];
+
+    if (t === 'O') {
+      const lat = parseFloat(data.latitude);
+      const lng = parseFloat(data.longitude);
+      if (isFinite(lat) && isFinite(lng) && Math.abs(lat) > 0.0001) {
+        offices.push({ lat, lng });
+      }
+    } else {
+      // A type — multiple branches; response may have a 'branches' array,
+      // parallel lat/lng arrays, or a single lat/lng entry
+      if (Array.isArray(data.branches)) {
+        data.branches.forEach(b => {
+          const lat = parseFloat(b.latitude);
+          const lng = parseFloat(b.longitude);
+          if (isFinite(lat) && isFinite(lng) && Math.abs(lat) > 0.0001) offices.push({ lat, lng });
+        });
+      } else if (Array.isArray(data.latitude)) {
+        data.latitude.forEach((latStr, i) => {
+          const lat = parseFloat(latStr);
+          const lng = parseFloat(Array.isArray(data.longitude) ? data.longitude[i] : data.longitude);
+          if (isFinite(lat) && isFinite(lng) && Math.abs(lat) > 0.0001) offices.push({ lat, lng });
+        });
+      } else {
+        const lat = parseFloat(data.latitude);
+        const lng = parseFloat(data.longitude);
+        if (isFinite(lat) && isFinite(lng) && Math.abs(lat) > 0.0001) offices.push({ lat, lng });
+      }
+      // A type with no valid branch coords → allow (config incomplete)
+      if (offices.length === 0) return { allowed: true };
     }
 
+    if (offices.length === 0) {
+      return { allowed: false, message: 'Office location is not configured correctly. Please contact HR.' };
+    }
+
+    // GPS check
     const { status: perm } = await Location.requestForegroundPermissionsAsync();
     if (perm !== 'granted') {
       return { allowed: false, message: 'Location permission is required to punch from the office. Please enable it in settings.' };
@@ -412,12 +424,14 @@ const HomeScreen = ({ navigation, route }) => {
       return { allowed: false, message: "You're not in an accurate location. Please enable GPS and try again." };
     }
 
-    const dist = haversineMeters(loc.coords.latitude, loc.coords.longitude, officeLat, officeLng);
-    console.log(`[Punch] distance ${Math.round(dist)} m from office (${officeLat},${officeLng})`);
-    if (dist > 100) {
+    const { latitude: uLat, longitude: uLng } = loc.coords;
+    const minDist = Math.min(...offices.map(o => haversineMeters(uLat, uLng, o.lat, o.lng)));
+    console.log(`[Punch] nearest office ${Math.round(minDist)} m (${offices.length} location(s) checked)`);
+
+    if (minDist > 100) {
       return {
         allowed: false,
-        message: `You're not in an accurate location. You must be within 100 m of the office (currently ~${Math.round(dist)} m away).`,
+        message: `You're not in an accurate location. You must be within 100 m of the office (currently ~${Math.round(minDist)} m away).`,
       };
     }
     return { allowed: true };
@@ -426,7 +440,7 @@ const HomeScreen = ({ navigation, route }) => {
   const handleSwipeComplete = async () => {
     const verdict = await checkPunchAllowed();
     if (!verdict.allowed) {
-      setCancelTrigger((t) => t + 1); // reset the swipe knob
+      setCancelTrigger((t) => t + 1);
       showAlert('warning', 'Punch Not Allowed', verdict.message || "You're not in an accurate location.");
       return;
     }
@@ -600,6 +614,18 @@ const HomeScreen = ({ navigation, route }) => {
     return msgs;
   };
 
+  useEffect(() => {
+    const msgs = getSystemMessages();
+    if (msgs.length <= 1) return;
+    const timer = setInterval(() => {
+      Animated.timing(msgFade, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+        setMsgIndex(prev => (prev + 1) % msgs.length);
+        Animated.timing(msgFade, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      });
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isPunchedIn, punchInTime]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const offlineBarVisible = useContext(OfflineBarContext);
 
   if (loading) {
@@ -677,6 +703,22 @@ const HomeScreen = ({ navigation, route }) => {
             </View>
           )}
         </View>
+
+        {/* System message ticker */}
+        {(() => {
+          const msgs = getSystemMessages();
+          if (!msgs.length) return null;
+          const msg = msgs[msgIndex % msgs.length];
+          return (
+            <Animated.View style={[styles.sysMsgBar, { opacity: msgFade, borderLeftColor: msg.color }]}>
+              <Text style={styles.sysMsgIcon}>{msg.icon}</Text>
+              <Text style={[styles.sysMsgText, { color: msg.color }]} numberOfLines={2}>{msg.text}</Text>
+              {msgs.length > 1 && (
+                <Text style={styles.sysMsgDots}>{msgs.map((_, i) => i === msgIndex % msgs.length ? '●' : '○').join(' ')}</Text>
+              )}
+            </Animated.View>
+          );
+        })()}
 
         {/* 2×2 GRID */}
         <View style={styles.grid}>
@@ -865,6 +907,16 @@ const styles = StyleSheet.create({
     color: COLORS.primaryDeep,
     flexShrink: 1,
   },
+
+  sysMsgBar: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF',
+    borderRadius: moderateScale(14), paddingVertical: moderateScale(10),
+    paddingHorizontal: moderateScale(14), marginBottom: moderateScale(16),
+    borderLeftWidth: 4, borderLeftColor: '#4F46E5',
+  },
+  sysMsgIcon: { fontSize: moderateScale(16), marginRight: moderateScale(8) },
+  sysMsgText: { flex: 1, fontSize: moderateScale(12), fontWeight: '700', lineHeight: 18 },
+  sysMsgDots: { fontSize: moderateScale(8), color: '#9CA3AF', marginLeft: moderateScale(8) },
 
   punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: moderateScale(68), borderRadius: moderateScale(34), alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), ...SHADOWS.light },
   punchedInLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, paddingLeft: moderateScale(12) },

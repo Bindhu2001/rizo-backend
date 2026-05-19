@@ -123,6 +123,14 @@ export const initDB = async () => {
       );
     `);
 
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS punch_config (
+        user_id    TEXT PRIMARY KEY,
+        config     TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
     // ─── Migrations ───
     // Column additions for existing tables (won't affect new installs)
     const migrations = [
@@ -357,5 +365,22 @@ export const markNotificationsAsReadLocal = async (userId, id = null) => {
   } else {
     await database.runAsync(`UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`, [userId]);
   }
+};
+
+// ─── Punch Config ─────────────────────────────────────────────────────────────
+
+export const savePunchConfig = async (userId, configData) => {
+  const database = await initDB();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO punch_config (user_id, config, updated_at) VALUES (?, ?, ?)`,
+    [userId, JSON.stringify(configData), new Date().toISOString()]
+  );
+};
+
+export const getPunchConfig = async (userId) => {
+  const database = await initDB();
+  const row = await database.getFirstAsync(`SELECT config FROM punch_config WHERE user_id = ?`, [userId]);
+  if (!row) return null;
+  try { return JSON.parse(row.config); } catch (_) { return null; }
 };
 
