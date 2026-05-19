@@ -121,6 +121,27 @@ const initializeDatabase = async () => {
       )
     `);
 
+    // 6. Push tokens — stores Expo push token per user for server-side notifications
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        user_id VARCHAR(50) PRIMARY KEY,
+        push_token TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    // 7. Notified refs — dedup guard so the same approval never fires twice
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS notified_refs (
+        ref_key VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(50) NOT NULL,
+        notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Clean up notification history older than 90 days to keep the table small
+    await pool.query(`DELETE FROM notified_refs WHERE notified_at < NOW() - INTERVAL 90 DAY`);
+
     console.log('✅ Database tables verified/created');
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
@@ -293,6 +314,21 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// ─── Register Push Token ────────────────────────────────────────────────────
+app.post('/api/register-push-token', async (req, res) => {
+  try {
+    const { user_id, push_token } = req.body || {};
+    if (!user_id || !push_token) return res.status(400).json({ success: 0, error: 'user_id and push_token required' });
+    await pool.query(
+      'INSERT INTO push_tokens (user_id, push_token) VALUES (?, ?) ON DUPLICATE KEY UPDATE push_token = ?, updated_at = NOW()',
+      [user_id, push_token, push_token]
+    );
+    return res.json({ success: 1 });
+  } catch (error) {
+    return res.status(500).json({ success: 0, error: error.message });
+  }
+});
+
 // ─── Push Notifications ─────────────────────────────────────────────────────
 // Forwards a notification to Expo's push service. Call this from any approver
 // flow (leave / expense / regularisation, approve / reject / cancel) after the
@@ -341,9 +377,143 @@ app.post('/api/send-push', async (req, res) => {
   }
 });
 
+// ─── Server-side push notification poller ───────────────────────────────────
+// Runs every 60 s. For every user who has a push token registered, it fetches
+// their expense / regularisation / leave status from the production API and
+// fires an Expo push notification the moment a status becomes APPROVED /
+// REJECTED / AUTHORISED. Works even when the mobile app is fully closed.
+
+const PROD_API = 'https://v1.mypayrollmaster.online/api/v1/newapp';
+let pollerRunning = false;
+
+const sendExpoPush = async (pushToken, title, body, data = {}) => {
+  if (!/^ExponentPushToken\[.+\]$/.test(pushToken)) return;
+  try {
+    await axios.post('https://exp.host/--/api/v2/push/send', {
+      to: pushToken, title, body, data, sound: 'default', channelId: 'default', priority: 'high',
+    }, { headers: { 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip, deflate' }, timeout: 10000 });
+  } catch (e) {
+    console.error('[notify] Expo push send error:', e.message);
+  }
+};
+
+const alreadyNotified = async (refKey) => {
+  const [rows] = await pool.query('SELECT 1 FROM notified_refs WHERE ref_key = ?', [refKey]);
+  return rows.length > 0;
+};
+
+const markNotified = async (userId, refKey) => {
+  try {
+    await pool.query('INSERT IGNORE INTO notified_refs (ref_key, user_id) VALUES (?, ?)', [refKey, userId]);
+  } catch (_) {}
+};
+
+const checkUserNotifications = async (userId, pushToken) => {
+  const now = new Date();
+  const pad = (n) => n.toString().padStart(2, '0');
+  const currentMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+  const prevDate = new Date(now); prevDate.setMonth(prevDate.getMonth() - 1);
+  const prevMonth = `${prevDate.getFullYear()}-${pad(prevDate.getMonth() + 1)}`;
+
+  // 1. Expenses
+  try {
+    const res = await axios.get(`${PROD_API}/get_submitted_expenses?user_id=${userId}`, { timeout: 8000 });
+    if (res.data?.success === 1 && Array.isArray(res.data.data)) {
+      for (const exp of res.data.data) {
+        const st = (exp.expense_status || '').toUpperCase();
+        const isAuth = st === 'AUTHORISED' || st === 'AUTHORIZED';
+        const isSelfAuth = isAuth && exp.authorized_by && exp.approved_by && exp.authorized_by === exp.approved_by;
+        const effective = isSelfAuth ? 'APPROVED' : st;
+        if (!['APPROVED', 'REJECTED', 'CANCELLED', 'CANCELED', 'AUTHORISED', 'AUTHORIZED'].includes(st)) continue;
+        const refKey = `exp_${exp.emp_expenses_pkey}_${effective}`;
+        if (await alreadyNotified(refKey)) continue;
+        const date = exp.expense_date || 'your request';
+        let title, body;
+        if (effective === 'APPROVED')    { title = 'Expense Approved ✅';   body = `Your expense for ${date} was approved.`; }
+        else if (st === 'REJECTED')      { title = 'Expense Rejected ❌';   body = `Your expense for ${date} was rejected.`; }
+        else if (isAuth)                 { title = 'Expense Authorised 🛡️'; body = `Your expense for ${date} was authorised.`; }
+        else                             { title = 'Expense Cancelled ⚠️';  body = `Your expense for ${date} was cancelled.`; }
+        await sendExpoPush(pushToken, title, body, { type: 'EXPENSE' });
+        await markNotified(userId, refKey);
+      }
+    }
+  } catch (e) { console.log(`[notify] expense error for ${userId}:`, e.message); }
+
+  // 2. Regularisation (current + prev month)
+  for (const month of [currentMonth, prevMonth]) {
+    try {
+      const res = await axios.post(`${PROD_API}/regularisation_logs`, { user_id: userId, month }, { timeout: 8000 });
+      if (res.data?.success === 1 && Array.isArray(res.data.data)) {
+        for (const reg of res.data.data) {
+          const st = (reg.status || '').toUpperCase();
+          if (!['APPROVED', 'REJECTED', 'CANCELLED', 'CANCELED'].includes(st)) continue;
+          const regId = reg.reg_id || reg.id || reg.regularisation_id;
+          const refKey = `reg_${regId}_${st}`;
+          if (await alreadyNotified(refKey)) continue;
+          const date = reg.punch_date || reg.reg_date || reg.date || 'your request';
+          let title, body;
+          if (st === 'APPROVED')  { title = 'Regularization Approved ✅'; body = `Your regularization for ${date} was approved.`; }
+          else if (st === 'REJECTED') { title = 'Regularization Rejected ❌'; body = `Your regularization for ${date} was rejected.`; }
+          else                    { title = 'Regularization Cancelled ⚠️'; body = `Your regularization for ${date} was cancelled.`; }
+          await sendExpoPush(pushToken, title, body, { type: 'REGULARIZATION' });
+          await markNotified(userId, refKey);
+        }
+      }
+    } catch (e) { console.log(`[notify] reg error for ${userId}/${month}:`, e.message); }
+  }
+
+  // 3. Leaves
+  try {
+    const res = await axios.post(`${PROD_API}/leave_history`, { user_id: userId, filter: 'all' }, { timeout: 8000 });
+    if (res.data?.success === 1 && Array.isArray(res.data.data)) {
+      for (const leave of res.data.data) {
+        const st = (leave.leave_status || leave.status || '').toUpperCase();
+        const isAuth = st === 'AUTHORISED' || st === 'AUTHORIZED';
+        const isCancel = st === 'CANCELLED' || st === 'CANCELED';
+        if (!['APPROVED', 'REJECTED', 'AUTHORISED', 'AUTHORIZED', 'CANCELLED', 'CANCELED'].includes(st)) continue;
+        const leaveId = leave.leave_id || leave.id;
+        const normalized = isAuth ? 'AUTHORISED' : isCancel ? 'CANCELLED' : st;
+        const refKey = `leave_${leaveId}_${normalized}`;
+        if (await alreadyNotified(refKey)) continue;
+        const date = leave.from_date || 'your request';
+        const name = leave.leave_name || 'request';
+        let title, body;
+        if (st === 'APPROVED')  { title = 'Leave Approved ✅';   body = `Your leave (${name}) for ${date} was approved.`; }
+        else if (st === 'REJECTED') { title = 'Leave Rejected ❌';   body = `Your leave (${name}) for ${date} was rejected.`; }
+        else if (isAuth)        { title = 'Leave Authorised 🛡️'; body = `Your leave (${name}) for ${date} was authorised.`; }
+        else                    { title = 'Leave Cancelled ⚠️';  body = `Your leave (${name}) for ${date} was cancelled.`; }
+        await sendExpoPush(pushToken, title, body, { type: 'LEAVE' });
+        await markNotified(userId, leaveId ? refKey : `leave_noId_${userId}_${normalized}_${date}`);
+      }
+    }
+  } catch (e) { console.log(`[notify] leave error for ${userId}:`, e.message); }
+};
+
+const startNotificationPoller = () => {
+  setInterval(async () => {
+    if (pollerRunning) return;
+    pollerRunning = true;
+    try {
+      const [tokens] = await pool.query('SELECT user_id, push_token FROM push_tokens');
+      if (tokens.length === 0) { pollerRunning = false; return; }
+      console.log(`[notify] Polling ${tokens.length} user(s)...`);
+      for (const { user_id, push_token } of tokens) {
+        await checkUserNotifications(user_id, push_token).catch(e =>
+          console.error(`[notify] user ${user_id} error:`, e.message)
+        );
+      }
+    } catch (e) {
+      console.error('[notify] poller error:', e.message);
+    } finally {
+      pollerRunning = false;
+    }
+  }, 60000); // every 60 seconds
+};
+
 const PORT = process.env.PORT || 8080;
 initializeDatabase().then(() => {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on port ${PORT}`);
   });
+  startNotificationPoller();
 });

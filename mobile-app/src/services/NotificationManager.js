@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
+import BASE_URL from '../constants/Config';
 import axios from 'axios';
 import { Platform } from 'react-native';
 
@@ -93,7 +94,10 @@ class NotificationManager {
       const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
       const token = tokenData?.data;
       if (token && userId) {
+        // Register with production API
         await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 5000 });
+        // Also register with rizo-backend so server-side poller can send push when app is closed
+        await axios.post(`${BASE_URL}/register-push-token`, { user_id: userId, push_token: token }, { timeout: 5000 });
         console.log('[NotificationManager] Push token registered');
       }
     } catch (e) {
