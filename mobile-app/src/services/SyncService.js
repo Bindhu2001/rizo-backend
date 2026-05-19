@@ -170,7 +170,7 @@ const SyncService = {
       const login_auditor_array = items.map(item => {
         // Evaluate the flag to determine suffix exclusively for the backend payload
         const punchTypeSuffix = parseInt(item.is_offline) === 1 ? '(Offline Punch)' : '(Online Punch)';
-        const apiLocationName = `${item.address || 'Location Attached'} ${punchTypeSuffix}`;
+        const apiLocationName = `${punchTypeSuffix} ${item.address || 'Location Attached'}`;
 
         return {
           auditor_pkey: empPkey,
