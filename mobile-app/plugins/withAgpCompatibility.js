@@ -3,46 +3,144 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Fixes Android build failures caused by incompatibilities between:
- *   - Gradle 8.13 (pinned below)
- *   - RNGP 0.81.5 which forces AGP 8.11.0 via composite build
- *   - Legacy React Native library build.gradle patterns
+ * Fixes "No variants exist" Gradle build failures caused by AGP classloader
+ * conflicts between RNGP 0.81.5 (forces AGP 8.11.0 via composite build) and
+ * legacy buildscript{} blocks in RN library build.gradle files.
  *
- * Issue 1 — async-storage 2.x:
- *   `configurations { compileClasspath }` at the top of android/build.gradle
- *   conflicts with AGP 8.11.0's own compileClasspath configuration setup,
- *   causing the Android library plugin to register zero variants.
+ * Root cause: When a subproject declares its OWN buildscript{} with an old
+ * AGP classpath (e.g. 7.3.1 or 8.2.1), Gradle loads that AGP version into
+ * the subproject's buildscript classloader. This conflicts with AGP 8.11.0
+ * from the RNGP composite build → `apply plugin: 'com.android.library'` may
+ * use the wrong AGP version → android{} block fails → zero variants registered.
  *
- * Issue 2 — safe-area-context 5.x / screens 4.x:
- *   These modules declare old AGP in their own buildscript classpath.
- *   With Gradle 8.13, loading the old AGP class in a child classloader alongside
- *   the RNGP composite build's AGP 8.11.0 causes a class-loading conflict that
- *   silently aborts variant registration ("No variants exist").
- *   Fix: remove the old AGP classpath from those modules so they inherit 8.11.0.
- *
- * Issue 3 — react-native-screens 4.x (CRITICAL):
- *   Uses `import com.android.Version` as a TOP-LEVEL import statement.
- *   This forces Groovy/Gradle to resolve the class at compile-time (script
- *   compilation), before any plugins are applied. Under RNGP composite build
- *   (no direct AGP classpath), this class may not be resolvable → script fails
- *   to compile → no android {} block → no variants.
- *   Fix: replace the static import with inline class lookup so it degrades
- *   gracefully, OR replace with the hardcoded "8.11.0" string.
- *
- * Issue 4 — datetimepicker 8.x / svg 15.x:
- *   Both modules access com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION inside
- *   their android {} block at configuration time. When AGP is loaded exclusively
- *   via the RNGP composite build (no direct AGP classpath entry in the module's
- *   own buildscript), this class access can fail and abort the android {} block,
- *   leaving no variants.
- *   Fix: replace the dynamic com.android.Version lookup with the hardcoded string
- *   "8.11.0" (matching what RNGP 0.81.5 forces).
- *
- * Issue 5 — react-native-svg 15.x:
- *   Has `classpath("com.android.tools.build:gradle:7.4.2")` inside a
- *   `if (project == rootProject)` conditional block. Same classloader conflict.
- *   Fix: comment out the AGP classpath line.
+ * Fix strategy per library:
+ *  - react-native-safe-area-context : remove ENTIRE buildscript{} block +
+ *                                     pin com.android.Version in android{}
+ *  - react-native-screens           : keep ext{} blocks (used by android{}),
+ *                                     remove dependencies{}/repositories{} from
+ *                                     buildscript + remove top-level import +
+ *                                     pin Version.XXX references
+ *  - react-native-svg               : remove ENTIRE buildscript{} (all content
+ *                                     is gated on `project == rootProject`) +
+ *                                     pin com.android.Version in android{}
+ *  - async-storage                  : remove configurations{compileClasspath} +
+ *                                     pin com.android.Version in android{}
+ *  - datetimepicker                 : pin com.android.Version in android{}
  */
+
+// ---------------------------------------------------------------------------
+// Helper utilities
+// ---------------------------------------------------------------------------
+
+/** Read a file, apply replacements, write back only if content changed. */
+function patchFile(filePath, label, patchFn) {
+  if (!fs.existsSync(filePath)) {
+    console.log(`[withAgpCompatibility] SKIP (not found): ${label}`);
+    return;
+  }
+  const original = fs.readFileSync(filePath, 'utf8');
+  const patched = patchFn(original);
+  if (patched !== original) {
+    fs.writeFileSync(filePath, patched);
+    console.log(`[withAgpCompatibility] Patched: ${label}`);
+  } else {
+    console.log(`[withAgpCompatibility] Already clean: ${label}`);
+  }
+}
+
+/**
+ * Remove an entire top-level buildscript{} block from Groovy/Kotlin gradle.
+ * Uses a simple brace-counter parser — handles nested braces correctly.
+ */
+function removeBuildscriptBlock(content) {
+  const marker = 'buildscript';
+  let idx = content.indexOf(marker);
+  while (idx !== -1) {
+    // Find the opening brace of buildscript { ...
+    const openIdx = content.indexOf('{', idx + marker.length);
+    if (openIdx === -1) break;
+
+    // Make sure nothing but whitespace/comments between 'buildscript' and '{'
+    const between = content.slice(idx + marker.length, openIdx);
+    if (/\S/.test(between.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''))) {
+      // Not a direct buildscript { — skip
+      idx = content.indexOf(marker, idx + 1);
+      continue;
+    }
+
+    // Walk forward counting braces to find the matching close brace
+    let depth = 1;
+    let i = openIdx + 1;
+    while (i < content.length && depth > 0) {
+      if (content[i] === '{') depth++;
+      else if (content[i] === '}') depth--;
+      i++;
+    }
+
+    // i now points one past the closing '}'
+    // Remove from the start of 'buildscript' through the closing '}' + trailing newline
+    const blockEnd = i;
+    // Also consume any trailing whitespace/newline immediately after the block
+    let end = blockEnd;
+    while (end < content.length && (content[end] === '\r' || content[end] === '\n')) end++;
+
+    content = content.slice(0, idx) + content.slice(end);
+    // Don't advance idx — there might be another buildscript (unlikely but safe)
+    break;
+  }
+  return content;
+}
+
+/**
+ * Remove only the `dependencies { ... }` block that is DIRECTLY inside the
+ * first `buildscript { ... }` block (leaves ext{} and repositories{} intact
+ * so that ext properties used by android{} are still available).
+ */
+function removeBuildscriptDependencies(content) {
+  const bsStart = content.indexOf('buildscript');
+  if (bsStart === -1) return content;
+  const bsOpenIdx = content.indexOf('{', bsStart);
+  if (bsOpenIdx === -1) return content;
+
+  // Find end of buildscript block
+  let depth = 1;
+  let i = bsOpenIdx + 1;
+  while (i < content.length && depth > 0) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}') depth--;
+    i++;
+  }
+  const bsClose = i - 1; // index of closing '}' of buildscript
+
+  // Inside the buildscript block, find 'dependencies {'
+  const bsBody = content.slice(bsOpenIdx + 1, bsClose);
+  const depMarker = 'dependencies';
+  const depRelIdx = bsBody.indexOf(depMarker);
+  if (depRelIdx === -1) return content;
+
+  const depOpenRelIdx = bsBody.indexOf('{', depRelIdx + depMarker.length);
+  if (depOpenRelIdx === -1) return content;
+
+  // Walk forward to find matching close brace of dependencies{}
+  let d = 1;
+  let j = depOpenRelIdx + 1;
+  while (j < bsBody.length && d > 0) {
+    if (bsBody[j] === '{') d++;
+    else if (bsBody[j] === '}') d--;
+    j++;
+  }
+
+  // Remove the dependencies block from bsBody
+  let end = j;
+  while (end < bsBody.length && (bsBody[end] === '\r' || bsBody[end] === '\n')) end++;
+
+  const newBsBody = bsBody.slice(0, depRelIdx) + bsBody.slice(end);
+  return content.slice(0, bsOpenIdx + 1) + newBsBody + content.slice(bsClose);
+}
+
+// ---------------------------------------------------------------------------
+// Plugin phases
+// ---------------------------------------------------------------------------
 
 function withGradleWrapper(config) {
   return withDangerousMod(config, [
@@ -53,13 +151,13 @@ function withGradleWrapper(config) {
         'gradle', 'wrapper', 'gradle-wrapper.properties'
       );
       if (fs.existsSync(propsPath)) {
-        let contents = fs.readFileSync(propsPath, 'utf8');
-        contents = contents.replace(
+        let c = fs.readFileSync(propsPath, 'utf8');
+        c = c.replace(
           /distributionUrl=.*gradle-[\d.]+-bin\.zip/,
           'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip'
         );
-        fs.writeFileSync(propsPath, contents);
-        console.log('[withAgpCompatibility] Pinned Gradle wrapper to 8.13');
+        fs.writeFileSync(propsPath, c);
+        console.log('[withAgpCompatibility] Pinned Gradle wrapper → 8.13');
       }
       return cfg;
     },
@@ -68,14 +166,11 @@ function withGradleWrapper(config) {
 
 function withRootBuildGradle(config) {
   return withProjectBuildGradle(config, (cfg) => {
-    let contents = cfg.modResults.contents;
+    let c = cfg.modResults.contents;
 
-    // Inject a TOP-LEVEL ext {} block BEFORE buildscript {} so that
-    // rootProject.ext properties are readable by all subproject build.gradle files
-    // during the configuration phase. In Gradle 8.x, ext {} inside buildscript {}
-    // does NOT set project.ext — only a top-level ext {} block is guaranteed to work.
-    if (!contents.includes('compileSdkVersion =')) {
-      contents = contents.replace(
+    // Inject top-level ext{} with SDK versions before buildscript{}
+    if (!c.includes('compileSdkVersion =')) {
+      c = c.replace(
         /buildscript\s*\{/,
         [
           'ext {',
@@ -90,162 +185,112 @@ function withRootBuildGradle(config) {
           'buildscript {',
         ].join('\n')
       );
-      console.log('[withAgpCompatibility] Injected top-level ext SDK-version properties (before buildscript)');
+      console.log('[withAgpCompatibility] Injected top-level ext block');
     }
 
-    // Pin Kotlin Gradle plugin to 2.1.21 for KSP 2.1.21-2.0.2 compatibility.
-    contents = contents.replace(
-      /classpath\(['""]org\.jetbrains\.kotlin:kotlin-gradle-plugin(?::[^'""]*)?['""]?\)/g,
+    // Pin Kotlin plugin version
+    c = c.replace(
+      /classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin(?::[^'"]*)?['"]\)/g,
       "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.21')"
     );
 
-    cfg.modResults.contents = contents;
+    cfg.modResults.contents = c;
     return cfg;
   });
-}
-
-/**
- * Helper: apply a single patch to a file.
- * Supports both regex and string finds. Uses replaceAll for global replacement.
- */
-function applyPatch(filePath, label, find, replace) {
-  if (!fs.existsSync(filePath)) {
-    console.log(`[withAgpCompatibility] File not found, skipping: ${label}`);
-    return;
-  }
-  const original = fs.readFileSync(filePath, 'utf8');
-  let patched;
-  if (find instanceof RegExp) {
-    // Always use a global regex — re-create with /g if not already global
-    const globalRegex = find.flags.includes('g')
-      ? find
-      : new RegExp(find.source, find.flags + 'g');
-    patched = original.replace(globalRegex, replace);
-  } else {
-    // String find: replace ALL occurrences
-    patched = original.split(find).join(replace);
-  }
-  if (patched !== original) {
-    fs.writeFileSync(filePath, patched);
-    console.log(`[withAgpCompatibility] Patched: ${label}`);
-  } else {
-    console.log(`[withAgpCompatibility] Already clean or pattern not found: ${label}`);
-  }
 }
 
 function withLibraryBuildGradlePatches(config) {
   return withDangerousMod(config, [
     'android',
     async (cfg) => {
-      const nodeModulesPath = path.join(
-        cfg.modRequest.platformProjectRoot, '..', 'node_modules'
+      const nm = path.join(cfg.modRequest.platformProjectRoot, '..', 'node_modules');
+
+      // ── 1. @react-native-async-storage/async-storage ──────────────────────
+      patchFile(
+        path.join(nm, '@react-native-async-storage/async-storage/android/build.gradle'),
+        '@react-native-async-storage/async-storage',
+        (c) => {
+          // Remove configurations { compileClasspath } block
+          c = c.replace(/configurations\s*\{\s*\n\s*compileClasspath\s*\n\s*\}\s*\n+/, '');
+          // Pin com.android.Version inside android{}
+          c = c.replace(
+            /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/g,
+            'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
+          );
+          return c;
+        }
       );
 
-      // ─── 1. @react-native-async-storage/async-storage ───────────────────────
-      const asyncStorageGradle = path.join(
-        nodeModulesPath,
-        '@react-native-async-storage', 'async-storage', 'android', 'build.gradle'
+      // ── 2. react-native-safe-area-context ─────────────────────────────────
+      patchFile(
+        path.join(nm, 'react-native-safe-area-context/android/build.gradle'),
+        'react-native-safe-area-context',
+        (c) => {
+          // Remove ENTIRE buildscript{} block — it contains AGP 7.3.1 classpath
+          // which creates a classloader conflict with RNGP's AGP 8.11.0.
+          c = removeBuildscriptBlock(c);
+          // Pin com.android.Version inside android{}
+          c = c.replace(
+            /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/g,
+            'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
+          );
+          return c;
+        }
       );
 
-      // Remove the top-level `configurations { compileClasspath }` block
-      applyPatch(
-        asyncStorageGradle,
-        '@react-native-async-storage/async-storage (configurations block)',
-        /configurations\s*\{\s*\n\s*compileClasspath\s*\n\s*\}\s*\n+/,
-        ''
+      // ── 3. react-native-screens ───────────────────────────────────────────
+      patchFile(
+        path.join(nm, 'react-native-screens/android/build.gradle'),
+        'react-native-screens',
+        (c) => {
+          // Remove top-level `import com.android.Version` (resolved at Groovy
+          // compile time, before any plugin applies → classloader failure)
+          c = c.replace(/^import com\.android\.Version\r?\n/m, '');
+
+          // Remove ONLY the dependencies{} block inside buildscript{} (keep
+          // ext{} blocks that define rnsDefaultXxx / safeExtGet used by android{})
+          c = removeBuildscriptDependencies(c);
+
+          // Replace bare `Version.ANDROID_GRADLE_PLUGIN_VERSION` (unqualified,
+          // was relying on the now-removed import)
+          c = c.replace(
+            /\bVersion\.ANDROID_GRADLE_PLUGIN_VERSION\b/g,
+            '"8.11.0" /* pinned for RNGP 0.81.5 */'
+          );
+
+          return c;
+        }
       );
 
-      // Replace com.android.Version dynamic lookup with hardcoded string
-      applyPatch(
-        asyncStorageGradle,
-        '@react-native-async-storage/async-storage (com.android.Version)',
-        /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
-        'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
+      // ── 4. @react-native-community/datetimepicker ─────────────────────────
+      patchFile(
+        path.join(nm, '@react-native-community/datetimepicker/android/build.gradle'),
+        '@react-native-community/datetimepicker',
+        (c) => {
+          c = c.replace(
+            /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/g,
+            'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
+          );
+          return c;
+        }
       );
 
-      // ─── 2. react-native-safe-area-context ──────────────────────────────────
-      const safeAreaGradle = path.join(
-        nodeModulesPath,
-        'react-native-safe-area-context', 'android', 'build.gradle'
-      );
-
-      // Remove AGP classpath — use string replace to handle all quote styles
-      applyPatch(
-        safeAreaGradle,
-        'react-native-safe-area-context (AGP classpath)',
-        // Matches: classpath("com.android.tools.build:gradle:X.Y.Z")
-        //      or: classpath('com.android.tools.build:gradle:X.Y.Z')
-        /classpath\(["']com\.android\.tools\.build:gradle:[^"']*["']\)/g,
-        '// AGP version provided by RNGP composite build (8.11.0)'
-      );
-
-      // ─── 3. react-native-screens ─────────────────────────────────────────────
-      const screensGradle = path.join(
-        nodeModulesPath,
-        'react-native-screens', 'android', 'build.gradle'
-      );
-
-      // CRITICAL: react-native-screens uses `import com.android.Version` as a
-      // TOP-LEVEL import, which forces class resolution at Groovy script compile
-      // time. Replace the static import with a safe inline lookup.
-      applyPatch(
-        screensGradle,
-        'react-native-screens (import com.android.Version)',
-        'import com.android.Version\n',
-        '// import com.android.Version -- removed for RNGP composite build compatibility\n'
-      );
-
-      // Also remove AGP classpath from screens buildscript
-      applyPatch(
-        screensGradle,
-        'react-native-screens (AGP classpath)',
-        /classpath\(["']com\.android\.tools\.build:gradle:[^"']*["']\)/g,
-        '// AGP version provided by RNGP composite build (8.11.0)'
-      );
-
-      // react-native-screens references `Version.ANDROID_GRADLE_PLUGIN_VERSION`
-      // without the package prefix (relies on the import). After removing the import,
-      // replace any bare `Version.ANDROID_GRADLE_PLUGIN_VERSION` usage with a string.
-      applyPatch(
-        screensGradle,
-        'react-native-screens (Version.ANDROID_GRADLE_PLUGIN_VERSION bare)',
-        /\bVersion\.ANDROID_GRADLE_PLUGIN_VERSION\b/g,
-        '"8.11.0" /* pinned for RNGP 0.81.5 */'
-      );
-
-      // ─── 4. @react-native-community/datetimepicker ──────────────────────────
-      const datetimepickerGradle = path.join(
-        nodeModulesPath,
-        '@react-native-community', 'datetimepicker', 'android', 'build.gradle'
-      );
-
-      applyPatch(
-        datetimepickerGradle,
-        '@react-native-community/datetimepicker (com.android.Version)',
-        /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
-        'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
-      );
-
-      // ─── 5. react-native-svg ─────────────────────────────────────────────────
-      const svgGradle = path.join(
-        nodeModulesPath,
-        'react-native-svg', 'android', 'build.gradle'
-      );
-
-      // Replace com.android.Version dynamic lookup
-      applyPatch(
-        svgGradle,
-        'react-native-svg (com.android.Version)',
-        /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
-        'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
-      );
-
-      // Remove AGP classpath inside conditional block
-      applyPatch(
-        svgGradle,
-        'react-native-svg (AGP classpath)',
-        /classpath\(["']com\.android\.tools\.build:gradle:[^"']*["']\)/g,
-        '// AGP version provided by RNGP composite build (8.11.0)'
+      // ── 5. react-native-svg ───────────────────────────────────────────────
+      patchFile(
+        path.join(nm, 'react-native-svg/android/build.gradle'),
+        'react-native-svg',
+        (c) => {
+          // Remove ENTIRE buildscript{} block (all content inside is gated on
+          // `project == rootProject`, so it's a no-op when used as a subproject
+          // but still creates an empty buildscript classpath that overrides root)
+          c = removeBuildscriptBlock(c);
+          // Pin com.android.Version inside android{}
+          c = c.replace(
+            /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/g,
+            'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5'
+          );
+          return c;
+        }
       );
 
       return cfg;
