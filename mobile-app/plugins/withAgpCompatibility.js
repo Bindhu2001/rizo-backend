@@ -2,9 +2,10 @@ const { withProjectBuildGradle, withDangerousMod } = require('@expo/config-plugi
 const path = require('path');
 const fs = require('fs');
 
-// Pins Gradle wrapper to 8.10.2 and AGP to 8.5.2 to avoid the AGP 8.11.0 +
+// Pins Gradle wrapper to 8.13 and AGP to 8.5.2 to avoid the AGP 8.11.0 +
 // Gradle 8.14.x incompatibility where autolinked native modules expose no
 // Gradle variants ("No matching variant ... No variants exist").
+// AGP 8.5.2 requires minimum Gradle 8.13, so 8.13 is the correct pairing.
 // Also keeps Kotlin Gradle plugin at 2.1.21 for KSP compatibility.
 
 function withGradleWrapper(config) {
@@ -19,10 +20,10 @@ function withGradleWrapper(config) {
         let contents = fs.readFileSync(propsPath, 'utf8');
         contents = contents.replace(
           /distributionUrl=.*gradle-[\d.]+-bin\.zip/,
-          'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip'
+          'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip'
         );
         fs.writeFileSync(propsPath, contents);
-        console.log('[withAgpCompatibility] Pinned Gradle wrapper to 8.10.2');
+        console.log('[withAgpCompatibility] Pinned Gradle wrapper to 8.13');
       }
       return cfg;
     },
