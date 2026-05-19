@@ -116,10 +116,18 @@ function withLibraryBuildGradlePatches(config) {
           // async-storage 2.x: the top-level `configurations { compileClasspath }` block
           // pre-creates a configuration that AGP 8.11.0 also tries to create, causing
           // the library plugin to fail and register no variants.
-          label: '@react-native-async-storage/async-storage',
+          label: '@react-native-async-storage/async-storage (configurations block)',
           file: path.join('@react-native-async-storage', 'async-storage', 'android', 'build.gradle'),
           find: /configurations\s*\{\s*\n\s*compileClasspath\s*\n\s*\}\s*\n+/,
           replace: '',
+        },
+        {
+          // async-storage 2.x: also accesses com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
+          // inside android {} at configuration time (same classloader issue as datetimepicker/svg).
+          label: '@react-native-async-storage/async-storage (com.android.Version)',
+          file: path.join('@react-native-async-storage', 'async-storage', 'android', 'build.gradle'),
+          find: /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
+          replace: 'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5',
         },
         {
           // safe-area-context 5.x: AGP 7.3.1 in its buildscript classpath.
