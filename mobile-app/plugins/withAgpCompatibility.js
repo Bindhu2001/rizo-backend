@@ -27,7 +27,20 @@ const fs = require('fs');
  *   plugin sets compileSdk/minSdk without the "Version" suffix).
  *   When the fallback property lookup fails, a NullPointerException aborts the
  *   android { } block, leaving the module with no registered variants.
- *   Fix: inject an ext { } block into the root buildscript.
+ *   Fix: inject a TOP-LEVEL ext { } block BEFORE buildscript {} so that
+ *   rootProject.ext properties are set during the project configuration phase.
+ *   NOTE: ext {} inside buildscript {} does NOT reliably set project.ext in
+ *   Gradle 8.x — only a top-level ext {} block is guaranteed to work.
+ *
+ * Issue 4 — datetimepicker 8.x / svg 15.x:
+ *   Both modules access com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION inside
+ *   their android {} block at configuration time. When AGP is loaded exclusively
+ *   via the RNGP composite build (no direct AGP classpath entry in the module's
+ *   own buildscript), this class access can fail and abort the android {} block,
+ *   leaving no variants.
+ *   Fix: replace the dynamic com.android.Version lookup with the hardcoded string
+ *   "8.11.0" (matching what RNGP 0.81.5 forces). The >= 7 / >= 8 conditions
+ *   both remain true (8.11.0 satisfies them).
  */
 
 function withGradleWrapper(config) {
@@ -56,24 +69,27 @@ function withRootBuildGradle(config) {
   return withProjectBuildGradle(config, (cfg) => {
     let contents = cfg.modResults.contents;
 
-    // Inject ext properties block inside buildscript so they are available in
-    // rootProject.ext before any subproject buildscript block is evaluated.
+    // Inject a TOP-LEVEL ext {} block BEFORE buildscript {} so that
+    // rootProject.ext properties are readable by all subproject build.gradle files
+    // during the configuration phase. In Gradle 8.x, ext {} inside buildscript {}
+    // does NOT set project.ext — only a top-level ext {} block is guaranteed to work.
     if (!contents.includes('compileSdkVersion =')) {
       contents = contents.replace(
         /buildscript\s*\{/,
         [
-          'buildscript {',
-          '  ext {',
+          'ext {',
           '    buildToolsVersion = "36.0.0"',
           '    minSdkVersion = 24',
           '    compileSdkVersion = 36',
           '    targetSdkVersion = 36',
           '    ndkVersion = "27.1.12297006"',
           '    kotlinVersion = "2.1.21"',
-          '  }',
+          '}',
+          '',
+          'buildscript {',
         ].join('\n')
       );
-      console.log('[withAgpCompatibility] Injected ext SDK-version properties into buildscript');
+      console.log('[withAgpCompatibility] Injected top-level ext SDK-version properties (before buildscript)');
     }
 
     // Pin Kotlin Gradle plugin to 2.1.21 for KSP 2.1.21-2.0.2 compatibility.
@@ -120,6 +136,25 @@ function withLibraryBuildGradlePatches(config) {
           file: path.join('react-native-screens', 'android', 'build.gradle'),
           find: /classpath\('com\.android\.tools\.build:gradle:[^']*'\)/g,
           replace: '// AGP version provided by RNGP composite build (8.11.0)',
+        },
+        {
+          // datetimepicker 8.x: accesses com.android.Version.ANDROID_GRADLE_PLUGIN_VERSION
+          // inside android {} at configuration time. When AGP is loaded exclusively
+          // via the RNGP composite build (no direct AGP classpath in this module),
+          // this class access fails and aborts android {} → no variants registered.
+          // Fix: replace the dynamic lookup with the hardcoded "8.11.0" string.
+          label: '@react-native-community/datetimepicker',
+          file: path.join('@react-native-community', 'datetimepicker', 'android', 'build.gradle'),
+          find: /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
+          replace: 'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5',
+        },
+        {
+          // react-native-svg 15.x: same com.android.Version access issue as datetimepicker.
+          // The >= 8 condition (used to set buildConfig = true) is satisfied by 8.11.0.
+          label: 'react-native-svg',
+          file: path.join('react-native-svg', 'android', 'build.gradle'),
+          find: /def agpVersion = com\.android\.Version\.ANDROID_GRADLE_PLUGIN_VERSION/,
+          replace: 'def agpVersion = "8.11.0" // pinned for RNGP 0.81.5',
         },
       ];
 
