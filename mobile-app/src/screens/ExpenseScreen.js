@@ -16,6 +16,7 @@ import * as FileSystem from 'expo-file-system';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
+import NotificationManager from '../services/NotificationManager';
 
 const { width } = Dimensions.get('window');
 
@@ -364,6 +365,7 @@ const ExpenseScreen = ({ navigation, route }) => {
       const res = await axios.post(API_ENDPOINTS.SUBMIT_EXPENSE, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (res.data?.success === 1 || res.data?.success === true) {
         setView('SUCCESS');
+        NotificationManager.forceCheck().catch(() => {});
         // Reset form
         setExpenseType(null); setExpenseDate(''); setAmount(''); setRemarks(''); setPurpose(''); setAttachedFiles([]);
       } else {

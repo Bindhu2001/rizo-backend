@@ -17,7 +17,7 @@ Notifications.setNotificationHandler({
 class NotificationManager {
   static isChecking = false;
   static lastCheckTime = 0;
-  static CHECK_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+  static CHECK_COOLDOWN_MS = 30 * 1000; // 30 seconds
 
   static async setup() {
     if (Platform.OS === 'android') {
@@ -50,6 +50,12 @@ class NotificationManager {
       },
       trigger: null, // trigger immediately
     });
+  }
+
+  // Bypass cooldown — use when a status change is expected immediately
+  static async forceCheck() {
+    this.lastCheckTime = 0;
+    return this.checkStatusChanges();
   }
 
   static async checkStatusChanges() {

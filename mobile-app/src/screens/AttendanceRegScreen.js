@@ -14,6 +14,7 @@ import { SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
+import NotificationManager from '../services/NotificationManager';
 
 const formatPunchTime = (isoOrFull) => {
   if (!isoOrFull || isoOrFull === '---') return '---';
@@ -817,6 +818,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       const res = await axios.post(API_ENDPOINTS.REGULARISE, payload, { timeout: 10000 });
       if (res.data?.success === 1 || res.data?.success === true) {
         setView('SUCCESS');
+        NotificationManager.forceCheck().catch(() => {});
         setTab('REGULARISED');
         fetchData();
       } else {

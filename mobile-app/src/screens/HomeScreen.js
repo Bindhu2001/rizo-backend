@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useContext } from 'react';
 import { OfflineBarContext } from '../../App';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl, BackHandler
+  Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl, BackHandler, AppState
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -101,6 +101,14 @@ const HomeScreen = ({ navigation, route }) => {
       NotificationManager.registerAndSendToken(userRef.current.user_id);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Instant notification check when app comes to foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') NotificationManager.forceCheck();
+    });
+    return () => sub.remove();
+  }, []);
 
   // Focus listener — always uses userRef.current so it never captures stale data
   useEffect(() => {
