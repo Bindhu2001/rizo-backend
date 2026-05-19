@@ -199,7 +199,7 @@ const FileThumbnail = ({ file, onRemove }) => {
   );
 };
 const ft = StyleSheet.create({
-  wrap: { width: moderateScale(72), marginRight: moderateScale(10), alignItems: 'center', overflow: 'visible' },
+  wrap: { width: moderateScale(72), marginRight: moderateScale(10), alignItems: 'center', overflow: 'visible', paddingTop: moderateScale(10) },
   thumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', overflow: 'visible' },
   ext: { fontSize: moderateScale(11), fontWeight: '900', color: '#1D4ED8' },
   name: { fontSize: moderateScale(9), color: '#6B7280', marginTop: 4, textAlign: 'center', maxWidth: 70 },
@@ -667,7 +667,7 @@ const LeaveScreen = ({ navigation, route }) => {
           <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
         </TouchableOpacity>
         {attachedFiles.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(22), marginBottom: moderateScale(16), overflow: 'visible' }} contentContainerStyle={{ overflow: 'visible' }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), marginBottom: moderateScale(16), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible' }}>
             {attachedFiles.map((f, i) => (
               <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
