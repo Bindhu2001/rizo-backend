@@ -17,7 +17,7 @@ Notifications.setNotificationHandler({
 class NotificationManager {
   static isChecking = false;
   static lastCheckTime = 0;
-  static CHECK_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+  static CHECK_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
 
   static async setup() {
     if (Platform.OS === 'android') {
@@ -173,12 +173,13 @@ class NotificationManager {
               if (serverStatus === 'APPROVED') title = 'Regularization Approved ✅';
               else if (serverStatus === 'REJECTED') title = 'Regularization Rejected ❌';
               else title = 'Regularization Cancelled ⚠️';
-              const dateText = sReg.punch_date || 'your request';
+              const dateText = sReg.punch_date || sReg.reg_date || sReg.date || 'your request';
               const action = isCancelled ? 'cancelled' : serverStatus.toLowerCase();
               const message = `Your attendance regularization for ${dateText} was ${action}.`;
 
               const normalizedStatus = isCancelled ? 'CANCELLED' : serverStatus;
-              const uniqueNotifIdRef = `reg_${sReg.id}_${normalizedStatus}`;
+              const regId = sReg.reg_id || sReg.id || sReg.regularisation_id;
+              const uniqueNotifIdRef = `reg_${regId}_${normalizedStatus}`;
 
               const { initDB } = require('./LocalDB');
               const db = await initDB();
@@ -210,16 +211,22 @@ class NotificationManager {
         for (const sExp of serverExpenses) {
           const serverStatus = sExp.expense_status?.toUpperCase() || 'PENDING';
           const isCancelled = serverStatus === 'CANCELLED' || serverStatus === 'CANCELED';
-          if (serverStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled) {
+          const isAuthorised = serverStatus === 'AUTHORISED' || serverStatus === 'AUTHORIZED';
+          // Treat AUTHORISED as APPROVED when same person is both authorizer and approver
+          const isSelfAuth = isAuthorised && sExp.authorized_by && sExp.approved_by && sExp.authorized_by === sExp.approved_by;
+          const effectiveStatus = isSelfAuth ? 'APPROVED' : serverStatus;
+
+          if (effectiveStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled || isAuthorised) {
             let title;
-            if (serverStatus === 'APPROVED') title = 'Expense Approved ✅';
+            if (effectiveStatus === 'APPROVED') title = 'Expense Approved ✅';
             else if (serverStatus === 'REJECTED') title = 'Expense Rejected ❌';
+            else if (isAuthorised) title = 'Expense Authorised 🛡️';
             else title = 'Expense Cancelled ⚠️';
             const dateText = sExp.expense_date || 'your request';
-            const action = isCancelled ? 'cancelled' : serverStatus.toLowerCase();
+            const action = isCancelled ? 'cancelled' : effectiveStatus.toLowerCase();
             const message = `Your expense request for ${dateText} was ${action}.`;
 
-            const normalizedStatus = isCancelled ? 'CANCELLED' : serverStatus;
+            const normalizedStatus = isCancelled ? 'CANCELLED' : effectiveStatus;
             const uniqueNotifIdRef = `exp_${sExp.emp_expenses_pkey}_${normalizedStatus}`;
 
             const { initDB } = require('./LocalDB');

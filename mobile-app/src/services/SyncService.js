@@ -3,6 +3,7 @@ import * as Network from 'expo-network';
 import { initDB } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
+import NotificationManager from './NotificationManager';
 
 const SyncService = {
   isSyncing: false,
@@ -38,6 +39,7 @@ const SyncService = {
       await SyncService.syncRegularization(db);
 
       console.log('[SyncService] Sync cycle complete ✅');
+      NotificationManager.checkStatusChanges().catch(() => {});
     } catch (error) {
       console.error('[SyncService] Sync failed:', error.message);
     } finally {
