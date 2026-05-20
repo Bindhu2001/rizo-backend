@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput, KeyboardAvoidingView, Platform
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput, KeyboardAvoidingView
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -345,7 +345,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       )}
 
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <KeyboardAvoidingView behavior="padding" style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
             <Text style={[s.modalSub, { color: theme.textLight }]}>Enter remarks for {actionModal.item?.employee_name}</Text>

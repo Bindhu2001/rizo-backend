@@ -1,7 +1,7 @@
 ﻿import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList, FlatList,
-  Pressable, ScrollView, KeyboardAvoidingView, Platform,
+  Pressable, ScrollView, KeyboardAvoidingView,
   Modal, TextInput, ActivityIndicator, StatusBar
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
@@ -470,7 +470,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <KeyboardAvoidingView behavior="padding" style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>
               {actionModal.actionType === 'REJECT'
