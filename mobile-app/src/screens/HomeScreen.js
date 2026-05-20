@@ -843,7 +843,6 @@ const HomeScreen = ({ navigation, route }) => {
           )}
         </View>
 
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* CLOCK OUT MODAL */}

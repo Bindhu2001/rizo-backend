@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, Image, StatusBar
+  KeyboardAvoidingView, ActivityIndicator, Dimensions, Image, StatusBar
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -119,7 +119,7 @@ const LoginScreen = ({ navigation }) => {
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior="padding"
           style={styles.content}
         >
           <View style={styles.formContainer}>

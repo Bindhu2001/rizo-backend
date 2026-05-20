@@ -21,21 +21,25 @@ const CalendarWidget = ({ userId }) => {
   const fetchEvents = async (date) => {
     setLoading(true);
     try {
-      const monthStr = format(date, 'yyyy-MM'); // "2026-04"
+      const monthStr = format(date, 'yyyy-MM');
       const url = `${API_ENDPOINTS.UPCOMING_EVENTS}?user_id=${userId}&month=${monthStr}`;
       const resp = await axios.get(url);
-      
-      console.log('[Calendar] Fetching for month:', monthStr);
-      
+      console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 300));
+
       if (resp.status === 200) {
-        if (Array.isArray(resp.data)) {
-          setEvents(resp.data);
-        } else if (resp.data?.data && Array.isArray(resp.data.data)) {
-          setEvents(resp.data.data);
+        const d = resp.data;
+        let found = null;
+        if (Array.isArray(d)) found = d;
+        else if (d && typeof d === 'object') {
+          // Try every key that holds an array
+          for (const key of Object.keys(d)) {
+            if (Array.isArray(d[key]) && d[key].length >= 0) { found = d[key]; break; }
+          }
         }
+        if (found) setEvents(found);
       }
     } catch (e) {
-      console.log('Events fetch error', e);
+      console.log('[Calendar] fetch error', e);
     } finally {
       setLoading(false);
     }
@@ -49,7 +53,14 @@ const CalendarWidget = ({ userId }) => {
     setCurrentDate(prev => addMonths(prev, -1));
   };
 
-  const normStatus = (s) => (s || '').replace(/^\/+/, '').toUpperCase();
+  const normStatus = (s) => {
+    const v = (s || '').replace(/^\/+/, '').toUpperCase().trim();
+    if (v === 'BIRTHDAY' || v === 'BDAY') return 'BIR';
+    if (v === 'ANNIVERSARY' || v === 'JOINING' || v === 'WORK_ANNIVERSARY' || v === 'JOIN') return 'JOIN';
+    if (v === 'HOLIDAY' || v === 'PUBLIC_HOLIDAY') return 'HO';
+    if (v === 'WEEKOFF' || v === 'WEEK_OFF' || v === 'WEEK OFF' || v === 'OFF') return 'WO';
+    return v;
+  };
 
   const getDaysInMonth = () => {
     const start = startOfMonth(currentDate);
@@ -73,9 +84,11 @@ const CalendarWidget = ({ userId }) => {
 
     try {
       return events.filter(e => {
-        if (!e || !e.date) return false;
+        if (!e) return false;
+        const rawDate = e.date || e.event_date || e.birth_date || e.birthday_date || e.joining_date || e.anniversary_date;
+        if (!rawDate) return false;
 
-        const dm = String(e.date).trim();
+        const dm = String(rawDate).trim();
 
         if (dm.includes('-')) {
           const parts = dm.split('-');
@@ -93,17 +106,32 @@ const CalendarWidget = ({ userId }) => {
             // "MM-DD" e.g. "05-15"
             return parseInt(p0, 10) === monthNum && parseInt(p1, 10) === dayNumber;
           } else if (parts.length === 3) {
-            try { return isSameDay(new Date(dm), day); } catch (_) { return false; }
+            // Try YYYY-MM-DD
+            try {
+              const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), c = parseInt(parts[2], 10);
+              if (a > 31) {
+                // YYYY-MM-DD
+                return isSameDay(new Date(a, b - 1, c), day);
+              } else if (c > 31) {
+                // DD-MM-YYYY
+                return isSameDay(new Date(c, b - 1, a), day);
+              } else {
+                // ambiguous — try both
+                try { if (isSameDay(new Date(dm), day)) return true; } catch (_) {}
+                return isSameDay(new Date(c, b - 1, a), day);
+              }
+            } catch (_) { return false; }
           }
         }
 
         if (dm.includes('/')) {
           const parts = dm.split('/');
           if (parts.length === 3) {
-            // YYYY/MM/DD or DD/MM/YYYY
             const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), c = parseInt(parts[2], 10);
-            if (a > 31) return b === monthNum && c === dayNumber; // YYYY/MM/DD
-            return c > 31 ? a === dayNumber && b === monthNum : false; // DD/MM/YYYY
+            if (a > 31) return isSameDay(new Date(a, b - 1, c), day); // YYYY/MM/DD
+            if (c > 31) return isSameDay(new Date(c, b - 1, a), day); // DD/MM/YYYY
+            // MM/DD/YYYY — ambiguous, try DD/MM first
+            return isSameDay(new Date(c, b - 1, a), day) || isSameDay(new Date(c, a - 1, b), day);
           }
         }
 
@@ -138,10 +166,10 @@ const CalendarWidget = ({ userId }) => {
           if (!day) return <View key={idx} style={styles.cell} />;
           
           const dayEvents = getCellEvents(day);
-          const hasBir = dayEvents.some(e => normStatus(e.status) === 'BIR');
-          const hasJoin = dayEvents.some(e => normStatus(e.status) === 'JOIN');
-          const hasHol = dayEvents.some(e => normStatus(e.status) === 'HO');
-          const hasWO = dayEvents.some(e => normStatus(e.status) === 'WO');
+          const hasBir = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'BIR');
+          const hasJoin = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'JOIN');
+          const hasHol = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'HO');
+          const hasWO = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'WO');
           const isToday = isSameDay(day, new Date());
 
           return (
@@ -186,7 +214,7 @@ const CalendarWidget = ({ userId }) => {
             
             <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
               {selectedEvent?.events.map((e, idx) => {
-                const ns = normStatus(e.status);
+                const ns = normStatus(e.status || e.type || e.event_type);
                 const isBir = ns === 'BIR';
                 const isHol = ns === 'HO';
                 const isWO = ns === 'WO';
@@ -197,7 +225,7 @@ const CalendarWidget = ({ userId }) => {
                   <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
                     <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
                     <View style={{ flex: 1 }}>
-                       <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || 'Unknown'}</Text>
+                       <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || e.employee_name || e.title || e.event_name || e.description || 'Unknown'}</Text>
                        <Text style={[styles.eventType, { color: theme.textLight }]}>{typeText}</Text>
                     </View>
                   </View>

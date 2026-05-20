@@ -390,7 +390,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled">
             <View style={sv.locChipBox}>
               <View style={sv.locWrap}>
@@ -466,7 +466,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}
       >
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />

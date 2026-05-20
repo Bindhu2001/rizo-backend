@@ -133,7 +133,7 @@ const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
       ]}
     >
       <Text style={styles.barText}>
-        {isRestored ? 'We are back !' : 'Connection Lost. Try reconnecting...'}
+        {isRestored ? 'We are back !' : 'Connection Lost. Trying to reconnect...'}
       </Text>
     </Animated.View>
   );
