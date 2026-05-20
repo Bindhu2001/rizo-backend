@@ -22,14 +22,17 @@ const CalendarWidget = ({ userId }) => {
     setLoading(true);
     try {
       const monthStr = format(date, 'yyyy-MM');
-      const url = `${API_ENDPOINTS.UPCOMING_EVENTS}?user_id=${userId}&month=${monthStr}`;
-      const resp = await axios.get(url);
+      const resp = await axios.post(API_ENDPOINTS.UPCOMING_EVENTS, {
+        user_id: userId,
+        month: monthStr
+      });
       console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 300));
 
       if (resp.status === 200) {
         const d = resp.data;
         let found = null;
         if (Array.isArray(d)) found = d;
+        else if (d && Array.isArray(d.data)) found = d.data;
         else if (d && typeof d === 'object') {
           // Try every key that holds an array
           for (const key of Object.keys(d)) {
