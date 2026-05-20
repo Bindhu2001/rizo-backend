@@ -21,7 +21,7 @@ const CalendarWidget = ({ userId }) => {
   const fetchEvents = async (date) => {
     setLoading(true);
     try {
-      const monthStr = format(date, 'MM'); // "04"
+      const monthStr = format(date, 'yyyy-MM'); // "2026-04"
       const url = `${API_ENDPOINTS.UPCOMING_EVENTS}?user_id=${userId}&month=${monthStr}`;
       const resp = await axios.get(url);
       
@@ -46,20 +46,7 @@ const CalendarWidget = ({ userId }) => {
   };
 
   const handlePrevMonth = () => {
-    const today = new Date();
-    const prevMonth = addMonths(currentDate, -1);
-    
-    // Don't go back before the current real-world month
-    if (prevMonth.getFullYear() < today.getFullYear()) return;
-    if (prevMonth.getFullYear() === today.getFullYear() && prevMonth.getMonth() < today.getMonth()) return;
-
-    setCurrentDate(prevMonth);
-  };
-
-  const isCurrentMonth = () => {
-    const today = new Date();
-    return currentDate.getMonth() === today.getMonth() && 
-           currentDate.getFullYear() === today.getFullYear();
+    setCurrentDate(prev => addMonths(prev, -1));
   };
 
   const getDaysInMonth = () => {
@@ -84,9 +71,9 @@ const CalendarWidget = ({ userId }) => {
 
     try {
       return events.filter(e => {
-        if (!e || !e.date_month) return false;
+        if (!e || !e.date) return false;
 
-        const dm = String(e.date_month).trim();
+        const dm = String(e.date).trim();
 
         if (dm.includes('-')) {
           const parts = dm.split('-');
@@ -129,11 +116,9 @@ const CalendarWidget = ({ userId }) => {
   return (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
       <View style={styles.calendarHeader}>
-        {!isCurrentMonth() && (
-          <TouchableOpacity onPress={handlePrevMonth} style={[styles.prevBtn, { backgroundColor: theme.cardSoft }]}>
-            <ChevronLeft color={COLORS.primaryDeep} size={20} />
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity onPress={handlePrevMonth} style={[styles.prevBtn, { backgroundColor: theme.cardSoft }]}>
+          <ChevronLeft color={COLORS.primaryDeep} size={20} />
+        </TouchableOpacity>
         <Text style={[styles.monthTitle, { color: theme.text }]}>{format(currentDate, 'MMMM yyyy')}</Text>
         <TouchableOpacity onPress={handleNextMonth} style={[styles.nextBtn, { backgroundColor: theme.cardSoft }]}>
           <ChevronRight color={COLORS.primaryDeep} size={20} />
@@ -151,9 +136,9 @@ const CalendarWidget = ({ userId }) => {
           if (!day) return <View key={idx} style={styles.cell} />;
           
           const dayEvents = getCellEvents(day);
-          const hasBir = dayEvents.some(e => e.type === 'BIR' || e.type === 'BIRTHDAY');
-          const hasJoin = dayEvents.some(e => e.type === 'JOIN' || e.type === 'ANNIVERSARY');
-          const hasHol = dayEvents.some(e => e.type === 'HOL');
+          const hasBir = dayEvents.some(e => e.status === 'BIR');
+          const hasJoin = dayEvents.some(e => e.status === 'JOIN');
+          const hasHol = dayEvents.some(e => e.status === 'HO');
           const isToday = isSameDay(day, new Date());
 
           return (
@@ -196,8 +181,8 @@ const CalendarWidget = ({ userId }) => {
             
             <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
               {selectedEvent?.events.map((e, idx) => {
-                const isBir = e.type === 'BIR' || e.type === 'BIRTHDAY';
-                const isHol = e.type === 'HOL';
+                const isBir = e.status === 'BIR';
+                const isHol = e.status === 'HO';
                 const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : '#2196F3';
                 const typeText = isBir ? 'Birthday' : isHol ? 'Holiday' : 'Work Anniversary';
                 
