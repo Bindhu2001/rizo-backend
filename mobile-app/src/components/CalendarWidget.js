@@ -139,6 +139,7 @@ const CalendarWidget = ({ userId }) => {
           const hasBir = dayEvents.some(e => e.status === 'BIR');
           const hasJoin = dayEvents.some(e => e.status === 'JOIN');
           const hasHol = dayEvents.some(e => e.status === 'HO');
+          const hasWO = dayEvents.some(e => e.status === 'WO');
           const isToday = isSameDay(day, new Date());
 
           return (
@@ -160,6 +161,7 @@ const CalendarWidget = ({ userId }) => {
                 {hasBir && <View style={[styles.underline, { backgroundColor: '#FF4081' }]} />}
                 {hasJoin && <View style={[styles.underline, { backgroundColor: '#2196F3' }]} />}
                 {hasHol && <View style={[styles.underline, { backgroundColor: '#FF9800' }]} />}
+                {hasWO && <View style={[styles.underline, { backgroundColor: '#4CAF50' }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -170,6 +172,7 @@ const CalendarWidget = ({ userId }) => {
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#E91E63' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Birthday</Text></View>
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#2196F3' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Anniv.</Text></View>
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#FF9800' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Holiday</Text></View>
+        <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Week Off</Text></View>
       </View>
 
       <Modal visible={!!selectedEvent} transparent animationType="fade" statusBarTranslucent>
@@ -183,8 +186,9 @@ const CalendarWidget = ({ userId }) => {
               {selectedEvent?.events.map((e, idx) => {
                 const isBir = e.status === 'BIR';
                 const isHol = e.status === 'HO';
-                const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : '#2196F3';
-                const typeText = isBir ? 'Birthday' : isHol ? 'Holiday' : 'Work Anniversary';
+                const isWO = e.status === 'WO';
+                const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : isWO ? '#4CAF50' : '#2196F3';
+                const typeText = isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary';
                 
                 return (
                   <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
