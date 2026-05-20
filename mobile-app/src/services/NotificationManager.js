@@ -1,10 +1,14 @@
 import * as Notifications from 'expo-notifications';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
 import BASE_URL from '../constants/Config';
 import axios from 'axios';
 import { Platform } from 'react-native';
+
+const BG_TASK_NAME = 'rizo-status-check';
 
 // Configure Expo Notifications globally
 Notifications.setNotificationHandler({
@@ -39,6 +43,21 @@ class NotificationManager {
     if (finalStatus !== 'granted') {
       console.log('Failed to get push token for push notification!');
       return;
+    }
+
+    await NotificationManager.registerBackgroundFetch();
+  }
+
+  static async registerBackgroundFetch() {
+    try {
+      await BackgroundFetch.registerTaskAsync(BG_TASK_NAME, {
+        minimumInterval: 15 * 60, // 15 minutes
+        stopOnTerminate: false,   // keep running after app is killed (Android)
+        startOnBoot: true,        // restart after device reboot
+      });
+      console.log('[NotificationManager] Background fetch registered');
+    } catch (e) {
+      console.log('[NotificationManager] Background fetch already registered or failed:', e.message);
     }
   }
 
@@ -261,5 +280,19 @@ class NotificationManager {
     }
   }
 }
+
+// Background task — runs even when app is killed (Android WorkManager)
+TaskManager.defineTask(BG_TASK_NAME, async () => {
+  try {
+    const user = await getLoggedUser();
+    if (!user) return BackgroundFetch.BackgroundFetchResult.NoData;
+    await NotificationManager.checkLeavesDiff(user);
+    await NotificationManager.checkRegDiff(user);
+    await NotificationManager.checkExpenseDiff(user);
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch {
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 export default NotificationManager;

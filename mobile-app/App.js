@@ -31,6 +31,7 @@ import { ThemeProvider, useTheme } from './src/components/ThemeContext';
 import { initDB } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
 import NotificationManager from './src/services/NotificationManager';
+import * as Notifications from 'expo-notifications';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -102,6 +103,25 @@ function AppContent() {
   const [currentRoute, setCurrentRoute] = useState('Splash');
   const [offlineBarVisible, setOfflineBarVisible] = useState(false);
   const navigationRef = React.useRef(null);
+
+  const lastNotifResponse = Notifications.useLastNotificationResponse();
+
+  useEffect(() => {
+    if (lastNotifResponse) {
+      try { navigationRef.current?.navigate('Notifications'); } catch (_) {}
+    }
+  }, [lastNotifResponse]);
+
+  useEffect(() => {
+    const receivedSub = Notifications.addNotificationReceivedListener(() => {});
+    const responseSub = Notifications.addNotificationResponseReceivedListener(() => {
+      try { navigationRef.current?.navigate('Notifications'); } catch (_) {}
+    });
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
+  }, []);
 
   return (
     <OfflineBarContext.Provider value={offlineBarVisible}>
