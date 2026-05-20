@@ -22,9 +22,12 @@ const CalendarWidget = ({ userId }) => {
     setLoading(true);
     try {
       const monthStr = format(date, 'yyyy-MM');
-      const resp = await axios.post(API_ENDPOINTS.UPCOMING_EVENTS, {
-        user_id: userId,
-        month: monthStr
+      const formData = new FormData();
+      formData.append('user_id', userId);
+      formData.append('month', monthStr);
+
+      const resp = await axios.post(API_ENDPOINTS.UPCOMING_EVENTS, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 300));
 
@@ -174,27 +177,29 @@ const CalendarWidget = ({ userId }) => {
           const hasHol = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'HO');
           const hasWO = dayEvents.some(e => normStatus(e.status || e.type || e.event_type) === 'WO');
           const isToday = isSameDay(day, new Date());
+          const isSelected = selectedEvent && isSameDay(day, selectedEvent.date);
 
           return (
             <TouchableOpacity
               key={idx}
-              style={[styles.cell, isToday && [styles.todayCell, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E5F5' }]]}
+              style={[
+                styles.cell, 
+                isToday && { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E5F5', borderRadius: 12 },
+                isSelected && { borderWidth: 2, borderColor: COLORS.primaryDeep, borderRadius: 12 }
+              ]}
               onPress={() => {
-                if (dayEvents.length > 0) {
-                  setSelectedEvent({ date: day, events: dayEvents });
-                }
+                setSelectedEvent({ date: day, events: dayEvents });
               }}
-              disabled={dayEvents.length === 0}
             >
               <Text style={[styles.dayText, { color: theme.text }, isToday && styles.todayText]}>
                 {format(day, 'd')}
               </Text>
               
               <View style={styles.indicators}>
-                {hasBir && <View style={[styles.underline, { backgroundColor: '#FF4081' }]} />}
-                {hasJoin && <View style={[styles.underline, { backgroundColor: '#2196F3' }]} />}
-                {hasHol && <View style={[styles.underline, { backgroundColor: '#FF9800' }]} />}
-                {hasWO && <View style={[styles.underline, { backgroundColor: '#4CAF50' }]} />}
+                {hasBir && <View style={[styles.dot, { backgroundColor: '#E91E63' }]} />}
+                {hasJoin && <View style={[styles.dot, { backgroundColor: '#2196F3' }]} />}
+                {hasHol && <View style={[styles.dot, { backgroundColor: '#FF9800' }]} />}
+                {hasWO && <View style={[styles.dot, { backgroundColor: '#4CAF50' }]} />}
               </View>
             </TouchableOpacity>
           );
@@ -215,25 +220,31 @@ const CalendarWidget = ({ userId }) => {
               {selectedEvent ? format(selectedEvent.date, 'dd MMM yyyy') : ''}
             </Text>
             
-            <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
-              {selectedEvent?.events.map((e, idx) => {
-                const ns = normStatus(e.status || e.type || e.event_type);
-                const isBir = ns === 'BIR';
-                const isHol = ns === 'HO';
-                const isWO = ns === 'WO';
-                const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : isWO ? '#4CAF50' : '#2196F3';
-                const typeText = e.type || (isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary');
-                
-                return (
-                  <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
-                    <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
-                    <View style={{ flex: 1 }}>
-                       <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || e.employee_name || e.title || e.event_name || e.description || 'Unknown'}</Text>
-                       <Text style={[styles.eventType, { color: theme.textLight }]}>{typeText}</Text>
+            <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black" contentContainerStyle={selectedEvent?.events.length === 0 && { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+              {selectedEvent?.events && selectedEvent.events.length > 0 ? (
+                selectedEvent.events.map((e, idx) => {
+                  const ns = normStatus(e.status || e.type || e.event_type);
+                  const isBir = ns === 'BIR';
+                  const isHol = ns === 'HO';
+                  const isWO = ns === 'WO';
+                  const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : isWO ? '#4CAF50' : '#2196F3';
+                  const typeText = e.type || (isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary');
+                  
+                  return (
+                    <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
+                      <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
+                      <View style={{ flex: 1 }}>
+                         <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || e.employee_name || e.title || e.event_name || e.description || 'Unknown'}</Text>
+                         <Text style={[styles.eventType, { color: theme.textLight }]}>{typeText}</Text>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
+                  <Text style={{ color: theme.textLight, fontSize: moderateScale(14), fontWeight: '700' }}>No events scheduled for this day</Text>
+                </View>
+              )}
             </ScrollView>
 
             <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.border }]} onPress={() => setSelectedEvent(null)}>
@@ -259,8 +270,8 @@ const styles = StyleSheet.create({
   todayCell: { backgroundColor: '#F3E5F5', borderRadius: 12 },
   dayText: { fontSize: moderateScale(15), fontWeight: '600', color: COLORS.text },
   todayText: { color: COLORS.primaryDeep, fontWeight: '900' },
-  indicators: { flexDirection: 'row', marginTop: 2, height: 3 },
-  underline: { width: 12, height: 2, borderRadius: 1, marginHorizontal: 1 },
+  indicators: { flexDirection: 'row', marginTop: 4, height: 5, justifyContent: 'center', alignItems: 'center' },
+  dot: { width: 5, height: 5, borderRadius: 2.5, marginHorizontal: 1 },
   legend: { flexDirection: 'row', justifyContent: 'center', marginTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingTop: 16 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12 },
   legendDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },

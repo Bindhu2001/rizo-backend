@@ -50,8 +50,8 @@ function TabNavigator({ route }) {
         tabBarStyle: {
           backgroundColor: theme.tabBarBg,
           borderTopWidth: 0,
-          height: Platform.OS === 'ios' ? 64 + insets.bottom : 68,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 12,
+          height: 64 + insets.bottom,
+          paddingBottom: insets.bottom || 12,
           paddingTop: 12,
           borderTopLeftRadius: 30,
           borderTopRightRadius: 30,
