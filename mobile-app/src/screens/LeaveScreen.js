@@ -683,6 +683,7 @@ const LeaveScreen = ({ navigation, route }) => {
           </ScrollView>
         )}
 
+        <View style={{ flex: 1 }} />
         <TouchableOpacity style={[s.submitBtn, submitting && { opacity: 0.7 }]} onPress={handleSubmit} disabled={submitting}>
           {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
         </TouchableOpacity>
@@ -813,7 +814,7 @@ const LeaveScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
+  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(28) },
 
   // Balance cards
   balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', height: moderateScale(72), ...SHADOWS.light },

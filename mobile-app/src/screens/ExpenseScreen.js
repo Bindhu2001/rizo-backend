@@ -520,10 +520,10 @@ const ExpenseScreen = ({ navigation, route }) => {
               )}
             </View>
 
+            <View style={{ flex: 1 }} />
             <TouchableOpacity style={[s.submitBtn, submitting && { opacity: 0.7 }]} onPress={submitExpense} disabled={submitting}>
               {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
             </TouchableOpacity>
-            <View style={{ height: 20 }} />
 
           </ScrollView>
           </KeyboardAvoidingView>
@@ -600,7 +600,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(100) },
+  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(28) },
   fab: { position: 'absolute', bottom: 24, right: 24, width: moderateScale(60), height: moderateScale(60), borderRadius: moderateScale(30), backgroundColor: '#4C1D95', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
   // Inputs
