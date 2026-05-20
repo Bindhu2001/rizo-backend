@@ -268,19 +268,27 @@ const SyncService = {
             });
         };
 
-        // If it got to REACHED or beyond, we post Step In
-        if (item.step_in_time || item.start_time) {
-             const sLat = item.step_in_lat || item.latitude || 0;
-             const sLng = item.step_in_lng || item.longitude || 0;
-             await postVisit("Step In", item.step_in_time || item.start_time, sLat, sLng, finalStepInAddr);
+        // Post "Start From" only once (flag prevents re-send on subsequent syncs)
+        if (item.start_time && !item.start_synced) {
+          await postVisit("Start From", item.start_time, item.latitude || 0, item.longitude || 0, finalMainLoc);
+          await db.runAsync("UPDATE client_visits SET start_synced = 1 WHERE id = ?", [item.id]);
         }
-        // If it was fully COMPLETED, we additionally post Step Out
+
+        // Post "in" only once
+        if (item.step_in_time && !item.step_in_synced) {
+          const sLat = item.step_in_lat || item.latitude || 0;
+          const sLng = item.step_in_lng || item.longitude || 0;
+          await postVisit("in", item.step_in_time, sLat, sLng, finalStepInAddr);
+          await db.runAsync("UPDATE client_visits SET step_in_synced = 1 WHERE id = ?", [item.id]);
+        }
+
+        // Post "out" when visit is completed
         if (item.status === 'COMPLETED' && item.end_time) {
-             const eLat = item.end_lat || item.latitude || 0;
-             const eLng = item.end_lng || item.longitude || 0;
-             await postVisit("Step Out", item.end_time, eLat, eLng, finalEndAddr);
+          const eLat = item.end_lat || item.latitude || 0;
+          const eLng = item.end_lng || item.longitude || 0;
+          await postVisit("out", item.end_time, eLat, eLng, finalEndAddr);
         }
-        
+
         await db.runAsync("UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
       } catch (e) {
         console.log(`[SyncService] Visit ${item.id} sync failed:`, e.message);

@@ -136,7 +136,7 @@ export const initDB = async () => {
     const migrations = [
       { table: 'attendance', cols: ['address', 'sync_status', 'is_offline'] },
       { table: 'user_profile', cols: ['password', 'email', 'phone', 'emp_pkey', 'designation'] },
-      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at', 'step_in_lat', 'step_in_lng', 'end_lat', 'end_lng', 'step_in_address', 'end_address'] },
+      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at', 'step_in_lat', 'step_in_lng', 'end_lat', 'end_lng', 'step_in_address', 'end_address', 'start_synced', 'step_in_synced'] },
       { table: 'leaves', cols: ['from_half', 'to_half', 'authorized_by', 'approved_by', 'contact_no', 'created_at'] },
       { table: 'attendance_reg', cols: ['actual_time', 'expected_time', 'reason', 'created_at'] }
     ];

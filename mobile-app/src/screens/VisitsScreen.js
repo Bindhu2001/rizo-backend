@@ -465,17 +465,19 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}>
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ width: '100%' }}>
+        <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
           <View style={[sm.sheet, { backgroundColor: theme.card }]}>
             <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
             <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
               <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
               <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
               <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
               <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
+            </ScrollView>
 
+            <View style={sm.footer}>
               <TouchableOpacity
                 style={[sm.saveBtn, processing && { opacity: 0.7 }]}
                 onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
@@ -483,7 +485,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
               >
                 {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -492,10 +494,11 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
 };
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), paddingHorizontal: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: Platform.OS === 'ios' ? moderateScale(40) : moderateScale(30), maxHeight: '80%' },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), paddingHorizontal: moderateScale(20), paddingTop: moderateScale(12), maxHeight: '80%' },
   dragHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: moderateScale(20), marginLeft: 4 },
-  saveBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center', marginTop: moderateScale(10), marginBottom: moderateScale(20) },
+  footer: { paddingTop: moderateScale(8), paddingBottom: Platform.OS === 'ios' ? moderateScale(28) : moderateScale(16) },
+  saveBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
