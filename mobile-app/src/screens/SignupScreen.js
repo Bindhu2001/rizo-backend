@@ -557,13 +557,14 @@ const SignupScreen = ({ navigation }) => {
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
           <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingBottom: 28 }} keyboardShouldPersistTaps="handled">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
                 <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
               </View>
               <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase())} keyboardType="email-address" autoCapitalize="none" placeholder="employee@gmail.com" maxLength={100} />
+              <View style={{ flex: 1 }} />
               <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                 {loading ? <ActivityIndicator color="#FFF" /> : (
                   <>
@@ -659,6 +660,7 @@ const SignupScreen = ({ navigation }) => {
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
                 <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
                 <PickerRow label="Blood Group" value={bloodGroup} onPress={() => setShowBloodPicker(true)} />
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -683,6 +685,7 @@ const SignupScreen = ({ navigation }) => {
                 <FloatInput label="District" value={address.district} onChangeText={t => setAddress({ ...address, district: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="District" maxLength={30} />
                 <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={30} />
                 <PickerRow label="Country *" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -727,6 +730,7 @@ const SignupScreen = ({ navigation }) => {
                   maxLength={10}
                   validation={panV}
                 />
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -856,6 +860,7 @@ const SignupScreen = ({ navigation }) => {
                   )}
                 </View>
 
+                <View style={{ flex: 1 }} />
                 <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669' }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Complete Signup</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -1022,7 +1027,7 @@ const st = StyleSheet.create({
   step1Img: { width: wp(44), height: wp(44) },
 
   bottomCard: { flex: 1, backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(32), borderTopRightRadius: moderateScale(32), paddingHorizontal: moderateScale(24), paddingTop: moderateScale(28), ...SHADOWS.medium },
-  cardScroll: { paddingBottom: moderateScale(100) },
+  cardScroll: { flexGrow: 1, paddingBottom: moderateScale(28) },
   cardTitle: { fontSize: moderateScale(24), fontWeight: '900', color: '#111827', marginBottom: 4 },
   cardSub: { fontSize: moderateScale(14), color: '#6B7280', lineHeight: 20, marginBottom: moderateScale(24) },
 
