@@ -560,8 +560,8 @@ const ExpenseScreen = ({ navigation, route }) => {
                 <Text style={[dm.title, { color: theme.text }]}>{detailModal.expense_type_name}</Text>
                 <Text style={[dm.date, { color: theme.textLight }]}>{detailModal.expense_date}</Text>
 
-                <Text style={[dm.info, { color: theme.textLight }]}>Authorised By : {detailModal.authorized_by || 'John Doe'}</Text>
-                <Text style={[dm.info, { color: theme.textLight }]}>Approved By : {detailModal.approved_by || 'Ajil'}</Text>
+                <Text style={[dm.info, { color: theme.textLight }]}>Authorised By : {detailModal.authorized_name || detailModal.authorized_by || '-'}</Text>
+                <Text style={[dm.info, { color: theme.textLight }]}>Approved By : {detailModal.approved_name || detailModal.approved_by || '-'}</Text>
                 <Text style={[dm.info, { color: theme.textLight }]}>Remarks : {detailModal.remarks}</Text>
 
                 {/* Example files if present. API returned `image:""` so let's check it */}
