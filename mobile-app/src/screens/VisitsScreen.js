@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView, RefreshControl
@@ -184,7 +184,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
 
   if (isLive) {
     return (
-      <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}>
+      <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={cs.cardHeader}>
           <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
           <View style={cs.liveBadge}>
@@ -221,7 +221,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
   const dateStr = visit.created_at ? fmtDate(visit.created_at) : '';
 
   return (
-    <View style={[cs.card, { backgroundColor: theme.card }]}>
+    <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={cs.compHeader}>
         <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
         <Text style={[cs.date, { color: theme.textMuted }]}>{dateStr}</Text>
@@ -244,7 +244,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
 };
 
 const cs = StyleSheet.create({
-  card: { backgroundColor: '#FFF', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), ...SHADOWS.light },
+  card: { backgroundColor: '#FFF', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), borderWidth: 1 },
   // Live Card Headers
   cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: moderateScale(6) },
   clientName: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827' },
