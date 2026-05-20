@@ -549,7 +549,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={[st.container, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
@@ -644,7 +644,7 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 

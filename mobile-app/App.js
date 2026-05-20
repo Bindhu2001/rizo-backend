@@ -1,7 +1,7 @@
 import React, { useEffect, useState, createContext } from 'react';
 
 export const OfflineBarContext = createContext(false);
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -50,8 +50,8 @@ function TabNavigator({ route }) {
         tabBarStyle: {
           backgroundColor: theme.tabBarBg,
           borderTopWidth: 0,
-          height: 64 + insets.bottom,
-          paddingBottom: insets.bottom || 12,
+          height: Platform.OS === 'ios' ? 64 + insets.bottom : 68,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom : 12,
           paddingTop: 12,
           borderTopLeftRadius: 30,
           borderTopRightRadius: 30,
