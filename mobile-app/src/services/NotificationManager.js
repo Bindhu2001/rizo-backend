@@ -226,7 +226,8 @@ class NotificationManager {
           const isSelfAuth = isAuthorised && sExp.authorized_by && sExp.approved_by && sExp.authorized_by === sExp.approved_by;
           const effectiveStatus = isSelfAuth ? 'APPROVED' : serverStatus;
 
-          if (effectiveStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled || isAuthorised) {
+          const expId = sExp.emp_expenses_pkey || sExp.expense_id || sExp.id;
+          if ((effectiveStatus === 'APPROVED' || serverStatus === 'REJECTED' || isCancelled || isAuthorised) && expId) {
             let title;
             if (effectiveStatus === 'APPROVED') title = 'Expense Approved ✅';
             else if (serverStatus === 'REJECTED') title = 'Expense Rejected ❌';
@@ -237,7 +238,7 @@ class NotificationManager {
             const message = `Your expense request for ${dateText} was ${action}.`;
 
             const normalizedStatus = isCancelled ? 'CANCELLED' : effectiveStatus;
-            const uniqueNotifIdRef = `exp_${sExp.emp_expenses_pkey}_${normalizedStatus}`;
+            const uniqueNotifIdRef = `exp_${expId}_${normalizedStatus}`;
 
             const { initDB } = require('./LocalDB');
             const db = await initDB();

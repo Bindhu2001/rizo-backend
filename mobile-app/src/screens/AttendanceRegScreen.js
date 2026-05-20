@@ -793,6 +793,10 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   });
 
   const openRegForm = (attItem, dir) => {
+    if (user?.joining_date && attItem.date && attItem.date < user.joining_date) {
+      showAlert('warning', 'Not Allowed', 'Cannot regularize attendance before your joining date.');
+      return;
+    }
     setSelectedDay(attItem);
     setDirection(dir);
     setReason(REASONS[0]);

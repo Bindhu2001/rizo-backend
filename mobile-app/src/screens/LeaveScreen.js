@@ -207,7 +207,7 @@ const ft = StyleSheet.create({
 });
 
 // ─── Calendar Modal ──────────────────────────────────────────────────────────
-const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
+const CalendarModal = ({ visible, selectedDate, onClose, onConfirm, minDate }) => {
   const theme = useTheme();
   const [currentMonth, setCurrentMonth] = useState(selectedDate ? new Date(selectedDate) : new Date());
 
@@ -218,7 +218,11 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
   for (let i = 0; i < firstDayIndex; i++) days.push(null);
   for (let i = 1; i <= daysInMonth; i++) days.push(i);
 
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const minYM = minDate ? minDate.slice(0, 7) : null;
+  const curYM = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+  const atMinMonth = !!minYM && curYM <= minYM;
+
+  const prevMonth = () => { if (!atMinMonth) setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)); };
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
   const handleSelect = (d) => {
@@ -235,7 +239,7 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
       <TouchableOpacity style={[cal.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
         <View style={[cal.box, { backgroundColor: theme.card }]}>
           <View style={cal.header}>
-            <TouchableOpacity onPress={prevMonth} style={cal.arrowBtn}><ChevronLeft color={theme.text} size={24} /></TouchableOpacity>
+            <TouchableOpacity onPress={prevMonth} style={[cal.arrowBtn, atMinMonth && { opacity: 0.25 }]} disabled={atMinMonth}><ChevronLeft color={theme.text} size={24} /></TouchableOpacity>
             <Text style={[cal.headerTitle, { color: theme.text }]}>{monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}</Text>
             <TouchableOpacity onPress={nextMonth} style={cal.arrowBtn}><ChevronRight color={theme.text} size={24} /></TouchableOpacity>
           </View>
@@ -244,15 +248,17 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm }) => {
           </View>
           <View style={cal.grid}>
             {days.map((d, i) => {
-              const isSelected = d && `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` === selectedDate;
+              const dateStr = d ? `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null;
+              const isSelected = dateStr === selectedDate;
+              const isDisabled = !d || (minDate && dateStr < minDate);
               return (
                 <TouchableOpacity
                   key={i}
                   style={[cal.cell, isSelected && cal.cellSelected]}
-                  onPress={() => d && handleSelect(d)}
-                  disabled={!d}
+                  onPress={() => !isDisabled && handleSelect(d)}
+                  disabled={isDisabled}
                 >
-                  <Text style={[cal.cellText, { color: theme.text }, isSelected && cal.cellTextSelected]}>{d || ''}</Text>
+                  <Text style={[cal.cellText, { color: theme.text }, isSelected && cal.cellTextSelected, isDisabled && d && { opacity: 0.25 }]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -686,6 +692,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <CalendarModal
         visible={!!calendarTarget}
         selectedDate={calendarTarget === 'FROM' ? fromDate : toDate}
+        minDate={user?.joining_date || undefined}
         onClose={() => setCalendarTarget(null)}
         onConfirm={(val) => {
           if (calendarTarget === 'FROM') {

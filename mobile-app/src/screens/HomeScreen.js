@@ -49,7 +49,13 @@ const HomeScreen = ({ navigation, route }) => {
 
   // Block Android back button only when HomeScreen is the focused screen
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => navigation.isFocused());
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.isFocused()) {
+        BackHandler.exitApp();
+        return true;
+      }
+      return false;
+    });
     return () => sub.remove();
   }, [navigation]);
 
