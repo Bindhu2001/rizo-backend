@@ -608,32 +608,12 @@ const HomeScreen = ({ navigation, route }) => {
 
   const getSystemMessages = () => {
     const dur = getWorkDuration();
-    const hour = new Date().getHours();
     const msgs = [];
 
-    if (!dur) {
-      msgs.push({ icon: '🕐', text: 'Your attendance will be recorded when you clock out.', color: '#4F46E5' });
-      return msgs;
-    }
+    if (!dur) return msgs;
 
-    const { hours, minutes, totalHours } = dur;
+    const { hours, minutes } = dur;
     msgs.push({ icon: '⏱️', text: `You have worked ${hours}h ${minutes}m today.`, color: '#0369A1' });
-
-    if (totalHours < 4) {
-      msgs.push({ icon: '⚠️', text: 'Short shift detected. You may need to apply regularisation.', color: '#B45309' });
-    } else if (totalHours >= 9) {
-      msgs.push({ icon: '🌟', text: 'Overtime recorded! Great dedication today.', color: '#059669' });
-    } else if (totalHours >= 7.5) {
-      msgs.push({ icon: '✅', text: 'Full shift completed. Well done!', color: '#059669' });
-    }
-
-    if (hour < 17 && totalHours < 8) {
-      msgs.push({ icon: '📋', text: 'Early clock-out. Regularisation may be required later.', color: '#DC2626' });
-    }
-
-    if (hour >= 20) {
-      msgs.push({ icon: '🌙', text: 'Late clock-out detected. Make sure to rest well.', color: '#7C3AED' });
-    }
 
     return msgs;
   };
