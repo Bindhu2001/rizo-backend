@@ -249,6 +249,10 @@ const SyncService = {
         };
 
         const postVisit = async (stepType, timeStr, lat, lng, addr) => {
+            const resolvedAddr = addr || finalMainLoc || '';
+            const isOffline = resolvedAddr.startsWith('Lat:');
+            const punchTag = isOffline ? '(Offline)' : '(Online)';
+            const locationWithTag = `${punchTag} ${resolvedAddr}`.slice(0, 250);
             const payload = {
               stepinout: stepType,
               customer_name: item.client_name,
@@ -256,7 +260,7 @@ const SyncService = {
               latitude: `${lat || 0}`,
               longitude: `${lng || 0}`,
               accuracy: 20,
-              location: (addr || finalMainLoc || '').slice(0, 250),
+              location: locationWithTag,
               contact_person: item.contact_person,
               contact_number: item.contact_number,
               created_time: formatSyncTime(timeStr)

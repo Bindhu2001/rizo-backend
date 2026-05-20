@@ -19,6 +19,7 @@ const CalendarWidget = ({ userId }) => {
   }, [userId, currentDate]);
 
   const fetchEvents = async (date) => {
+    setEvents([]);
     setLoading(true);
     try {
       const monthStr = format(date, 'yyyy-MM');
@@ -27,9 +28,10 @@ const CalendarWidget = ({ userId }) => {
       formData.append('month', monthStr);
 
       const resp = await axios.post(API_ENDPOINTS.UPCOMING_EVENTS, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 12000,
       });
-      console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 300));
+      console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 400));
 
       if (resp.status === 200) {
         const d = resp.data;
@@ -37,12 +39,11 @@ const CalendarWidget = ({ userId }) => {
         if (Array.isArray(d)) found = d;
         else if (d && Array.isArray(d.data)) found = d.data;
         else if (d && typeof d === 'object') {
-          // Try every key that holds an array
           for (const key of Object.keys(d)) {
-            if (Array.isArray(d[key]) && d[key].length >= 0) { found = d[key]; break; }
+            if (Array.isArray(d[key])) { found = d[key]; break; }
           }
         }
-        if (found) setEvents(found);
+        setEvents(found || []);
       }
     } catch (e) {
       console.log('[Calendar] fetch error', e);

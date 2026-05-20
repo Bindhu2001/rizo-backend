@@ -16,7 +16,7 @@ export const API_ENDPOINTS = {
   REGULARISATION_LOGS: `${NEWAPP_URL}/regularisation_logs`,
   REGULARISE: `${NEWAPP_URL}/regularise`,
   SWIPE: `${NEWAPP_URL}/swipe`,
-  UPCOMING_EVENTS: `${AUTH_URL}/upcoming_events`,
+  UPCOMING_EVENTS: `${NEWAPP_URL}/upcoming_events`,
   VISIT_SYNC: `${NEWAPP_URL}/customer_visit_sync`,
   LEAVE_ITEMS: `${NEWAPP_URL}/leave_items`,
   LEAVE_HISTORY: `${NEWAPP_URL}/leave_history`,
