@@ -49,6 +49,8 @@ const CalendarWidget = ({ userId }) => {
     setCurrentDate(prev => addMonths(prev, -1));
   };
 
+  const normStatus = (s) => (s || '').replace(/^\/+/, '').toUpperCase();
+
   const getDaysInMonth = () => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
@@ -136,10 +138,10 @@ const CalendarWidget = ({ userId }) => {
           if (!day) return <View key={idx} style={styles.cell} />;
           
           const dayEvents = getCellEvents(day);
-          const hasBir = dayEvents.some(e => e.status === 'BIR');
-          const hasJoin = dayEvents.some(e => e.status === 'JOIN');
-          const hasHol = dayEvents.some(e => e.status === 'HO');
-          const hasWO = dayEvents.some(e => e.status === 'WO');
+          const hasBir = dayEvents.some(e => normStatus(e.status) === 'BIR');
+          const hasJoin = dayEvents.some(e => normStatus(e.status) === 'JOIN');
+          const hasHol = dayEvents.some(e => normStatus(e.status) === 'HO');
+          const hasWO = dayEvents.some(e => normStatus(e.status) === 'WO');
           const isToday = isSameDay(day, new Date());
 
           return (
@@ -184,11 +186,12 @@ const CalendarWidget = ({ userId }) => {
             
             <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
               {selectedEvent?.events.map((e, idx) => {
-                const isBir = e.status === 'BIR';
-                const isHol = e.status === 'HO';
-                const isWO = e.status === 'WO';
+                const ns = normStatus(e.status);
+                const isBir = ns === 'BIR';
+                const isHol = ns === 'HO';
+                const isWO = ns === 'WO';
                 const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : isWO ? '#4CAF50' : '#2196F3';
-                const typeText = isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary';
+                const typeText = e.type || (isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary');
                 
                 return (
                   <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
