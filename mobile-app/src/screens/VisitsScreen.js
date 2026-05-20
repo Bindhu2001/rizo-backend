@@ -390,36 +390,38 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <ScrollView contentContainerStyle={sv.scroll}>
-          <View style={sv.locChipBox}>
-            <View style={sv.locWrap}>
-              <MapPin color="#7C3AED" size={14} />
-              <Text style={sv.locLabel}>Your Current Location</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled">
+            <View style={sv.locChipBox}>
+              <View style={sv.locWrap}>
+                <MapPin color="#7C3AED" size={14} />
+                <Text style={sv.locLabel}>Your Current Location</Text>
+              </View>
+              {fetchingLoc ? (
+                <ActivityIndicator size="small" color="#7C3AED" style={{ marginTop: 4 }} />
+              ) : (
+                <Text style={sv.locText} numberOfLines={2}>{locText}</Text>
+              )}
             </View>
-            {fetchingLoc ? (
-              <ActivityIndicator size="small" color="#7C3AED" style={{ marginTop: 4 }} />
-            ) : (
-              <Text style={sv.locText} numberOfLines={2}>{locText}</Text>
-            )}
-          </View>
 
-          <View style={[sv.formWrap, { backgroundColor: theme.card }]}>
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
-            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
-            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
-          </View>
-        </ScrollView>
+            <View style={[sv.formWrap, { backgroundColor: theme.card }]}>
+              <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+              <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+              <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
+              <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
+            </View>
+          </ScrollView>
 
-        <View style={[sv.footer, { backgroundColor: theme.bg }]}>
-          <TouchableOpacity
-            style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: theme.cardSoft }]}
-            onPress={handleSave}
-            disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
-          >
-            {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: theme.textMuted }]}>START</Text>}
-          </TouchableOpacity>
-        </View>
+          <View style={[sv.footer, { backgroundColor: theme.bg }]}>
+            <TouchableOpacity
+              style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: theme.cardSoft }]}
+              onPress={handleSave}
+              disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
+            >
+              {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: theme.textMuted }]}>START</Text>}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       </SafeAreaView>
     </Modal>
@@ -463,32 +465,33 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <TouchableOpacity style={{ flex: 1 }} onPress={onClose} />
-        <KeyboardAvoidingView behavior="padding" style={{ width: '100%' }}>
-          <View style={[sm.sheet, { backgroundColor: theme.card }]}>
-            <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
-            <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}
+      >
+        <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
+        <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+          <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
+          <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
-            <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
-              <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
-              <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
-              <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
-              <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
-            </ScrollView>
+          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
+            <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+            <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
+          </ScrollView>
 
-            <View style={sm.footer}>
-              <TouchableOpacity
-                style={[sm.saveBtn, processing && { opacity: 0.7 }]}
-                onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
-                disabled={processing}
-              >
-                {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
-              </TouchableOpacity>
-            </View>
+          <View style={sm.footer}>
+            <TouchableOpacity
+              style={[sm.saveBtn, processing && { opacity: 0.7 }]}
+              onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
+              disabled={processing}
+            >
+              {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
+            </TouchableOpacity>
           </View>
-        </KeyboardAvoidingView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
