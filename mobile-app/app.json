@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Rizo",
-    "slug": "rizo-mobile-app",
+    "slug": "rizo",
     "version": "1.0.1",
     "newArchEnabled": false,
     "orientation": "portrait",
@@ -65,9 +65,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "cd678afd-a567-4a87-8839-5a8b7d3d306e"
+        "projectId": "3b809a7c-1863-489e-8a15-8452631f21c0"
       }
     },
-    "owner": "bindu_01"
+    "owner": "athiraglos"
   }
 }
