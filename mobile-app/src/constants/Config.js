@@ -24,6 +24,7 @@ export const API_ENDPOINTS = {
   GET_SUBMITTED_EXPENSES: `${NEWAPP_URL}/get_submitted_expenses`,
   GET_EXPENSE_TYPES: `${NEWAPP_URL}/get_expense_types`,
   GET_COUNTRIES: 'https://v1.mypayrollmaster.online/api/v2qa/newapp/get_countries_MyProfile',
+  GET_COUNTRIES_BY_CODE: `${NEWAPP_URL}/countries`,
   UPDATE_PROFILE: `${NEWAPP_URL}/update_profile`,
   SALARY_SLIP: `${NEWAPP_URL}/get_salary_slip`,
   MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,

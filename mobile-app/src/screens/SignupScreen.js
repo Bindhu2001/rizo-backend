@@ -145,9 +145,10 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
           />
           <FlatList
             data={filtered}
-            keyExtractor={c => c.id}
+            keyExtractor={c => String(c.id)}
             style={{ maxHeight: 320 }}
             keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={<Text style={[st.countryItemText, { color: theme.textMuted, textAlign: 'center', paddingVertical: 20 }]}>{query ? 'No results found' : 'Loading countries…'}</Text>}
             renderItem={({ item: c }) => (
               <TouchableOpacity
                 style={[st.countryItem, { borderBottomColor: theme.divider }]}
@@ -269,13 +270,16 @@ const SignupScreen = ({ navigation }) => {
   // Countries list
   const [countries, setCountries] = useState([]);
 
-  const fetchCountries = async () => {
+  const fetchCountries = async (code) => {
     try {
-      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES, { timeout: 10000 });
+      const res = await axios.get(API_ENDPOINTS.GET_COUNTRIES_BY_CODE, {
+        params: { company_code: code },
+        timeout: 10000,
+      });
       const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
       const raw = res.data?.data;
       if (ok && Array.isArray(raw) && raw.length > 0) {
-        setCountries(raw.map(c => ({ id: c.id_countries, country_name: c.name })));
+        setCountries(raw.map(c => ({ id: c.id, country_name: c.country_name })));
       } else {
         console.warn('[fetchCountries] unexpected response:', JSON.stringify(res.data));
       }
@@ -283,8 +287,6 @@ const SignupScreen = ({ navigation }) => {
       console.warn('[fetchCountries] error:', e.message);
     }
   };
-
-  useEffect(() => { fetchCountries(); }, []);
 
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
@@ -311,6 +313,7 @@ const SignupScreen = ({ navigation }) => {
             { text: 'Login', style: 'destructive', onPress: () => navigation.navigate('Login') },
           ]);
         } else if (isSuccess) {
+          fetchCountries(companyCode.trim());
           showAlert('success', 'Valid Email', 'Your email has been verified successfully.', [
             { text: 'OK', onPress: () => setStep(3) },
           ]);
@@ -549,7 +552,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={[st.container, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
@@ -644,9 +647,9 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-          <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
 
             {/* ══ STEP 3 — PERSONAL DETAILS ══ */}
             {step === 3 && (

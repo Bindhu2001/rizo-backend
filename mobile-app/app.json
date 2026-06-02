@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rizo",
     "slug": "rizo",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
@@ -16,18 +16,16 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.rizo.mobile",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking even in background."
+        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking."
       }
     },
     "android": {
       "package": "com.rizo.mobile",
-      "versionCode": 2,
+      "versionCode": 5,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CAMERA",
@@ -44,12 +42,7 @@
     "plugins": [
       "./plugins/withAgpCompatibility",
       "expo-sqlite",
-      [
-        "expo-location",
-        {
-          "locationAlwaysPermission": "Allow Rizo to use your location for attendance tracking."
-        }
-      ],
+      "expo-location",
       [
         "expo-build-properties",
         {

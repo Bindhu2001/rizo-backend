@@ -298,6 +298,22 @@ export const updateVisitStatus = async (id, status, details = {}) => {
     query += `, end_time = ?, end_lat = ?, end_lng = ?, end_address = ?`;
     params.push(details.endTime, details.lat || 0, details.lng || 0, details.address || '');
   }
+  if (details.clientName !== undefined) {
+    query += `, client_name = ?`;
+    params.push(details.clientName);
+  }
+  if (details.contactNumber !== undefined) {
+    query += `, contact_number = ?`;
+    params.push(details.contactNumber);
+  }
+  if (details.contactPerson !== undefined) {
+    query += `, contact_person = ?`;
+    params.push(details.contactPerson);
+  }
+  if (details.purpose !== undefined) {
+    query += `, purpose = ?`;
+    params.push(details.purpose);
+  }
   query += ` WHERE id = ?`;
   params.push(id);
   await database.runAsync(query, params);

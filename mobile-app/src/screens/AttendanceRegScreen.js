@@ -850,7 +850,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         </View>
 
         <KeyboardAvoidingView
-          behavior="padding"
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
         >

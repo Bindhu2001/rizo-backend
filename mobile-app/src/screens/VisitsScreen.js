@@ -3,7 +3,9 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView, RefreshControl
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
+import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -337,6 +339,8 @@ const fi = StyleSheet.create({
 });
 
 // ─── Going to Meet (Fullscreen START Component) ───────────────────────────
+const DISCLOSURE_KEY = 'location_disclosure_accepted_v1';
+
 const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   const theme = useTheme();
   const [company, setCompany] = useState('');
@@ -347,21 +351,35 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   const [locCoords, setLocCoords] = useState({ lat: 0, lng: 0 });
   const [fetchingLoc, setFetchingLoc] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
+  const [showDisclosure, setShowDisclosure] = useState(false);
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
+
+  const doFetchAddress = async (cancelled) => {
+    setFetchingLoc(true);
+    const result = await getAddress();
+    if (!cancelled) {
+      setLocText(result.address);
+      setLocCoords({ lat: result.lat, lng: result.lng });
+      setFetchingLoc(false);
+    }
+  };
 
   useEffect(() => {
     if (!visible) return;
     let cancelled = false;
-    const fetch = async () => {
-      setFetchingLoc(true);
-      const result = await getAddress();
-      if (!cancelled) {
-        setLocText(result.address);
-        setLocCoords({ lat: result.lat, lng: result.lng });
-        setFetchingLoc(false);
+    const init = async () => {
+      try {
+        const accepted = await AsyncStorage.getItem(DISCLOSURE_KEY);
+        if (accepted === 'true') {
+          doFetchAddress(cancelled);
+        } else {
+          setShowDisclosure(true);
+        }
+      } catch (_) {
+        setShowDisclosure(true);
       }
     };
-    fetch();
+    init();
     return () => { cancelled = true; };
   }, [visible]);
 
@@ -390,7 +408,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled">
             <View style={sv.locChipBox}>
               <View style={sv.locWrap}>
@@ -423,6 +441,18 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           </View>
         </KeyboardAvoidingView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
+        <LocationDisclosureModal
+          visible={showDisclosure}
+          onAccept={async () => {
+            setShowDisclosure(false);
+            try { await AsyncStorage.setItem(DISCLOSURE_KEY, 'true'); } catch (_) {}
+            doFetchAddress(false);
+          }}
+          onDecline={() => {
+            setShowDisclosure(false);
+            setLocText('Location access denied');
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -602,7 +632,11 @@ const VisitsScreen = ({ navigation, route }) => {
       }
       const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'step_in', {
-        stepInTime: new Date().toISOString(), lat, lng, address
+        stepInTime: new Date().toISOString(), lat, lng, address,
+        clientName: details.company,
+        contactNumber: details.contactNo,
+        contactPerson: details.contactPerson,
+        purpose: details.purpose,
       });
       syncIfOnline(); // fire-and-forget — UI updates instantly
       setShowStepInModal(false);

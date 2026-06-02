@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SHADOWS, moderateScale } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
 import CalendarWidget from '../components/CalendarWidget';
+import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
   savePunchLocal, getTodayLocalHistory, getLastPunchType,
@@ -65,6 +66,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [status, setStatus] = useState({ lastType: 'NONE', todayHistory: [] });
   const [locationName, setLocationName] = useState('Fetching location...');
   const [showConfirmOut, setShowConfirmOut] = useState(false);
+  const [showShiftConfirm, setShowShiftConfirm] = useState(false);
+  const [shiftConfirmType, setShiftConfirmType] = useState('IN');
   const [offlineCount, setOfflineCount] = useState(0);
   const lastActionTime = useRef(0);
   const lastLocationFetch = useRef(0);
@@ -83,6 +86,7 @@ const HomeScreen = ({ navigation, route }) => {
   });
   const [alertCfg, setAlertCfg] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -102,7 +106,6 @@ const HomeScreen = ({ navigation, route }) => {
       checkOfflinePunches();
       // Use ref so we always get the latest user_id
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
-      setTimeout(fetchLocation, 1000);
       NotificationManager.checkStatusChanges();
       NotificationManager.registerAndSendToken(userRef.current.user_id);
     });
@@ -124,7 +127,7 @@ const HomeScreen = ({ navigation, route }) => {
       checkOfflinePunches();
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       if (Date.now() - lastLocationFetch.current > 120000) {
-        fetchLocation();
+        initLocationWithDisclosure();
       }
     });
     const syncTimer = setInterval(() => SyncService.syncAll(), 60000);
@@ -141,6 +144,33 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   // ── Initialization ────────────────────────────────────────────────────────
+
+  // ── Location disclosure gate ──────────────────────────────────────────────
+  const DISCLOSURE_KEY = 'location_disclosure_accepted_v1';
+
+  const initLocationWithDisclosure = async () => {
+    try {
+      const accepted = await AsyncStorage.getItem(DISCLOSURE_KEY);
+      if (accepted === 'true') {
+        fetchLocation();
+      } else {
+        setShowLocationDisclosure(true);
+      }
+    } catch (_) {
+      fetchLocation();
+    }
+  };
+
+  const handleDisclosureAccept = async () => {
+    setShowLocationDisclosure(false);
+    try { await AsyncStorage.setItem(DISCLOSURE_KEY, 'true'); } catch (_) {}
+    fetchLocation();
+  };
+
+  const handleDisclosureDecline = () => {
+    setShowLocationDisclosure(false);
+    setLocationName('Location access denied');
+  };
 
   // ── Location: high accuracy + human-readable name ─────────────────────────
   const fetchLocation = async () => {
@@ -465,11 +495,9 @@ const HomeScreen = ({ navigation, route }) => {
       showAlert('warning', 'Punch Not Allowed', verdict.message || "You're not in an accurate location.");
       return;
     }
-    if (isPunchedIn) {
-      setShowConfirmOut(true);
-    } else {
-      processPunch('IN');
-    }
+    const type = isPunchedIn ? 'OUT' : 'IN';
+    setShiftConfirmType(type);
+    setShowShiftConfirm(true);
   };
 
   const processPunch = async (type) => {
@@ -489,12 +517,8 @@ const HomeScreen = ({ navigation, route }) => {
       const isOffline = !net.isConnected;
 
       // 2. Fetch GPS location
-      //    Offline → show visible message while GPS works (can take time)
-      //    Online  → silent fetch, swipe button spinner is enough
       let loc = { coords: { latitude: 0, longitude: 0 } };
-      if (isOffline) {
-        setPunchMessage('Fetching your location...');
-      }
+      setPunchMessage('Fetching your location...');
 
       // Use last-known location immediately for speed, then upgrade with fresh GPS
       try {
@@ -513,13 +537,13 @@ const HomeScreen = ({ navigation, route }) => {
         ]);
         loc = fresh;
         console.log(`[Punch] Fresh location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
-        if (isOffline) setPunchMessage('Location found — saving punch...');
+        setPunchMessage('Location found — saving punch...');
       } catch (_) {
         if (loc.coords.latitude !== 0) {
           console.log(`[Punch] GPS timed out, using last-known location`);
-          if (isOffline) setPunchMessage('Using last known location — saving punch...');
+          setPunchMessage('Using last known location — saving punch...');
         } else {
-          if (isOffline) setPunchMessage('Saving punch (location unavailable)...');
+          setPunchMessage('Saving punch (location unavailable)...');
         }
       }
 
@@ -685,27 +709,51 @@ const HomeScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* SWIPE / TIMER ACTION */}
+        {/* SWIPE / PUNCH AREA */}
         <View style={styles.swipeBoxContainer}>
-          <View style={[styles.swipeBox, { width: '100%', height: 68, alignSelf: 'center' }]}>
-            <SwipeToPunch
-              isPunchedIn={isPunchedIn}
-              loading={punching}
-              onSwipeComplete={handleSwipeComplete}
-              resetTrigger={cancelTrigger}
-              trackHeight={68}
-              locationName={isPunchedIn ? punchInAddress : ''}
-              punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
-            />
-          </View>
+          <View style={[styles.punchCard, { backgroundColor: theme.card }]}>
 
-          {/* Offline location fetch status banner */}
-          {!!punchMessage && (
-            <View style={styles.punchMessageBanner}>
-              <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginRight: 8 }} />
-              <Text style={styles.punchMessageText}>{punchMessage}</Text>
+            {/* Status row — only shown when punched in */}
+            {isPunchedIn && (
+              <View style={styles.punchStatusRow}>
+                <View style={[styles.punchDot, { backgroundColor: '#39B54A' }]} />
+                <Text style={[styles.punchStatusText, { color: '#2E7D32' }]}>
+                  {`Clocked in at ${punchInTime ? format(punchInTime, 'hh:mm a') : '—'}`}
+                </Text>
+              </View>
+            )}
+
+            {/* Action title */}
+            <Text style={[styles.punchActionTitle, { color: punching ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
+              {punching
+                ? (isPunchedIn ? 'Clocking Out…' : 'Clocking In…')
+                : (isPunchedIn ? 'Clock Out' : 'Clock In')}
+            </Text>
+
+            {/* Swipe */}
+            <View style={{ width: '100%', height: 68, marginTop: moderateScale(12) }}>
+              <SwipeToPunch
+                isPunchedIn={isPunchedIn}
+                loading={punching}
+                onSwipeComplete={handleSwipeComplete}
+                resetTrigger={cancelTrigger}
+                trackHeight={68}
+                locationName={isPunchedIn ? punchInAddress : ''}
+                punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
+              />
             </View>
-          )}
+
+            {/* Live status — always visible while punching */}
+            {(punching || !!punchMessage) && (
+              <View style={styles.punchMessageBanner}>
+                <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginRight: 8 }} />
+                <Text style={styles.punchMessageText}>
+                  {punchMessage || (isPunchedIn ? 'Processing clock out...' : 'Processing clock in...')}
+                </Text>
+              </View>
+            )}
+
+          </View>
         </View>
 
         {/* System message ticker */}
@@ -845,30 +893,53 @@ const HomeScreen = ({ navigation, route }) => {
 
       </ScrollView>
 
-      {/* CLOCK OUT MODAL */}
-      <Modal visible={showConfirmOut} transparent animationType="fade" statusBarTranslucent>
+      {/* SHIFT POLICY CONFIRM MODAL — shown before both Punch IN and Punch OUT */}
+      <Modal visible={showShiftConfirm} transparent animationType="fade" statusBarTranslucent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <View style={styles.modalPowerCircle}>
-              <Power color={COLORS.danger} size={32} />
+            <View style={[styles.modalPowerCircle, {
+              backgroundColor: shiftConfirmType === 'OUT' ? '#FFF0F0' : '#EEF2FF',
+              borderColor: shiftConfirmType === 'OUT' ? '#FFE4E4' : '#C7D2FE'
+            }]}>
+              {shiftConfirmType === 'OUT'
+                ? <Power color={COLORS.danger} size={32} />
+                : <Fingerprint color={COLORS.primaryDeep} size={32} />
+              }
             </View>
-            <Text style={styles.modalTitle}>Clock Out?</Text>
-            <Text style={styles.modalSub}>Your working hours will end. Are you sure you want to clock out?</Text>
+            <Text style={styles.modalTitle}>Attendance</Text>
+            <Text style={styles.modalSub}>Attendance direction is decided by your shift policy</Text>
             <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.cancelBtn} disabled={punching} onPress={() => {
-                setShowConfirmOut(false);
-                setCancelTrigger(prev => prev + 1);
-              }}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                disabled={punching}
+                onPress={() => {
+                  setShowShiftConfirm(false);
+                  setCancelTrigger(prev => prev + 1);
+                }}
+              >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.logoutBtn, punching && { opacity: 0.6 }]} disabled={punching} onPress={() => processPunch('OUT')}>
-                {punching ? <ActivityIndicator color="#FFF" /> : <Text style={styles.logoutBtnText}>Clock Out</Text>}
+              <TouchableOpacity
+                style={[styles.logoutBtn, { backgroundColor: shiftConfirmType === 'OUT' ? COLORS.danger : COLORS.primaryDeep }, punching && { opacity: 0.6 }]}
+                disabled={punching}
+                onPress={() => {
+                  setShowShiftConfirm(false);
+                  processPunch(shiftConfirmType);
+                }}
+              >
+                {punching ? <ActivityIndicator color="#FFF" /> : <Text style={styles.logoutBtnText}>OK</Text>}
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
+      <LocationDisclosureModal
+        visible={showLocationDisclosure}
+        onAccept={handleDisclosureAccept}
+        onDecline={handleDisclosureDecline}
+      />
     </SafeAreaView>
   );
 };
@@ -892,7 +963,31 @@ const styles = StyleSheet.create({
   avatar: { width: '100%', height: '100%' },
 
   swipeBoxContainer: { marginBottom: moderateScale(20) },
-  swipeBox: { height: moderateScale(68), width: '100%', alignSelf: 'center' },
+  punchCard: {
+    borderRadius: moderateScale(20),
+    padding: moderateScale(18),
+    ...SHADOWS.light,
+  },
+  punchStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: moderateScale(4),
+  },
+  punchDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  punchStatusText: {
+    fontSize: moderateScale(12),
+    fontWeight: '600',
+  },
+  punchActionTitle: {
+    fontSize: moderateScale(22),
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   punchMessageBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -900,7 +995,7 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(12),
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(14),
-    marginTop: moderateScale(10),
+    marginTop: moderateScale(12),
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
