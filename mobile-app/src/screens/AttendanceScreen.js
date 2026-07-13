@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, RefreshControl
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
 } from 'lucide-react-native';
@@ -29,6 +29,7 @@ const formatPunchTime = (isoOrFull) => {
 
 const AttendanceScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const user = route?.params?.user;
 
   const [loading, setLoading] = useState(true);
@@ -297,7 +298,7 @@ const AttendanceScreen = ({ navigation, route }) => {
       {/* ── Month Picker Modal ── */}
       <Modal visible={showMonthPicker} transparent animationType="slide" onRequestClose={() => setShowMonthPicker(false)} statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
-          <View style={[s.modalSheet, { backgroundColor: theme.card }]}>
+          <View style={[s.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.modalHandle, { backgroundColor: theme.border }]} />
             <Text style={[s.modalTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView showsVerticalScrollIndicator={false}>

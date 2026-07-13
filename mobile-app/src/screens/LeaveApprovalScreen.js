@@ -5,7 +5,7 @@ import {
   Modal, TextInput, ActivityIndicator, StatusBar
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft, ChevronDown, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
@@ -50,6 +50,7 @@ const SECTION_META = {
 
 const LeaveApprovalScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const user = route?.params?.user;
 
   const [loading, setLoading] = useState(true);
@@ -322,7 +323,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           {/* Reason */}
           <View style={[s.reasonBox, { backgroundColor: theme.cardSoft }]}>
             <Info size={14} color={theme.textMuted} />
-            <Text style={[s.reasonText, { color: theme.textLight }]}>{item.reason || 'No reason provided'}</Text>
+            <Text style={[s.reasonText, { color: theme.textLight }]}>{(item.reason || item.Reason || '').trim() || 'No reason provided'}</Text>
           </View>
 
           {/* Buttons */}
@@ -522,7 +523,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       {/* Month Picker Modal */}
       <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
-          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+          <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.handle, { backgroundColor: theme.border }]} />
             <Text style={[s.sheetTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView>
@@ -542,7 +543,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       {/* History Filter Picker Modal */}
       <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowHistFilterPicker(false)}>
-          <View style={[s.sheet, { backgroundColor: theme.card }]}>
+          <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.handle, { backgroundColor: theme.border }]} />
             <Text style={[s.sheetTitle, { color: theme.text }]}>Filter History</Text>
             {histFilterOptions.map((key) => {

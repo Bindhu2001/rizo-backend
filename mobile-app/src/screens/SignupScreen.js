@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Dimensions,
-  FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch,
+  FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch, BackHandler,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
@@ -180,7 +180,18 @@ const SLIDES = [
 // ─── SignupScreen ──────────────────────────────────────────────────────────────
 const SignupScreen = ({ navigation }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    const onBack = () => {
+      if (step > 0) { prevStep(); return true; }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [step]);
+
   const [loading, setLoading] = useState(false);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [alertCfg, setAlertCfg] = useState(null);
@@ -523,7 +534,7 @@ const SignupScreen = ({ navigation }) => {
               <View style={[st.carouselTop, { backgroundColor: theme.bg }]}>
                 <Image source={item.img} style={st.carouselImg} resizeMode="contain" />
               </View>
-              <View style={[st.carouselCard, { backgroundColor: theme.card }]}>
+              <View style={[st.carouselCard, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(36), insets.bottom + moderateScale(16)) }]}>
                 <View style={st.dotRow}>
                   {SLIDES.map((_, i) => (
                     <View key={i} style={[st.dot, { backgroundColor: theme.border }, carouselIndex === i && st.dotActive]} />
@@ -552,7 +563,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={[st.container, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
@@ -560,7 +571,7 @@ const SignupScreen = ({ navigation }) => {
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
           <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 28 }} keyboardShouldPersistTaps="handled">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
@@ -647,7 +658,7 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
 
@@ -865,7 +876,7 @@ const SignupScreen = ({ navigation }) => {
               </>
             )}
 
-            <View style={{ height: 24 }} />
+            <View style={{ height: 80 }} />
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

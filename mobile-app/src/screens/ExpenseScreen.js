@@ -1,10 +1,10 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable, KeyboardAvoidingView, RefreshControl
+  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable, KeyboardAvoidingView, RefreshControl, BackHandler
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, ChevronDown,
   CheckCircle, FileText, X, Paperclip, Clock
@@ -154,10 +154,11 @@ const cal = StyleSheet.create({
 // ─── Selection Modal ───────────────────────────────────────────────────────
 const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title, labelKey = 'label', valueKey = 'value' }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
     <TouchableOpacity style={[sm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
-      <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+      <View style={[sm.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[sm.handle, { backgroundColor: theme.border }]} />
         {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
         <ScrollView style={{ maxHeight: 300 }}>
@@ -180,7 +181,7 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
 };
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24 },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24) },
   handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16) },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
@@ -224,6 +225,15 @@ const ExpenseScreen = ({ navigation, route }) => {
     if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
   }, [user, navigation]);
 
+  useEffect(() => {
+    const onBack = () => {
+      if (view === 'APPLY' || view === 'SUCCESS') { setView('LIST'); return true; }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [view]);
+
   if (!user) return null;
 
   const onRefresh = async () => {
@@ -264,11 +274,14 @@ const ExpenseScreen = ({ navigation, route }) => {
       }
 
       if (approverRes?.data?.success) {
-        const auths = (approverRes.data.data?.authorized_persons || []).map(normalizePerson);
-        const apps = (approverRes.data.data?.approved_persons || []).map(normalizePerson);
+        const auths = (approverRes.data.data?.authorized_persons || [])
+          .map(normalizePerson)
+          .filter(p => p.key && p.key !== '0' && p.emp_id !== user.user_id);
+        const apps = (approverRes.data.data?.approved_persons || [])
+          .map(normalizePerson)
+          .filter(p => p.key && p.key !== '0' && p.emp_id !== user.user_id);
         setAuthPersons(auths);
         setAppPersons(apps);
-        // Default selection on first load (only if user hasn't picked yet)
         setAuthBy(prev => prev || auths[0] || null);
         setAppBy(prev => prev || apps[0] || null);
       }
@@ -338,9 +351,14 @@ const ExpenseScreen = ({ navigation, route }) => {
 
   const submitExpense = async () => {
     if (!expenseType) { showAlert('warning', 'Missing Type', 'Please select Expense Type'); return; }
-    if (!amount.trim()) { showAlert('warning', 'Missing Amount', 'Please enter Amount'); return; }
+    const amtNum = parseFloat(amount);
+    if (!amount.trim() || isNaN(amtNum) || amtNum <= 0) { showAlert('warning', 'Invalid Amount', 'Amount must be greater than 0'); return; }
     if (!expenseDate) { showAlert('warning', 'Missing Date', 'Please select Date'); return; }
     if (!remarks.trim() && !purpose.trim()) { showAlert('warning', 'Missing Details', 'Please enter Remarks or Purpose'); return; }
+    if (authPersons.length === 0) { showAlert('warning', 'No Authoriser Assigned', 'No authorised person is assigned. Please contact HR.'); return; }
+    if (appPersons.length === 0) { showAlert('warning', 'No Approver Assigned', 'No approved person is assigned. Please contact HR.'); return; }
+    if (!authBy) { showAlert('warning', 'Authorised By Required', 'Please select an authorised person.'); return; }
+    if (!appBy) { showAlert('warning', 'Approved By Required', 'Please select an approved person.'); return; }
 
     setSubmitting(true);
     try {
@@ -444,7 +462,7 @@ const ExpenseScreen = ({ navigation, route }) => {
       {view === 'APPLY' && (
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+          <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
             {/* Expense Type */}
@@ -459,7 +477,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             {/* Amount */}
             <View style={s.inputBox}>
               <Text style={[s.label, { color: theme.textMuted }]}>Amount (₹) *</Text>
-              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1'))} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor={theme.textMuted} maxLength={20} />
+              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ''))} placeholder="e.g. 500" keyboardType="numeric" placeholderTextColor={theme.textMuted} maxLength={10} />
             </View>
 
             {/* Date */}
@@ -473,20 +491,40 @@ const ExpenseScreen = ({ navigation, route }) => {
 
             {/* Authorised By */}
             <View style={s.inputBox}>
-              <Text style={[s.label, { color: theme.textMuted }]}>Authorised By</Text>
-              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
-                <Text style={[s.inputVal, { color: theme.text }, !authBy && { color: theme.textMuted }]}>{authBy?.name || 'Select Authoriser'}</Text>
-                <ChevronDown color={theme.textMuted} size={16} />
-              </TouchableOpacity>
+              <Text style={[s.label, { color: theme.textMuted }]}>Authorised By *</Text>
+              {authPersons.length === 0 ? (
+                <View style={[s.inputRow, { backgroundColor: '#FEF3C7', borderColor: '#D97706' }]}>
+                  <Text style={[s.inputVal, { color: '#92400E' }]}>Not assigned — contact HR</Text>
+                </View>
+              ) : authPersons.length === 1 ? (
+                <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                  <Text style={[s.inputVal, { color: theme.text }]}>{authBy?.name || 'Not Defined'}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
+                  <Text style={[s.inputVal, { color: theme.text }, !authBy && { color: theme.textMuted }]}>{authBy?.name || 'Select Authoriser'}</Text>
+                  <ChevronDown color={theme.textMuted} size={16} />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Approved By */}
             <View style={s.inputBox}>
-              <Text style={[s.label, { color: theme.textMuted }]}>Approved By</Text>
-              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
-                <Text style={[s.inputVal, { color: theme.text }, !appBy && { color: theme.textMuted }]}>{appBy?.name || 'Select Approver'}</Text>
-                <ChevronDown color={theme.textMuted} size={16} />
-              </TouchableOpacity>
+              <Text style={[s.label, { color: theme.textMuted }]}>Approved By *</Text>
+              {appPersons.length === 0 ? (
+                <View style={[s.inputRow, { backgroundColor: '#FEF3C7', borderColor: '#D97706' }]}>
+                  <Text style={[s.inputVal, { color: '#92400E' }]}>Not assigned — contact HR</Text>
+                </View>
+              ) : appPersons.length === 1 ? (
+                <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                  <Text style={[s.inputVal, { color: theme.text }]}>{appBy?.name || 'Not Defined'}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
+                  <Text style={[s.inputVal, { color: theme.text }, !appBy && { color: theme.textMuted }]}>{appBy?.name || 'Select Approver'}</Text>
+                  <ChevronDown color={theme.textMuted} size={16} />
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Remarks */}
@@ -505,17 +543,19 @@ const ExpenseScreen = ({ navigation, route }) => {
             <View style={s.fileBox}>
               <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
                 <Paperclip color={COLORS.primaryDeep} size={14} />
-                <Text style={s.addFilesText}> Add files</Text>
+                <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
               </TouchableOpacity>
 
               {attachedFiles.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible' }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
                   {attachedFiles.map((f, i) => (
                     <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
                   ))}
-                  <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
-                    <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
-                  </TouchableOpacity>
+                  <View style={ft.wrap}>
+                    <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
+                      <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
+                    </TouchableOpacity>
+                  </View>
                 </ScrollView>
               )}
             </View>
@@ -600,7 +640,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(28) },
+  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(48) },
   fab: { position: 'absolute', bottom: 24, right: 24, width: moderateScale(60), height: moderateScale(60), borderRadius: moderateScale(30), backgroundColor: '#4C1D95', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
   // Inputs
@@ -611,7 +651,7 @@ const s = StyleSheet.create({
   textArea: { height: moderateScale(100), textAlignVertical: 'top', paddingTop: moderateScale(16), borderStyle: 'solid' }, // If it's active field we could tint border
 
   fileBox: { marginBottom: moderateScale(24), paddingHorizontal: 4 },
-  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(8) },
+  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(8), alignSelf: 'flex-start' },
   addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: moderateScale(13) },
   addMoreThumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
   addMorePlus: { fontSize: moderateScale(24), color: '#9CA3AF', fontWeight: '300' },

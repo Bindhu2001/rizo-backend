@@ -1,6 +1,0 @@
-Starting project at C:\Users\91858\Rizo_Mobile\mobile-app
-› Port 8081 is being used by another process
-Input is required, but 'npx expo' is in non-interactive mode.
-Required input:
-> Use port 8084 instead?
-› Skipping dev server

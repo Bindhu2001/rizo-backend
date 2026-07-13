@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator, BackHandler, Switch,
+  Image, ActivityIndicator, BackHandler, Switch, TextInput,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
   MapPin, CreditCard, FileText, ClipboardList, Moon, Sun,
+  Lock, Eye, EyeOff,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
@@ -76,6 +77,13 @@ const ProfileScreen = ({ navigation, route }) => {
   const [bank, setBank] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Reset password state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+
   useEffect(() => {
     if (!user || !user.user_id) {
       navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
@@ -100,12 +108,11 @@ const ProfileScreen = ({ navigation, route }) => {
   }, [navigation, user?.user_id]);
 
   // Android hardware back: if a section is open, return to the menu;
-  // otherwise close the Profile screen.
+  // otherwise let the system/navigator handle it (closes app or pops stack).
   useEffect(() => {
     const onBack = () => {
       if (section) { setSection(null); return true; }
-      navigation.goBack();
-      return true;
+      return false;
     };
     const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
     return () => sub.remove();
@@ -140,6 +147,46 @@ const ProfileScreen = ({ navigation, route }) => {
     if (key === 'address') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_ADDRESS, setAddress, address);
     if (key === 'kyc') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_DOCUMENTS, setDocuments, documents);
     if (key === 'other') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_BANK, setBank, bank);
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword.trim()) {
+      showAlert('error', 'Validation', 'Please enter a new password.');
+      return;
+    }
+    if (!confirmPassword.trim()) {
+      showAlert('error', 'Validation', 'Please confirm your password.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showAlert('error', 'Mismatch', 'New password and confirm password do not match.');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const res = await axios.post(API_ENDPOINTS.RESET_PASSWORD, {
+        user_id: user.user_id,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+      const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
+      if (ok) {
+        showAlert('success', 'Password Reset', 'Your password has been reset successfully. You will be logged out.', [
+          {
+            text: 'OK', onPress: async () => {
+              await clearUserSession();
+              navigation.replace('Login');
+            }
+          },
+        ]);
+      } else {
+        showAlert('error', 'Reset Failed', res.data?.message || 'Failed to reset password. Please try again.');
+      }
+    } catch (e) {
+      showAlert('error', 'Error', 'Could not reset password. Please check your connection and try again.');
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -249,6 +296,69 @@ const ProfileScreen = ({ navigation, route }) => {
     ));
   }
 
+  // ── RESET PASSWORD ──────────────────────────────────────────────────────────
+  if (section === 'resetPassword') {
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+        <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
+        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false}>
+          <View style={[s.fieldCard, { backgroundColor: theme.card, paddingVertical: moderateScale(20) }]}>
+            <Text style={[s.pwdLabel, { color: theme.textMuted }]}>New Password</Text>
+            <View style={[s.pwdInputWrap, { borderColor: theme.divider, backgroundColor: theme.bg }]}>
+              <Lock color={theme.textMuted} size={18} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[s.pwdInput, { color: theme.text }]}
+                placeholder="Enter new password"
+                placeholderTextColor={theme.textMuted}
+                secureTextEntry={!showNewPwd}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowNewPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                {showNewPwd
+                  ? <EyeOff color={theme.textMuted} size={18} />
+                  : <Eye color={theme.textMuted} size={18} />}
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[s.pwdLabel, { color: theme.textMuted, marginTop: moderateScale(16) }]}>Confirm Password</Text>
+            <View style={[s.pwdInputWrap, { borderColor: theme.divider, backgroundColor: theme.bg }]}>
+              <Lock color={theme.textMuted} size={18} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[s.pwdInput, { color: theme.text }]}
+                placeholder="Confirm new password"
+                placeholderTextColor={theme.textMuted}
+                secureTextEntry={!showConfirmPwd}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                {showConfirmPwd
+                  ? <EyeOff color={theme.textMuted} size={18} />
+                  : <Eye color={theme.textMuted} size={18} />}
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[s.resetBtn, resetLoading && { opacity: 0.7 }]}
+              onPress={handleResetPassword}
+              disabled={resetLoading}
+              activeOpacity={0.85}
+            >
+              {resetLoading
+                ? <ActivityIndicator color="#FFF" size="small" />
+                : <Text style={s.resetBtnText}>Reset Password</Text>}
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: 32 }} />
+        </ScrollView>
+        <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
+      </SafeAreaView>
+    );
+  }
+
   // ── MAIN PROFILE VIEW ───────────────────────────────────────────────────────
   return (
     <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
@@ -304,6 +414,16 @@ const ProfileScreen = ({ navigation, route }) => {
             iconBg="#F0FDF4" icon={<ClipboardList color="#16A34A" size={20} />}
             title="Other Details" subtitle="Statutory & worker info"
             onPress={() => openSection('other')}
+            last
+          />
+        </View>
+
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Security</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          <SectionItem
+            iconBg="#FFF1F2" icon={<Lock color="#E11D48" size={20} />}
+            title="Reset Password" subtitle="Change your account password"
+            onPress={() => { setNewPassword(''); setConfirmPassword(''); setSection('resetPassword'); }}
             last
           />
         </View>
@@ -388,6 +508,13 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#FEE2E2', ...SHADOWS.light,
   },
   logoutText: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.danger, marginLeft: moderateScale(10) },
+
+  // Password reset
+  pwdLabel: { fontSize: moderateScale(12), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: moderateScale(8), marginLeft: 2 },
+  pwdInputWrap: { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(12) },
+  pwdInput: { flex: 1, fontSize: moderateScale(15), fontWeight: '500' },
+  resetBtn: { backgroundColor: PURPLE, borderRadius: moderateScale(14), paddingVertical: moderateScale(16), alignItems: 'center', marginTop: moderateScale(28) },
+  resetBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800' },
 
   // Read-only field card
   fieldCard: { backgroundColor: '#FFF', borderRadius: moderateScale(20), paddingHorizontal: moderateScale(18), paddingVertical: moderateScale(6), ...SHADOWS.light },

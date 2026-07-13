@@ -14,6 +14,7 @@ import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const { width } = Dimensions.get('window');
 
@@ -68,6 +69,8 @@ const SalaryScreen = ({ navigation, route }) => {
     }
   };
 
+  const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
   const handleDownloadPdf = async (slip) => {
     if (downloadingId) return;
     setDownloadingId(slip.month);
@@ -75,8 +78,11 @@ const SalaryScreen = ({ navigation, route }) => {
     try {
       const monthStr = formatMonth(slip.month);
       let htmlContent = `
+        <!DOCTYPE html>
         <html>
         <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; }
             .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #581C87; padding-bottom: 20px; }
@@ -98,70 +104,79 @@ const SalaryScreen = ({ navigation, route }) => {
         <body>
           <div class="header">
             <p class="title">Salary Slip</p>
-            <p class="subtitle">For the month of ${monthStr}</p>
+            <p class="subtitle">For the month of ${escHtml(monthStr)}</p>
           </div>
           
           <div class="emp-details">
             <table>
               <tr>
-                <td><strong>Employee Name:</strong> ${user?.employee_name || 'N/A'}</td>
-                <td><strong>Employee ID:</strong> ${user?.emp_pkey || user?.user_id || 'N/A'}</td>
+                <td><strong>Employee Name:</strong> ${escHtml((slip.empdet?.[0]?.EmpName || user?.employee_name || 'N/A').trim())}</td>
+                <td><strong>Employee ID:</strong> ${escHtml(slip.empdet?.[0]?.employee_id || user?.emp_pkey || user?.user_id || 'N/A')}</td>
               </tr>
               <tr>
-                <td><strong>Designation:</strong> ${user?.designation || 'N/A'}</td>
-                <td><strong>Department:</strong> ${user?.department || 'N/A'}</td>
+                <td><strong>Designation:</strong> ${escHtml(slip.empdet?.[0]?.desig_name || user?.designation || 'N/A')}</td>
+                <td><strong>Department:</strong> ${escHtml(slip.empdet?.[0]?.dept_name || user?.department || 'N/A')}</td>
+              </tr>
+              <tr>
+                <td><strong>Branch:</strong> ${escHtml(slip.empdet?.[0]?.branch_name || 'N/A')}</td>
+                <td><strong>Working Days:</strong> ${escHtml(slip.empdet?.[0]?.working_days || 'N/A')}</td>
               </tr>
             </table>
           </div>
       `;
 
+      // Use server-computed totals from empdet when available
+      const empdet = Array.isArray(slip.empdet) && slip.empdet.length > 0 ? slip.empdet[0] : null;
+      const grossFromApi = empdet ? Math.abs(parseFloat(empdet.gross_salary) || 0) : 0;
+      const deductFromApi = empdet ? Math.abs(parseFloat(empdet.total_deduction) || 0) : 0;
+      const netFromApi = empdet ? Math.abs(parseFloat(empdet.net_salary) || 0) : 0;
+
       let totalAdditions = 0;
       let totalDeductions = 0;
 
-      if (slip.heads && Array.isArray(slip.heads)) {
-        slip.heads.forEach(head => {
-          htmlContent += `<div class="section-title">${head.head_desc}</div>`;
-          htmlContent += `
-            <table class="data-table">
-              <tr>
-                <th>Description</th>
-                <th class="amt-col right-align">Amount (₹)</th>
-              </tr>
-          `;
-
-          if (head.items && Array.isArray(head.items)) {
-            head.items.forEach(item => {
-              const amt = Math.abs(parseFloat(item.amount) || 0);
-              if (item.operator === 'Addition') totalAdditions += amt;
-              else if (item.operator === 'Deduction') totalDeductions += amt;
-
-              htmlContent += `
-                <tr>
-                  <td>${item.item_desc}</td>
-                  <td class="right-align">${amt.toFixed(2)}</td>
-                </tr>
-              `;
-            });
-          }
-          htmlContent += `</table>`;
+      // Earnings section
+      const earnings = Array.isArray(slip.summary) ? slip.summary : [];
+      if (earnings.length > 0) {
+        htmlContent += `<div class="section-title">Earnings</div>`;
+        htmlContent += `<table class="data-table"><tr><th>Description</th><th class="amt-col right-align">Amount (&#8377;)</th></tr>`;
+        earnings.forEach(item => {
+          const amt = Math.abs(parseFloat(item.salary_amount) || 0);
+          totalAdditions += amt;
+          htmlContent += `<tr><td>${escHtml((item.salary_head_item_desc || '').trim())}</td><td class="right-align">${amt.toFixed(2)}</td></tr>`;
         });
+        htmlContent += `</table>`;
       }
 
-      const netSalary = totalAdditions - totalDeductions;
+      // Deductions section
+      const deductions = Array.isArray(slip.withoutcomponent) ? slip.withoutcomponent.filter(i => i.salary_head_item_desc !== 'No Deductions') : [];
+      if (deductions.length > 0) {
+        htmlContent += `<div class="section-title">Deductions</div>`;
+        htmlContent += `<table class="data-table"><tr><th>Description</th><th class="amt-col right-align">Amount (&#8377;)</th></tr>`;
+        deductions.forEach(item => {
+          const amt = Math.abs(parseFloat(item.salary_amount) || 0);
+          totalDeductions += amt;
+          htmlContent += `<tr><td>${escHtml((item.salary_head_item_desc || '').trim())}</td><td class="right-align">${amt.toFixed(2)}</td></tr>`;
+        });
+        htmlContent += `</table>`;
+      }
+
+      const displayGross = empdet ? grossFromApi : totalAdditions;
+      const displayDeduct = empdet ? deductFromApi : totalDeductions;
+      const displayNet = empdet ? netFromApi : (totalAdditions - totalDeductions);
 
       htmlContent += `
           <table class="data-table">
             <tr class="total-row">
-              <td>Gross Additions</td>
-              <td class="right-align amt-col">₹${totalAdditions.toFixed(2)}</td>
+              <td>Gross Salary</td>
+              <td class="right-align amt-col">&#8377;${displayGross.toFixed(2)}</td>
             </tr>
             <tr class="total-row">
               <td>Total Deductions</td>
-              <td class="right-align amt-col">₹${totalDeductions.toFixed(2)}</td>
+              <td class="right-align amt-col">&#8377;${displayDeduct.toFixed(2)}</td>
             </tr>
             <tr class="total-row" style="background-color: #EDE9FE !important; font-size: 18px;">
               <td><strong>NET SALARY PAYABLE</strong></td>
-              <td class="right-align amt-col"><strong>₹${netSalary.toFixed(2)}</strong></td>
+              <td class="right-align amt-col"><strong>&#8377;${displayNet.toFixed(2)}</strong></td>
             </tr>
           </table>
           
@@ -172,18 +187,51 @@ const SalaryScreen = ({ navigation, route }) => {
         </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const empName = (slip.empdet?.[0]?.EmpName || user?.employee_name || 'Employee').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Employee';
+      const [slipYear, slipMo] = (slip.month || '2000-01').split('-');
+      const moIndex = parseInt(slipMo, 10) - 1;
+      const slipMonthName = (moIndex >= 0 && moIndex <= 11) ? MONTH_NAMES[moIndex] : 'Month';
+      const pdfFileName = `${empName}_${slipMonthName}${slipYear}_SalarySlip.pdf`;
 
-      const isSharingAvailable = await Sharing.isAvailableAsync();
-      if (isSharingAvailable) {
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: `Salary_Slip_${monthStr}.pdf` });
-      } else {
-        showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
+      let uri;
+      try {
+        const result = await Print.printToFileAsync({ html: htmlContent, base64: false });
+        uri = result.uri;
+      } catch (printErr) {
+        console.error('PDF generation error:', printErr);
+        showAlert('error', 'Error', `Failed to generate PDF: ${printErr.message || 'Unknown error'}`);
+        return;
+      }
+
+      let finalUri = uri;
+      try {
+        const cacheDir = FileSystem.cacheDirectory;
+        if (cacheDir) {
+          const destUri = `${cacheDir}${pdfFileName}`;
+          await FileSystem.deleteAsync(destUri, { idempotent: true });
+          await FileSystem.moveAsync({ from: uri, to: destUri });
+          finalUri = destUri;
+        }
+      } catch (renameErr) {
+        console.warn('PDF rename failed, sharing original:', renameErr.message);
+        finalUri = uri;
+      }
+
+      try {
+        const isSharingAvailable = await Sharing.isAvailableAsync();
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(finalUri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Save Salary Slip' });
+        } else {
+          showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
+        }
+      } catch (shareErr) {
+        console.warn('PDF share error:', shareErr.message);
       }
 
     } catch (e) {
-      console.error(e);
-      showAlert('error', 'Error', 'Failed to generate PDF. Please try again.');
+      console.error('PDF generation error:', e);
+      showAlert('error', 'Error', `Failed to generate PDF: ${e.message || 'Unknown error'}`);
     } finally {
       setDownloadingId(null);
     }
@@ -262,17 +310,13 @@ const SalaryScreen = ({ navigation, route }) => {
             ) : salarySlips.map((slip, index) => {
               // Calculate rough amount for display if possible
               let dispAmountStr = '---';
-              if (slip.heads) {
-                let tAdd = 0, tDed = 0;
-                slip.heads.forEach(h => {
-                  if (h.items) {
-                    h.items.forEach(i => {
-                      const val = Math.abs(parseFloat(i.amount) || 0);
-                      if (i.operator === 'Addition') tAdd += val;
-                      if (i.operator === 'Deduction') tDed += val;
-                    });
-                  }
-                });
+              const slipEarnings = Array.isArray(slip.summary) ? slip.summary : [];
+              const slipDeductions = Array.isArray(slip.withoutcomponent)
+                ? slip.withoutcomponent.filter(i => i.salary_head_item_desc !== 'No Deductions')
+                : [];
+              if (slipEarnings.length > 0 || slipDeductions.length > 0) {
+                const tAdd = slipEarnings.reduce((s, i) => s + Math.abs(parseFloat(i.salary_amount) || 0), 0);
+                const tDed = slipDeductions.reduce((s, i) => s + Math.abs(parseFloat(i.salary_amount) || 0), 0);
                 dispAmountStr = (tAdd - tDed).toLocaleString('en-IN', { minimumFractionDigits: 2 });
               }
 

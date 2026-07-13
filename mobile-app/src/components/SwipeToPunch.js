@@ -104,9 +104,9 @@ const SwipeToPunch = ({
     ? (isPunchedIn ? '#F8BBD0' : '#A5D6A7')
     : (isPunchedIn ? '#8E7D8A' : '#39B54A');
 
-  let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO IN';
+  let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO CHECK IN';
   if (loading) {
-    textVal = isPunchedIn ? 'Punching Out...' : 'Punching In...';
+    textVal = isPunchedIn ? 'Checking Out...' : 'Checking In...';
   }
 
   return (
@@ -124,12 +124,12 @@ const SwipeToPunch = ({
       onLayout={(e) => setSwipeWidth(e.nativeEvent.layout.width)}
     >
       <View style={styles.textBlock}>
-        <Text style={[styles.swipeText, { color: textColor }]}>{textVal}</Text>
-        
+        <Text style={[styles.swipeText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>{textVal}</Text>
+
         {isPunchedIn && !loading && !!locationName && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={10} />
-            <Text style={[styles.locText, { color: textColor }]} numberOfLines={1}>
+            <Text style={[styles.locText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>
               {locationName}
             </Text>
           </View>

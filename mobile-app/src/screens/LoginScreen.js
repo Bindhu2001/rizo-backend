@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, ActivityIndicator, Dimensions, Image, StatusBar, Platform
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, wp } from '../components/Theme';
@@ -35,6 +35,7 @@ const API_URL = API_ENDPOINTS.AUTH;
 
 const LoginScreen = ({ navigation }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +46,7 @@ const LoginScreen = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!userId || !password) {
-      showAlert('warning', 'Missing Fields', 'Please fill in both User ID and Password to login.');
+      showAlert('warning', 'Missing Fields', 'Please fill in both Email/User ID and Password to login.');
       return;
     }
 
@@ -140,7 +141,7 @@ const LoginScreen = ({ navigation }) => {
                 <Mail color={theme.textMuted} size={20} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="User ID"
+                  placeholder="Email/User ID"
                   value={userId}
                   onChangeText={setUserId}
                   autoCapitalize="none"
@@ -194,7 +195,7 @@ const LoginScreen = ({ navigation }) => {
 
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(moderateScale(12), insets.bottom + moderateScale(4)) }]}>
         <Text style={[styles.footerText, { color: theme.textMuted }]}>POWERED BY RIZO SOLUTIONS</Text>
       </View>
     </View>

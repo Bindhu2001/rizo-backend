@@ -324,6 +324,14 @@ export const getTodayVisits = async (userId) => {
   return await database.getAllAsync(`SELECT * FROM client_visits WHERE user_id = ? ORDER BY id DESC`, [userId]);
 };
 
+export const getVisitsByDate = async (userId, dateStr) => {
+  const database = await initDB();
+  return await database.getAllAsync(
+    `SELECT * FROM client_visits WHERE user_id = ? AND date(created_at) = ? ORDER BY id DESC`,
+    [userId, dateStr]
+  );
+};
+
 export const saveLeaveLocal = async (leave) => {
   const database = await initDB();
   const id = `leave_${Date.now()}`;

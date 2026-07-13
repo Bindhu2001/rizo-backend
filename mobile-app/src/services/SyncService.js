@@ -74,6 +74,12 @@ const SyncService = {
           if (!fetchedFreshLoc) {
             console.log(`[SyncService] Punch missing coords detected for user ${userId} — fetching current location...`);
             try {
+              const { status: locPerm } = await Location.getForegroundPermissionsAsync();
+              if (locPerm !== 'granted') {
+                console.log('[SyncService] Location permission not granted, skipping location resolution.');
+                fetchedFreshLoc = true;
+                continue;
+              }
               const loc = await Promise.race([
                 Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
                 new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))

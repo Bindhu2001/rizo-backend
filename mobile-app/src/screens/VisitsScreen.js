@@ -6,12 +6,15 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, MapPin, CheckCircle, Plus, Phone } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ChevronLeft, ChevronRight, MapPin, CheckCircle, Plus, CalendarDays } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
+import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { getTodayVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
+import { getTodayVisits, getVisitsByDate, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import { verifyDeviceClock } from '../services/TimeCheck';
 import * as Network from 'expo-network';
@@ -30,6 +33,61 @@ const fmtDate = (iso) => {
     const d = new Date(iso);
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   } catch (_) { return ''; }
+};
+
+const todayStr = () => {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+const fmtDateStr = (dateStr) => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${d} ${months[m - 1]} ${y}`;
+};
+
+const normalizeVisit = (v) => {
+  // API response: visit grouped with punches array
+  if (v.punches && Array.isArray(v.punches)) {
+    const startPunch = v.punches.find(p => p.stepinout === 'Start From');
+    const inPunch   = v.punches.find(p => p.stepinout === 'in');
+    const outPunch  = v.punches.find(p => p.stepinout === 'out');
+    let status = 'COMPLETED';
+    if (!inPunch && !outPunch) status = 'REACHED';
+    else if (inPunch && !outPunch) status = 'step_in';
+    return {
+      id: startPunch?.mob_user_locations_pkey || (String(v.customer_name) + String(v.visit_date)),
+      client_name: v.customer_name || '',
+      contact_number: v.contact_number || '',
+      contact_person: v.contact_person || '',
+      purpose: v.purpose || '',
+      location: startPunch?.location || '',
+      start_time: startPunch?.created_time || '',
+      step_in_time: inPunch?.created_time || '',
+      end_time: outPunch?.created_time || '',
+      step_in_address: inPunch?.location || '',
+      end_address: outPunch?.location || '',
+      status,
+      created_at: v.visit_date || startPunch?.created_time || '',
+    };
+  }
+  // Local DB format (flat fields)
+  return {
+    id: v.id || v.visit_id || String(v.customer_name) + String(v.created_time),
+    client_name: v.client_name || v.customer_name || '',
+    contact_number: v.contact_number || '',
+    contact_person: v.contact_person || '',
+    purpose: v.purpose || '',
+    location: v.location || v.start_location || '',
+    start_time: v.start_time || v.start_from_time || '',
+    step_in_time: v.step_in_time || v.in_time || '',
+    end_time: v.end_time || v.out_time || '',
+    step_in_address: v.step_in_address || v.in_location || '',
+    end_address: v.end_address || v.out_location || '',
+    status: v.status || 'COMPLETED',
+    created_at: v.created_at || v.created_time || '',
+  };
 };
 
 // Detect if a location string is raw lat/lng (offline format) and resolve it
@@ -314,10 +372,16 @@ const cm = StyleSheet.create({
 // ─── Input Components ────────────────────────────────────────────────────────
 const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength }) => {
   const theme = useTheme();
+  const inputRef = useRef(null);
   return (
-  <View style={[fi.wrap, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}>
+  <TouchableOpacity
+    activeOpacity={1}
+    onPress={() => inputRef.current?.focus()}
+    style={[fi.wrap, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+  >
     <Text style={[fi.label, { color: theme.textMuted }]}>{label}</Text>
     <TextInput
+      ref={inputRef}
       style={[fi.input, { color: theme.text }, multiline && fi.multiline]}
       value={value}
       onChangeText={onChangeText}
@@ -327,7 +391,7 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLe
       maxLength={maxLength}
       placeholderTextColor={theme.textMuted}
     />
-  </View>
+  </TouchableOpacity>
   );
 };
 
@@ -343,6 +407,7 @@ const DISCLOSURE_KEY = 'location_disclosure_accepted_v1';
 
 const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -408,18 +473,24 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled">
+        <KeyboardAvoidingView
+          behavior="padding"
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          style={{ flex: 1 }}
+        >
+          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" style={{ flex: 1 }}>
             <View style={sv.locChipBox}>
               <View style={sv.locWrap}>
                 <MapPin color="#7C3AED" size={14} />
                 <Text style={sv.locLabel}>Your Current Location</Text>
               </View>
-              {fetchingLoc ? (
-                <ActivityIndicator size="small" color="#7C3AED" style={{ marginTop: 4 }} />
-              ) : (
-                <Text style={sv.locText} numberOfLines={2}>{locText}</Text>
-              )}
+              <View style={sv.locTextWrap}>
+                {fetchingLoc ? (
+                  <ActivityIndicator size="small" color="#7C3AED" />
+                ) : (
+                  <Text style={sv.locText} numberOfLines={2}>{locText}</Text>
+                )}
+              </View>
             </View>
 
             <View style={[sv.formWrap, { backgroundColor: theme.card }]}>
@@ -430,13 +501,14 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             </View>
           </ScrollView>
 
-          <View style={[sv.footer, { backgroundColor: theme.bg }]}>
+          <View style={[sv.footer, { backgroundColor: theme.bg, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
             <TouchableOpacity
-              style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && { backgroundColor: theme.cardSoft }]}
+              style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && sv.startBtnDisabled]}
               onPress={handleSave}
               disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
+              activeOpacity={0.85}
             >
-              {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && { color: theme.textMuted }]}>START</Text>}
+              {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && sv.startBtnTextDisabled]}>START</Text>}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -463,19 +535,23 @@ const sv = StyleSheet.create({
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: moderateScale(17), fontWeight: '700', color: '#111827' },
   scroll: { padding: moderateScale(20) },
-  locChipBox: { backgroundColor: '#F5F3FF', borderRadius: moderateScale(12), padding: moderateScale(16), alignItems: 'center', marginBottom: moderateScale(24), borderWidth: 1, borderColor: '#EDE9FE' },
+  locChipBox: { backgroundColor: '#F5F3FF', borderRadius: moderateScale(12), padding: moderateScale(16), alignItems: 'center', marginBottom: moderateScale(24), borderWidth: 1, borderColor: '#EDE9FE', minHeight: moderateScale(80) },
   locWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4, alignSelf: 'center' },
   locLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: moderateScale(6), textAlign: 'center' },
+  locTextWrap: { minHeight: moderateScale(36), justifyContent: 'center', alignItems: 'center', width: '100%' },
   locText: { fontSize: moderateScale(12), color: '#4C1D95', textAlign: 'center', lineHeight: 18, width: '100%' },
   formWrap: { backgroundColor: '#FFF', padding: moderateScale(16), borderRadius: moderateScale(16), ...SHADOWS.light },
   footer: { padding: moderateScale(20), backgroundColor: '#F9FAFB' },
   startBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
+  startBtnDisabled: { backgroundColor: '#D1C4E9' },
   startBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
+  startBtnTextDisabled: { color: '#9E9E9E' },
 });
 
 // ─── Enter Details (Bottom Sheet for STEP IN) ────────────────────────────────
 const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -511,7 +587,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
           </ScrollView>
 
-          <View style={sm.footer}>
+          <View style={[sm.footer, { paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <TouchableOpacity
               style={[sm.saveBtn, processing && { opacity: 0.7 }]}
               onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
@@ -530,7 +606,7 @@ const sm = StyleSheet.create({
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), paddingHorizontal: moderateScale(20), paddingTop: moderateScale(12), maxHeight: '80%' },
   dragHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: moderateScale(20), marginLeft: 4 },
-  footer: { paddingTop: moderateScale(8), paddingBottom: Platform.OS === 'ios' ? moderateScale(28) : moderateScale(16) },
+  footer: { paddingTop: moderateScale(8), paddingBottom: moderateScale(24) },
   saveBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
@@ -550,6 +626,8 @@ const VisitsScreen = ({ navigation, route }) => {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [pendingVisit, setPendingVisit] = useState(null);
   const [alertCfg, setAlertCfg] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -561,24 +639,80 @@ const VisitsScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (!user || !user.user_id) return;
-    initDB().then(() => fetchVisits());
-  }, []);
+    setLoading(true);
+    initDB().then(() => fetchVisits(selectedDate));
+  }, [selectedDate]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchVisits();
+    await fetchVisits(selectedDate);
     setRefreshing(false);
   };
 
-  const fetchVisits = async () => {
+  const fetchVisits = async (dateStr) => {
+    const date = dateStr ?? selectedDate;
+    const isToday = date === todayStr();
     try {
-      const data = await getTodayVisits(user.user_id);
-      setVisits(data || []);
+      const net = await Network.getNetworkStateAsync();
+      if (!net.isConnected) {
+        // Offline: local DB only for today, empty for past
+        if (isToday) {
+          const data = await getVisitsByDate(user.user_id, date);
+          setVisits(data || []);
+        } else {
+          setVisits([]);
+        }
+      } else {
+        // Online: sync pending local data first (today only), then fetch from API
+        if (isToday) {
+          try { await SyncService.syncAll(); } catch (_) {}
+        }
+        const res = await axios.post(API_ENDPOINTS.CUSTOMER_VISIT_HISTORY,
+          { user_id: user.user_id, selected_date: date },
+          { timeout: 10000 },
+        );
+        const raw = res.data?.data || res.data || [];
+        let normalized = Array.isArray(raw) ? raw.map(normalizeVisit) : [];
+
+        if (!isToday) {
+          // Past dates: strip any in-progress visits
+          normalized = normalized.filter(v => v.status !== 'REACHED' && v.status !== 'step_in');
+        } else {
+          // Today: live visits (REACHED/step_in) must come from local DB so their IDs
+          // match what updateVisitStatus queries — API IDs (mob_user_locations_pkey)
+          // don't exist in SQLite, causing step-in/out to silently fail.
+          const localData = await getVisitsByDate(user.user_id, date);
+          const localLive = (localData || []).filter(
+            v => v.status === 'REACHED' || v.status === 'step_in'
+          );
+          const apiCompleted = normalized.filter(
+            v => v.status !== 'REACHED' && v.status !== 'step_in'
+          );
+          normalized = [...localLive, ...apiCompleted];
+        }
+        setVisits(normalized);
+      }
     } catch (e) {
-      console.log('Fetch error', e);
+      console.log('Fetch visits error', e);
+      // Fallback to local DB on API error (today only)
+      if (isToday) {
+        try {
+          const data = await getVisitsByDate(user.user_id, date);
+          setVisits(data || []);
+        } catch (_) {}
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const changeDate = (delta) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (d > today) return;
+    const pad = n => String(n).padStart(2, '0');
+    setSelectedDate(`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`);
   };
 
   const handleSaveNewVisit = async (details) => {
@@ -607,9 +741,9 @@ const VisitsScreen = ({ navigation, route }) => {
       await updateVisitStatus(id, 'REACHED', {
         startTime: new Date().toISOString(), lat: details.lat || 0, lng: details.lng || 0,
       });
-      syncIfOnline(); // Fire and forget sync
       setShowStartScreen(false);
-      fetchVisits();
+      setSelectedDate(todayStr());
+      fetchVisits(todayStr());
     } catch (e) {
       console.error('Visit Save Error:', e);
       showAlert('error', 'Error', 'Failed to save visit record. Please try again.');
@@ -692,9 +826,34 @@ const VisitsScreen = ({ navigation, route }) => {
         <View style={{ width: 44 }} />
       </View>
 
+      {/* Date selector row */}
+      <View style={[s.dateRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+        <TouchableOpacity onPress={() => changeDate(-1)} style={s.dateArrow}>
+          <ChevronLeft color={theme.textMuted} size={20} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={[s.dateChip, { backgroundColor: theme.isDark ? '#2D1B69' : '#F3E8FF' }]}>
+          <CalendarDays color={theme.isDark ? '#C4B5FD' : '#62338B'} size={14} />
+          <Text style={[s.dateChipText, { color: theme.isDark ? '#C4B5FD' : '#62338B' }]}>
+            {selectedDate === todayStr() ? 'Today' : fmtDateStr(selectedDate)}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => changeDate(1)}
+          style={[s.dateArrow, selectedDate === todayStr() && { opacity: 0.25 }]}
+          disabled={selectedDate === todayStr()}
+        >
+          <ChevronRight color={theme.textMuted} size={20} />
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={s.loadingWrap}>
           <ActivityIndicator size="large" color="#62338B" />
+        </View>
+      ) : visits.length === 0 ? (
+        <View style={s.emptyWrap}>
+          <CalendarDays color={theme.textMuted} size={48} strokeWidth={1.5} />
+          <Text style={[s.emptyText, { color: theme.textMuted }]}>No visits on this date</Text>
         </View>
       ) : (
         <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
@@ -711,22 +870,40 @@ const VisitsScreen = ({ navigation, route }) => {
         </ScrollView>
       )}
 
-      {/* FAB */}
-      <View style={s.fabWrap}>
-        <TouchableOpacity
-          style={s.fab}
-          onPress={() => {
-            const hasActive = visits.some(v => v.status === 'REACHED' || v.status === 'step_in');
-            if (hasActive) {
-              showAlert('warning', 'Visit In Progress', 'Please complete the current visit before starting a new one.');
-              return;
+      {/* FAB — only for today */}
+      {selectedDate === todayStr() && (
+        <View style={s.fabWrap}>
+          <TouchableOpacity
+            style={s.fab}
+            onPress={() => {
+              const hasActive = visits.some(v => v.status === 'REACHED' || v.status === 'step_in');
+              if (hasActive) {
+                showAlert('warning', 'Visit In Progress', 'Please complete the current visit before starting a new one.');
+                return;
+              }
+              setShowStartScreen(true);
+            }}
+          >
+            <Plus color="#FFF" size={28} strokeWidth={2.5} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={new Date(selectedDate + 'T00:00:00')}
+          mode="date"
+          display="default"
+          maximumDate={new Date()}
+          onChange={(event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              const pad = n => String(n).padStart(2, '0');
+              setSelectedDate(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`);
             }
-            setShowStartScreen(true);
           }}
-        >
-          <Plus color="#FFF" size={28} strokeWidth={2.5} />
-        </TouchableOpacity>
-      </View>
+        />
+      )}
 
       <StartVisitScreen
         visible={showStartScreen}
@@ -762,6 +939,14 @@ const s = StyleSheet.create({
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fabWrap: { position: 'absolute', bottom: 100, right: 20, zIndex: 99 },
   fab: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(32), backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+
+  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(10), borderBottomWidth: 1 },
+  dateArrow: { width: moderateScale(36), height: moderateScale(36), justifyContent: 'center', alignItems: 'center' },
+  dateChip: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6), paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), backgroundColor: '#F3E8FF' },
+  dateChipText: { fontSize: moderateScale(14), fontWeight: '700' },
+
+  emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: moderateScale(12) },
+  emptyText: { fontSize: moderateScale(15), fontWeight: '600' },
 });
 
 export default VisitsScreen;
