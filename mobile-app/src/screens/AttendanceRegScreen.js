@@ -2,10 +2,10 @@
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, Platform,
-  Pressable, Dimensions, Image, KeyboardAvoidingView, RefreshControl
+  Pressable, Dimensions, Image, KeyboardAvoidingView, RefreshControl, BackHandler
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
@@ -15,6 +15,7 @@ import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
 import NotificationManager from '../services/NotificationManager';
+import { useFocusEffect } from '@react-navigation/native';
 
 const formatPunchTime = (isoOrFull) => {
   if (!isoOrFull || isoOrFull === '---') return '---';
@@ -211,7 +212,7 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
             <View key={idx} style={[lc.regStatusCard, { backgroundColor: bg, borderColor: color + '30' }]}>
               <View style={lc.regStatusHeader}>
                 <View style={lc.regDirChip}>
-                  <Text style={lc.regDirChipText}>{dir === 'OUT' ? 'CLOCK OUT' : 'CLOCK IN'}</Text>
+                  <Text style={lc.regDirChipText}>{dir === 'OUT' ? 'CHECK OUT' : 'CHECK IN'}</Text>
                 </View>
                 <View style={[lc.regStatusBadge, { backgroundColor: color }]}>
                   <Text style={lc.regStatusBadgeText} numberOfLines={1}>{label.toUpperCase()}</Text>
@@ -234,6 +235,12 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
                   <Text style={lc.regRowVal} numberOfLines={3}>{reg.remarks}</Text>
                 </View>
               )}
+              {!!reg.authorized_approved_remarks && (
+                <View style={lc.regRow}>
+                  <Text style={lc.regRowLabel}>Approver's Remarks</Text>
+                  <Text style={lc.regRowVal} numberOfLines={3}>{reg.authorized_approved_remarks}</Text>
+                </View>
+              )}
               {!!applied && (
                 <View style={lc.regRow}>
                   <Text style={lc.regRowLabel}>Applied On</Text>
@@ -247,12 +254,22 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
     );
   }
 
-  // Find a regularisation request for a given direction (IN/OUT) in this date.
-  const regFor = (dir) =>
-    (regsForDate || []).find((r) => {
+  // Find the highest-priority regularisation for a direction (Pending > Approved > Rejected).
+  // Needed when the same date+direction has both a REJECTED old request and a new PENDING one.
+  const regFor = (dir) => {
+    const matches = (regsForDate || []).filter((r) => {
       const d = String(r.direction || r.type || '').toUpperCase();
       return d === dir;
     });
+    if (matches.length === 0) return null;
+    const rank = (r) => {
+      const s = (r.reg_status || r.status || '').toLowerCase();
+      if (s === 'p' || s === 'pending') return 0;
+      if (s === 'a' || s === 'approved') return 1;
+      return 2;
+    };
+    return matches.slice().sort((a, b) => rank(a) - rank(b))[0];
+  };
 
   // Renders either a per-row status pill (if a reg request exists) or the
   // REGULARISE button (if not). Keeps the same screen position so the row
@@ -262,6 +279,23 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
     const reg = regFor(dir);
     if (reg) {
       const { bg, color, label } = buildRegInfo(reg);
+      const regStatus = (reg.reg_status || reg.status || '').toLowerCase();
+      const isRejected = regStatus === 'r' || regStatus === 'rejected';
+
+      // Rejected: show only REGULARISE button in Log tab (rejection visible in Regularised tab)
+      if (isRejected) {
+        return variant === 'secondary' ? (
+          <TouchableOpacity style={lc.regBtnActionSecondary} onPress={() => onRegularise(item, dir)}>
+            <Text style={lc.regBtnActionTextSecondary}>REGULARISE</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={lc.regBtnAction} onPress={() => onRegularise(item, dir)}>
+            <Text style={lc.regBtnActionText}>REGULARISE</Text>
+          </TouchableOpacity>
+        );
+      }
+
+      // Pending / Approved: show status pill only (no re-apply button)
       return (
         <View style={[lc.statusPill, { backgroundColor: bg, borderColor: color + '40' }]}>
           <View style={[lc.statusDot, { backgroundColor: color }]} />
@@ -313,14 +347,14 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
               </>
             ) : (
               <>
-                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Clock In</Text>
+                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Check In</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
                 {renderRowAction('IN')}
               </>
             )}
           </View>
           <View style={lc.chipCol}>
-            <View style={lc.chipBg}><Text style={lc.chipText}>Clock IN</Text></View>
+            <View style={lc.chipBg}><Text style={lc.chipText}>Check IN</Text></View>
           </View>
         </View>
 
@@ -338,14 +372,14 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
               </>
             ) : (
               <>
-                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Clock Out</Text>
+                <Text style={[lc.missingHdr, { color: theme.textLight }]}>Check Out</Text>
                 <Text style={lc.missingVal}>MISSING</Text>
                 {renderRowAction('OUT')}
               </>
             )}
           </View>
           <View style={lc.chipCol}>
-            <View style={lc.chipBg}><Text style={lc.chipText}>Clock Out</Text></View>
+            <View style={lc.chipBg}><Text style={lc.chipText}>Check Out</Text></View>
           </View>
         </View>
       </View>
@@ -648,10 +682,11 @@ const tp = StyleSheet.create({
 // Reason Picker Modal
 const ReasonPickerModal = ({ visible, value, onClose, onConfirm }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
     <Pressable style={[rp.overlay, { backgroundColor: theme.modalOverlay }]} onPress={onClose}>
-      <View style={[rp.sheet, { backgroundColor: theme.card }]}>
+      <View style={[rp.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[rp.handle, { backgroundColor: theme.border }]} />
         <ScrollView>
           {REASONS.map((r) => (
@@ -668,7 +703,7 @@ const ReasonPickerModal = ({ visible, value, onClose, onConfirm }) => {
 };
 const rp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), maxHeight: 400 },
   handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   itemText: { fontSize: moderateScale(15), color: '#4B5563' },
@@ -678,6 +713,7 @@ const rp = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AttendanceRegScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const user = route?.params?.user;
 
   useEffect(() => {
@@ -716,6 +752,15 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     }
   }, [route?.params?.initialTab]);
 
+  useEffect(() => {
+    const onBack = () => {
+      if (view === 'FORM' || view === 'SUCCESS') { setView('MAIN'); return true; }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [view]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchData();
@@ -751,6 +796,12 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   }, [user?.user_id, selectedMonth]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   if (!user) return null;
 
@@ -850,8 +901,8 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         </View>
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          behavior="padding"
+          keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
         >
           <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
@@ -982,7 +1033,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       {/* ── Month Picker Modal for Regularisation Screen ── */}
       <Modal visible={showMonthPickerMain} transparent animationType="slide" onRequestClose={() => setShowMonthPickerMain(false)} statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPickerMain(false)}>
-          <View style={[s.modalSheet, { backgroundColor: theme.card }]}>
+          <View style={[s.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.modalHandle, { backgroundColor: theme.border }]} />
             <Text style={[s.modalTitle, { color: theme.text }]}>Select Month</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -1028,8 +1079,8 @@ const s = StyleSheet.create({
   listScroll: { padding: moderateScale(16), paddingBottom: moderateScale(120) },
 
   formScroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
-  formWrap: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: moderateScale(40), ...SHADOWS.light, minHeight: Dimensions.get('window').height * 0.7 },
-  submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), alignItems: 'center', marginTop: 'auto' },
+  formWrap: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: moderateScale(24), ...SHADOWS.light },
+  submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), alignItems: 'center', marginTop: moderateScale(8) },
   submitBtnActive: { backgroundColor: '#E91E63' },
   submitText: { color: '#9CA3AF', fontSize: moderateScale(14), fontWeight: '700', letterSpacing: 0.5 },
   submitTextActive: { color: '#FFF' },

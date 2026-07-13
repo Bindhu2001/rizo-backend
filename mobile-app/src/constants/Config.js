@@ -30,6 +30,7 @@ export const API_ENDPOINTS = {
   MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,
   REGISTER_PUSH_TOKEN: `${NEWAPP_URL}/register_push_token`,
   CHECK_ROLES: `${NEWAPP_URL}/check_hierarchy_role`,
+  ALLOCATE_MENUS: `${NEWAPP_URL}/allocate_menus`,
   REGULARISATION_HIERARCHY: `${NEWAPP_URL}/regularisation_hierarchy_list`,
   REGULARISATION_APPROVAL_ACTION: `${NEWAPP_URL}/regularisation_approval`,
   REGULARISATION_APPROVED_LIST: `${NEWAPP_URL}/regularisation_approved_list`,
@@ -38,6 +39,7 @@ export const API_ENDPOINTS = {
   LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   LEAVE_APPROVED_LIST: `${NEWAPP_URL}/leave_approved_already_lists`,
   LEAVE_CANCEL: `${NEWAPP_URL}/leave_cancel`,
+  CUSTOMER_VISIT_HISTORY: `${NEWAPP_URL}/customer_visit_history`,
   EXPENSE_REMOVE: `${NEWAPP_URL}/expense_remove`,
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   REGISTER: `${NEWAPP_URL}/register`,
@@ -54,6 +56,7 @@ export const API_ENDPOINTS = {
   CHECK_PF: `${NEWAPP_URL}/checkPf`,
   CHECK_ESI: `${NEWAPP_URL}/checkEsi`,
   CHECK_LWF: `${NEWAPP_URL}/checkLwf`,
+  RESET_PASSWORD: `${NEWAPP_URL}/reset_password`,
 };
 
 export default BASE_URL;

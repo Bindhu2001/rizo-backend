@@ -1,10 +1,10 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, KeyboardAvoidingView, RefreshControl
+  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, KeyboardAvoidingView, RefreshControl, BackHandler
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronLeft, Calendar as CalendarIcon, ChevronDown,
   ChevronRight, CheckCircle, Clock, Paperclip, X, FileText
@@ -23,15 +23,30 @@ const STATUS_COLORS = {
   Applied: { bg: '#DBEAFE', text: '#1D4ED8', side: '#1D4ED8' },
   Rejected: { bg: '#FEE2E2', text: '#DC2626', side: '#DC2626' },
   Authorised: { bg: '#F3F0FF', text: '#6C5CE7', side: '#6C5CE7' },
+  Cancelled: { bg: '#FEF3C7', text: '#D97706', side: '#D97706' },
 };
 
 const statusColor = (s) => {
   const norm = (s || '').trim().toLowerCase();
   if (norm === 'approved' || norm === 'a') return STATUS_COLORS.Approved;
   if (norm === 'applied' || norm === 'pending' || norm === 'p') return STATUS_COLORS.Applied;
-  if (norm === 'rejected' || norm === 'r') return STATUS_COLORS.Rejected;
+  if (norm === 'rejected' || norm === 'r' || norm === 'cancelledbyadmin') return STATUS_COLORS.Rejected;
   if (norm === 'authorised' || norm === 'authorized') return STATUS_COLORS.Authorised;
+  if (norm === 'cancelled' || norm === 'canceled') return STATUS_COLORS.Cancelled;
   return { bg: '#F3F4F6', text: '#6B7280', side: '#9CA3AF' };
+};
+
+const statusLabel = (s) => {
+  const norm = (s || '').trim().toLowerCase();
+  if (norm === 'approved') return 'Approved';
+  if (norm === 'applied' || norm === 'pending') return 'Applied';
+  if (norm === 'rejected') return 'Rejected';
+  if (norm === 'cancelledbyadmin') return 'Rejected by Admin';
+  if (norm === 'authorised' || norm === 'authorized') return 'Authorised';
+  if (norm === 'cancelled' || norm === 'canceled') return 'Cancelled';
+  if (norm === 'cancellationofauthorized') return 'Cancel Requested';
+  if (norm === 'cancellationofapproved') return 'Cancel Requested';
+  return s || '';
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -62,7 +77,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
     <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={[hc.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Coloured Sidebar */}
       <View style={[hc.sideBar, { backgroundColor: sc.side }]}>
-        <Text style={hc.sideText}>{(item.leave_status || '').toUpperCase()}</Text>
+        <Text style={hc.sideText}>{statusLabel(item.leave_status).toUpperCase()}</Text>
       </View>
 
       <View style={hc.body}>
@@ -70,7 +85,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
         <View style={hc.topRow}>
           <View style={{ flex: 1 }}>
             <Text style={[hc.leaveName, { color: theme.text }]}>{item.leave_name?.trim()}</Text>
-            <Text style={[hc.dateText, { color: theme.textLight }]}>{item.from_date}</Text>
+            <Text style={[hc.dateText, { color: theme.textLight }]}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
             {item.approved_by_person
               ? <Text style={[hc.approverText, { color: theme.textMuted }]}>Approved By : {item.approved_by_person?.trim()}</Text>
               : null}
@@ -86,30 +101,35 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
           <View style={hc.expandedBox}>
             <View style={[hc.divider, { backgroundColor: theme.divider }]} />
 
-            {/* Row 1: Leave Date + Applied On */}
+            {/* Row 1: Leave Date */}
             <View style={hc.detailRow}>
               <View style={{ flex: 1 }}>
                 <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Leave Date</Text>
-                <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Applied On</Text>
-                <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}</Text>
+                <View style={hc.dateRangeRow}>
+                  <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}</Text>
+                  <Text style={[hc.detailValue, { color: theme.text }, hc.dateRangeGap]}>{item.to_date}</Text>
+                </View>
               </View>
             </View>
 
-            {/* Row 2: Authorised By + Approved By */}
+            {/* Row 2: Authorised By + Approved By, each with its own remark */}
             <View style={hc.detailRow}>
               {item.authorized_by_person ? (
                 <View style={{ flex: 1 }}>
                   <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Authorised By</Text>
                   <Text style={[hc.detailValue, { color: theme.text }]}>{item.authorized_by_person?.trim()}</Text>
+                  {item.authorized_remarks?.trim() ? (
+                    <Text style={[hc.remarkText, { color: theme.textMuted }]}>{item.authorized_remarks.trim()}</Text>
+                  ) : null}
                 </View>
               ) : null}
               {item.approved_by_person ? (
                 <View style={{ flex: 1 }}>
                   <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Approved By</Text>
                   <Text style={[hc.detailValue, { color: theme.text }]}>{item.approved_by_person?.trim()}</Text>
+                  {item.approved_remarks?.trim() ? (
+                    <Text style={[hc.remarkText, { color: theme.textMuted }]}>{item.approved_remarks.trim()}</Text>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -122,7 +142,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
 
             {/* Status Tag */}
             <View style={[hc.statusTag, { backgroundColor: sc.bg }]}>
-              <Text style={[hc.statusTagText, { color: sc.text }]}>{item.leave_status}</Text>
+              <Text style={[hc.statusTagText, { color: sc.text }]}>{statusLabel(item.leave_status)}</Text>
             </View>
 
             {/* Cancel Button — only for Applied / Pending */}
@@ -170,6 +190,9 @@ const hc = StyleSheet.create({
   detailRow: { flexDirection: 'row', marginBottom: moderateScale(14) },
   detailLabel: { fontSize: moderateScale(10), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   detailValue: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
+  dateRangeRow: { flexDirection: 'row', alignItems: 'center' },
+  dateRangeGap: { marginLeft: moderateScale(14) },
+  remarkText: { fontSize: moderateScale(11), fontStyle: 'italic', marginTop: 2, color: '#9CA3AF' },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(14) },
   metaLabel: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '600' },
   metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700' },
@@ -286,18 +309,25 @@ const cal = StyleSheet.create({
 // ─── Half Picker Modal ───────────────────────────────────────────────────────
 const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, title }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
     <TouchableOpacity style={[sm.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
-      <View style={[sm.sheet, { backgroundColor: theme.card }]}>
+      <View style={[sm.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[sm.handle, { backgroundColor: theme.border }]} />
         {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
-        {options.map(opt => (
-          <TouchableOpacity key={opt} style={[sm.item, { borderBottomColor: theme.divider }]} onPress={() => { onSelect(opt); onClose(); }}>
-            <Text style={[sm.itemText, { color: theme.textLight }, opt === selectedValue && { color: theme.text, fontWeight: '600' }]}>{opt}</Text>
-            {opt === selectedValue && <CheckCircle color={theme.primaryDeep} size={20} />}
-          </TouchableOpacity>
-        ))}
+        {options.map((opt, idx) => {
+          const isObj = opt && typeof opt === 'object';
+          const itemKey = isObj ? String(opt.id ?? idx) : String(opt);
+          const label = isObj ? opt.name : opt;
+          const isSelected = isObj ? (selectedValue != null && selectedValue === opt.id) : opt === selectedValue;
+          return (
+            <TouchableOpacity key={itemKey} style={[sm.item, { borderBottomColor: theme.divider }]} onPress={() => { onSelect(opt); onClose(); }}>
+              <Text style={[sm.itemText, { color: theme.textLight }, isSelected && { color: theme.text, fontWeight: '600' }]}>{label}</Text>
+              {isSelected && <CheckCircle color={theme.primaryDeep} size={20} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </TouchableOpacity>
   </Modal>
@@ -306,7 +336,7 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
 
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: Platform.OS === 'ios' ? 36 : 24, maxHeight: 400 },
+  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), maxHeight: 400 },
   handle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   title: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16) },
   item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
@@ -336,8 +366,8 @@ const LeaveScreen = ({ navigation, route }) => {
   const [toDate, setToDate] = useState('');
   const [calendarTarget, setCalendarTarget] = useState(null);
   const [halfTarget, setHalfTarget] = useState(null);
-  const [fromHalf, setFromHalf] = useState('Full Day');
-  const [toHalf, setToHalf] = useState('Full Day');
+  const [fromHalf, setFromHalf] = useState('First Half');
+  const [toHalf, setToHalf] = useState('Second Half');
   const [reason, setReason] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [handoverTo, setHandoverTo] = useState('');
@@ -367,26 +397,52 @@ const LeaveScreen = ({ navigation, route }) => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const items = await axios.post(API_ENDPOINTS.LEAVE_ITEMS, { user_id: user.user_id });
-      if (items.data?.success) {
-        const d = items.data.data;
-        setLeaveBalances(d.leave_types || []);
+      const [itemsRes, approversRes] = await Promise.all([
+        axios.post(API_ENDPOINTS.LEAVE_ITEMS, { user_id: user.user_id }),
+        axios.get(`${API_ENDPOINTS.APPROVERS}?user_id=${user.user_id}`).catch(() => null),
+      ]);
 
+      if (itemsRes.data?.success) {
+        setLeaveBalances(itemsRes.data.data?.leave_types || []);
+      }
+
+      let authList = [];
+      let appList = [];
+
+      if (approversRes?.data?.success) {
+        const ap = approversRes.data.data;
+        // Filter out the logged-in employee from both lists
+        authList = (ap.authorized_persons || [])
+          .filter(p => p.emp_id !== user.user_id)
+          .map(p => ({ id: p.emp_key || p.key || p.emp_id, name: (p.name || '').trim(), emp_id: p.emp_id }));
+        appList = (ap.approved_persons || [])
+          .filter(p => p.emp_id !== user.user_id)
+          .map(p => ({ id: p.emp_key || p.key || p.emp_id, name: (p.name || '').trim(), emp_id: p.emp_id }));
+      } else if (itemsRes.data?.success) {
+        // Fallback: parse comma-separated from leave_items
+        const d = itemsRes.data.data;
         const parsePersons = (idsStr, namesStr) => {
           if (!idsStr) return [];
-          const ids = String(idsStr).split(',').map(s => s.trim()).filter(Boolean);
+          const ids = String(idsStr).split(',').map(s => s.trim()).filter(id => id && id !== '0');
           const names = namesStr ? String(namesStr).split(',').map(s => s.trim()) : [];
           return ids.map((id, i) => ({ id, name: names[i] || id }));
         };
-
-        const authList = parsePersons(d.authorized_by, d.authorized_by_person);
-        const appList = parsePersons(d.approved_by, d.approved_by_person);
-
-        setAuthorizedByList(authList);
-        setApprovedByList(appList);
-        setSelectedAuthBy(authList[0] || null);
-        setSelectedAppBy(appList[0] || null);
+        authList = parsePersons(d.authorized_by, d.authorized_by_person);
+        // Exclude hierarchy/auth persons from approved list to avoid wrong defaults
+        const authIds = new Set(authList.map(p => String(p.id)));
+        appList = parsePersons(d.approved_by, d.approved_by_person).filter(p => !authIds.has(String(p.id)));
       }
+
+      setAuthorizedByList(authList);
+      setApprovedByList(appList);
+      setSelectedAuthBy(prev => {
+        if (prev && authList.find(p => p.id === prev.id)) return prev;
+        return authList[0] || null;
+      });
+      setSelectedAppBy(prev => {
+        if (prev && appList.find(p => p.id === prev.id)) return prev;
+        return appList[0] || null;
+      });
     } catch (e) { console.log('leave_items error', e.message); }
     finally { setLoading(false); }
   };
@@ -436,6 +492,15 @@ const LeaveScreen = ({ navigation, route }) => {
     }, [])
   );
 
+  useEffect(() => {
+    const onBack = () => {
+      if (view === 'APPLY' || view === 'HISTORY') { setView('DASHBOARD'); return true; }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [view]);
+
   // ── File Picker ──────────────────────────────────────────────────────────────
   const pickFile = async () => {
     try {
@@ -467,6 +532,10 @@ const LeaveScreen = ({ navigation, route }) => {
     if (!selectedLeave) { showAlert('warning', 'Leave Type Required', 'Please select a leave type to continue.'); return; }
     if (!fromDate.trim()) { showAlert('warning', 'Date Required', 'Please enter a From Date.'); return; }
     if (!reason.trim()) { showAlert('warning', 'Missing Reason', 'Please provide a reason for your leave.'); return; }
+    if (authorizedByList.length === 0) { showAlert('warning', 'No Authoriser Assigned', 'No authorised person is assigned. Please contact HR.'); return; }
+    if (approvedByList.length === 0) { showAlert('warning', 'No Approver Assigned', 'No approved person is assigned. Please contact HR.'); return; }
+    if (!selectedAuthBy) { showAlert('warning', 'Authorised By Required', 'Please select an authorised person to continue.'); return; }
+    if (!selectedAppBy) { showAlert('warning', 'Approved By Required', 'Please select an approved person to continue.'); return; }
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -521,19 +590,24 @@ const LeaveScreen = ({ navigation, route }) => {
       ) : (
         <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {leaveBalances.map((item, idx) => {
-            const colors = ['#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6', '#8B5CF6'];
+            const BAR_COLORS = ['#8B5CF6', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
             const taken = parseFloat(item.leave_taken) || 0;
             const bal = parseFloat(item.leave_balance) || 0;
             const total = taken + bal;
+            const barColor = BAR_COLORS[idx % BAR_COLORS.length];
             return (
               <TouchableOpacity key={item.leave_id} style={[s.balCard, { backgroundColor: theme.card }]} onPress={() => { setSelectedLeave(item); setView('APPLY'); }}>
-                <View style={[s.balBar, { backgroundColor: colors[idx % colors.length] }]} />
+                <View style={[s.balBar, { backgroundColor: barColor }]} />
                 <View style={s.balBody}>
-                  <View>
-                    <Text style={[s.balRatio, { color: theme.text }]}>{taken}/{total}</Text>
-                    <Text style={[s.balType, { color: theme.textLight }]}>{item.leave_name?.trim()}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.balType, { color: theme.text }]}>{item.leave_name?.trim()}</Text>
+                    <Text style={[s.balUsed, { color: theme.textMuted }]}>{taken} used · {total} total</Text>
                   </View>
-                  <ChevronRight color={theme.textMuted} size={20} />
+                  <View style={s.balRight}>
+                    <Text style={[s.balBalance, { color: barColor }]}>{bal}</Text>
+                    <Text style={[s.balBalLabel, { color: theme.textMuted }]}>remaining</Text>
+                  </View>
+                  <ChevronRight color={theme.textMuted} size={18} style={{ marginLeft: moderateScale(6) }} />
                 </View>
               </TouchableOpacity>
             );
@@ -553,7 +627,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
 
         {/* From Row */}
@@ -593,38 +667,38 @@ const LeaveScreen = ({ navigation, route }) => {
         </View>
 
         {/* Authorised By */}
-        {authorizedByList.length > 0 && (
-          <View style={s.inputBox}>
-            <Text style={[s.label, { color: theme.textMuted }]}>Authorised By</Text>
-            {authorizedByList.length === 1 ? (
-              <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Not Defined'}</Text>
-              </View>
-            ) : (
-              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
-                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Select'}</Text>
-                <ChevronDown color={theme.textMuted} size={16} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        <View style={s.inputBox}>
+          <Text style={[s.label, { color: theme.textMuted }]}>Authorised By *</Text>
+          {authorizedByList.length === 0 ? (
+            <View style={[s.inputRow, { backgroundColor: '#FEF3C7', borderColor: '#D97706' }]}>
+              <Text style={[s.inputVal, { color: '#92400E' }]}>Not assigned — contact HR</Text>
+            </View>
+          ) : authorizedByList.length === 1 ? (
+            <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+              <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Not Defined'}</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAuthPicker(true)}>
+              <Text style={[s.inputVal, { color: theme.text }]}>{selectedAuthBy?.name || 'Select'}</Text>
+              <ChevronDown color={theme.textMuted} size={16} />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Approved By */}
-        {approvedByList.length > 0 && (
-          <View style={s.inputBox}>
-            <Text style={[s.label, { color: theme.textMuted }]}>Approved By</Text>
-            {approvedByList.length === 1 ? (
-              <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
-                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAppBy?.name || 'Not Defined'}</Text>
-              </View>
-            ) : (
-              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
-                <Text style={[s.inputVal, { color: theme.text }]}>{selectedAppBy?.name || 'Select'}</Text>
-                <ChevronDown color={theme.textMuted} size={16} />
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+        <View style={s.inputBox}>
+          <Text style={[s.label, { color: theme.textMuted }]}>Approved By *</Text>
+          {approvedByList.length === 0 ? (
+            <View style={[s.inputRow, { backgroundColor: '#FEF3C7', borderColor: '#D97706' }]}>
+              <Text style={[s.inputVal, { color: '#92400E' }]}>Not assigned — contact HR</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowAppPicker(true)}>
+              <Text style={[s.inputVal, { color: theme.text }]}>{selectedAppBy?.name || 'Select'}</Text>
+              <ChevronDown color={theme.textMuted} size={16} />
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* Contact Number */}
         <View style={s.inputBox}>
@@ -713,7 +787,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <SelectionModal
         visible={!!halfTarget}
         title={`Select ${halfTarget === 'FROM' ? 'From' : 'To'} Half`}
-        options={['Full Day', 'First Half', 'Second Half']}
+        options={['First Half', 'Second Half']}
         selectedValue={halfTarget === 'FROM' ? fromHalf : toHalf}
         onClose={() => setHalfTarget(null)}
         onSelect={(val) => {
@@ -725,11 +799,11 @@ const LeaveScreen = ({ navigation, route }) => {
       <SelectionModal
         visible={showAuthPicker}
         title="Select Authorised By"
-        options={authorizedByList.map(p => p.name)}
-        selectedValue={selectedAuthBy?.name}
+        options={authorizedByList}
+        selectedValue={selectedAuthBy?.id}
         onClose={() => setShowAuthPicker(false)}
-        onSelect={(val) => {
-          setSelectedAuthBy(authorizedByList.find(p => p.name === val) || null);
+        onSelect={(item) => {
+          setSelectedAuthBy(item || null);
           setShowAuthPicker(false);
         }}
       />
@@ -737,11 +811,11 @@ const LeaveScreen = ({ navigation, route }) => {
       <SelectionModal
         visible={showAppPicker}
         title="Select Approved By"
-        options={approvedByList.map(p => p.name)}
-        selectedValue={selectedAppBy?.name}
+        options={approvedByList}
+        selectedValue={selectedAppBy?.id}
         onClose={() => setShowAppPicker(false)}
-        onSelect={(val) => {
-          setSelectedAppBy(approvedByList.find(p => p.name === val) || null);
+        onSelect={(item) => {
+          setSelectedAppBy(item || null);
           setShowAppPicker(false);
         }}
       />
@@ -814,14 +888,17 @@ const LeaveScreen = ({ navigation, route }) => {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
-  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(28) },
+  scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(48) },
 
   // Balance cards
-  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', height: moderateScale(72), ...SHADOWS.light },
+  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', height: moderateScale(80), ...SHADOWS.light },
   balBar: { width: 5 },
   balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16) },
-  balRatio: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
-  balType: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
+  balType: { fontSize: moderateScale(14), fontWeight: '800', color: COLORS.text, marginBottom: 3 },
+  balUsed: { fontSize: moderateScale(11), color: '#9CA3AF', fontWeight: '500' },
+  balRight: { alignItems: 'flex-end', marginRight: moderateScale(4) },
+  balBalance: { fontSize: moderateScale(22), fontWeight: '900', lineHeight: 26 },
+  balBalLabel: { fontSize: moderateScale(10), fontWeight: '600', color: '#9CA3AF' },
   histBtn: { backgroundColor: '#F5F3FF', padding: moderateScale(16), borderRadius: moderateScale(16), flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: moderateScale(24) },
   histBtnText: { color: COLORS.primaryDeep, fontWeight: '700', marginRight: moderateScale(8) },
 
@@ -840,7 +917,7 @@ const s = StyleSheet.create({
   dateText: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
 
   // Files
-  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(10), marginBottom: moderateScale(12) },
+  addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(10), marginBottom: moderateScale(12), alignSelf: 'flex-start' },
   addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: moderateScale(13) },
   addMoreThumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
   addMorePlus: { fontSize: moderateScale(24), color: '#9CA3AF', fontWeight: '300' },

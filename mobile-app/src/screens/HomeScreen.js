@@ -84,6 +84,10 @@ const HomeScreen = ({ navigation, route }) => {
     is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
     is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
   });
+  const [menus, setMenus] = useState({
+    leaveApproval: false,
+    regularisationApproval: false,
+  });
   const [alertCfg, setAlertCfg] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
@@ -103,6 +107,7 @@ const HomeScreen = ({ navigation, route }) => {
     initDB().then(() => {
       fetchStatus();
       fetchRoles();
+      fetchMenus();
       checkOfflinePunches();
       // Use ref so we always get the latest user_id
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
@@ -124,6 +129,7 @@ const HomeScreen = ({ navigation, route }) => {
     const unsubscribe = navigation.addListener('focus', () => {
       fetchStatus();
       fetchRoles();
+      fetchMenus();
       checkOfflinePunches();
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       if (Date.now() - lastLocationFetch.current > 120000) {
@@ -246,6 +252,21 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
+  const fetchMenus = async () => {
+    try {
+      const res = await axios.post(API_ENDPOINTS.ALLOCATE_MENUS, { user_id: user.user_id });
+      if (res.data && (res.data.success == 1 || res.data.success === true)) {
+        const data = res.data.data || {};
+        setMenus({
+          leaveApproval: data['Team Leave Requests'] === 'Y',
+          regularisationApproval: data['Approve/Reject Regularisation'] === 'Y',
+        });
+      }
+    } catch (e) {
+      console.log('[Home] Menu allocation fetch error:', e);
+    }
+  };
+
   // ── Status ────────────────────────────────────────────────────────────────
   const fetchStatus = async () => {
     // 1. Instantly load from Local DB to prevent UI flicker
@@ -327,12 +348,13 @@ const HomeScreen = ({ navigation, route }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
-      fetchStatus(), 
-      fetchRoles(), 
+      fetchStatus(),
+      fetchRoles(),
+      fetchMenus(),
       checkOfflinePunches(),
       syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); })
     ]);
-    fetchLocation();
+    initLocationWithDisclosure();
     setRefreshing(false);
   };
 
@@ -678,7 +700,7 @@ const HomeScreen = ({ navigation, route }) => {
           <View style={styles.logoAndGreeting}>
             <View>
               <Text style={[styles.greetingHeader, { color: theme.textLight }]}>{getGreeting()}</Text>
-              <Text style={[styles.userNameHeader, { color: theme.text }]} numberOfLines={1}>{user.employee_name || user.name}</Text>
+              <Text style={[styles.userNameHeader, { color: theme.text }]} numberOfLines={1} allowFontScaling={false}>{user.employee_name || user.name}</Text>
               <View style={styles.locationBadge}>
                 <MapPin color={theme.textLight} size={14} strokeWidth={2.5} />
                 <Text style={[styles.locationText, { fontWeight: '700', color: theme.textLight }]} numberOfLines={1}>{locationName || 'Fetching location...'}</Text>
@@ -713,12 +735,12 @@ const HomeScreen = ({ navigation, route }) => {
         <View style={styles.swipeBoxContainer}>
           <View style={[styles.punchCard, { backgroundColor: theme.card }]}>
 
-            {/* Status row — only shown when punched in */}
-            {isPunchedIn && (
+            {/* Status row — only shown when punched in and time is known */}
+            {isPunchedIn && !!punchInTime && (
               <View style={styles.punchStatusRow}>
                 <View style={[styles.punchDot, { backgroundColor: '#39B54A' }]} />
                 <Text style={[styles.punchStatusText, { color: '#2E7D32' }]}>
-                  {`Clocked in at ${punchInTime ? format(punchInTime, 'hh:mm a') : '—'}`}
+                  {`Checked in at ${format(punchInTime, 'hh:mm a')}`}
                 </Text>
               </View>
             )}
@@ -726,8 +748,8 @@ const HomeScreen = ({ navigation, route }) => {
             {/* Action title */}
             <Text style={[styles.punchActionTitle, { color: punching ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
               {punching
-                ? (isPunchedIn ? 'Clocking Out…' : 'Clocking In…')
-                : (isPunchedIn ? 'Clock Out' : 'Clock In')}
+                ? (isPunchedIn ? 'Checking Out…' : 'Checking In…')
+                : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
             {/* Swipe */}
@@ -748,7 +770,7 @@ const HomeScreen = ({ navigation, route }) => {
               <View style={styles.punchMessageBanner}>
                 <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginRight: 8 }} />
                 <Text style={styles.punchMessageText}>
-                  {punchMessage || (isPunchedIn ? 'Processing clock out...' : 'Processing clock in...')}
+                  {punchMessage || (isPunchedIn ? 'Processing check out...' : 'Processing check in...')}
                 </Text>
               </View>
             )}
@@ -808,11 +830,11 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
         {/* APPROVALS ROW */}
-        {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
+        {(menus.leaveApproval || menus.regularisationApproval) && (
           <>
             <Text style={[styles.sectionLabel, { color: theme.textLight }]}>Approvals</Text>
             <View style={styles.approvalRow}>
-              {(roles.is_employee_hierarchy || roles.is_leave_hierarchy) && (
+              {menus.leaveApproval && (
                 <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveApproval', { user })}>
                   <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
                     <CheckCircle color="#16A34A" size={22} />
@@ -822,7 +844,7 @@ const HomeScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
               )}
 
-              {roles.is_employee_hierarchy && (
+              {menus.regularisationApproval && (
                 <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('RegularisationApproval', { user })}>
                   <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
                     <ClipboardList color="#F97316" size={22} />
