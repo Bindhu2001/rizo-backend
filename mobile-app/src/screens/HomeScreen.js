@@ -52,13 +52,17 @@ const HomeScreen = ({ navigation, route }) => {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (navigation.isFocused()) {
+        if (eventsOpen) {
+          setEventsOpen(false);
+          return true;
+        }
         BackHandler.exitApp();
         return true;
       }
       return false;
     });
     return () => sub.remove();
-  }, [navigation]);
+  }, [navigation, eventsOpen]);
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
@@ -916,7 +920,13 @@ const HomeScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* SHIFT POLICY CONFIRM MODAL — shown before both Punch IN and Punch OUT */}
-      <Modal visible={showShiftConfirm} transparent animationType="fade" statusBarTranslucent>
+      <Modal
+        visible={showShiftConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowShiftConfirm(false); setCancelTrigger(prev => prev + 1); }}
+        statusBarTranslucent
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={[styles.modalPowerCircle, {

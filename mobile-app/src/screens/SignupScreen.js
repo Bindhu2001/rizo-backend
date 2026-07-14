@@ -884,7 +884,7 @@ const SignupScreen = ({ navigation }) => {
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 
       {/* ── Photo Modal ── */}
-      <Modal visible={showPicModal} transparent animationType="slide">
+      <Modal visible={showPicModal} transparent animationType="slide" onRequestClose={() => setShowPicModal(false)}>
         <View style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[st.modalSheet, { backgroundColor: theme.card }]}>
             <View style={[st.modalHandle, { backgroundColor: theme.border }]} />

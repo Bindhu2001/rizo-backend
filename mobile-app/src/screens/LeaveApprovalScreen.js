@@ -470,7 +470,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       )}
 
       {/* Remarks Modal */}
-      <Modal visible={actionModal.visible} transparent animationType="fade" statusBarTranslucent>
+      <Modal visible={actionModal.visible} transparent animationType="fade" onRequestClose={closeModal} statusBarTranslucent>
         <KeyboardAvoidingView behavior="padding" style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>
@@ -521,7 +521,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       </Modal>
 
       {/* Month Picker Modal */}
-      <Modal visible={showMonthPicker} transparent animationType="slide" statusBarTranslucent>
+      <Modal visible={showMonthPicker} transparent animationType="slide" onRequestClose={() => setShowMonthPicker(false)} statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowMonthPicker(false)}>
           <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.handle, { backgroundColor: theme.border }]} />
@@ -541,7 +541,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
         </Pressable>
       </Modal>
       {/* History Filter Picker Modal */}
-      <Modal visible={showHistFilterPicker} transparent animationType="slide" statusBarTranslucent>
+      <Modal visible={showHistFilterPicker} transparent animationType="slide" onRequestClose={() => setShowHistFilterPicker(false)} statusBarTranslucent>
         <Pressable style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]} onPress={() => setShowHistFilterPicker(false)}>
           <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[s.handle, { backgroundColor: theme.border }]} />

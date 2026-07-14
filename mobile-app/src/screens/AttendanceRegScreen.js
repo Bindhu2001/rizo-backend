@@ -563,7 +563,7 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
   const handAngle = mode === 'hour' ? hour * 30 : minute * 6;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={[tp.overlay, { backgroundColor: theme.modalOverlay }]}>
         <View style={[tp.box, { backgroundColor: theme.card }]}>
           <Text style={[tp.title, { color: theme.textLight }]}>SELECT TIME</Text>

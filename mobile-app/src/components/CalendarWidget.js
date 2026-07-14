@@ -214,7 +214,7 @@ const CalendarWidget = ({ userId }) => {
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Week Off</Text></View>
       </View>
 
-      <Modal visible={!!selectedEvent} transparent animationType="fade" statusBarTranslucent>
+      <Modal visible={!!selectedEvent} transparent animationType="fade" onRequestClose={() => setSelectedEvent(null)} statusBarTranslucent>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[styles.modalDate, { color: theme.text }]}>

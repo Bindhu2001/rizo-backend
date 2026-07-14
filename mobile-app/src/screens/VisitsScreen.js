@@ -333,7 +333,7 @@ const BanIcon = () => (
 const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
   const theme = useTheme();
   return (
-  <Modal visible={visible} transparent animationType="fade">
+  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
     <View style={[cm.overlay, { backgroundColor: theme.modalOverlay }]}>
       <View style={[cm.box, { backgroundColor: theme.card }]}>
         <View style={[cm.iconWrap, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E8FF' }]}><BanIcon /></View>

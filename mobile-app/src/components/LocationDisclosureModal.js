@@ -12,6 +12,7 @@ export default function LocationDisclosureModal({ visible, onAccept, onDecline }
       visible={visible}
       transparent
       animationType="fade"
+      onRequestClose={onDecline}
       statusBarTranslucent
     >
       <View style={styles.overlay}>
