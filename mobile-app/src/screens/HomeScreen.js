@@ -296,8 +296,16 @@ const HomeScreen = ({ navigation, route }) => {
       setLoading(false);
     }
 
-    // 2. Cross-verify with Cloud
+    // 2. Reconcile with the server's attendance log — the same per-day
+    // punch_in_time/punch_out_time data the Attendance History screen uses.
+    // Whichever day's entry is most recent decides the truth: an IN with no
+    // matching OUT yet means we're punched in, carried over across days if
+    // needed. Skipped only when there's a local punch still waiting to sync —
+    // in that case the cloud is stale by definition, so local stays authoritative.
     try {
+      const pCnt = await getPendingCount();
+      if (pCnt > 0) return;
+
       const today = format(new Date(), 'yyyy-MM');
       const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
         user_id: user.user_id,
@@ -305,39 +313,22 @@ const HomeScreen = ({ navigation, route }) => {
       }, { timeout: 8000 });
 
       const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
-      
-      if (logs.length > 0) {
-        // Sort logs descending to ensure logs[0] is the most recent
-        const sortedLogs = [...logs].sort((a, b) => new Date(b.date + 'T' + (b.punch_in_time?.split(' ')[1] || '00:00:00')) - new Date(a.date + 'T' + (a.punch_in_time?.split(' ')[1] || '00:00:00')));
-        const latest = sortedLogs[0];
-        
-        // Robust check: If we have an IN time but no OUT time for the latest log entry, we are Punched In.
-        const serverType = (latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---')) ? 'IN' : 'NONE';
-        
-        const pCnt = await getPendingCount();
-        const timeSinceLastAction = Date.now() - lastActionTime.current;
-        
-        // REVERSAL GUARD: Trust local SQLite as the primary source of truth for today's state
-        // because ATTENDANCE_LOGS groups by day and may parse as 'NONE' if there are multiple punches.
-        if (pCnt === 0 || timeSinceLastAction > 900000) { // 15 mins
-          
-          let finalType = localType === 'IN' ? 'IN' : 'NONE';
-          
-          // If server explicitly says we are logged in, but local doesn't know (e.g. fresh install or logged in from another device), honor it
-          if (serverType === 'IN' && localType !== 'IN') {
-             finalType = 'IN';
-          }
-          
-          // Only update if it's different to prevent layout jumps
-          if ((finalType === 'IN') !== isPunchedIn) {
-             setIsPunchedIn(finalType === 'IN');
-             setStatus(prev => ({ ...prev, lastType: finalType }));
-          }
+      const withPunch = logs.filter(l => l.punch_in_time || l.punch_out_time);
 
-          // Update punch time string if available and missing locally
-          if (finalType === 'IN' && latest.punch_in_time && !punchInTime) {
-            setPunchInTime(new Date(latest.punch_in_time.replace(' ', 'T')));
-          }
+      if (withPunch.length > 0) {
+        // Sort descending so sorted[0] is the most recent punch entry
+        const timeKey = (l) => l.date + 'T' + (l.punch_in_time?.split(' ')[1] || l.punch_out_time?.split(' ')[1] || '00:00:00');
+        const sorted = [...withPunch].sort((a, b) => new Date(timeKey(b)) - new Date(timeKey(a)));
+        const latest = sorted[0];
+
+        const serverIsIn = !!latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---');
+
+        setIsPunchedIn(serverIsIn);
+        setStatus(prev => ({ ...prev, lastType: serverIsIn ? 'IN' : 'NONE' }));
+        if (serverIsIn && latest.punch_in_time) {
+          setPunchInTime(new Date(latest.punch_in_time.replace(' ', 'T')));
+        } else if (!serverIsIn) {
+          setPunchInTime(null);
         }
       }
     } catch (e) {

@@ -601,7 +601,13 @@ const ExpenseScreen = ({ navigation, route }) => {
                 <Text style={[dm.date, { color: theme.textLight }]}>{detailModal.expense_date}</Text>
 
                 <Text style={[dm.info, { color: theme.textLight }]}>Authorised By : {detailModal.authorized_name || detailModal.authorized_by || '-'}</Text>
+                {!!detailModal.authorized_remarks && (
+                  <Text style={[dm.remark, { color: theme.textMuted }]}>{detailModal.authorized_remarks}</Text>
+                )}
                 <Text style={[dm.info, { color: theme.textLight }]}>Approved By : {detailModal.approved_name || detailModal.approved_by || '-'}</Text>
+                {!!detailModal.approved_remarks && (
+                  <Text style={[dm.remark, { color: theme.textMuted }]}>{detailModal.approved_remarks}</Text>
+                )}
                 <Text style={[dm.info, { color: theme.textLight }]}>Remarks : {detailModal.remarks}</Text>
 
                 {/* Example files if present. API returned `image:""` so let's check it */}
@@ -691,6 +697,7 @@ const dm = StyleSheet.create({
   title: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827', marginBottom: 4 },
   date: { fontSize: moderateScale(12), color: '#6B7280', marginBottom: moderateScale(16), fontWeight: '500' },
   info: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: moderateScale(8), lineHeight: 18, fontWeight: '500' },
+  remark: { fontSize: moderateScale(11), fontStyle: 'italic', marginTop: -moderateScale(4), marginBottom: moderateScale(8) },
   amountLabel: { fontSize: moderateScale(13), color: '#4B5563', fontWeight: '800', marginTop: moderateScale(16) },
   fileChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: moderateScale(8), backgroundColor: '#F9FAFB', paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(6), borderRadius: moderateScale(8), borderWidth: 1, borderColor: '#E5E7EB' },
   fileChipText: { fontSize: moderateScale(11), color: '#4B5563', fontWeight: '600' },
