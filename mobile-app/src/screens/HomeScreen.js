@@ -66,6 +66,7 @@ const HomeScreen = ({ navigation, route }) => {
 
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
+  const [punchingType, setPunchingType] = useState(null); // 'IN' | 'OUT' — action actually in flight
   const [isPunchedIn, setIsPunchedIn] = useState(false);
   const [status, setStatus] = useState({ lastType: 'NONE', todayHistory: [] });
   const [locationName, setLocationName] = useState('Fetching location...');
@@ -328,7 +329,7 @@ const HomeScreen = ({ navigation, route }) => {
           }
           
           // Only update if it's different to prevent layout jumps
-          if (finalType !== isPunchedIn) {
+          if ((finalType === 'IN') !== isPunchedIn) {
              setIsPunchedIn(finalType === 'IN');
              setStatus(prev => ({ ...prev, lastType: finalType }));
           }
@@ -529,6 +530,7 @@ const HomeScreen = ({ navigation, route }) => {
   const processPunch = async (type) => {
     if (punching) return;
     setPunching(true);
+    setPunchingType(type);
     setShowConfirmOut(false);
     const now = Date.now();
     lastActionTime.current = now;
@@ -637,6 +639,7 @@ const HomeScreen = ({ navigation, route }) => {
       showAlert('error', 'Error', 'Failed to process punch. Please try again.');
     } finally {
       setPunching(false);
+      setPunchingType(null);
       setPunchMessage('');
     }
   };
@@ -752,7 +755,7 @@ const HomeScreen = ({ navigation, route }) => {
             {/* Action title */}
             <Text style={[styles.punchActionTitle, { color: punching ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
               {punching
-                ? (isPunchedIn ? 'Checking Out…' : 'Checking In…')
+                ? (punchingType === 'OUT' ? 'Checking Out…' : 'Checking In…')
                 : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
@@ -761,6 +764,7 @@ const HomeScreen = ({ navigation, route }) => {
               <SwipeToPunch
                 isPunchedIn={isPunchedIn}
                 loading={punching}
+                loadingType={punchingType}
                 onSwipeComplete={handleSwipeComplete}
                 resetTrigger={cancelTrigger}
                 trackHeight={68}

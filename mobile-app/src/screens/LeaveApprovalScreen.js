@@ -157,16 +157,20 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       {
         text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
           setCancellingId(leaveId);
+          // Defer the result alert past the confirmation modal's close animation —
+          // a fast failure response (e.g. attendance-verified, a single COUNT(*))
+          // can otherwise fire before it's done closing and silently fail to show.
+          const showResultAlert = (...args) => setTimeout(() => showAlert(...args), 300);
           try {
             const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: empUserId, leave_id: String(leaveId) });
             if (res.data?.success === 1 || res.data?.success === true) {
-              showAlert('success', 'Cancelled', 'Leave has been cancelled successfully.');
+              showResultAlert('success', 'Cancelled', 'Leave has been cancelled successfully.');
               fetchHistory(currentMonthStr, histFilter);
             } else {
-              showAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
+              showResultAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
             }
           } catch (e) {
-            showAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
+            showResultAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
           } finally {
             setCancellingId(null);
           }

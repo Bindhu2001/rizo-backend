@@ -26,6 +26,18 @@ const STATUS_COLORS = {
   Cancelled: { bg: '#FEF3C7', text: '#D97706', side: '#D97706' },
 };
 
+// Formats "YYYY-MM-DD" + half (1=Forenoon, 2=Afternoon) as "DD-MM-YYYY(FH)"/"(SH)"
+const formatLeaveDate = (dateStr, half) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const [y, m, d] = parts;
+  const ddmmyyyy = `${d}-${m}-${y}`;
+  const h = parseInt(half, 10);
+  const tag = h === 1 ? '(FH)' : h === 2 ? '(SH)' : '';
+  return `${ddmmyyyy}${tag}`;
+};
+
 const statusColor = (s) => {
   const norm = (s || '').trim().toLowerCase();
   if (norm === 'approved' || norm === 'a') return STATUS_COLORS.Approved;
@@ -85,7 +97,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
         <View style={hc.topRow}>
           <View style={{ flex: 1 }}>
             <Text style={[hc.leaveName, { color: theme.text }]}>{item.leave_name?.trim()}</Text>
-            <Text style={[hc.dateText, { color: theme.textLight }]}>{item.from_date}{item.to_date && item.to_date !== item.from_date ? ` – ${item.to_date}` : ''}</Text>
+            <Text style={[hc.dateText, { color: theme.textLight }]}>{formatLeaveDate(item.from_date, item.fromhalf)} - {formatLeaveDate(item.to_date, item.tohalf)}</Text>
             {item.approved_by_person
               ? <Text style={[hc.approverText, { color: theme.textMuted }]}>Approved By : {item.approved_by_person?.trim()}</Text>
               : null}
@@ -106,8 +118,8 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
               <View style={{ flex: 1 }}>
                 <Text style={[hc.detailLabel, { color: theme.textMuted }]}>Leave Date</Text>
                 <View style={hc.dateRangeRow}>
-                  <Text style={[hc.detailValue, { color: theme.text }]}>{item.from_date}</Text>
-                  <Text style={[hc.detailValue, { color: theme.text }, hc.dateRangeGap]}>{item.to_date}</Text>
+                  <Text style={[hc.detailValue, { color: theme.text }]}>{formatLeaveDate(item.from_date, item.fromhalf)}</Text>
+                  <Text style={[hc.detailValue, { color: theme.text }, hc.dateRangeGap]}>- {formatLeaveDate(item.to_date, item.tohalf)}</Text>
                 </View>
               </View>
             </View>
@@ -456,16 +468,22 @@ const LeaveScreen = ({ navigation, route }) => {
         {
           text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
             setCancellingId(leaveId);
+            // Defer the result alert so it never races the native Alert's
+            // dismiss animation on Android (a fast failure response — like
+            // the attendance-verified check, which is a single COUNT(*) with
+            // no write — can otherwise fire before the dialog finishes
+            // closing, and the follow-up Modal silently fails to appear).
+            const showResultAlert = (...args) => setTimeout(() => showAlert(...args), 300);
             try {
               const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: user.user_id, leave_id: String(leaveId) });
               if (res.data?.success === 1 || res.data?.success === true) {
-                showAlert('success', 'Cancelled', 'Your leave has been cancelled successfully.');
+                showResultAlert('success', 'Cancelled', 'Your leave has been cancelled successfully.');
                 fetchHistory(histFilter);
               } else {
-                showAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
+                showResultAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
               }
             } catch (e) {
-              showAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
+              showResultAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
             } finally {
               setCancellingId(null);
             }

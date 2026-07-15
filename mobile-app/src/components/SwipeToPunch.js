@@ -15,6 +15,7 @@ const SwipeToPunch = ({
   onSwipeComplete,
   isPunchedIn = false,
   loading = false,
+  loadingType = null,
   trackHeight = 68,
   padding = 5,
   resetTrigger = 0,
@@ -106,7 +107,7 @@ const SwipeToPunch = ({
 
   let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO CHECK IN';
   if (loading) {
-    textVal = isPunchedIn ? 'Checking Out...' : 'Checking In...';
+    textVal = loadingType === 'OUT' ? 'Checking Out...' : 'Checking In...';
   }
 
   return (
