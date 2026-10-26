@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Rizo",
-    "slug": "rizo-app",
-    "version": "1.0.3",
+    "slug": "rizo",
+    "version": "1.0.4",
     "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
@@ -15,13 +15,18 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rizo.mobile",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking."
+        "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
+        "NSCameraUsageDescription": "Rizo needs camera access to capture receipts and documents for expense and leave attachments.",
+        "NSPhotoLibraryUsageDescription": "Rizo needs photo library access so you can attach receipts and documents for expenses and leave requests.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.rizo.mobile",
-      "versionCode": 8,
+      "googleServicesFile": "./google-services.json",
+      "versionCode": 12,
       "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
@@ -44,6 +49,7 @@
     },
     "plugins": [
       "./plugins/withAgpCompatibility",
+      "./plugins/withNetworkSecurityConfig",
       "expo-sqlite",
       ["expo-location", {
         "isAndroidBackgroundLocationEnabled": false
@@ -56,16 +62,20 @@
           }
         }
       ],
-      "expo-notifications",
+      ["expo-notifications", {
+        "icon": "./assets/notification_icon.png",
+        "color": "#4A148C"
+      }],
       "expo-camera",
       "expo-image-picker",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-background-fetch"
     ],
     "extra": {
       "eas": {
-        "projectId": "beed38ea-7f0d-4ffe-8cbe-85e070b8b4a1"
+        "projectId": "3b809a7c-1863-489e-8a15-8452631f21c0"
       }
     },
-    "owner": "bindu_01"
+    "owner": "athiraglos"
   }
 }

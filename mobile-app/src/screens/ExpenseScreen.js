@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions, Platform, Pressable, KeyboardAvoidingView, RefreshControl, BackHandler
+  TextInput, ActivityIndicator, Modal, Platform, Pressable, KeyboardAvoidingView, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,13 +12,15 @@ import {
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import NotificationManager from '../services/NotificationManager';
 
-const { width } = Dimensions.get('window');
+// Uploaded expense/leave attachments are stored under a company-code folder
+// derived the same way the backend does: the alphabetic prefix of the login
+// user_id (e.g. "GLET101865" -> "glet"), lowercased.
+const companyFolder = (userId) => (String(userId || '').match(/^([A-Za-z]+)/)?.[1] || '').toLowerCase();
 
 const STATUS_COLORS = {
   Approved: { bg: '#DCFCE7', text: '#059669', side: '#D1FAE5' },
@@ -225,6 +227,15 @@ const ExpenseScreen = ({ navigation, route }) => {
     if (!user) navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
   }, [user, navigation]);
 
+  const resetExpenseForm = () => {
+    setExpenseType(null);
+    setExpenseDate('');
+    setAmount('');
+    setRemarks('');
+    setPurpose('');
+    setAttachedFiles([]);
+  };
+
   useEffect(() => {
     const onBack = () => {
       if (view === 'APPLY' || view === 'SUCCESS') { setView('LIST'); return true; }
@@ -256,7 +267,11 @@ const ExpenseScreen = ({ navigation, route }) => {
       const [expRes, typeRes, approverRes] = await Promise.all([
         axios.post(API_ENDPOINTS.GET_SUBMITTED_EXPENSES, { user_id: user.user_id }).catch(() => null),
         axios.post(API_ENDPOINTS.GET_EXPENSE_TYPES, { user_id: user.user_id }).catch(() => null),
-        axios.post(`${API_ENDPOINTS.APPROVERS}?user_id=${encodeURIComponent(user.user_id)}`, null).catch(() => null),
+        // GET like the Leave screen (the API answers GET); POST only as a fallback
+        axios.get(`${API_ENDPOINTS.APPROVERS}?user_id=${encodeURIComponent(user.user_id)}`)
+          .then(res => (res?.data?.success ? res : Promise.reject(new Error('approvers GET unsuccessful'))))
+          .catch(() => axios.post(`${API_ENDPOINTS.APPROVERS}?user_id=${encodeURIComponent(user.user_id)}`, null))
+          .catch(() => null),
       ]);
 
       if (expRes?.data?.success && Array.isArray(expRes?.data?.data)) {
@@ -274,12 +289,15 @@ const ExpenseScreen = ({ navigation, route }) => {
       }
 
       if (approverRes?.data?.success) {
+        // No approving your own expense — compared case-insensitively
+        const selfId = String(user.user_id || '').trim().toUpperCase();
+        const isUsable = (p) => p.key && p.key !== '0' && String(p.emp_id).trim().toUpperCase() !== selfId;
         const auths = (approverRes.data.data?.authorized_persons || [])
           .map(normalizePerson)
-          .filter(p => p.key && p.key !== '0' && p.emp_id !== user.user_id);
+          .filter(isUsable);
         const apps = (approverRes.data.data?.approved_persons || [])
           .map(normalizePerson)
-          .filter(p => p.key && p.key !== '0' && p.emp_id !== user.user_id);
+          .filter(isUsable);
         setAuthPersons(auths);
         setAppPersons(apps);
         setAuthBy(prev => prev || auths[0] || null);
@@ -304,19 +322,20 @@ const ExpenseScreen = ({ navigation, route }) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/jpg', 'application/pdf'],
-        multiple: true,
+        multiple: false,
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length > 0) {
-        const oversized = result.assets.filter(file => file.size > 5 * 1024 * 1024);
-        if (oversized.length > 0) {
-          showAlert('warning', 'File Too Large', 'One or more files exceed the 5MB limit. Please select smaller files.');
+        const file = result.assets[0];
+        if (file.size > 5 * 1024 * 1024) {
+          showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please select a smaller file.');
           return;
         }
-        const valid = result.assets.filter(f => ['image/jpeg', 'image/jpg', 'application/pdf'].includes(f.mimeType));
-        if (valid.length < result.assets.length)
-          showAlert('warning', 'Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
-        setAttachedFiles(prev => [...prev, ...valid]);
+        if (!['image/jpeg', 'image/jpg', 'application/pdf'].includes(file.mimeType)) {
+          showAlert('warning', 'Invalid File', 'Only JPG, JPEG, and PDF files are allowed.');
+          return;
+        }
+        setAttachedFiles([file]);
       }
     } catch (e) {
       showAlert('error', 'Error', 'Could not open file picker.');
@@ -374,24 +393,23 @@ const ExpenseScreen = ({ navigation, route }) => {
       formData.append('authorized_by', authBy?.key || '0');
       formData.append('approved_by', appBy?.key || '0');
 
-      // Convert all files to Base64 before sending
-      for (let i = 0; i < attachedFiles.length; i++) {
-        const file = attachedFiles[i];
-        try {
-          const base64 = await FileSystem.readAsStringAsync(file.uri, { encoding: FileSystem.EncodingType.Base64 });
-          const mime = file.mimeType || 'image/jpeg';
-          formData.append(`file_${i}`, `data:${mime};base64,${base64}`);
-        } catch (fileErr) {
-          console.log(`Error reading file ${i}:`, fileErr);
-        }
+      // Send attachment as a real multipart binary upload under the field
+      // name `pimage` (matches backend's $request->getUploadedFiles()['pimage']).
+      if (attachedFiles.length > 0) {
+        const file = attachedFiles[0];
+        const mime = file.mimeType || 'image/jpeg';
+        formData.append('pimage', {
+          uri: file.uri,
+          name: file.name || `expense.${mime === 'application/pdf' ? 'pdf' : 'jpg'}`,
+          type: mime,
+        });
       }
 
       const res = await axios.post(API_ENDPOINTS.SUBMIT_EXPENSE, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       if (res.data?.success === 1 || res.data?.success === true) {
         setView('SUCCESS');
         NotificationManager.forceCheck().catch(() => {});
-        // Reset form
-        setExpenseType(null); setExpenseDate(''); setAmount(''); setRemarks(''); setPurpose(''); setAttachedFiles([]);
+        resetExpenseForm();
       } else {
         showAlert('error', 'Notice', res.data?.message || 'Submission failed.');
       }
@@ -453,7 +471,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             </ScrollView>
           )}
 
-          <TouchableOpacity style={s.fab} activeOpacity={0.8} onPress={() => setView('APPLY')}>
+          <TouchableOpacity style={s.fab} activeOpacity={0.8} onPress={() => { resetExpenseForm(); setView('APPLY'); }}>
             <Plus color="#FFF" size={28} />
           </TouchableOpacity>
         </View>
@@ -541,21 +559,18 @@ const ExpenseScreen = ({ navigation, route }) => {
 
             {/* Files */}
             <View style={s.fileBox}>
-              <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
-                <Paperclip color={COLORS.primaryDeep} size={14} />
-                <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
-              </TouchableOpacity>
+              {attachedFiles.length === 0 && (
+                <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
+                  <Paperclip color={COLORS.primaryDeep} size={14} />
+                  <Text style={s.addFilesText}> Add file  (JPG, JPEG, PDF)</Text>
+                </TouchableOpacity>
+              )}
 
               {attachedFiles.length > 0 && (
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
                   {attachedFiles.map((f, i) => (
                     <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
                   ))}
-                  <View style={ft.wrap}>
-                    <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
-                      <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
-                    </TouchableOpacity>
-                  </View>
                 </ScrollView>
               )}
             </View>
@@ -610,12 +625,18 @@ const ExpenseScreen = ({ navigation, route }) => {
                 )}
                 <Text style={[dm.info, { color: theme.textLight }]}>Remarks : {detailModal.remarks}</Text>
 
-                {/* Example files if present. API returned `image:""` so let's check it */}
                 {!!detailModal.image && (
-                  <View style={[dm.fileChip, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
+                  <TouchableOpacity
+                    style={[dm.fileChip, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}
+                    onPress={() => {
+                      const url = `${IMAGE_ROOT}/expense/${companyFolder(user.user_id)}/${detailModal.image}`;
+                      Linking.openURL(url).catch(() => showAlert('error', 'Error', 'Could not open attachment.'));
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <FileText color="#DC2626" size={14} style={{ marginRight: 6 }} />
-                    <Text style={[dm.fileChipText, { color: theme.textLight }]}>Attachment</Text>
-                  </View>
+                    <Text style={[dm.fileChipText, { color: theme.textLight }]}>View Attachment</Text>
+                  </TouchableOpacity>
                 )}
 
                 <Text style={[dm.amountLabel, { color: theme.textLight }]}>Claimed Amount: <Text style={{ color: theme.text }}>₹{(!isNaN(parseFloat(detailModal.expenses_amount)) ? parseFloat(detailModal.expenses_amount) : 0).toFixed(2)}</Text></Text>

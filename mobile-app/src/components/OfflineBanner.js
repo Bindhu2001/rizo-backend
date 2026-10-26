@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
 import * as Network from 'expo-network';
 import { CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,8 +8,6 @@ import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import { getLoggedUser } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
-
-const { width, height } = Dimensions.get('window');
 
 const OfflineBanner = ({ currentRoute, navigationRef, onBarVisibleChange }) => {
   const theme = useTheme();

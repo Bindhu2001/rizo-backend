@@ -1,8 +1,19 @@
 import { Dimensions } from 'react-native';
 
-const { width: W, height: H } = Dimensions.get('window');
+// On tablets, App.js caps rendered content to LARGE_SCREEN_CAPPED_WIDTH instead
+// of stretching phone-designed screens across the full device width — these
+// scaling helpers must size against that same effective width, or components
+// sized for a full iPad width would overflow the narrower capped container.
+export const LARGE_SCREEN_BREAKPOINT = 600;
+export const LARGE_SCREEN_CAPPED_WIDTH = 500;
+
+const { width: rawW, height: H } = Dimensions.get('window');
+const W = rawW >= LARGE_SCREEN_BREAKPOINT ? LARGE_SCREEN_CAPPED_WIDTH : rawW;
 const BASE_W = 390; // iPhone 14 base
 const BASE_H = 844;
+
+/** Effective screen width — capped on tablets to match App.js's rendered container width. Use this instead of Dimensions.get('window') directly. */
+export const SCREEN_WIDTH = W;
 
 /** Scales a size linearly with screen width */
 export const scale = (size) => Math.round((W / BASE_W) * size);

@@ -1,0 +1,148 @@
+-----BEGIN CERTIFICATE-----
+MIIF3jCCA8agAwIBAgIQAf1tMPyjylGoG7xkDjUDLTANBgkqhkiG9w0BAQwFADCB
+iDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0pl
+cnNleSBDaXR5MR4wHAYDVQQKExVUaGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNV
+BAMTJVVTRVJUcnVzdCBSU0EgQ2VydGlmaWNhdGlvbiBBdXRob3JpdHkwHhcNMTAw
+MjAxMDAwMDAwWhcNMzgwMTE4MjM1OTU5WjCBiDELMAkGA1UEBhMCVVMxEzARBgNV
+BAgTCk5ldyBKZXJzZXkxFDASBgNVBAcTC0plcnNleSBDaXR5MR4wHAYDVQQKExVU
+aGUgVVNFUlRSVVNUIE5ldHdvcmsxLjAsBgNVBAMTJVVTRVJUcnVzdCBSU0EgQ2Vy
+dGlmaWNhdGlvbiBBdXRob3JpdHkwggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIK
+AoICAQCAEmUXNg7D2wiz0KxXDXbtzSfTTK1Qg2HiqiBNCS1kCdzOiZ/MPans9s/B
+3PHTsdZ7NygRK0faOca8Ohm0X6a9fZ2jY0K2dvKpOyuR+OJv0OwWIJAJPuLodMkY
+tJHUYmTbf6MG8YgYapAiPLz+E/CHFHv25B+O1ORRxhFnRghRy4YUVD+8M/5+bJz/
+Fp0YvVGONaanZshyZ9shZrHUm3gDwFA66Mzw3LyeTP6vBZY1H1dat//O+T23LLb2
+VN3I5xI6Ta5MirdcmrS3ID3KfyI0rn47aGYBROcBTkZTmzNg95S+UzeQc0PzMsNT
+79uq/nROacdrjGCT3sTHDN/hMq7MkztReJVni+49Vv4M0GkPGw/zJSZrM233bkf6
+c0Plfg6lZrEpfDKEY1WJxA3Bk1QwGROs0303p+tdOmw1XNtB1xLaqUkL39iAigmT
+Yo61Zs8liM2EuLE/pDkP2QKe6xJMlXzzawWpXhaDzLhn4ugTncxbgtNMs+1b/97l
+c6wjOy0AvzVVdAlJ2ElYGn+SNuZRkg7zJn0cTRe8yexDJtC/QV9AqURE9JnnV4ee
+UB9XVKg+/XRjL7FQZQnmWEIuQxpMtPAlR1n6BB6T1CZGSlCBst6+eLf8ZxXhyVeE
+Hg9j1uliutZfVS7qXMYoCAQlObgOK6nyTJccBz8NUvXt7y+CDwIDAQABo0IwQDAd
+BgNVHQ4EFgQUU3m/WqorSs9UgOHYm8Cd8rIDZsswDgYDVR0PAQH/BAQDAgEGMA8G
+A1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQEMBQADggIBAFzUfA3P9wF9QZllDHPF
+Up/L+M+ZBn8b2kMVn54CVVeWFPFSPCeHlCjtHzoBN6J2/FNQwISbxmtOuowhT6KO
+VWKR82kV2LyI48SqC/3vqOlLVSoGIG1VeCkZ7l8wXEskEVX/JJpuXior7gtNn3/3
+ATiUFJVDBwn7YKnuHKsSjKCaXqeYalltiz8I+8jRRa8YFWSQEg9zKC7F4iRO/Fjs
+8PRF/iKz6y+O0tlFYQXBl2+odnKPi4w2r78NBc5xjeambx9spnFixdjQg3IM8WcR
+iQycE0xyNN+81XHfqnHd4blsjDwSXWXavVcStkNr/+XeTWYRUc+ZruwXtuhxkYze
+Sf7dNXGiFSeUHM9h4ya7b6NnJSFd5t0dCy5oGzuCr+yDZ4XUmFF0sbmZgIn/f3gZ
+XHlKYC6SQK5MNyosycdiyA5d9zZbyuAlJQG03RoHnHcAP9Dc1ew91Pq7P8yF1m9/
+qS3fuQL39ZeatTXaw2ewh0qpKJ4jjv9cJ2vhsE/zB+4ALtRZh8tSQZXq9EfX7mRB
+VXyNWQKV3WKdwrnuWih0hKWbt5DHDAff9Yk2dDLWKMGwsAvgnEzDHNb842m1R0aB
+L6KCq9NjRHDEjf8tM7qtj3u1cIiuPhnPQCjY/MiQu12ZIvVS5ljFH4gxQ+6IHdfG
+jjxDah2nGN59PRbxYvnKkKj9
+-----END CERTIFICATE-----
+---
+Server certificate
+subject=CN = *.mypayrollmaster.online
+
+issuer=C = GB, O = Sectigo Limited, CN = Sectigo Public Server Authentication CA DV R36
+
+---
+No client certificate CA names sent
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 7096 bytes and written 407 bytes
+Verification error: self signed certificate in certificate chain
+---
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Server public key is 2048 bit
+Secure Renegotiation IS NOT supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+Early data was not sent
+Verify return code: 19 (self signed certificate in certificate chain)
+---
+HTTP/1.1 400 Bad Request
+Date: Tue, 29 Sep 2026 06:56:41 GMT
+Server: Apache/2.4.37 (AlmaLinux) OpenSSL/1.1.1k
+Content-Length: 226
+Connection: close
+Content-Type: text/html; charset=iso-8859-1
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>400 Bad Request</title>
+</head><body>
+<h1>Bad Request</h1>
+<p>Your browser sent a request that this server could not understand.<br />
+</p>
+</body></html>
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: F0B0910DD3AE5D3018CC9B4F1D38A94AF44ECEEA82D5C610E5A76EDE190B00B7
+    Session-ID-ctx: 
+    Resumption PSK: F4C3B1FE9F03530A1AEAD8D6D7F423E0F13E522914719B08A667F2C7CC06566C0E301AC04A569935ACD35E63D6787CE7
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - 66 be 11 cc 8a 7b e4 81-fe 1d e3 14 49 01 1a e4   f....{......I...
+    0010 - 27 a7 56 e2 f6 b6 28 af-80 04 f2 c3 6c 8a 59 9d   '.V...(.....l.Y.
+    0020 - 9d e2 9c f1 d8 15 9e 7f-22 0f 43 27 69 57 e5 4e   ........".C'iW.N
+    0030 - cf 70 4f d5 0f 1c 86 72-09 18 cd fa e9 8f b1 5d   .pO....r.......]
+    0040 - d2 89 ef 23 30 8b 6f 95-6d 0b d8 7f 5f 5e f4 54   ...#0.o.m..._^.T
+    0050 - 15 7c 53 dc 6d 48 12 8e-9c 2c 3b 8a 11 7f c2 af   .|S.mH...,;.....
+    0060 - 3c dd 70 85 ce 27 3a e8-c3 3d 2e 39 ed e3 7f 9f   <.p..':..=.9....
+    0070 - 77 ec 4c 1e 6a 98 72 38-51 a0 b9 26 80 b8 d6 81   w.L.j.r8Q..&....
+    0080 - c7 74 1e a7 79 5c c8 f8-d4 70 2f 6f 63 b3 6b fc   .t..y\...p/oc.k.
+    0090 - 21 f4 1d 3d 8b 58 00 d8-de 57 2c 8c bb d0 bf ec   !..=.X...W,.....
+    00a0 - 3b 6e 59 be e2 d3 f5 cc-bc a3 94 23 52 e6 4d d4   ;nY........#R.M.
+    00b0 - bd f9 77 bd 15 9b eb ec-6c 9c 57 da 50 3f e7 96   ..w.....l.W.P?..
+    00c0 - 39 d7 8f 3f 49 5c 6d 69-cf f4 1d d8 ae 27 5d 4d   9..?I\mi.....']M
+    00d0 - 9c 31 8a e3 69 53 54 47-b4 b3 cc 8c 8c b0 c4 da   .1..iSTG........
+    00e0 - 7b 01 2d ff af bd 86 00-a2 af fb a9 f6 d0 c1 b5   {.-.............
+    00f0 - f5 0f df 7e cd 21 69 dd-5d 32 04 28 98 90 94 55   ...~.!i.]2.(...U
+
+    Start Time: 1790665000
+    Timeout   : 7200 (sec)
+    Verify return code: 19 (self signed certificate in certificate chain)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: 429B42C54E659BA394BF14143320A7BBFAF77106DA8EE10B1BD3A8CF1C49F6B7
+    Session-ID-ctx: 
+    Resumption PSK: FA0E4655C106D635198FC17004AEB76D2D7DA5439919C17C2BCC2A81133451737E491B641A88EEAD4100BB20C8D9BA03
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - 66 be 11 cc 8a 7b e4 81-fe 1d e3 14 49 01 1a e4   f....{......I...
+    0010 - 79 e4 a1 20 67 32 ea 62-2f c2 f1 f7 7c fe 4b 6d   y.. g2.b/...|.Km
+    0020 - f6 21 6f ae 04 0d 32 fc-87 67 8d 3a 16 f1 3e b2   .!o...2..g.:..>.
+    0030 - 52 f2 8c 48 f5 fa 9d 2d-2e d8 21 b0 79 43 5a 60   R..H...-..!.yCZ`
+    0040 - 3f 69 50 61 f1 e8 52 8e-36 0e bf d4 72 fa db 0c   ?iPa..R.6...r...
+    0050 - 0e 67 c0 e9 95 f7 e2 25-19 8b ec 2a 51 ac 8e 9a   .g.....%...*Q...
+    0060 - e8 ea 86 97 40 7e d4 e4-8f 93 4d 47 87 8a 53 98   ....@~....MG..S.
+    0070 - 2e 2f 98 04 11 d9 bf 39-86 53 45 ab c7 c8 7f 2a   ./.....9.SE....*
+    0080 - d8 93 20 20 58 89 f9 48-44 99 60 db 7c dd c5 f0   ..  X..HD.`.|...
+    0090 - 53 96 22 2a 8a a5 b2 1f-82 96 1c 11 33 9a 36 bb   S."*........3.6.
+    00a0 - a7 90 82 fc 79 3e b8 0b-17 2d cd 2d ee 3b 67 f9   ....y>...-.-.;g.
+    00b0 - 50 3c f4 a2 5c 53 6e 63-da 1f d0 eb 03 d3 71 aa   P<..\Snc......q.
+    00c0 - 4a 41 ce 33 60 94 f8 31-7c 11 8e 97 f2 04 35 2d   JA.3`..1|.....5-
+    00d0 - 53 01 fa 1d a5 3a 02 11-ba d9 3b 98 d9 2c ec 86   S....:....;..,..
+    00e0 - e6 20 0a c9 25 67 54 b9-3b 68 56 73 2a 3e 6c 7e   . ..%gT.;hVs*>l~
+    00f0 - 04 5f 59 a6 c7 7f 15 84-a7 5a 68 0b 1a 4e ba 2f   ._Y......Zh..N./
+
+    Start Time: 1790665000
+    Timeout   : 7200 (sec)
+    Verify return code: 19 (self signed certificate in certificate chain)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+closed

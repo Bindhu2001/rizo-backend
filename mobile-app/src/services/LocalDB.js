@@ -12,8 +12,10 @@ let initPromise = null;
 
 // ─── Open / Initialize ────────────────────────────────────────────────────────
 export const initDB = async () => {
-  if (db) return db;
+  // initPromise first: `db` is assigned before tables/migrations finish, so a
+  // concurrent caller must wait for the whole init, not grab `db` early
   if (initPromise) return initPromise;
+  if (db) return db;
 
   initPromise = (async () => {
     try {
@@ -189,15 +191,40 @@ export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, lo
   }
 };
 
+// Row is inserted immediately on tap (see processPunch) so insertion order
+// (rowid) always matches actual tap order, even if location/geocode resolve
+// slowly or out of order relative to another punch. This fills in the
+// coordinates/address once they're resolved, without touching row order.
+export const updatePunchLocation = async (id, { latitude, longitude, address }) => {
+  const database = await initDB();
+  await database.runAsync(
+    `UPDATE attendance SET latitude = ?, longitude = ?, address = ? WHERE id = ?`,
+    [latitude, longitude, address, id]
+  );
+};
+
 export const getPendingCount = async () => {
   const database = await initDB();
   const row = await database.getFirstAsync(`SELECT COUNT(*) as count FROM attendance WHERE sync_status = 'PENDING'`);
   return row ? row.count : 0;
 };
 
+// Punches + customer visits still waiting to reach the server (drives the sync retry timer)
+export const getPendingSyncCount = async () => {
+  const database = await initDB();
+  const row = await database.getFirstAsync(
+    `SELECT (SELECT COUNT(*) FROM attendance WHERE sync_status = 'PENDING')
+          + (SELECT COUNT(*) FROM client_visits WHERE sync_status = 'PENDING') as count`
+  );
+  return row ? row.count : 0;
+};
+
 export const getLastPunchType = async (userId) => {
   const database = await initDB();
-  const row = await database.getFirstAsync(`SELECT type FROM attendance WHERE user_id = ? ORDER BY punch_time DESC LIMIT 1`, [userId]);
+  // Ordered by rowid (true insertion order), not punch_time — an offline punch's
+  // wall-clock timestamp can land after a later online punch's once the device's
+  // clock corrects itself on reconnect, which would otherwise flip this lookup.
+  const row = await database.getFirstAsync(`SELECT type FROM attendance WHERE user_id = ? ORDER BY rowid DESC LIMIT 1`, [userId]);
   return row ? row.type : 'NONE';
 };
 
@@ -261,12 +288,23 @@ export const getRawPunchesForMonth = async (userId, monthStr) => {
   );
 };
 
+// Punches in [fromIso, toIso] in true tap order (rowid) — used by the shift reminders
+export const getPunchesBetween = async (userId, fromIso, toIso) => {
+  const database = await initDB();
+  return await database.getAllAsync(
+    `SELECT id, type, punch_time FROM attendance WHERE user_id = ? AND punch_time >= ? AND punch_time <= ? ORDER BY rowid ASC`,
+    [userId, fromIso, toIso]
+  );
+};
+
 export const getTodayLocalHistory = async (userId) => {
   const database = await initDB();
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
+  // Ordered by rowid (true insertion order) — see getLastPunchType for why
+  // punch_time DESC isn't safe as an ordering key across offline/online punches.
   return await database.getAllAsync(
-    `SELECT * FROM attendance WHERE user_id = ? AND punch_time >= ? ORDER BY punch_time DESC`,
+    `SELECT * FROM attendance WHERE user_id = ? AND punch_time >= ? ORDER BY rowid DESC`,
     [userId, todayStart.toISOString()]
   );
 };
@@ -329,6 +367,17 @@ export const getVisitsByDate = async (userId, dateStr) => {
   return await database.getAllAsync(
     `SELECT * FROM client_visits WHERE user_id = ? AND date(created_at) = ? ORDER BY id DESC`,
     [userId, dateStr]
+  );
+};
+
+// A visit that's been started (and maybe stepped in) but not yet stepped out
+// stays "live" until completed — not filtered by date, since it may have
+// been started on an earlier day and still needs to be finished today.
+export const getLiveVisits = async (userId) => {
+  const database = await initDB();
+  return await database.getAllAsync(
+    `SELECT * FROM client_visits WHERE user_id = ? AND status IN ('REACHED', 'step_in') ORDER BY id DESC`,
+    [userId]
   );
 };
 
@@ -401,10 +450,15 @@ export const savePunchConfig = async (userId, configData) => {
   );
 };
 
+// Returns { data, fetchedAt } — fetchedAt (ms) is when the config was last saved
+// from the server, so callers can decide whether it is still fresh.
 export const getPunchConfig = async (userId) => {
   const database = await initDB();
-  const row = await database.getFirstAsync(`SELECT config FROM punch_config WHERE user_id = ?`, [userId]);
+  const row = await database.getFirstAsync(`SELECT config, updated_at FROM punch_config WHERE user_id = ?`, [userId]);
   if (!row) return null;
-  try { return JSON.parse(row.config); } catch (_) { return null; }
+  try {
+    const fetchedAt = Date.parse(row.updated_at);
+    return { data: JSON.parse(row.config), fetchedAt: isFinite(fetchedAt) ? fetchedAt : 0 };
+  } catch (_) { return null; }
 };
 

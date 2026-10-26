@@ -319,10 +319,26 @@ app.post('/api/register-push-token', async (req, res) => {
   try {
     const { user_id, push_token } = req.body || {};
     if (!user_id || !push_token) return res.status(400).json({ success: 0, error: 'user_id and push_token required' });
+    // A phone belongs to whoever logged in last — drop it from any other user,
+    // or they'd keep getting the previous user's notifications on this phone
+    await pool.query('DELETE FROM push_tokens WHERE push_token = ? AND user_id <> ?', [push_token, user_id]);
     await pool.query(
       'INSERT INTO push_tokens (user_id, push_token) VALUES (?, ?) ON DUPLICATE KEY UPDATE push_token = ?, updated_at = NOW()',
       [user_id, push_token, push_token]
     );
+    return res.json({ success: 1 });
+  } catch (error) {
+    return res.status(500).json({ success: 0, error: error.message });
+  }
+});
+
+// ─── Unregister Push Token (logout) ─────────────────────────────────────────
+// Needs both user_id and push_token so a caller can only detach the phone it holds
+app.post('/api/unregister-push-token', async (req, res) => {
+  try {
+    const { user_id, push_token } = req.body || {};
+    if (!user_id || !push_token) return res.status(400).json({ success: 0, error: 'user_id and push_token required' });
+    await pool.query('DELETE FROM push_tokens WHERE user_id = ? AND push_token = ?', [user_id, push_token]);
     return res.json({ success: 1 });
   } catch (error) {
     return res.status(500).json({ success: 0, error: error.message });

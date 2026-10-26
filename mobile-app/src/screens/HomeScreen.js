@@ -23,11 +23,13 @@ import CalendarWidget from '../components/CalendarWidget';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
-  savePunchLocal, getTodayLocalHistory, getLastPunchType,
-  getPendingCount, initDB, savePunchConfig, getPunchConfig
+  savePunchLocal, getTodayLocalHistory, getLastPunchType, updatePunchLocation,
+  getPendingCount, getPendingSyncCount, initDB
 } from '../services/LocalDB';
+import { loadPunchConfig, getRecentFix, rememberFix } from '../services/PunchPrefetch';
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
+import { refreshShiftReminders } from '../services/ShiftReminders';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import { useTheme } from '../components/ThemeContext';
 
@@ -40,6 +42,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const API_URL = API_ENDPOINTS.ATTENDANCE;
 const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
+// Retry interval while punches or customer visits are waiting to sync
+const PUNCH_SYNC_RETRY_MS = 30000;
+// Office-check GPS fix reused for the punch if the user confirms within this
+const VERIFIED_LOC_MAX_AGE_MS = 2 * 60 * 1000;
+const SWIPE_TRACK_HEIGHT = moderateScale(68);
 
 const HomeScreen = ({ navigation, route }) => {
   const theme = useTheme();
@@ -67,6 +74,7 @@ const HomeScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
   const [punchingType, setPunchingType] = useState(null); // 'IN' | 'OUT' — action actually in flight
+  const [checkingPunch, setCheckingPunch] = useState(false); // swipe done, punch-allowed check running
   const [isPunchedIn, setIsPunchedIn] = useState(false);
   const [status, setStatus] = useState({ lastType: 'NONE', todayHistory: [] });
   const [locationName, setLocationName] = useState('Fetching location...');
@@ -76,7 +84,9 @@ const HomeScreen = ({ navigation, route }) => {
   const [offlineCount, setOfflineCount] = useState(0);
   const lastActionTime = useRef(0);
   const lastLocationFetch = useRef(0);
-  const lastConfigFetch = useRef(0);
+  // GPS fix from the 100 m office check, reused for the punch itself
+  const verifiedPunchLoc = useRef(null);
+  const fetchStatusRequestId = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
   const [cancelTrigger, setCancelTrigger] = useState(0);
@@ -118,13 +128,19 @@ const HomeScreen = ({ navigation, route }) => {
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       NotificationManager.checkStatusChanges();
       NotificationManager.registerAndSendToken(userRef.current.user_id);
+      refreshShiftReminders(userRef.current.user_id);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Instant notification check when app comes to foreground
+  // Punch status (local-only) + notification check — runs on app open/close
+  // (foreground/background transitions), not on every screen focus.
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') NotificationManager.forceCheck();
+      if (state === 'active') {
+        fetchStatus();
+        NotificationManager.forceCheck();
+        if (userRef.current) refreshShiftReminders(userRef.current.user_id);
+      }
     });
     return () => sub.remove();
   }, []);
@@ -132,7 +148,6 @@ const HomeScreen = ({ navigation, route }) => {
   // Focus listener — always uses userRef.current so it never captures stale data
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchStatus();
       fetchRoles();
       fetchMenus();
       checkOfflinePunches();
@@ -141,7 +156,17 @@ const HomeScreen = ({ navigation, route }) => {
         initLocationWithDisclosure();
       }
     });
-    const syncTimer = setInterval(() => SyncService.syncAll(), 60000);
+    // Retry only while punches or customer visits are waiting to sync
+    const syncTimer = setInterval(async () => {
+      const pending = await getPendingSyncCount().catch(() => 0);
+      if (pending === 0) return;
+      SyncService.syncAll({
+        onAttendanceSynced: () => {
+          checkOfflinePunches();
+          fetchStatus();
+        },
+      });
+    }, PUNCH_SYNC_RETRY_MS);
     return () => {
       unsubscribe();
       clearInterval(syncTimer);
@@ -176,11 +201,6 @@ const HomeScreen = ({ navigation, route }) => {
     setShowLocationDisclosure(false);
     try { await AsyncStorage.setItem(DISCLOSURE_KEY, 'true'); } catch (_) {}
     fetchLocation();
-  };
-
-  const handleDisclosureDecline = () => {
-    setShowLocationDisclosure(false);
-    setLocationName('Location access denied');
   };
 
   // ── Location: high accuracy + human-readable name ─────────────────────────
@@ -273,18 +293,69 @@ const HomeScreen = ({ navigation, route }) => {
   };
 
   // ── Status ────────────────────────────────────────────────────────────────
+  // Asks the payroll server what it actually recorded for today, rather than
+  // trusting our own optimistic local guess. The server may apply IN/OUT
+  // logic we don't control (e.g. resetting to IN on a new day even after a
+  // missed punch-out) — SyncService pushes a punch but never reads the
+  // response, so this is the only place that finds out what really stuck.
+  // Returns null (meaning "keep local state") if offline, unreachable, or the
+  // server has no punches yet for today (e.g. a carried-over unclosed
+  // yesterday session, before today's first punch).
+  const fetchServerPunchStatus = async (userId) => {
+    try {
+      const net = await Network.getNetworkStateAsync();
+      if (!net.isConnected) return null;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const res = await axios.post(
+        API_ENDPOINTS.DEVICE_ATTENDANCE,
+        { user_id: userId, date: todayStr },
+        { timeout: 8000 },
+      );
+      if (res.data?.success !== 1) return null;
+
+      const punches = Array.isArray(res.data.data)
+        ? res.data.data
+        : (res.data.data ? Object.values(res.data.data) : []);
+      if (!punches.length) return null;
+
+      const sorted = [...punches].sort(
+        (a, b) => new Date(a.LOGDATE.replace(' ', 'T')) - new Date(b.LOGDATE.replace(' ', 'T'))
+      );
+      const last = sorted[sorted.length - 1];
+      const type = last?.C1?.toUpperCase();
+      if (type !== 'IN' && type !== 'OUT') return null;
+
+      return { type, time: last.LOGDATE, address: last.C3 || '' };
+    } catch (e) {
+      console.log('[Home] Server punch status fetch failed:', e.message);
+      return null;
+    }
+  };
+
   const fetchStatus = async () => {
+    // Multiple triggers (mount, AppState, focus, post-sync callbacks) can call
+    // this concurrently; only the result of the most recently started call
+    // should ever be applied, otherwise a slower/stale call resolving last can
+    // clobber the button state with outdated data.
+    const requestId = ++fetchStatusRequestId.current;
     // 1. Instantly load from Local DB to prevent UI flicker
     let localType = 'NONE';
     try {
       localType = await getLastPunchType(user.user_id);
+      const localLogs = await getTodayLocalHistory(user.user_id);
+
+      if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
+
       setIsPunchedIn(localType === 'IN');
       setStatus(prev => ({ ...prev, lastType: localType }));
 
-      const localLogs = await getTodayLocalHistory(user.user_id);
-      if (localLogs && localLogs.length > 0) {
+      if (localType === 'IN' && localLogs && localLogs.length > 0) {
         setPunchInTime(new Date(localLogs[0].punch_time));
         setPunchInAddress(localLogs[0].address || '');
+      } else {
+        setPunchInTime(null);
+        setPunchInAddress('');
       }
 
       // Load persistent action time
@@ -293,46 +364,26 @@ const HomeScreen = ({ navigation, route }) => {
     } catch (e) {
       console.log('[Home] Local status fetch error:', e);
     } finally {
-      setLoading(false);
+      if (requestId === fetchStatusRequestId.current) setLoading(false);
     }
 
-    // 2. Reconcile with the server's attendance log — the same per-day
-    // punch_in_time/punch_out_time data the Attendance History screen uses.
-    // Whichever day's entry is most recent decides the truth: an IN with no
-    // matching OUT yet means we're punched in, carried over across days if
-    // needed. Skipped only when there's a local punch still waiting to sync —
-    // in that case the cloud is stale by definition, so local stays authoritative.
-    try {
-      const pCnt = await getPendingCount();
-      if (pCnt > 0) return;
-
-      const today = format(new Date(), 'yyyy-MM');
-      const response = await axios.post(API_ENDPOINTS.ATTENDANCE_LOGS, {
-        user_id: user.user_id,
-        month: today
-      }, { timeout: 8000 });
-
-      const logs = Array.isArray(response.data?.data) ? response.data.data : (Array.isArray(response.data) ? response.data : []);
-      const withPunch = logs.filter(l => l.punch_in_time || l.punch_out_time);
-
-      if (withPunch.length > 0) {
-        // Sort descending so sorted[0] is the most recent punch entry
-        const timeKey = (l) => l.date + 'T' + (l.punch_in_time?.split(' ')[1] || l.punch_out_time?.split(' ')[1] || '00:00:00');
-        const sorted = [...withPunch].sort((a, b) => new Date(timeKey(b)) - new Date(timeKey(a)));
-        const latest = sorted[0];
-
-        const serverIsIn = !!latest.punch_in_time && (!latest.punch_out_time || latest.punch_out_time === '---');
-
-        setIsPunchedIn(serverIsIn);
-        setStatus(prev => ({ ...prev, lastType: serverIsIn ? 'IN' : 'NONE' }));
-        if (serverIsIn && latest.punch_in_time) {
-          setPunchInTime(new Date(latest.punch_in_time.replace(' ', 'T')));
-        } else if (!serverIsIn) {
-          setPunchInTime(null);
-        }
+    // 2. Reconcile with server truth. Local state above is optimistic (based
+    // on our own last write); if the server has already recorded today's
+    // punches, its answer wins — this is what actually determines payroll,
+    // regardless of what direction we assumed client-side.
+    const serverStatus = await fetchServerPunchStatus(user.user_id);
+    if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
+    if (serverStatus) {
+      setIsPunchedIn(serverStatus.type === 'IN');
+      setStatus(prev => ({ ...prev, lastType: serverStatus.type }));
+      if (serverStatus.type === 'IN') {
+        const t = new Date(serverStatus.time.replace(' ', 'T'));
+        if (!isNaN(t.getTime())) setPunchInTime(t);
+        setPunchInAddress(serverStatus.address);
+      } else {
+        setPunchInTime(null);
+        setPunchInAddress('');
       }
-    } catch (e) {
-      console.log('[Home] Cloud sync skipped', e.message);
     }
   };
 
@@ -379,36 +430,11 @@ const HomeScreen = ({ navigation, route }) => {
   //   A → all branches, within 100 m of ANY branch location
   //   S / W → not permitted
   const checkPunchAllowed = async () => {
-    let data = null;
-    let serverTimeMs = null;
+    verifiedPunchLoc.current = null;
 
-    // 1. Try live fetch — skip if config was fetched less than 10 minutes ago
-    const configAge = Date.now() - lastConfigFetch.current;
-    if (configAge > 600000) {
-      try {
-        const res = await axios.post(
-          `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(user.user_id)}`,
-          null,
-          { timeout: 6000 },
-        );
-        const dateHeader = res.headers?.date || res.headers?.Date;
-        if (dateHeader) {
-          const parsed = Date.parse(dateHeader);
-          if (isFinite(parsed)) serverTimeMs = parsed;
-        }
-        const body = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
-        const ok = body?.status === true || body?.status === 1 || body?.status === '1' || body?.success === 1;
-        if (ok && body?.data) {
-          data = body.data;
-          lastConfigFetch.current = Date.now();
-          try { await savePunchConfig(user.user_id, data); } catch (_) {}
-        }
-      } catch (e) {
-        console.log('[Punch] network fetch failed', e?.message);
-      }
-    } else {
-      console.log('[Punch] using cached config (age ' + Math.round(configAge / 1000) + 's)');
-    }
+    // 1. Punch type — LocalDB copy if under 30 min old (no wait), otherwise
+    //    re-fetched when online. Usually already refreshed by Splash.
+    const { data, serverTimeMs } = await loadPunchConfig(user.user_id);
 
     // Clock drift check (server Date header vs device clock, allow 2 min jitter)
     if (serverTimeMs !== null) {
@@ -419,15 +445,7 @@ const HomeScreen = ({ navigation, route }) => {
       }
     }
 
-    // 2. Offline fallback — read from LocalDB
-    if (!data) {
-      try {
-        const cached = await getPunchConfig(user.user_id);
-        if (cached) { data = cached; console.log('[Punch] using LocalDB cached config'); }
-      } catch (_) {}
-    }
-
-    // 3. No config at all → allow (first install, never online)
+    // 2. No config at all → allow (first install, never online)
     if (!data) return { allowed: true };
 
     const t = String(data.punchtype || '').toUpperCase();
@@ -480,14 +498,18 @@ const HomeScreen = ({ navigation, route }) => {
     if (perm !== 'granted') {
       return { allowed: false, message: 'Location permission is required to punch from the office. Please enable it in settings.' };
     }
-    let loc = null;
-    try {
-      loc = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 8000)),
-      ]);
-    } catch (_) {
-      try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
+    // A fix from the last 60 s (Splash warm-up / OS cache) skips the GPS wait
+    let loc = await getRecentFix();
+    if (!loc) {
+      try {
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 8000)),
+        ]);
+        rememberFix(loc);
+      } catch (_) {
+        try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
+      }
     }
     if (!loc?.coords) {
       return { allowed: false, message: "You're not in an accurate location. Please enable GPS and try again." };
@@ -503,11 +525,22 @@ const HomeScreen = ({ navigation, route }) => {
         message: `You're not in an accurate location. You must be within 100 m of the office (currently ~${Math.round(minDist)} m away).`,
       };
     }
+    verifiedPunchLoc.current = { loc, at: Date.now() };
     return { allowed: true };
   };
 
   const handleSwipeComplete = async () => {
-    const verdict = await checkPunchAllowed();
+    // Spinner on the knob while the punch type / 100 m office check runs
+    setCheckingPunch(true);
+    let verdict;
+    try {
+      verdict = await checkPunchAllowed();
+    } catch (e) {
+      console.log('[Punch] check failed', e?.message);
+      verdict = { allowed: false, message: 'Could not verify punch. Please try again.' };
+    } finally {
+      setCheckingPunch(false);
+    }
     if (!verdict.allowed) {
       setCancelTrigger((t) => t + 1);
       showAlert('warning', 'Punch Not Allowed', verdict.message || "You're not in an accurate location.");
@@ -516,6 +549,71 @@ const HomeScreen = ({ navigation, route }) => {
     const type = isPunchedIn ? 'OUT' : 'IN';
     setShiftConfirmType(type);
     setShowShiftConfirm(true);
+  };
+
+  // Runs after the punch row is saved and the button released: attach the
+  // punch-time location/address to that row, then sync it.
+  const completePunchInBackground = async (savedId, isNowIn, isConnected, officeLoc, startedAt) => {
+    try {
+      // Office punches reuse the fix from the 100 m check; others take a fix
+      // from the last 60 s, else a fresh one (5 s cap), else any last-known
+      let loc = officeLoc || await getRecentFix();
+      if (!loc) {
+        try {
+          loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
+          rememberFix(loc);
+        } catch (_) {
+          try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
+        }
+      }
+      const latitude = loc?.coords?.latitude || 0;
+      const longitude = loc?.coords?.longitude || 0;
+
+      // Reverse geocode the actual punch-time coords (5s timeout — this call
+      // has no built-in timeout and can hang far longer, especially offline).
+      // Do NOT use locationName state — it may be stale ("Location unavailable")
+      let punchAddress = `Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`;
+      if (Math.abs(latitude) > 0.0001) {
+        try {
+          const geo = await Promise.race([
+            Location.reverseGeocodeAsync({ latitude, longitude }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
+          if (geo && geo.length > 0) {
+            const r = geo[0];
+            const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
+            if (parts.length > 0) {
+              punchAddress = [...new Set(parts)].join(', ');
+            }
+          }
+        } catch (_) {}
+        // Update the header location badge too
+        setLocationName(punchAddress);
+        await updatePunchLocation(savedId, { latitude, longitude, address: punchAddress });
+        if (isNowIn) setPunchInAddress(punchAddress);
+      }
+      console.log(`[Punch] Address: ${punchAddress} (${Date.now() - startedAt}ms)`);
+    } catch (e) {
+      console.log('[Punch] background location failed', e?.message);
+    }
+
+    checkOfflinePunches();
+    if (isConnected) {
+      // Refresh the button as soon as punches are synced — visits/leaves etc.
+      // continue syncing after that
+      SyncService.syncAll({
+        onAttendanceSynced: () => {
+          console.log(`[Punch] synced (${Date.now() - startedAt}ms)`);
+          checkOfflinePunches();
+          fetchStatus();
+        },
+      });
+    } else {
+      fetchStatus();
+    }
   };
 
   const processPunch = async (type) => {
@@ -535,66 +633,21 @@ const HomeScreen = ({ navigation, route }) => {
       const net = await Network.getNetworkStateAsync();
       const isOffline = !net.isConnected;
 
-      // 2. Fetch GPS location
-      let loc = { coords: { latitude: 0, longitude: 0 } };
-      setPunchMessage('Fetching your location...');
-
-      // Use last-known location immediately for speed, then upgrade with fresh GPS
-      try {
-        const lastLoc = await Location.getLastKnownPositionAsync();
-        if (lastLoc?.coords) {
-          loc = lastLoc;
-          console.log(`[Punch] Last-known location: ${loc.coords.latitude}, ${loc.coords.longitude}`);
-        }
-      } catch (_) {}
-
-      try {
-        // 5s timeout — use last-known as fallback above if this times out
-        const fresh = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-        ]);
-        loc = fresh;
-        console.log(`[Punch] Fresh location acquired: ${loc.coords.latitude}, ${loc.coords.longitude}`);
-        setPunchMessage('Location found — saving punch...');
-      } catch (_) {
-        if (loc.coords.latitude !== 0) {
-          console.log(`[Punch] GPS timed out, using last-known location`);
-          setPunchMessage('Using last known location — saving punch...');
-        } else {
-          setPunchMessage('Saving punch (location unavailable)...');
-        }
-      }
-
-      // 3. Reverse geocode the actual punch-time coords
-      //    Do NOT use locationName state — it may be stale ("Location unavailable")
-      let punchAddress = `Lat: ${loc.coords.latitude.toFixed(5)}, Lng: ${loc.coords.longitude.toFixed(5)}`;
-      const { latitude, longitude } = loc.coords;
-      if (Math.abs(latitude) > 0.0001) {
-        try {
-          const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
-          if (geo && geo.length > 0) {
-            const r = geo[0];
-            const parts = [r.name || r.street, r.district || r.subregion || r.city, r.region].filter(Boolean);
-            if (parts.length > 0) {
-              punchAddress = [...new Set(parts)].join(', ');
-            }
-          }
-        } catch (_) {}
-        // Update the header location badge too
-        setLocationName(punchAddress);
-      }
-
-      console.log(`[Punch] Address: ${punchAddress}`);
-
-      // 4. Save punch locally
+      // 2. Save the punch immediately — before any location/geocode work — so
+      //    its insertion order (which local-status lookups rely on) always
+      //    matches the actual tap order. Location/address resolve slowly and
+      //    unpredictably (especially offline), and if we waited for them
+      //    before inserting, a later, faster-resolving punch (e.g. an OUT
+      //    made online) could land in the table before an earlier, slower one
+      //    (e.g. an IN made offline) — inverting the true sequence no matter
+      //    what column we sort by afterward.
       const savedId = await savePunchLocal({
         userId: user.user_id,
         type,
         punchTime,
-        latitude,
-        longitude,
-        address: punchAddress,
+        latitude: 0,
+        longitude: 0,
+        address: 'Resolving location…',
         isOffline,
       });
 
@@ -605,26 +658,25 @@ const HomeScreen = ({ navigation, route }) => {
         return;
       }
 
-      console.log(`[Punch] ${type} saved locally: ${savedId}`);
+      console.log(`[Punch] ${type} saved locally: ${savedId} (${Date.now() - now}ms)`);
 
-      // 5. Update UI state
+      // 3. Update UI state immediately — the punch is saved, so the button is
+      //    released now; location, address and sync finish in the background
       const isNowIn = type === 'IN';
       setIsPunchedIn(isNowIn);
       if (isNowIn) {
         setPunchInTime(new Date(punchTime));
-        setPunchInAddress(punchAddress);
       } else {
         setPunchInTime(null);
         setPunchInAddress('');
       }
 
-      // 6. Background sync
-      checkOfflinePunches();
-      if (net.isConnected) {
-        SyncService.syncAll().then(() => fetchStatus());
-      } else {
-        await fetchStatus();
-      }
+      const verified = verifiedPunchLoc.current;
+      verifiedPunchLoc.current = null;
+      const officeLoc = verified && Date.now() - verified.at <= VERIFIED_LOC_MAX_AGE_MS ? verified.loc : null;
+      completePunchInBackground(savedId, isNowIn, net.isConnected, officeLoc, now);
+      // Cancels the reminders this punch answers, plans the next ones / short-hours alert
+      refreshShiftReminders(user.user_id);
     } catch (e) {
       console.error('[Punch] Error:', e);
       showAlert('error', 'Error', 'Failed to process punch. Please try again.');
@@ -751,14 +803,14 @@ const HomeScreen = ({ navigation, route }) => {
             </Text>
 
             {/* Swipe */}
-            <View style={{ width: '100%', height: 68, marginTop: moderateScale(12) }}>
+            <View style={{ width: '100%', height: SWIPE_TRACK_HEIGHT, marginTop: moderateScale(12) }}>
               <SwipeToPunch
                 isPunchedIn={isPunchedIn}
-                loading={punching}
-                loadingType={punchingType}
+                loading={punching || checkingPunch}
+                loadingType={punchingType || (isPunchedIn ? 'OUT' : 'IN')}
                 onSwipeComplete={handleSwipeComplete}
                 resetTrigger={cancelTrigger}
-                trackHeight={68}
+                trackHeight={SWIPE_TRACK_HEIGHT}
                 locationName={isPunchedIn ? punchInAddress : ''}
                 punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
               />
@@ -965,7 +1017,6 @@ const HomeScreen = ({ navigation, route }) => {
       <LocationDisclosureModal
         visible={showLocationDisclosure}
         onAccept={handleDisclosureAccept}
-        onDecline={handleDisclosureDecline}
       />
     </SafeAreaView>
   );

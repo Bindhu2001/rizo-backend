@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  KeyboardAvoidingView, ActivityIndicator, Dimensions, Image, StatusBar, Platform
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  KeyboardAvoidingView, ActivityIndicator, Image, StatusBar, Platform
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +30,6 @@ const getOrCreateDeviceImei = async () => {
   return id;
 };
 
-const { width, height } = Dimensions.get('window');
 const API_URL = API_ENDPOINTS.AUTH;
 
 const LoginScreen = ({ navigation }) => {

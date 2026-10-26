@@ -16,7 +16,7 @@ const SwipeToPunch = ({
   isPunchedIn = false,
   loading = false,
   loadingType = null,
-  trackHeight = 68,
+  trackHeight = moderateScale(68),
   padding = 5,
   resetTrigger = 0,
   locationName = '',
@@ -26,6 +26,7 @@ const SwipeToPunch = ({
   const [swipeWidth, setSwipeWidth] = useState(0);
   const buttonWidth = trackHeight - padding * 2;
   const maxSlide = Math.max(0, swipeWidth - buttonWidth - padding * 2);
+  const iconSize = Math.round(buttonWidth * 0.42);
 
   const pan = useRef(new Animated.Value(0)).current;
   const isPunchedInRef = useRef(isPunchedIn);
@@ -45,7 +46,7 @@ const SwipeToPunch = ({
   useEffect(() => {
     Animated.spring(pan, {
       toValue: 0,
-      useNativeDriver: false,
+      useNativeDriver: true,
       tension: 50,
       friction: 8,
     }).start();
@@ -58,6 +59,8 @@ const SwipeToPunch = ({
         if (loadingRef.current) return false;
         return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
+      // Don't let the parent ScrollView take the gesture mid-swipe (iOS)
+      onPanResponderTerminationRequest: () => false,
 
       onPanResponderMove: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
@@ -68,20 +71,21 @@ const SwipeToPunch = ({
       onPanResponderRelease: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
         const mSlide = maxSlideRef.current;
-        const threshold = mSlide * 0.6;
+        // Half-way, or a quick flick past 30%, completes the swipe
+        const isFlick = gs.vx > 0.5 && gs.dx >= mSlide * 0.3;
 
-        if (gs.dx >= threshold) {
+        if (gs.dx >= mSlide * 0.5 || isFlick) {
           Animated.timing(pan, {
             toValue: mSlide,
-            duration: 150,
-            useNativeDriver: false,
+            duration: 100,
+            useNativeDriver: true,
           }).start(() => {
             onSwipeCompleteRef.current();
           });
         } else {
           Animated.spring(pan, {
             toValue: 0,
-            useNativeDriver: false,
+            useNativeDriver: true,
             tension: 40,
             friction: 7,
           }).start();
@@ -91,7 +95,7 @@ const SwipeToPunch = ({
       onPanResponderTerminate: () => {
         Animated.spring(pan, {
           toValue: 0,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
       },
     })
@@ -122,14 +126,18 @@ const SwipeToPunch = ({
           alignSelf: 'center'
         },
       ]}
-      onLayout={(e) => setSwipeWidth(e.nativeEvent.layout.width)}
+      onLayout={(e) => {
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (w !== swipeWidthRef.current) setSwipeWidth(w);
+      }}
     >
-      <View style={styles.textBlock}>
-        <Text style={[styles.swipeText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>{textVal}</Text>
+      {/* Side padding keeps the text clear of the knob on narrow screens */}
+      <View style={[styles.textBlock, { paddingHorizontal: buttonWidth + padding * 2 }]}>
+        <Text style={[styles.swipeText, { color: textColor }]} allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{textVal}</Text>
 
         {isPunchedIn && !loading && !!locationName && (
           <View style={styles.locRow}>
-            <MapPin color={textColor} size={10} />
+            <MapPin color={textColor} size={moderateScale(10)} />
             <Text style={[styles.locText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>
               {locationName}
             </Text>
@@ -154,7 +162,7 @@ const SwipeToPunch = ({
         {loading ? (
           <ActivityIndicator color="#FFF" size="small" />
         ) : (
-          isPunchedIn ? <ChevronsRight color="#FFF" size={24} strokeWidth={2.5} /> : <Fingerprint color="#FFF" size={24} />
+          isPunchedIn ? <ChevronsRight color="#FFF" size={iconSize} strokeWidth={2.5} /> : <Fingerprint color="#FFF" size={iconSize} />
         )}
       </Animated.View>
     </View>
@@ -184,6 +192,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   textBlock: {
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -191,7 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-    maxWidth: 200,
+    maxWidth: '100%',
   },
   locText: {
     fontSize: moderateScale(9),

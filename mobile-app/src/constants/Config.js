@@ -2,6 +2,8 @@ const BASE_URL = 'https://rizo-backend-production.up.railway.app/api';
 const AUTH_URL = 'https://v1.mypayrollmaster.online/api/v1';
 const NEWAPP_URL = 'https://v1.mypayrollmaster.online/api/v1/newapp';
 export const IMAGE_ROOT = 'https://v1.mypayrollmaster.online';
+// rizo-revamp's mobile routes (Connect to HR) — bearer-token auth, see services/RevampApi.js
+export const REVAMP_API_URL = 'https://login.rizohrms.com/api/mobile';
 
 export const API_ENDPOINTS = {
   AUTH: `${AUTH_URL}/login`,
@@ -44,6 +46,7 @@ export const API_ENDPOINTS = {
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   REGISTER: `${NEWAPP_URL}/register`,
   EMPLOYEE_PUNCH_DETAILS: `${NEWAPP_URL}/getEmployeePunchDetails`,
+  SHIFT_SCHEDULE: `${NEWAPP_URL}/shift_schedule`,
   GET_EMPLOYEE_FULL_DETAILS: `${NEWAPP_URL}/get_employee_full_details`,
   APPROVERS: `${NEWAPP_URL}/approvers`,
   GET_EMPLOYEE_PERSONAL: `${NEWAPP_URL}/get_employee_personal_details`,

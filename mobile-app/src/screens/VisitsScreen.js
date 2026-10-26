@@ -14,9 +14,10 @@ import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { getTodayVisits, getVisitsByDate, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
+import { getTodayVisits, getVisitsByDate, getLiveVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
 import { verifyDeviceClock } from '../services/TimeCheck';
+import { getRecentFix, rememberFix } from '../services/PunchPrefetch';
 import * as Network from 'expo-network';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,6 +93,12 @@ const normalizeVisit = (v) => {
 
 // Detect if a location string is raw lat/lng (offline format) and resolve it
 const LAT_LNG_REGEX = /Lat:\s*(-?\d+\.\d+),\s*Lng:\s*(-?\d+\.\d+)/i;
+// reverseGeocodeAsync has no built-in timeout and can hang far longer than a visit action should wait
+const reverseGeocodeWithTimeout = (coords) => Promise.race([
+  Location.reverseGeocodeAsync(coords),
+  new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
+]);
+
 const resolveAddress = async (locationStr) => {
   if (!locationStr) return locationStr;
   const match = locationStr.match(LAT_LNG_REGEX);
@@ -101,7 +108,7 @@ const resolveAddress = async (locationStr) => {
     if (!net.isConnected) return locationStr;
     const lat = parseFloat(match[1]);
     const lng = parseFloat(match[2]);
-    const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+    const geo = await reverseGeocodeWithTimeout({ latitude: lat, longitude: lng });
     if (geo && geo.length > 0) {
       const g = geo[0];
       const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
@@ -116,16 +123,20 @@ const getAddress = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return { address: 'Location permission denied', lat: 0, lng: 0 };
 
-    let loc = null;
-    try {
-      // Primary attempt: high accuracy with timeout
-      loc = await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-      ]);
-    } catch (e) {
-      console.log('[Visits] High accuracy timeout/error, trying last known...');
-      loc = await Location.getLastKnownPositionAsync();
+    // A fix from the last 60 s (Splash warm-up / OS cache) skips the GPS wait
+    let loc = await getRecentFix();
+    if (!loc) {
+      try {
+        // Primary attempt: high accuracy with timeout
+        loc = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+        ]);
+        rememberFix(loc);
+      } catch (e) {
+        console.log('[Visits] High accuracy timeout/error, trying last known...');
+        loc = await Location.getLastKnownPositionAsync();
+      }
     }
 
     if (!loc) return { address: 'Location unavailable', lat: 0, lng: 0 };
@@ -138,7 +149,7 @@ const getAddress = async () => {
       // Reverse geocode only if online
       const net = await Network.getNetworkStateAsync();
       if (net.isConnected) {
-        const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+        const geo = await reverseGeocodeWithTimeout({ latitude: lat, longitude: lng });
         if (geo && geo.length > 0) {
           const g = geo[0];
           const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
@@ -520,10 +531,6 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             try { await AsyncStorage.setItem(DISCLOSURE_KEY, 'true'); } catch (_) {}
             doFetchAddress(false);
           }}
-          onDecline={() => {
-            setShowDisclosure(false);
-            setLocText('Location access denied');
-          }}
         />
       </SafeAreaView>
     </Modal>
@@ -653,44 +660,50 @@ const VisitsScreen = ({ navigation, route }) => {
     const date = dateStr ?? selectedDate;
     const isToday = date === todayStr();
     try {
+      // A visit that's still open (stepped in but not stepped out) must stay
+      // visible and completable regardless of which date is being viewed —
+      // it may have been started on an earlier day and carried over past
+      // midnight. Sourced from local DB (not the API) so its ID matches what
+      // updateVisitStatus queries in SQLite — API IDs (mob_user_locations_pkey)
+      // don't exist there, which would make step-in/out silently fail.
+      const liveVisits = await getLiveVisits(user.user_id);
+      const liveForDate = liveVisits.filter(v => (v.created_at || '').slice(0, 10) === date);
+
       const net = await Network.getNetworkStateAsync();
       if (!net.isConnected) {
-        // Offline: local DB only for today, empty for past
+        // Offline: local DB only for today, live-only for past dates
         if (isToday) {
           const data = await getVisitsByDate(user.user_id, date);
-          setVisits(data || []);
+          const liveIds = new Set(liveVisits.map(v => v.id));
+          setVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
         } else {
-          setVisits([]);
+          setVisits(liveForDate);
         }
       } else {
-        // Online: sync pending local data first (today only), then fetch from API
+        // Online: show the local list straight away (today only), sync pending
+        // visits — waiting only for the visits step, not leaves/regularization —
+        // then replace it with the API list
         if (isToday) {
-          try { await SyncService.syncAll(); } catch (_) {}
+          try {
+            const data = await getVisitsByDate(user.user_id, date);
+            const liveIds = new Set(liveVisits.map(v => v.id));
+            setVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
+            setLoading(false);
+          } catch (_) {}
+          await new Promise((resolve) => {
+            SyncService.syncAll({ onVisitsSynced: resolve }).catch(resolve);
+          });
         }
         const res = await axios.post(API_ENDPOINTS.CUSTOMER_VISIT_HISTORY,
           { user_id: user.user_id, selected_date: date },
           { timeout: 10000 },
         );
         const raw = res.data?.data || res.data || [];
-        let normalized = Array.isArray(raw) ? raw.map(normalizeVisit) : [];
+        const normalized = Array.isArray(raw) ? raw.map(normalizeVisit) : [];
+        // Completed visits come from the API; open ones always come from local DB.
+        const apiCompleted = normalized.filter(v => v.status !== 'REACHED' && v.status !== 'step_in');
 
-        if (!isToday) {
-          // Past dates: strip any in-progress visits
-          normalized = normalized.filter(v => v.status !== 'REACHED' && v.status !== 'step_in');
-        } else {
-          // Today: live visits (REACHED/step_in) must come from local DB so their IDs
-          // match what updateVisitStatus queries — API IDs (mob_user_locations_pkey)
-          // don't exist in SQLite, causing step-in/out to silently fail.
-          const localData = await getVisitsByDate(user.user_id, date);
-          const localLive = (localData || []).filter(
-            v => v.status === 'REACHED' || v.status === 'step_in'
-          );
-          const apiCompleted = normalized.filter(
-            v => v.status !== 'REACHED' && v.status !== 'step_in'
-          );
-          normalized = [...localLive, ...apiCompleted];
-        }
-        setVisits(normalized);
+        setVisits(isToday ? [...liveVisits, ...apiCompleted] : [...liveForDate, ...apiCompleted]);
       }
     } catch (e) {
       console.log('Fetch visits error', e);
@@ -758,13 +771,13 @@ const VisitsScreen = ({ navigation, route }) => {
   const handleConfirmStepIn = async (details) => {
     setProcessing(true);
     try {
-      const clock = await verifyDeviceClock();
+      // Clock check and GPS/address run side by side instead of one after the other
+      const [clock, { lat, lng, address }] = await Promise.all([verifyDeviceClock(), getAddress()]);
       if (!clock.ok) {
         setProcessing(false);
         showAlert('warning', 'Clock Not Synced', clock.message);
         return;
       }
-      const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'step_in', {
         stepInTime: new Date().toISOString(), lat, lng, address,
         clientName: details.company,
@@ -772,7 +785,8 @@ const VisitsScreen = ({ navigation, route }) => {
         contactPerson: details.contactPerson,
         purpose: details.purpose,
       });
-      syncIfOnline(); // fire-and-forget — UI updates instantly
+      // fetchVisits() syncs when viewing today; otherwise sync here (fire-and-forget)
+      if (selectedDate !== todayStr()) syncIfOnline();
       setShowStepInModal(false);
       setPendingVisit(null);
       fetchVisits();
@@ -790,19 +804,20 @@ const VisitsScreen = ({ navigation, route }) => {
     setConfirmVisible(false);
     setProcessing(true);
     try {
-      const clock = await verifyDeviceClock();
+      // Clock check and GPS/address run side by side instead of one after the other
+      const [clock, { lat, lng, address }] = await Promise.all([verifyDeviceClock(), getAddress()]);
       if (!clock.ok) {
         setProcessing(false);
         setPendingVisit(null);
         showAlert('warning', 'Clock Not Synced', clock.message);
         return;
       }
-      const { lat, lng, address } = await getAddress();
       await updateVisitStatus(pendingVisit.id, 'COMPLETED', {
         endTime: new Date().toISOString(),
         lat, lng, address
       });
-      syncIfOnline(); // fire-and-forget — UI updates instantly
+      // fetchVisits() syncs when viewing today; otherwise sync here (fire-and-forget)
+      if (selectedDate !== todayStr()) syncIfOnline();
       fetchVisits();
       showAlert('success', 'Visit Completed', 'Customer visit has been closed.');
     } catch (_) { showAlert('error', 'Error', 'Failed to step-out.'); }
@@ -812,7 +827,7 @@ const VisitsScreen = ({ navigation, route }) => {
   const syncIfOnline = async () => {
     try {
       const net = await Network.getNetworkStateAsync();
-      if (net.isConnected) await SyncService.syncAll();
+      if (net.isConnected) SyncService.syncAll();
     } catch (_) { }
   };
 
@@ -890,19 +905,48 @@ const VisitsScreen = ({ navigation, route }) => {
       )}
 
       {showDatePicker && (
-        <DateTimePicker
-          value={new Date(selectedDate + 'T00:00:00')}
-          mode="date"
-          display="default"
-          maximumDate={new Date()}
-          onChange={(event, date) => {
-            setShowDatePicker(false);
-            if (date) {
-              const pad = n => String(n).padStart(2, '0');
-              setSelectedDate(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`);
-            }
-          }}
-        />
+        Platform.OS === 'ios' ? (
+          <Modal transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+            <TouchableOpacity style={[s.dateModalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
+              {/* Claims taps so only the dimmed area outside the sheet closes it */}
+              <View style={[s.dateModalSheet, { backgroundColor: theme.card }]} onStartShouldSetResponder={() => true}>
+                <View style={[s.dateModalHandle, { backgroundColor: theme.border }]} />
+                <DateTimePicker
+                  value={new Date(selectedDate + 'T00:00:00')}
+                  mode="date"
+                  display="spinner"
+                  themeVariant={theme.isDark ? 'dark' : 'light'}
+                  textColor={theme.text}
+                  maximumDate={new Date()}
+                  onChange={(event, date) => {
+                    if (date) {
+                      const pad = n => String(n).padStart(2, '0');
+                      setSelectedDate(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`);
+                    }
+                  }}
+                  style={{ width: '100%' }}
+                />
+                <TouchableOpacity style={[s.dateModalDoneBtn, { borderColor: theme.border }]} onPress={() => setShowDatePicker(false)}>
+                  <Text style={[s.dateModalDoneText, { color: theme.text }]}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={new Date(selectedDate + 'T00:00:00')}
+            mode="date"
+            display="default"
+            maximumDate={new Date()}
+            onChange={(event, date) => {
+              setShowDatePicker(false);
+              if (date) {
+                const pad = n => String(n).padStart(2, '0');
+                setSelectedDate(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`);
+              }
+            }}
+          />
+        )
       )}
 
       <StartVisitScreen
@@ -944,6 +988,12 @@ const s = StyleSheet.create({
   dateArrow: { width: moderateScale(36), height: moderateScale(36), justifyContent: 'center', alignItems: 'center' },
   dateChip: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6), paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), backgroundColor: '#F3E8FF' },
   dateChipText: { fontSize: moderateScale(14), fontWeight: '700' },
+
+  dateModalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  dateModalSheet: { borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(20), paddingBottom: moderateScale(36), alignItems: 'center' },
+  dateModalHandle: { width: moderateScale(40), height: 4, borderRadius: 2, marginBottom: moderateScale(16) },
+  dateModalDoneBtn: { width: '100%', marginTop: moderateScale(12), paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center', borderWidth: 1 },
+  dateModalDoneText: { fontSize: moderateScale(15), fontWeight: '700' },
 
   emptyWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: moderateScale(12) },
   emptyText: { fontSize: moderateScale(15), fontWeight: '600' },

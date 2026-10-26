@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, Dimensions,
+  KeyboardAvoidingView, Platform, ScrollView,
   FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch, BackHandler,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,13 +10,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { SHADOWS, moderateScale, wp } from '../components/Theme';
+import { SHADOWS, moderateScale, wp, SCREEN_WIDTH as width } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
 const MAX_DOB = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })();
-
-const { width } = Dimensions.get('window');
 const PURPLE = '#4A148C';
 const PURPLE_BG = '#F5F0FF';
 
@@ -95,10 +93,11 @@ const StepBar = ({ current, total }) => {
 // ─── Simple Option Picker Modal ────────────────────────────────────────────────
 const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelect }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   return (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
     <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
-      <View style={[st.modalSheet, { backgroundColor: theme.card }]}>
+      <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
         <Text style={[st.modalTitle, { color: theme.textMuted }]}>{title}</Text>
         <ScrollView style={{ maxHeight: 320 }}>
@@ -125,6 +124,7 @@ const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelec
 // ─── Country Picker Modal ──────────────────────────────────────────────────────
 const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect }) => {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const filtered = query.trim()
     ? countries.filter(c => c.country_name.toLowerCase().includes(query.toLowerCase()))
@@ -132,7 +132,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
-        <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%' }]}>
+        <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%', paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
           <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
           <Text style={[st.modalTitle, { color: theme.textMuted }]}>Select Country</Text>
           <TextInput
@@ -565,7 +565,7 @@ const SignupScreen = ({ navigation }) => {
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
-            <TouchableOpacity onPress={prevStep} style={st.backBtnLight}>
+            <TouchableOpacity onPress={prevStep} style={[st.backBtnLight, { top: insets.top + 8 }]}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
             </TouchableOpacity>
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
@@ -886,7 +886,7 @@ const SignupScreen = ({ navigation }) => {
       {/* ── Photo Modal ── */}
       <Modal visible={showPicModal} transparent animationType="slide" onRequestClose={() => setShowPicModal(false)}>
         <View style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
-          <View style={[st.modalSheet, { backgroundColor: theme.card }]}>
+          <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
             <Text style={[st.modalTitle, { color: theme.textMuted }]}>Profile Photo</Text>
             <TouchableOpacity style={st.modalRow} onPress={() => pickImage(true)}>
@@ -919,12 +919,15 @@ const SignupScreen = ({ navigation }) => {
         Platform.OS === 'ios' ? (
           <Modal transparent animationType="slide" onRequestClose={() => setShowDobPicker(false)}>
             <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDobPicker(false)}>
-              <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: 32 }]}>
+              {/* Claims taps so only the dimmed area outside the sheet closes it */}
+              <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(32, insets.bottom + moderateScale(8)) }]} onStartShouldSetResponder={() => true}>
                 <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
                 <Text style={[st.modalTitle, { color: theme.textMuted }]}>Date of Birth</Text>
                 <DateTimePicker
                   mode="date"
                   display="spinner"
+                  themeVariant={theme.isDark ? 'dark' : 'light'}
+                  textColor={theme.text}
                   value={dobDate || MAX_DOB}
                   maximumDate={MAX_DOB}
                   onChange={(_, date) => {

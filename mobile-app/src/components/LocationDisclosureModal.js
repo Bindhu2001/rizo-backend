@@ -4,7 +4,7 @@ import { MapPin, Shield } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
 
-export default function LocationDisclosureModal({ visible, onAccept, onDecline }) {
+export default function LocationDisclosureModal({ visible, onAccept }) {
   const theme = useTheme();
 
   return (
@@ -12,7 +12,7 @@ export default function LocationDisclosureModal({ visible, onAccept, onDecline }
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onDecline}
+      onRequestClose={onAccept}
       statusBarTranslucent
     >
       <View style={styles.overlay}>
@@ -55,15 +55,7 @@ export default function LocationDisclosureModal({ visible, onAccept, onDecline }
             onPress={onAccept}
             activeOpacity={0.85}
           >
-            <Text style={styles.btnAcceptText}>Allow Location Access</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.btnDecline, { borderColor: theme.border }]}
-            onPress={onDecline}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.btnDeclineText, { color: theme.textMuted }]}>Not Now</Text>
+            <Text style={styles.btnAcceptText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -149,17 +141,6 @@ const styles = StyleSheet.create({
   btnAcceptText: {
     color: '#fff',
     fontWeight: '700',
-    fontSize: moderateScale(14),
-  },
-  btnDecline: {
-    width: '100%',
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  btnDeclineText: {
-    fontWeight: '600',
     fontSize: moderateScale(14),
   },
 });

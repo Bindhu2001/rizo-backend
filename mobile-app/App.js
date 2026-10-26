@@ -1,7 +1,7 @@
 import React, { useEffect, useState, createContext } from 'react';
 
 export const OfflineBarContext = createContext(false);
-import { View, ActivityIndicator, Platform } from 'react-native';
+import { View, ActivityIndicator, Platform, useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,17 +24,27 @@ import SplashScreen from './src/screens/SplashScreen';
 import AttendanceRegScreen from './src/screens/AttendanceRegScreen';
 import RegularisationApprovalScreen from './src/screens/RegularisationApprovalScreen';
 import LeaveApprovalScreen from './src/screens/LeaveApprovalScreen';
+import HrConnectScreen from './src/screens/HrConnectScreen';
+import HrQueryThreadScreen from './src/screens/HrQueryThreadScreen';
 
 import OfflineBanner from './src/components/OfflineBanner';
-import { SHADOWS } from './src/components/Theme';
+import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH } from './src/components/Theme';
 import { ThemeProvider, useTheme } from './src/components/ThemeContext';
-import { initDB } from './src/services/LocalDB';
+import { initDB, getLoggedUser } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
 import NotificationManager from './src/services/NotificationManager';
 import * as Notifications from 'expo-notifications';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
+// Every screen in this app is designed for phone-width layouts. On a tablet
+// (iPad), rather than stretching that phone design across the full screen,
+// cap the content to a phone-like width and center it — the same visual
+// result iOS gives non-tablet-optimized apps natively, but under our own
+// control so the surrounding fill matches the current theme. Theme.js's
+// moderateScale/wp/hp helpers clamp to this same width so components size
+// correctly for the capped container, not the device's full width.
 
 // ─── Tab Navigator (Main App) ──────────────────────────────────────────────
 function TabNavigator({ route }) {
@@ -100,22 +110,50 @@ function TabNavigator({ route }) {
 // ─── Inner app tree — has access to useTheme (it's inside ThemeProvider) ───
 function AppContent() {
   const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width >= LARGE_SCREEN_BREAKPOINT;
   const [currentRoute, setCurrentRoute] = useState('Splash');
   const [offlineBarVisible, setOfflineBarVisible] = useState(false);
   const navigationRef = React.useRef(null);
 
   const lastNotifResponse = Notifications.useLastNotificationResponse();
 
-  useEffect(() => {
-    if (lastNotifResponse) {
-      try { navigationRef.current?.navigate('Notifications'); } catch (_) {}
+  // Short-hours alert → Regularisation, HR query → its thread, shift reminder → just opens the app,
+  // anything else → Notifications.
+  // On a cold start the tap arrives while Splash is still up, so wait until it has moved on.
+  const openFromNotification = async (response) => {
+    const type = response?.notification?.request?.content?.data?.type;
+    for (let i = 0; i < 20; i++) {
+      const route = navigationRef.current?.getCurrentRoute?.()?.name;
+      if (navigationRef.current?.isReady?.() && route && route !== 'Splash') break;
+      await new Promise((r) => setTimeout(r, 300));
     }
+    try {
+      const data = response?.notification?.request?.content?.data || {};
+      if (type === 'SHORT_HOURS') {
+        const user = await getLoggedUser();
+        if (user?.user_id) navigationRef.current?.navigate('AttendanceReg', { user, initialTab: 'LOG' });
+      } else if (type === 'HR_QUERY' && data.id) {
+        // HR replied / changed status in rizo-revamp → open that Connect to HR thread
+        const user = await getLoggedUser();
+        if (user?.user_id) navigationRef.current?.navigate('HrQueryThread', { user, id: Number(data.id) });
+      } else if (type === 'SHIFT_REMINDER') {
+        // Just open the app — it lands on Home after Splash. Navigating to 'Main'
+        // with new params would replace its { user } params.
+      } else {
+        navigationRef.current?.navigate('Notifications');
+      }
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    if (lastNotifResponse) openFromNotification(lastNotifResponse);
   }, [lastNotifResponse]);
 
   useEffect(() => {
     const receivedSub = Notifications.addNotificationReceivedListener(() => {});
-    const responseSub = Notifications.addNotificationResponseReceivedListener(() => {
-      try { navigationRef.current?.navigate('Notifications'); } catch (_) {}
+    const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      openFromNotification(response);
     });
     return () => {
       receivedSub.remove();
@@ -123,7 +161,7 @@ function AppContent() {
     };
   }, []);
 
-  return (
+  const content = (
     <OfflineBarContext.Provider value={offlineBarVisible}>
       <NavigationContainer
         ref={navigationRef}
@@ -158,10 +196,24 @@ function AppContent() {
           <Stack.Screen name="AttendanceReg" component={AttendanceRegScreen} />
           <Stack.Screen name="RegularisationApproval" component={RegularisationApprovalScreen} />
           <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} />
+          <Stack.Screen name="HrConnect" component={HrConnectScreen} />
+          <Stack.Screen name="HrQueryThread" component={HrQueryThreadScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} onBarVisibleChange={setOfflineBarVisible} />
     </OfflineBarContext.Provider>
+  );
+
+  if (!isLargeScreen) return content;
+
+  // Tablet: cap to a phone-like width and center it, rather than stretching
+  // every phone-designed screen across the full iPad width.
+  return (
+    <View style={{ flex: 1, backgroundColor: theme.bg, alignItems: 'center' }}>
+      <View style={{ flex: 1, width: '100%', maxWidth: LARGE_SCREEN_CAPPED_WIDTH }}>
+        {content}
+      </View>
+    </View>
   );
 }
 

@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator, BackHandler, Switch, TextInput,
+  Image, ActivityIndicator, BackHandler, Switch, TextInput, Linking,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
-  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun,
-  Lock, Eye, EyeOff,
+  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, MessageSquare,
+  Lock, Eye, EyeOff, ShieldCheck, Trash2,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
+import NotificationManager from '../services/NotificationManager';
+import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
+import { HrQueriesApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import { useTheme } from '../components/ThemeContext';
 
@@ -66,6 +69,22 @@ const SectionHeader = ({ title, onBack, theme }) => (
 const ProfileScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const [user, setUser] = useState(route?.params?.user);
+  const [remindersOn, setRemindersOn] = useState(true);
+  useEffect(() => { isRemindersEnabled().then(setRemindersOn); }, []);
+  const toggleReminders = (value) => {
+    setRemindersOn(value);
+    setRemindersEnabled(value, user?.user_id);
+  };
+
+  // Unread HR replies for the Connect to HR row — refreshed whenever Profile is shown
+  const [hrUnread, setHrUnread] = useState(0);
+  useEffect(() => {
+    const refreshUnread = () => HrQueriesApi.list()
+      .then((res) => setHrUnread(Number(res?.unread) || 0))
+      .catch(() => {});
+    refreshUnread();
+    return navigation.addListener('focus', refreshUnread);
+  }, [navigation]);
   const [section, setSection] = useState(null);
   const [alertCfg, setAlertCfg] = useState(null);
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
@@ -174,6 +193,7 @@ const ProfileScreen = ({ navigation, route }) => {
         showAlert('success', 'Password Reset', 'Your password has been reset successfully. You will be logged out.', [
           {
             text: 'OK', onPress: async () => {
+              await NotificationManager.unregisterToken(user.user_id);
               await clearUserSession();
               navigation.replace('Login');
             }
@@ -192,7 +212,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const handleLogout = () => {
     showAlert('warning', 'Sign Out', 'Are you sure you want to sign out from your account?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => { await clearUserSession(); navigation.replace('Login'); } },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => { await NotificationManager.unregisterToken(user?.user_id); await clearUserSession(); navigation.replace('Login'); } },
     ]);
   };
 
@@ -286,6 +306,9 @@ const ProfileScreen = ({ navigation, route }) => {
         <Field label="ESI Dispensary" value={dash(d.esi_dispensary)} />
         <Field label="PF Number" value={dash(d.pf)} />
         <Field label="UAN Number" value={dash(d.uan)} />
+        <Field label="Previous Member ID" value={dash(d.previous_member_id)} />
+        <Field label="WPS ID" value={dash(d.wps_code)} />
+        <Field label="LWF Registration Number" value={dash(d.lwf_code)} />
         <Field label="EPS Eligibility" value={yesNo(d.eps)} />
         <Field label="International Worker" value={yesNo(d.international_worker)} />
         <Field label="Physically Handicapped" value={yesNo(d.physically_handicapped)} />
@@ -418,12 +441,40 @@ const ProfileScreen = ({ navigation, route }) => {
           />
         </View>
 
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Support</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          <SectionItem
+            iconBg="#F5F3FF" icon={<MessageSquare color="#7C3AED" size={20} />}
+            title="Connect to HR"
+            subtitle={hrUnread > 0
+              ? `${hrUnread} new ${hrUnread === 1 ? 'reply' : 'replies'} from HR`
+              : 'Raise a complaint or ask HR a question'}
+            onPress={() => navigation.navigate('HrConnect', { user })}
+            last
+          />
+        </View>
+
         <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Security</Text>
         <View style={[s.menuCard, { backgroundColor: theme.card }]}>
           <SectionItem
             iconBg="#FFF1F2" icon={<Lock color="#E11D48" size={20} />}
             title="Reset Password" subtitle="Change your account password"
             onPress={() => { setNewPassword(''); setConfirmPassword(''); setSection('resetPassword'); }}
+            last
+          />
+        </View>
+
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Privacy</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          <SectionItem
+            iconBg="#EFF6FF" icon={<ShieldCheck color="#2563EB" size={20} />}
+            title="Privacy Policy" subtitle="How your data is used"
+            onPress={() => Linking.openURL('https://mypayrollmaster.online/rizo-privacypolicy.html')}
+          />
+          <SectionItem
+            iconBg="#FEF2F2" icon={<Trash2 color="#DC2626" size={20} />}
+            title="Delete My Account" subtitle="Request permanent account deletion"
+            onPress={() => Linking.openURL('https://mypayrollmaster.online/rizo-delete-account.html')}
             last
           />
         </View>
@@ -443,6 +494,22 @@ const ProfileScreen = ({ navigation, route }) => {
             <Switch
               value={theme.isDark}
               onValueChange={theme.toggleTheme}
+              trackColor={{ false: '#E5E7EB', true: '#7C3AED' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <View style={[s.divider, { backgroundColor: theme.divider }]} />
+          <View style={s.sectionRow}>
+            <View style={[s.sectionIconBox, { backgroundColor: theme.isDark ? '#1E293B' : '#F1F5F9' }]}>
+              <BellRing color={theme.isDark ? '#A78BFA' : '#4A148C'} size={20} />
+            </View>
+            <View style={s.sectionText}>
+              <Text style={[s.sectionTitle, { color: theme.text }]}>Punch Reminders</Text>
+              <Text style={[s.sectionSub, { color: theme.textLight }]}>Shift start/end and short-hours alerts</Text>
+            </View>
+            <Switch
+              value={remindersOn}
+              onValueChange={toggleReminders}
               trackColor={{ false: '#E5E7EB', true: '#7C3AED' }}
               thumbColor="#FFFFFF"
             />

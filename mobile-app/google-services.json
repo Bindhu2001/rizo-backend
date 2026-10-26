@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "566390028724",
+    "project_id": "rizo-70bfe",
+    "storage_bucket": "rizo-70bfe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:566390028724:android:3d62c64d08ef1de4151ae1",
+        "android_client_info": {
+          "package_name": "com.rizo.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDodxKWcQ2nuFDpgFFFiQHvKiAoQjurTuc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

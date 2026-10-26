@@ -5,32 +5,63 @@ import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import NotificationManager from './NotificationManager';
 
+// reverseGeocodeAsync has no built-in timeout and can hang far longer than the sync should wait
+const reverseGeocodeWithTimeout = (coords) => Promise.race([
+  Location.reverseGeocodeAsync(coords),
+  new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
+]);
+
+const flushCallbacks = (list) => list.splice(0).forEach((cb) => {
+  try { cb(); } catch (_) {}
+});
+
 const SyncService = {
   isSyncing: false,
+  // Callbacks for the re-run queued behind the sync in progress (null = none queued)
+  queuedCallbacks: null,
 
   /**
-   * Main sync function - pushes all pending data to cloud
+   * Main sync function - pushes all pending data to cloud.
+   * onAttendanceSynced / onVisitsSynced fire as soon as that step is done,
+   * before the slower later steps. They always fire — offline or on failure
+   * too — so callers awaiting them never hang.
    */
-  syncAll: async () => {
-    if (SyncService.isSyncing) return;
+  syncAll: async ({ onAttendanceSynced, onVisitsSynced } = {}) => {
+    const callbacks = { attendance: [], visits: [] };
+    if (onAttendanceSynced) callbacks.attendance.push(onAttendanceSynced);
+    if (onVisitsSynced) callbacks.visits.push(onVisitsSynced);
 
-    const state = await Network.getNetworkStateAsync();
-    if (!state.isConnected) {
-      console.log('[SyncService] No internet connection, skipping sync.');
+    if (SyncService.isSyncing) {
+      // Data saved mid-sync may be missed by the run in progress — queue a
+      // re-run right after it (instead of waiting for the next retry tick)
+      // and hand these callbacks to that re-run
+      const queued = SyncService.queuedCallbacks || (SyncService.queuedCallbacks = { attendance: [], visits: [] });
+      queued.attendance.push(...callbacks.attendance);
+      queued.visits.push(...callbacks.visits);
       return;
     }
+    return SyncService.runSync(callbacks);
+  },
 
+  runSync: async (callbacks) => {
     SyncService.isSyncing = true;
-    console.log('[SyncService] Starting background sync...');
-
     try {
+      const state = await Network.getNetworkStateAsync().catch(() => null);
+      if (!state?.isConnected) {
+        console.log('[SyncService] No internet connection, skipping sync.');
+        return;
+      }
+
+      console.log('[SyncService] Starting background sync...');
       const db = await initDB();
 
       // 1. Sync Attendance
       await SyncService.syncAttendance(db);
+      flushCallbacks(callbacks.attendance);
 
       // 2. Sync Visits
       await SyncService.syncVisits(db);
+      flushCallbacks(callbacks.visits);
 
       // 3. Sync Leaves
       await SyncService.syncLeaves(db);
@@ -43,7 +74,14 @@ const SyncService = {
     } catch (error) {
       console.error('[SyncService] Sync failed:', error.message);
     } finally {
+      flushCallbacks(callbacks.attendance);
+      flushCallbacks(callbacks.visits);
       SyncService.isSyncing = false;
+      const queued = SyncService.queuedCallbacks;
+      if (queued) {
+        SyncService.queuedCallbacks = null;
+        SyncService.runSync(queued);
+      }
     }
   },
 
@@ -104,7 +142,7 @@ const SyncService = {
 
             if (Math.abs(freshLat) > 0.0001) {
               try {
-                const geo = await Location.reverseGeocodeAsync({ latitude: freshLat, longitude: freshLng });
+                const geo = await reverseGeocodeWithTimeout({ latitude: freshLat, longitude: freshLng });
                 if (geo && geo.length > 0) {
                   const r = geo[0];
                   const parts = [r.name || r.street, r.district || r.city, r.region].filter(Boolean);
@@ -131,7 +169,7 @@ const SyncService = {
           // We have coords, but do we have a valid address generated while offline?
           if (!item.address || item.address === 'Location Attached' || item.address.startsWith('Lat:')) {
             try {
-              const geo = await Location.reverseGeocodeAsync({ latitude: storedLat, longitude: storedLng });
+              const geo = await reverseGeocodeWithTimeout({ latitude: storedLat, longitude: storedLng });
               if (geo && geo.length > 0) {
                 const r = geo[0];
                 const parts = [
@@ -195,10 +233,12 @@ const SyncService = {
 
       // --- Step 4: Call API ---
       try {
-        await axios.post(API_ENDPOINTS.SWIPE, {
+        console.log('[SyncService] SWIPE request in_out sequence:', login_auditor_array.map(x => `${x.in_out}@${x.time_check}`));
+        const swipeRes = await axios.post(API_ENDPOINTS.SWIPE, {
           user_id: userId,
           login_auditor: JSON.stringify(login_auditor_array)
         }, { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
+        console.log('[SyncService] SWIPE response:', JSON.stringify(swipeRes.data));
 
         for (const item of items) {
           await db.runAsync("UPDATE attendance SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
@@ -218,7 +258,7 @@ const SyncService = {
       if (!existingAddr || existingAddr === 'Unable to fetch location' || existingAddr === 'Unknown Location' || existingAddr.startsWith('Lat:')) {
         if (Math.abs(lat) > 0.01) {
           try {
-            const geo = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+            const geo = await reverseGeocodeWithTimeout({ latitude: lat, longitude: lng });
             if (geo && geo.length > 0) {
               const r = geo[0];
               const parts = [r.name, r.street, r.district || r.subregion, r.city || r.locality, r.region, r.postalCode].filter(Boolean);

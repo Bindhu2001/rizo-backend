@@ -1,10 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getLoggedUser } from '../services/LocalDB';
+import { loadPunchConfig, warmUpLocation } from '../services/PunchPrefetch';
 import { useTheme } from '../components/ThemeContext';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { SCREEN_WIDTH } from '../components/Theme';
 
 const SplashScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -32,6 +32,15 @@ const SplashScreen = ({ navigation }) => {
   const oRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // 0. While the animation plays, refresh the punch type (if the LocalDB copy
+    //    is over 30 min old and we're online) and start a GPS fix, so the
+    //    first punch doesn't wait on either. Never blocks navigation.
+    getLoggedUser().then((user) => {
+      if (!user?.user_id) return;
+      loadPunchConfig(user.user_id).catch(() => {});
+      warmUpLocation();
+    }).catch(() => {});
+
     // 1. Play the main rolling animation (Slower for a smoother "reveal" effect)
     Animated.timing(progress, {
       toValue: 1,

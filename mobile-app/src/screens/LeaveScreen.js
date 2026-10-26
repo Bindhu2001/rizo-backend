@@ -1,7 +1,7 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Modal, Dimensions, Platform, KeyboardAvoidingView, RefreshControl, BackHandler
+  TextInput, ActivityIndicator, Modal, Dimensions, Platform, KeyboardAvoidingView, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+
+// Uploaded attachments are stored under a company-code folder derived the
+// same way the backend does: the alphabetic prefix of the login user_id
+// (e.g. "GLET101865" -> "glet"), lowercased.
+const companyFolder = (userId) => (String(userId || '').match(/^([A-Za-z]+)/)?.[1] || '').toLowerCase();
 
 const STATUS_COLORS = {
   Approved: { bg: '#DCFCE7', text: '#16A34A', side: '#16A34A' },
@@ -78,23 +83,29 @@ const h = StyleSheet.create({
 });
 
 // ─── History Card ─────────────────────────────────────────────────────────────
-const HistoryCard = ({ item, onCancel, cancelling }) => {
+const HistoryCard = ({ item, onCancel, cancelling, userId }) => {
   const theme = useTheme();
   const [expanded, setExpanded] = useState(false);
   const sc = statusColor(item.leave_status);
   const norm = (item.leave_status || '').trim().toLowerCase();
   const canCancel = norm === 'applied' || norm === 'pending' || norm === 'p';
+  const fileName = (item.file_name || '').split(',')[0].trim();
+
+  const openAttachment = () => {
+    const url = `${IMAGE_ROOT}/leaveupload/${companyFolder(userId)}/${fileName}`;
+    Linking.openURL(url).catch(() => {});
+  };
 
   return (
-    <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={[hc.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+    <View style={[hc.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Coloured Sidebar */}
       <View style={[hc.sideBar, { backgroundColor: sc.side }]}>
         <Text style={hc.sideText}>{statusLabel(item.leave_status).toUpperCase()}</Text>
       </View>
 
       <View style={hc.body}>
-        {/* ── Collapsed Row ── */}
-        <View style={hc.topRow}>
+        {/* ── Collapsed Row — only this toggles expand/collapse ── */}
+        <TouchableOpacity onPress={() => setExpanded(e => !e)} activeOpacity={0.85} style={hc.topRow}>
           <View style={{ flex: 1 }}>
             <Text style={[hc.leaveName, { color: theme.text }]}>{item.leave_name?.trim()}</Text>
             <Text style={[hc.dateText, { color: theme.textLight }]}>{formatLeaveDate(item.from_date, item.fromhalf)} - {formatLeaveDate(item.to_date, item.tohalf)}</Text>
@@ -106,7 +117,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
             <Text style={[hc.daysNum, { color: theme.primaryDeep }]}>{item.leave_count}</Text>
             <Text style={[hc.daysLabel, { color: theme.textMuted }]}>Days</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* ── Expanded Detail ── */}
         {expanded && (
@@ -157,6 +168,18 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
               <Text style={[hc.statusTagText, { color: sc.text }]}>{statusLabel(item.leave_status)}</Text>
             </View>
 
+            {/* Attachment */}
+            {!!fileName && (
+              <TouchableOpacity
+                style={[hc.fileChip, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}
+                onPress={openAttachment}
+                activeOpacity={0.7}
+              >
+                <FileText color="#DC2626" size={14} style={{ marginRight: 6 }} />
+                <Text style={[hc.fileChipText, { color: theme.textLight }]}>View Attachment</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Cancel Button — only for Applied / Pending */}
             {canCancel && (
               <TouchableOpacity
@@ -173,7 +196,7 @@ const HistoryCard = ({ item, onCancel, cancelling }) => {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 };
 
@@ -210,6 +233,11 @@ const hc = StyleSheet.create({
   metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700' },
   statusTag: { alignSelf: 'flex-start', paddingHorizontal: moderateScale(12), paddingVertical: 5, borderRadius: moderateScale(20) },
   statusTagText: { fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
+  fileChip: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', marginTop: moderateScale(12),
+    borderWidth: 1, borderRadius: moderateScale(10), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8),
+  },
+  fileChipText: { fontSize: moderateScale(12), fontWeight: '700' },
   cancelBtn: {
     marginTop: moderateScale(12), borderWidth: 1.5, borderColor: '#DC2626', borderRadius: moderateScale(10),
     paddingVertical: moderateScale(10), alignItems: 'center', justifyContent: 'center',
@@ -391,6 +419,21 @@ const LeaveScreen = ({ navigation, route }) => {
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
+  const resetApplyForm = () => {
+    // Authorised/Approved-by are left alone — they're auto-defaulted from
+    // authorizedByList/approvedByList (see fetchAll), not typed content, and
+    // that default-selection logic only runs once when those lists load, not
+    // every time this form reopens.
+    setFromDate('');
+    setToDate('');
+    setFromHalf('First Half');
+    setToHalf('Second Half');
+    setReason('');
+    setContactNo('');
+    setHandoverTo('');
+    setAttachedFiles([]);
+  };
+
   useEffect(() => {
     if (!user || !user.user_id) {
       navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
@@ -421,28 +464,34 @@ const LeaveScreen = ({ navigation, route }) => {
       let authList = [];
       let appList = [];
 
-      if (approversRes?.data?.success) {
-        const ap = approversRes.data.data;
-        // Filter out the logged-in employee from both lists
-        authList = (ap.authorized_persons || [])
-          .filter(p => p.emp_id !== user.user_id)
-          .map(p => ({ id: p.emp_key || p.key || p.emp_id, name: (p.name || '').trim(), emp_id: p.emp_id }));
-        appList = (ap.approved_persons || [])
-          .filter(p => p.emp_id !== user.user_id)
-          .map(p => ({ id: p.emp_key || p.key || p.emp_id, name: (p.name || '').trim(), emp_id: p.emp_id }));
-      } else if (itemsRes.data?.success) {
-        // Fallback: parse comma-separated from leave_items
-        const d = itemsRes.data.data;
-        const parsePersons = (idsStr, namesStr) => {
-          if (!idsStr) return [];
-          const ids = String(idsStr).split(',').map(s => s.trim()).filter(id => id && id !== '0');
-          const names = namesStr ? String(namesStr).split(',').map(s => s.trim()) : [];
-          return ids.map((id, i) => ({ id, name: names[i] || id }));
-        };
-        authList = parsePersons(d.authorized_by, d.authorized_by_person);
-        // Exclude hierarchy/auth persons from approved list to avoid wrong defaults
-        const authIds = new Set(authList.map(p => String(p.id)));
-        appList = parsePersons(d.approved_by, d.approved_by_person).filter(p => !authIds.has(String(p.id)));
+      // The same person may be both authoriser and approver — only the
+      // logged-in employee is ever filtered out (no approving your own leave)
+      const selfId = String(user.user_id || '').trim().toUpperCase();
+      const toPersons = (list) => (Array.isArray(list) ? list : [])
+        .filter(p => String(p.emp_id || '').trim().toUpperCase() !== selfId)
+        .map(p => ({ id: p.emp_key || p.key || p.emp_id, name: (p.name || '').trim(), emp_id: p.emp_id }))
+        .filter(p => p.id && String(p.id) !== '0');
+      const parsePersons = (idsStr, namesStr) => {
+        if (!idsStr) return [];
+        const ids = String(idsStr).split(',').map(s => s.trim()).filter(id => id && id !== '0');
+        const names = namesStr ? String(namesStr).split(',').map(s => s.trim()) : [];
+        return ids.map((id, i) => ({ id, name: names[i] || id }));
+      };
+
+      const items = itemsRes.data?.success ? itemsRes.data.data : null;
+      const ap = approversRes?.data?.success ? approversRes.data.data : null;
+      if (items && (Array.isArray(items.authorized_persons) || Array.isArray(items.approved_persons))) {
+        // 1. leave_items' own person lists
+        authList = toPersons(items.authorized_persons);
+        appList = toPersons(items.approved_persons);
+      } else if (ap) {
+        // 2. approvers API
+        authList = toPersons(ap.authorized_persons);
+        appList = toPersons(ap.approved_persons);
+      } else if (items) {
+        // 3. comma-separated ids/names from leave_items
+        authList = parsePersons(items.authorized_by, items.authorized_by_person);
+        appList = parsePersons(items.approved_by, items.approved_by_person);
       }
 
       setAuthorizedByList(authList);
@@ -460,37 +509,31 @@ const LeaveScreen = ({ navigation, route }) => {
   };
 
   const handleCancelLeave = (leaveId) => {
-    Alert.alert(
-      'Cancel Leave',
-      'Are you sure you want to cancel this leave?',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
-            setCancellingId(leaveId);
-            // Defer the result alert so it never races the native Alert's
-            // dismiss animation on Android (a fast failure response — like
-            // the attendance-verified check, which is a single COUNT(*) with
-            // no write — can otherwise fire before the dialog finishes
-            // closing, and the follow-up Modal silently fails to appear).
-            const showResultAlert = (...args) => setTimeout(() => showAlert(...args), 300);
-            try {
-              const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: user.user_id, leave_id: String(leaveId) });
-              if (res.data?.success === 1 || res.data?.success === true) {
-                showResultAlert('success', 'Cancelled', 'Your leave has been cancelled successfully.');
-                fetchHistory(histFilter);
-              } else {
-                showResultAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
-              }
-            } catch (e) {
-              showResultAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
-            } finally {
-              setCancellingId(null);
+    showAlert('warning', 'Cancel Leave', 'Are you sure you want to cancel this leave?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+          setCancellingId(leaveId);
+          // Defer the result alert past the confirmation modal's close animation —
+          // a fast failure response (e.g. attendance-verified, a single COUNT(*))
+          // can otherwise fire before it's done closing and silently fail to show.
+          const showResultAlert = (...args) => setTimeout(() => showAlert(...args), 300);
+          try {
+            const res = await axios.post(API_ENDPOINTS.LEAVE_CANCEL, { user_id: user.user_id, leave_id: String(leaveId) });
+            if (res.data?.success === 1 || res.data?.success === true) {
+              showResultAlert('success', 'Cancelled', 'Your leave has been cancelled successfully.');
+              fetchHistory(histFilter);
+            } else {
+              showResultAlert('error', 'Failed', res.data?.message || 'Could not cancel leave.');
             }
+          } catch (e) {
+            showResultAlert('error', 'Error', 'Failed to cancel leave. Please try again.');
+          } finally {
+            setCancellingId(null);
           }
-        },
-      ]
-    );
+        }
+      },
+    ]);
   };
 
   const fetchHistory = async (filter) => {
@@ -524,23 +567,22 @@ const LeaveScreen = ({ navigation, route }) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/jpg', 'application/pdf'],
-        multiple: true,
+        multiple: false,
         copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.length > 0) {
-        const oversized = result.assets.filter(file => file.size > 5 * 1024 * 1024);
-        if (oversized.length > 0) {
-          showAlert('warning', 'File Too Large', 'One or more files exceed the 5MB limit. Please select smaller files.');
+        const file = result.assets[0];
+        if (file.size > 5 * 1024 * 1024) {
+          showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please select a smaller file.');
           return;
         }
 
-        const valid = result.assets.filter(f => {
-          const ext = f.name?.split('.').pop()?.toLowerCase();
-          return ['jpg', 'jpeg', 'pdf'].includes(ext);
-        });
-        if (valid.length < result.assets.length)
-          showAlert('warning', 'Invalid Files', 'Only JPG, JPEG, and PDF files are allowed.');
-        setAttachedFiles(prev => [...prev, ...valid]);
+        const ext = file.name?.split('.').pop()?.toLowerCase();
+        if (!['jpg', 'jpeg', 'pdf'].includes(ext)) {
+          showAlert('warning', 'Invalid File', 'Only JPG, JPEG, and PDF files are allowed.');
+          return;
+        }
+        setAttachedFiles([file]);
       }
     } catch (e) { showAlert('error', 'Error', 'Could not open file picker.'); }
   };
@@ -614,7 +656,7 @@ const LeaveScreen = ({ navigation, route }) => {
             const total = taken + bal;
             const barColor = BAR_COLORS[idx % BAR_COLORS.length];
             return (
-              <TouchableOpacity key={item.leave_id} style={[s.balCard, { backgroundColor: theme.card }]} onPress={() => { setSelectedLeave(item); setView('APPLY'); }}>
+              <TouchableOpacity key={item.leave_id} style={[s.balCard, { backgroundColor: theme.card }]} onPress={() => { resetApplyForm(); setSelectedLeave(item); setView('APPLY'); }}>
                 <View style={[s.balBar, { backgroundColor: barColor }]} />
                 <View style={s.balBody}>
                   <View style={{ flex: 1 }}>
@@ -759,19 +801,18 @@ const LeaveScreen = ({ navigation, route }) => {
           />
         </View>
 
-        {/* File attachments */}
-        <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
-          <Paperclip color={COLORS.primaryDeep} size={14} />
-          <Text style={s.addFilesText}> Add files  (JPG, JPEG, PDF)</Text>
-        </TouchableOpacity>
+        {/* File attachment */}
+        {attachedFiles.length === 0 && (
+          <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
+            <Paperclip color={COLORS.primaryDeep} size={14} />
+            <Text style={s.addFilesText}> Add file  (JPG, JPEG, PDF)</Text>
+          </TouchableOpacity>
+        )}
         {attachedFiles.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), marginBottom: moderateScale(16), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible' }}>
             {attachedFiles.map((f, i) => (
               <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
-            <TouchableOpacity style={[s.addMoreThumb, { backgroundColor: theme.cardSoft, borderColor: theme.border }]} onPress={pickFile}>
-              <Text style={[s.addMorePlus, { color: theme.textMuted }]}>+</Text>
-            </TouchableOpacity>
           </ScrollView>
         )}
 
@@ -837,8 +878,6 @@ const LeaveScreen = ({ navigation, route }) => {
           setShowAppPicker(false);
         }}
       />
-
-      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </View>
   );
 
@@ -874,6 +913,7 @@ const LeaveScreen = ({ navigation, route }) => {
                 item={item}
                 onCancel={handleCancelLeave}
                 cancelling={cancellingId === (item.leave_id)}
+                userId={user.user_id}
               />
             ))}
           </ScrollView>
@@ -899,6 +939,7 @@ const LeaveScreen = ({ navigation, route }) => {
       {view === 'APPLY' && ApplyView()}
       {view === 'HISTORY' && HistoryView()}
       {view === 'SUCCESS' && SuccessView()}
+      <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
 };

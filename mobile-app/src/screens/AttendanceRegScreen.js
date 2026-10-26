@@ -37,8 +37,6 @@ const formatPunchTime = (isoOrFull) => {
   }
 };
 
-const { width } = Dimensions.get('window');
-
 // ─── Constants ────────────────────────────────────────────────────────────────
 const REASONS = [
   'Forgot to Swipe',

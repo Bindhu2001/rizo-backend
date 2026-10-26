@@ -1,9 +1,7 @@
 ﻿import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-
-const { width } = Dimensions.get('window');
 
 const WelcomeScreen = ({ navigation }) => {
   const theme = useTheme();

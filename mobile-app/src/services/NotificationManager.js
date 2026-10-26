@@ -3,6 +3,8 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
+import { clearShiftReminders } from './ShiftReminders';
+import { clearRevampToken, PushTokenApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
 import BASE_URL from '../constants/Config';
 import axios from 'axios';
@@ -13,7 +15,8 @@ const BG_TASK_NAME = 'rizo-status-check';
 // Configure Expo Notifications globally
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -107,20 +110,65 @@ class NotificationManager {
     }
   }
 
+  static async getPushToken() {
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+    const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+    return tokenData?.data || null;
+  }
+
   static async registerAndSendToken(userId) {
+    let token = null;
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-      const tokenData = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-      const token = tokenData?.data;
-      if (token && userId) {
-        // Register with production API
-        await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 5000 });
-        // Also register with rizo-backend so server-side poller can send push when app is closed
-        await axios.post(`${BASE_URL}/register-push-token`, { user_id: userId, push_token: token }, { timeout: 5000 });
-        console.log('[NotificationManager] Push token registered');
-      }
+      token = await NotificationManager.getPushToken();
     } catch (e) {
-      console.log('[NotificationManager] Push token registration skipped:', e.message);
+      console.log('[NotificationManager] Push token unavailable:', e.message);
+      return;
+    }
+    if (!token || !userId) return;
+
+    // Each backend separately — one failing must not skip the other
+    try {
+      await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 5000 });
+    } catch (e) {
+      console.log('[NotificationManager] Production API token registration failed:', e.message);
+    }
+    try {
+      // rizo-backend's poller sends the push when the app is closed
+      await axios.post(`${BASE_URL}/register-push-token`, { user_id: userId, push_token: token }, { timeout: 5000 });
+      console.log('[NotificationManager] Push token registered');
+    } catch (e) {
+      console.log('[NotificationManager] rizo-backend token registration failed:', e.message);
+    }
+    try {
+      // rizo-revamp pushes Connect-to-HR replies straight to this phone
+      await PushTokenApi.register(token, Platform.OS);
+    } catch (e) {
+      console.log('[NotificationManager] rizo-revamp token registration failed:', e.message);
+    }
+  }
+
+  // On logout: stop this phone receiving the signed-out user's notifications.
+  // Best-effort — never blocks logout.
+  static async unregisterToken(userId) {
+    // Shift reminders and the rizo-revamp sign-in are per-user — never leave them for the next login
+    await clearShiftReminders().catch(() => {});
+    let token = null;
+    try { token = await NotificationManager.getPushToken(); } catch (_) {}
+    if (token) {
+      // Detach from rizo-revamp first — it needs the sign-in that is cleared just below
+      try {
+        await PushTokenApi.remove(token);
+      } catch (e) {
+        console.log('[NotificationManager] rizo-revamp token unregister failed:', e.message);
+      }
+    }
+    await clearRevampToken();
+    if (!userId || !token) return;
+    try {
+      await axios.post(`${BASE_URL}/unregister-push-token`, { user_id: userId, push_token: token }, { timeout: 4000 });
+      console.log('[NotificationManager] Push token unregistered');
+    } catch (e) {
+      console.log('[NotificationManager] Push token unregister failed:', e.message);
     }
   }
 

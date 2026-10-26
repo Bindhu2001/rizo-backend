@@ -243,7 +243,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
       {/* ── Header ── */}
