@@ -66,9 +66,6 @@ const SyncService = {
       // 3. Sync Leaves
       await SyncService.syncLeaves(db);
 
-      // 4. Sync Regularization
-      await SyncService.syncRegularization(db);
-
       console.log('[SyncService] Sync cycle complete ✅');
       NotificationManager.checkStatusChanges().catch(() => {});
     } catch (error) {
@@ -373,27 +370,6 @@ const SyncService = {
         await db.runAsync("UPDATE leaves SET status = 'SUBMITTED' WHERE id = ?", [item.id]);
       } catch (e) {
         console.log(`[SyncService] Leave ${item.id} sync failed:`, e.message);
-      }
-    }
-  },
-
-  syncRegularization: async (db) => {
-    const pending = await db.getAllAsync("SELECT * FROM attendance_reg WHERE status = 'PENDING'");
-    if (pending.length === 0) return;
-
-    for (const item of pending) {
-      try {
-        await axios.post(API_ENDPOINTS.REGULARIZATION, {
-          userId: item.user_id,
-          punchDate: item.punch_date,
-          actualTime: item.actual_time,
-          expectedTime: item.expected_time,
-          type: item.type,
-          reason: item.reason
-        }, { headers: { 'Content-Type': 'application/json' } });
-        await db.runAsync("UPDATE attendance_reg SET status = 'SUBMITTED' WHERE id = ?", [item.id]);
-      } catch (e) {
-        console.log(`[SyncService] Reg ${item.id} sync failed:`, e.message);
       }
     }
   }

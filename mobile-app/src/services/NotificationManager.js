@@ -6,7 +6,6 @@ import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB'
 import { clearShiftReminders } from './ShiftReminders';
 import { clearRevampToken, PushTokenApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
-import BASE_URL from '../constants/Config';
 import axios from 'axios';
 import { Platform } from 'react-native';
 
@@ -75,6 +74,39 @@ class NotificationManager {
     });
   }
 
+  // A server push (PHP approvals) carries data.ref = the same key the status checks below use
+  // (leave_12_APPROVED, ...). Saving it here means the background check never shows that
+  // decision a second time, and the push also appears in the Notifications screen.
+  static async recordPush(notification) {
+    try {
+      const content = notification?.request?.content;
+      const ref = content?.data?.ref;
+      if (!ref) return;
+      const user = await getLoggedUser();
+      if (!user?.user_id) return;
+      const { initDB } = require('./LocalDB');
+      const db = await initDB();
+      const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+      if (existing) return;
+      await saveNotificationLocal({
+        userId: user.user_id,
+        title: content.title || '',
+        message: content.body || '',
+        type: ref,
+      });
+    } catch (e) {
+      console.log('[NotificationManager] recordPush error:', e?.message);
+    }
+  }
+
+  // Pushes that arrived while the app was closed are still in the notification tray
+  static async recordPresentedPushes() {
+    try {
+      const presented = await Notifications.getPresentedNotificationsAsync();
+      for (const n of presented) await NotificationManager.recordPush(n);
+    } catch (_) {}
+  }
+
   // Bypass cooldown — use when a status change is expected immediately
   static async forceCheck() {
     this.lastCheckTime = 0;
@@ -92,6 +124,9 @@ class NotificationManager {
         this.isChecking = false;
         return;
       }
+
+      // Server pushes already shown → recorded first, so the checks below skip them
+      await this.recordPresentedPushes();
 
       // Check Leaves Status
       await this.checkLeavesDiff(user);
@@ -128,16 +163,10 @@ class NotificationManager {
 
     // Each backend separately — one failing must not skip the other
     try {
-      await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 5000 });
+      // PHP API pushes leave / regularisation / expense decisions to this phone instantly
+      await axios.post(API_ENDPOINTS.REGISTER_PUSH_TOKEN, { user_id: userId, push_token: token, platform: Platform.OS }, { timeout: 5000 });
     } catch (e) {
       console.log('[NotificationManager] Production API token registration failed:', e.message);
-    }
-    try {
-      // rizo-backend's poller sends the push when the app is closed
-      await axios.post(`${BASE_URL}/register-push-token`, { user_id: userId, push_token: token }, { timeout: 5000 });
-      console.log('[NotificationManager] Push token registered');
-    } catch (e) {
-      console.log('[NotificationManager] rizo-backend token registration failed:', e.message);
     }
     try {
       // rizo-revamp pushes Connect-to-HR replies straight to this phone
@@ -163,12 +192,12 @@ class NotificationManager {
       }
     }
     await clearRevampToken();
-    if (!userId || !token) return;
-    try {
-      await axios.post(`${BASE_URL}/unregister-push-token`, { user_id: userId, push_token: token }, { timeout: 4000 });
-      console.log('[NotificationManager] Push token unregistered');
-    } catch (e) {
-      console.log('[NotificationManager] Push token unregister failed:', e.message);
+    if (userId && token) {
+      try {
+        await axios.post(API_ENDPOINTS.UNREGISTER_PUSH_TOKEN, { user_id: userId, push_token: token }, { timeout: 4000 });
+      } catch (e) {
+        console.log('[NotificationManager] PHP API token unregister failed:', e.message);
+      }
     }
   }
 
@@ -334,6 +363,7 @@ TaskManager.defineTask(BG_TASK_NAME, async () => {
   try {
     const user = await getLoggedUser();
     if (!user) return BackgroundFetch.BackgroundFetchResult.NoData;
+    await NotificationManager.recordPresentedPushes();
     await NotificationManager.checkLeavesDiff(user);
     await NotificationManager.checkRegDiff(user);
     await NotificationManager.checkExpenseDiff(user);

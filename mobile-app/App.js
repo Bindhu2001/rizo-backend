@@ -151,8 +151,11 @@ function AppContent() {
   }, [lastNotifResponse]);
 
   useEffect(() => {
-    const receivedSub = Notifications.addNotificationReceivedListener(() => {});
+    const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
+      NotificationManager.recordPush(notification);
+    });
     const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      NotificationManager.recordPush(response?.notification);
       openFromNotification(response);
     });
     return () => {

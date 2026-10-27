@@ -41,7 +41,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const API_URL = API_ENDPOINTS.ATTENDANCE;
-const OFFICE_API_URL = API_ENDPOINTS.OFFICE;
 // Retry interval while punches or customer visits are waiting to sync
 const PUNCH_SYNC_RETRY_MS = 30000;
 // Office-check GPS fix reused for the punch if the user confirms within this

@@ -1,4 +1,3 @@
-const BASE_URL = 'https://rizo-backend-production.up.railway.app/api';
 const AUTH_URL = 'https://v1.mypayrollmaster.online/api/v1';
 const NEWAPP_URL = 'https://v1.mypayrollmaster.online/api/v1/newapp';
 export const IMAGE_ROOT = 'https://v1.mypayrollmaster.online';
@@ -8,10 +7,7 @@ export const REVAMP_API_URL = 'https://login.rizohrms.com/api/mobile';
 export const API_ENDPOINTS = {
   AUTH: `${AUTH_URL}/login`,
   ATTENDANCE: `${AUTH_URL}/attendance`,
-  OFFICE: `${BASE_URL}/office`,
-  VISITS: `${BASE_URL}/visits`,
   LEAVES: `${NEWAPP_URL}/leave`,
-  REGULARIZATION: `${BASE_URL}/regularization`,
   ATTENDANCE_LOGS: `${NEWAPP_URL}/attendance_logs`,
   ATTENDANCE_PUNCHES: `${NEWAPP_URL}/attendance_punches`,
   DEVICE_ATTENDANCE: `${NEWAPP_URL}/get_device_attendance`,
@@ -31,6 +27,7 @@ export const API_ENDPOINTS = {
   SALARY_SLIP: `${NEWAPP_URL}/get_salary_slip`,
   MONTHLY_GROSS: `${NEWAPP_URL}/get_monthly_gross`,
   REGISTER_PUSH_TOKEN: `${NEWAPP_URL}/register_push_token`,
+  UNREGISTER_PUSH_TOKEN: `${NEWAPP_URL}/unregister_push_token`,
   CHECK_ROLES: `${NEWAPP_URL}/check_hierarchy_role`,
   ALLOCATE_MENUS: `${NEWAPP_URL}/allocate_menus`,
   REGULARISATION_HIERARCHY: `${NEWAPP_URL}/regularisation_hierarchy_list`,
@@ -62,4 +59,3 @@ export const API_ENDPOINTS = {
   RESET_PASSWORD: `${NEWAPP_URL}/reset_password`,
 };
 
-export default BASE_URL;
