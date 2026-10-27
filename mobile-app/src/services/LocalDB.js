@@ -288,11 +288,11 @@ export const getRawPunchesForMonth = async (userId, monthStr) => {
   );
 };
 
-// Punches in [fromIso, toIso] in true tap order (rowid) — used by the shift reminders
+// Punches in [fromIso, toIso] in true tap order (rowid) — shift reminders and the punch button
 export const getPunchesBetween = async (userId, fromIso, toIso) => {
   const database = await initDB();
   return await database.getAllAsync(
-    `SELECT id, type, punch_time FROM attendance WHERE user_id = ? AND punch_time >= ? AND punch_time <= ? ORDER BY rowid ASC`,
+    `SELECT id, type, punch_time, address, sync_status FROM attendance WHERE user_id = ? AND punch_time >= ? AND punch_time <= ? ORDER BY rowid ASC`,
     [userId, fromIso, toIso]
   );
 };

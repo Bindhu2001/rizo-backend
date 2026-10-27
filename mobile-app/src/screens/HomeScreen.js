@@ -23,13 +23,14 @@ import CalendarWidget from '../components/CalendarWidget';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
-  savePunchLocal, getTodayLocalHistory, getLastPunchType, updatePunchLocation,
+  savePunchLocal, getPunchesBetween, updatePunchLocation,
   getPendingCount, getPendingSyncCount, initDB
 } from '../services/LocalDB';
 import { loadPunchConfig, getRecentFix, rememberFix } from '../services/PunchPrefetch';
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
-import { refreshShiftReminders } from '../services/ShiftReminders';
+import { refreshShiftReminders, getCachedShiftSchedule } from '../services/ShiftReminders';
+import { nextPunch, SHIFT_DATE_LOOKBACK_MS } from '../services/ShiftDate';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import { useTheme } from '../components/ThemeContext';
 
@@ -127,7 +128,8 @@ const HomeScreen = ({ navigation, route }) => {
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       NotificationManager.checkStatusChanges();
       NotificationManager.registerAndSendToken(userRef.current.user_id);
-      refreshShiftReminders(userRef.current.user_id);
+      // Re-check the button once the schedule is fresh (night shifts need it for the shift date)
+      refreshShiftReminders(userRef.current.user_id).then(() => fetchStatus());
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -159,12 +161,7 @@ const HomeScreen = ({ navigation, route }) => {
     const syncTimer = setInterval(async () => {
       const pending = await getPendingSyncCount().catch(() => 0);
       if (pending === 0) return;
-      SyncService.syncAll({
-        onAttendanceSynced: () => {
-          checkOfflinePunches();
-          fetchStatus();
-        },
-      });
+      SyncService.syncAll({ onAttendanceSynced: afterPunchSync });
     }, PUNCH_SYNC_RETRY_MS);
     return () => {
       unsubscribe();
@@ -300,15 +297,15 @@ const HomeScreen = ({ navigation, route }) => {
   // Returns null (meaning "keep local state") if offline, unreachable, or the
   // server has no punches yet for today (e.g. a carried-over unclosed
   // yesterday session, before today's first punch).
-  const fetchServerPunchStatus = async (userId) => {
+  // Server punches of one shift date (get_device_attendance filters on SHIFTDATE)
+  const fetchServerPunchStatus = async (userId, shiftDate) => {
     try {
       const net = await Network.getNetworkStateAsync();
       if (!net.isConnected) return null;
 
-      const todayStr = new Date().toISOString().slice(0, 10);
       const res = await axios.post(
         API_ENDPOINTS.DEVICE_ATTENDANCE,
-        { user_id: userId, date: todayStr },
+        { user_id: userId, date: shiftDate },
         { timeout: 8000 },
       );
       if (res.data?.success !== 1) return null;
@@ -338,20 +335,31 @@ const HomeScreen = ({ navigation, route }) => {
     // should ever be applied, otherwise a slower/stale call resolving last can
     // clobber the button state with outdated data.
     const requestId = ++fetchStatusRequestId.current;
-    // 1. Instantly load from Local DB to prevent UI flicker
-    let localType = 'NONE';
+    // 1. Instantly load from Local DB to prevent UI flicker. The next punch is decided like the
+    //    server's punch trigger (services/ShiftDate.js): its shift date — a night shift keeps
+    //    early-morning punches on the previous day — then IN if that shift date has no punch yet,
+    //    else the opposite of its last punch. So a missed check-out yesterday shows Check In today.
+    let shiftDate = null;
+    let localLast = null;
     try {
-      localType = await getLastPunchType(user.user_id);
-      const localLogs = await getTodayLocalHistory(user.user_id);
+      const now = new Date();
+      const [schedule, punches] = await Promise.all([
+        getCachedShiftSchedule(user.user_id),
+        getPunchesBetween(user.user_id, new Date(now.getTime() - SHIFT_DATE_LOOKBACK_MS).toISOString(), new Date(now.getTime() + 60000).toISOString()).catch(() => []),
+      ]);
+      const next = nextPunch(now, punches, schedule);
+      shiftDate = next.shiftDate;
+      localLast = next.onShift[next.onShift.length - 1] || null;
 
       if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
 
-      setIsPunchedIn(localType === 'IN');
+      const localType = localLast ? String(localLast.type).toUpperCase() : 'NONE';
+      setIsPunchedIn(next.direction === 'OUT');
       setStatus(prev => ({ ...prev, lastType: localType }));
 
-      if (localType === 'IN' && localLogs && localLogs.length > 0) {
-        setPunchInTime(new Date(localLogs[0].punch_time));
-        setPunchInAddress(localLogs[0].address || '');
+      if (next.direction === 'OUT' && localLast) {
+        setPunchInTime(new Date(localLast.punch_time));
+        setPunchInAddress(localLast.address || '');
       } else {
         setPunchInTime(null);
         setPunchInAddress('');
@@ -370,9 +378,15 @@ const HomeScreen = ({ navigation, route }) => {
     // on our own last write); if the server has already recorded today's
     // punches, its answer wins — this is what actually determines payroll,
     // regardless of what direction we assumed client-side.
-    const serverStatus = await fetchServerPunchStatus(user.user_id);
+    if (!shiftDate) return;
+    const serverStatus = await fetchServerPunchStatus(user.user_id, shiftDate);
     if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
-    if (serverStatus) {
+    // A punch still waiting to sync that is newer than the server's last one is the truth
+    // until it syncs — the server would otherwise flip the button back
+    const serverMs = serverStatus ? new Date(String(serverStatus.time).replace(' ', 'T')).getTime() : 0;
+    const localPendingNewer = localLast && localLast.sync_status === 'PENDING'
+      && new Date(localLast.punch_time).getTime() > serverMs;
+    if (serverStatus && !localPendingNewer) {
       setIsPunchedIn(serverStatus.type === 'IN');
       setStatus(prev => ({ ...prev, lastType: serverStatus.type }));
       if (serverStatus.type === 'IN') {
@@ -384,6 +398,15 @@ const HomeScreen = ({ navigation, route }) => {
         setPunchInAddress('');
       }
     }
+  };
+
+  // Punches reached the server: refresh the badge and button now, then re-fetch the shift
+  // schedule (shift changes, approved leave) and re-check the button and reminders with it
+  const afterPunchSync = () => {
+    checkOfflinePunches();
+    fetchStatus();
+    const userId = userRef.current?.user_id;
+    if (userId) refreshShiftReminders(userId, { forceFetch: true }).then(() => fetchStatus());
   };
 
   const checkOfflinePunches = async () => {
@@ -606,8 +629,7 @@ const HomeScreen = ({ navigation, route }) => {
       SyncService.syncAll({
         onAttendanceSynced: () => {
           console.log(`[Punch] synced (${Date.now() - startedAt}ms)`);
-          checkOfflinePunches();
-          fetchStatus();
+          afterPunchSync();
         },
       });
     } else {

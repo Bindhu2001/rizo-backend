@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
 import { API_ENDPOINTS } from '../constants/Config';
 import { getPunchesBetween } from './LocalDB';
+import { assignShiftDates } from './ShiftDate';
 
 // Shift punch reminders (10 min before/after shift start and end) and the
 // short-hours alert, all scheduled on the phone so they fire with the app closed.
@@ -44,7 +45,8 @@ export const setRemindersEnabled = async (enabled, userId) => {
 const fetchSchedule = async (userId) => {
   const from = new Date();
   from.setDate(from.getDate() - 1); // yesterday too, for night shifts ending today
-  const body = { user_id: userId, from_date: isoDay(from), days: 8 };
+  // 14 days (the API's maximum) so the button and reminders keep working through a long spell offline
+  const body = { user_id: userId, from_date: isoDay(from), days: 14 };
   const ok = (res) => res?.data && (res.data.success === 1 || res.data.success === true) && Array.isArray(res.data.data?.days);
   let res = await axios.post(API_ENDPOINTS.SHIFT_SCHEDULE, body, { timeout: 8000 }).catch(() => null);
   if (!ok(res)) {
@@ -57,7 +59,9 @@ const fetchSchedule = async (userId) => {
 const loadSchedule = async (userId, forceFetch) => {
   let cached = null;
   try { cached = JSON.parse(await AsyncStorage.getItem(SCHEDULE_CACHE_KEY(userId)) || 'null'); } catch (_) {}
-  const fresh = cached && Date.now() - cached.fetchedAt < SCHEDULE_MAX_AGE_MS;
+  // Re-fetched every new day and after 3 hours (and on every punch sync, via forceFetch)
+  const fresh = cached && Date.now() - cached.fetchedAt < SCHEDULE_MAX_AGE_MS
+    && isoDay(new Date(cached.fetchedAt)) === isoDay(new Date());
   if (fresh && !forceFetch) return cached.days;
 
   const net = await Network.getNetworkStateAsync().catch(() => null);
@@ -109,6 +113,17 @@ const cancelByPrefix = async (prefix) => {
     .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {})));
 };
 
+// The saved schedule only — no network wait, so the punch button never waits on it
+// (refreshShiftReminders keeps it up to date in the background)
+export const getCachedShiftSchedule = async (userId) => {
+  try {
+    const cached = JSON.parse(await AsyncStorage.getItem(SCHEDULE_CACHE_KEY(userId)) || 'null');
+    return cached?.days || [];
+  } catch (_) {
+    return [];
+  }
+};
+
 export const clearShiftReminders = async () => {
   await cancelByPrefix(REMINDER_PREFIX);
   await cancelByPrefix(SHORT_PREFIX);
@@ -133,6 +148,8 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
     const earliest = windows.length ? Math.min(...windows.map(({ w }) => w.start.getTime())) - WINDOW_PAD_MS : now;
     const punches = await getPunchesBetween(userId, new Date(earliest).toISOString(), new Date(now + 60000).toISOString())
       .catch(() => []);
+    // Grouped by shift date the way the server's punch trigger does (night shifts included)
+    const assigned = assignShiftDates(punches, days);
 
     let shortState = {};
     try { shortState = JSON.parse(await AsyncStorage.getItem(SHORT_STATE_KEY(userId)) || '{}'); } catch (_) {}
@@ -143,10 +160,7 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
     for (const { row, w } of windows) {
       const startMs = w.start.getTime();
       const endMs = w.end.getTime();
-      const inWindow = punches.filter((p) => {
-        const t = new Date(p.punch_time).getTime();
-        return t >= startMs - WINDOW_PAD_MS && t <= endMs + WINDOW_PAD_MS;
-      });
+      const inWindow = assigned.filter((p) => p.shiftDate === row.date);
       const firstIn = inWindow.find((p) => p.type === 'IN');
       const last = inWindow[inWindow.length - 1];
       const checkedIn = !!firstIn;
@@ -168,11 +182,22 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
         if (after > now) await schedule(id('end-after'), '🚪 Not checked out yet', `Your shift ended at ${endLabel}. Please check out now.`, new Date(after), { type: 'SHIFT_REMINDER' });
       }
 
-      // Short hours: first check-in → last check-out against required_minutes
+      // Short hours, same rule as the server's attendance calculation: first IN → last OUT, or the
+      // last punch of any kind when the shift has include_break + first_in_last_punch; with
+      // strict_monitorings, time before shift start / after shift end does not count
       const required = Number(row.required_minutes) || 0;
       const shortId = `${SHORT_PREFIX}${row.date}`;
-      if (checkedOut && required > 0) {
-        const workedMins = Math.floor((new Date(last.punch_time).getTime() - new Date(firstIn.punch_time).getTime()) / 60000);
+      const lastAnyPunch = row.include_break === 'Y' && row.first_in_last_punch === 'Y';
+      const outPunch = lastAnyPunch ? last : [...inWindow].reverse().find((p) => p.type === 'OUT');
+      const hasOut = !!(firstIn && outPunch && outPunch.time > firstIn.time);
+      if ((checkedOut || (lastAnyPunch && hasOut)) && hasOut && required > 0) {
+        let inMs = firstIn.time.getTime();
+        let outMs = outPunch.time.getTime();
+        if (row.strict_monitorings === 'Y') {
+          inMs = Math.max(inMs, startMs);
+          outMs = Math.min(outMs, endMs);
+        }
+        const workedMins = Math.max(0, Math.floor((outMs - inMs) / 60000));
         if (workedMins < required) {
           const prev = shortState[row.date];
           if (prev && prev.worked === workedMins) {
