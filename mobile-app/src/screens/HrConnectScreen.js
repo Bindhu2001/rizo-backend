@@ -15,7 +15,6 @@ import { moderateScale, SHADOWS, KEYBOARD_AVOID_BEHAVIOR } from '../components/T
 import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
-import { useKeyboardVisible } from '../components/KeyboardDoneBar';
 
 // "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
 // the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
@@ -85,7 +84,6 @@ export const PanelHeader = ({ title, subtitle, onBack, children }) => {
 const NewConversation = ({ onBack, onCreated }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const keyboardOpen = useKeyboardVisible();
   const accent = hrAccent(theme);
   const [category, setCategory]= useState('Enquiry');
   const [subject, setSubject] = useState('');
@@ -159,7 +157,7 @@ const NewConversation = ({ onBack, onCreated }) => {
 
         {!!error && <Text style={[s.errorText, { color: theme.danger }]}>{error}</Text>}
       </ScrollView>
-      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: keyboardOpen ? moderateScale(12) : Math.max(moderateScale(12), insets.bottom) }]}>
+      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
         <TouchableOpacity onPress={submit} disabled={!canSend} style={[s.primaryBtn, { backgroundColor: hrFill(theme) }, !canSend && { opacity: 0.5 }]}>
           {saving ? <ActivityIndicator color="#FFF" /> : (
             <>

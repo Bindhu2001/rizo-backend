@@ -13,7 +13,6 @@ import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
-import { useKeyboardVisible } from '../components/KeyboardDoneBar';
 
 // One "Connect to HR" conversation, chat-style like the web ESS widget's thread view: day
 // separators, grouped bubbles with HR's avatar and name, status notes (sent / resolved /
@@ -40,7 +39,6 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const accent = hrAccent(theme);
   const fill = hrFill(theme);
-  const keyboardOpen = useKeyboardVisible();
 const id = route?.params?.id;
   // A just-created conversation is passed in, so it shows without waiting for the server
   const initial = route?.params?.initial;
@@ -273,7 +271,7 @@ const id = route?.params?.id;
             <Text style={[s.closedText, { color: theme.textMuted }]}>This conversation is closed. Start a new one if you need more help.</Text>
           </View>
         ) : (
-          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: keyboardOpen ? moderateScale(10) : Math.max(moderateScale(10), insets.bottom) }]}>
+          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
             <TextInput
               value={reply}
               onChangeText={setReply}
