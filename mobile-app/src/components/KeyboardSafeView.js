@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, StatusBar, View } from 'react-native';
 
 // Keeps a form / chat box above the keyboard.
 //  iPhone:  KeyboardAvoidingView with padding.
@@ -21,7 +21,9 @@ const AndroidSafeView = ({ style, children }) => {
       clear();
       timers = MEASURE_AT.map((ms) => setTimeout(() => {
         ref.current?.measureInWindow((_x, y, _w, h) => {
-          const covered = y + h - e.endCoordinates.screenY;
+          // measureInWindow leaves out the status bar (it subtracts the visible frame's top), while the keyboard's
+          // screenY counts from the very top of the screen — add it back or the padding comes up a status bar short.
+          const covered = y + (StatusBar.currentHeight || 0) + h - e.endCoordinates.screenY;
           setOverlap(covered > 2 ? Math.round(covered) : 0);
         });
       }, ms));

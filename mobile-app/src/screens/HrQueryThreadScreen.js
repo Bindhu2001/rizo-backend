@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
@@ -37,6 +38,7 @@ const initials = (name) => String(name || 'HR').trim().split(/\s+/).slice(0, 2).
 const HrQueryThreadScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const footerPad = useFooterPadding();
   const accent = hrAccent(theme);
   const fill = hrFill(theme);
 const id = route?.params?.id;
@@ -271,7 +273,7 @@ const id = route?.params?.id;
             <Text style={[s.closedText, { color: theme.textMuted }]}>This conversation is closed. Start a new one if you need more help.</Text>
           </View>
         ) : (
-          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
+          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: footerPad }]}>
             <TextInput
               value={reply}
               onChangeText={setReply}

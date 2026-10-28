@@ -14,7 +14,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
-import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible, useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { getTodayVisits, getVisitsByDate, getLiveVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
@@ -424,6 +424,7 @@ const DISCLOSURE_KEY = 'location_disclosure_accepted_v1';
 const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const footerPad = useFooterPadding();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -517,7 +518,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             </View>
           </ScrollView>
 
-          <View style={[sv.footer, { backgroundColor: theme.bg, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
+          <View style={[sv.footer, { backgroundColor: theme.bg, paddingBottom: footerPad }]}>
             <TouchableOpacity
               style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && sv.startBtnDisabled]}
               onPress={handleSave}
@@ -565,6 +566,7 @@ const sv = StyleSheet.create({
 const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const footerPad = useFooterPadding();
   const [company, setCompany] = useState('');
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
@@ -600,7 +602,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
           </ScrollView>
 
-          <View style={[sm.footer, { paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
+          <View style={[sm.footer, { paddingBottom: footerPad }]}>
             <TouchableOpacity
               style={[sm.saveBtn, processing && { opacity: 0.7 }]}
               onPress={() => onSave({ company, contactNo, contactPerson, purpose })}

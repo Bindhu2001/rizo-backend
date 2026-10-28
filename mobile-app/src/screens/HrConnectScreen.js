@@ -4,7 +4,7 @@ import {
   TextInput, Platform, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronLeft, ChevronRight, Plus, MessageCircle, MessageSquare, AlertCircle, HelpCircle,
   ShieldCheck, TriangleAlert, Send,
@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 
@@ -83,7 +84,7 @@ export const PanelHeader = ({ title, subtitle, onBack, children }) => {
 
 const NewConversation = ({ onBack, onCreated }) => {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const footerPad = useFooterPadding();
   const accent = hrAccent(theme);
   const [category, setCategory]= useState('Enquiry');
   const [subject, setSubject] = useState('');
@@ -157,7 +158,7 @@ const NewConversation = ({ onBack, onCreated }) => {
 
         {!!error && <Text style={[s.errorText, { color: theme.danger }]}>{error}</Text>}
       </ScrollView>
-      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
+      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: footerPad }]}>
         <TouchableOpacity onPress={submit} disabled={!canSend} style={[s.primaryBtn, { backgroundColor: hrFill(theme) }, !canSend && { opacity: 0.5 }]}>
           {saving ? <ActivityIndicator color="#FFF" /> : (
             <>

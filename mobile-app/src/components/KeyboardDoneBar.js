@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { InputAccessoryView, Keyboard, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 
@@ -41,6 +42,14 @@ export const useKeyboardVisible = () => {
     return () => { show.remove(); hide.remove(); };
   }, []);
   return visible;
+};
+
+/** Bottom padding for a button / message bar that sits on the keyboard: a small even gap while the keyboard is open
+ *  (it covers the home-bar area), the home-bar inset when it is closed. Same gap on every screen. */
+export const useFooterPadding = () => {
+  const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardVisible();
+  return keyboardOpen ? moderateScale(16) : Math.max(moderateScale(20), insets.bottom + moderateScale(8));
 };
 
 export default KeyboardDoneBar;
