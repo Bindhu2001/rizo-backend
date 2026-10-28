@@ -10,7 +10,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { SHADOWS, moderateScale, wp, SCREEN_WIDTH as width } from '../components/Theme';
+import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
@@ -33,6 +33,7 @@ const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secu
       placeholder={placeholder}
       placeholderTextColor={theme.textMuted}
       maxLength={maxLength}
+      returnKeyType="done"
     />
     {validation?.status && validation.status !== 'idle' && (
       <View style={st.vRow}>
@@ -100,7 +101,7 @@ const SimplePickerModal = ({ visible, title, options, selected, onClose, onSelec
       <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
         <Text style={[st.modalTitle, { color: theme.textMuted }]}>{title}</Text>
-        <ScrollView style={{ maxHeight: 320 }}>
+        <ScrollView style={{ maxHeight: Math.min(320, hp(40)) }}>
           {options.map((opt, i) => (
             <TouchableOpacity
               key={i}
@@ -131,6 +132,8 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
     : countries;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      {/* The sheet rides above the keyboard while searching */}
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
       <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
         <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%', paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
           <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
@@ -142,12 +145,14 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
             value={query}
             onChangeText={setQuery}
             autoCorrect={false}
+            returnKeyType="search"
           />
           <FlatList
             data={filtered}
             keyExtractor={c => String(c.id)}
-            style={{ maxHeight: 320 }}
+            style={{ maxHeight: Math.min(320, hp(40)) }}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             ListEmptyComponent={<Text style={[st.countryItemText, { color: theme.textMuted, textAlign: 'center', paddingVertical: 20 }]}>{query ? 'No results found' : 'Loading countries…'}</Text>}
             renderItem={({ item: c }) => (
               <TouchableOpacity
@@ -166,6 +171,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -571,7 +577,7 @@ const SignupScreen = ({ navigation }) => {
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
           <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
@@ -884,7 +890,7 @@ const SignupScreen = ({ navigation }) => {
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 
       {/* ── Photo Modal ── */}
-      <Modal visible={showPicModal} transparent animationType="slide" onRequestClose={() => setShowPicModal(false)}>
+      <Modal visible={showPicModal} transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowPicModal(false)}>
         <View style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
             <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
@@ -917,7 +923,7 @@ const SignupScreen = ({ navigation }) => {
       {/* ── DOB Picker ── */}
       {showDobPicker && (
         Platform.OS === 'ios' ? (
-          <Modal transparent animationType="slide" onRequestClose={() => setShowDobPicker(false)}>
+          <Modal transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowDobPicker(false)}>
             <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDobPicker(false)}>
               {/* Claims taps so only the dimmed area outside the sheet closes it */}
               <View style={[st.modalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(32, insets.bottom + moderateScale(8)) }]} onStartShouldSetResponder={() => true}>

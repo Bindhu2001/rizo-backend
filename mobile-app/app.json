@@ -26,7 +26,7 @@
     "android": {
       "package": "com.rizo.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 12,
+      "versionCode": 13,
       "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
@@ -41,7 +41,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon_square.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#000000"
       }
     },
     "web": {
@@ -64,7 +64,7 @@
       ],
       ["expo-notifications", {
         "icon": "./assets/notification_icon.png",
-        "color": "#4A148C"
+        "color": "#23679B"
       }],
       "expo-camera",
       "expo-image-picker",

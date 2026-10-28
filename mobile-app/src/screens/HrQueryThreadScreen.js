@@ -1,78 +1,119 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, TextInput,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Keyboard, AppState,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { ChevronLeft, Send, AlertTriangle } from 'lucide-react-native';
+import { Send, TriangleAlert, ShieldCheck, CheckCircle2, Lock, Check, Clock } from 'lucide-react-native';
+import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
-import { STATUS_STYLE, fmtQueryDate } from './HrConnectScreen';
+import { HR_BRAND, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
 
-// One "Connect to HR" thread: the conversation with HR, a reply box, and "Not satisfied —
-// Escalate" once HR has replied. Opening it marks HR's replies as read (server side).
+// One "Connect to HR" conversation, chat-style like the web ESS widget's thread view: day
+// separators, grouped bubbles with HR's avatar and name, status notes (sent / resolved /
+// escalated), "Escalate" once HR has replied, and no reply box once HR closes it.
+// A sent message shows straight away and is confirmed by the server in the background.
+// Opening it marks HR's replies as read (server side).
 
 const MESSAGE_MAX = 2000;
+const POLL_MS = 6000;
+
+const nowStamp = () => format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+const fmtTime = (s) => { const d = parseQueryDate(s); return isNaN(d.getTime()) ? '' : format(d, 'hh:mm a'); };
+const fmtDay = (s) => {
+  const diff = dayDiff(s);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  const d = parseQueryDate(s);
+  return isNaN(d.getTime()) ? '' : format(d, 'dd MMM yyyy');
+};
+const initials = (name) => String(name || 'HR').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'HR';
 
 const HrQueryThreadScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const accent = hrAccent(theme);
   const id = route?.params?.id;
-  const [query, setQuery] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // A just-created conversation is passed in, so it shows without waiting for the server
+  const initial = route?.params?.initial;
+  const [query, setQuery] = useState(initial?.query || null);
+  const [messages, setMessages] = useState(initial?.messages || []);
+  // Sent from this screen, not confirmed by the server yet: { key, message, created_date, failed }
+  const [pending, setPending] = useState([]);
   const [reply, setReply] = useState('');
-  const [sending, setSending] = useState(false);
   const [escalating, setEscalating] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
   const listRef = useRef(null);
 
-  const load = async () => {
+  const load = async ({ silent = false } = {}) => {
     try {
       const res = await HrQueriesApi.thread(id);
-      setQuery(res?.query || null);
+      if (res?.query) setQuery(res.query);
       setMessages(Array.isArray(res?.messages) ? res.messages : []);
     } catch (e) {
-      setAlertCfg({ type: 'error', title: 'Could not load', message: apiErrorMessage(e, 'Please check your connection and try again.') });
-    } finally {
-      setLoading(false);
+      if (!silent) setAlertCfg({ type: 'error', title: 'Could not load', message: apiErrorMessage(e, 'Please check your connection and try again.') });
     }
   };
 
-  useEffect(() => { load(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load({ silent: !!initial }); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // HR replies while this thread is open → show it straight away
+  // HR's replies arrive while the conversation is open: every 6s (as on the web) while the app
+  // is in front, and at once when their push comes in
   useEffect(() => {
-    const sub = Notifications.addNotificationReceivedListener((n) => {
-      const data = n?.request?.content?.data || {};
-      if (data.type === 'HR_QUERY' && Number(data.id) === Number(id)) load();
+    let timer = setInterval(() => load({ silent: true }), POLL_MS);
+    const appSub = AppState.addEventListener('change', (st) => {
+      clearInterval(timer);
+      if (st === 'active') { load({ silent: true }); timer = setInterval(() => load({ silent: true }), POLL_MS); }
     });
-    return () => sub.remove();
+    const pushSub = Notifications.addNotificationReceivedListener((n) => {
+      const data = n?.request?.content?.data || {};
+      if (data.type === 'HR_QUERY' && Number(data.id) === Number(id)) load({ silent: true });
+    });
+    return () => { clearInterval(timer); appSub.remove(); pushSub.remove(); };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const send = async () => {
-    const text = reply.trim();
-    if (!text || sending) return;
-    setSending(true);
+  // Keep the newest message in view when the keyboard opens
+  useEffect(() => {
+    const sub = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 60));
+    return () => sub.remove();
+  }, []);
+
+  const deliver = async (key, text) => {
     try {
-      await HrQueriesApi.reply(id, text);
-      setReply('');
-      await load();
+      const res = await HrQueriesApi.reply(id, text);
+      // Shown as the server's copy from now on; the reload picks up a reopened status
+      setMessages((prev) => [...prev, { hr_query_message_pkey: res?.id ?? key, sender_type: 'employee', message: text, created_date: nowStamp() }]);
+      setPending((prev) => prev.filter((m) => m.key !== key));
+      load({ silent: true });
     } catch (e) {
-      setAlertCfg({ type: 'error', title: 'Not sent', message: apiErrorMessage(e, 'Your message could not be sent. Please try again.') });
-    } finally {
-      setSending(false);
+      setPending((prev) => prev.map((m) => (m.key === key ? { ...m, failed: true } : m)));
     }
+  };
+
+  const send = () => {
+    const text = reply.trim();
+    if (!text) return;
+    const key = `local-${Date.now()}`;
+    setReply('');
+    setPending((prev) => [...prev, { key, message: text, created_date: nowStamp(), failed: false }]);
+    deliver(key, text);
+  };
+
+  const retry = (m) => {
+    setPending((prev) => prev.map((p) => (p.key === m.key ? { ...p, failed: false } : p)));
+    deliver(m.key, m.message);
   };
 
   const escalate = () => {
     setAlertCfg({
       type: 'warning',
-      title: 'Escalate this query?',
-      message: "Not satisfied with HR's reply? Escalating marks this query as urgent for HR.",
+      title: 'Escalate this conversation?',
+      message: "Not satisfied with HR's response? HR will be flagged to look at it as a priority.",
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -92,84 +133,158 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
     });
   };
 
-  const renderMessage = ({ item }) => {
+  const items = [...messages, ...pending.map((m) => ({ ...m, sender_type: 'employee' }))];
+
+  const renderMessage = ({ item, index }) => {
     const mine = item.sender_type === 'employee';
+    const prev = items[index - 1];
+    const next = items[index + 1];
+    const newDay = !prev || dayDiff(prev.created_date) !== dayDiff(item.created_date);
+    const firstOfGroup = newDay || prev.sender_type !== item.sender_type;
+    const lastOfGroup = !next || next.sender_type !== item.sender_type || dayDiff(next.created_date) !== dayDiff(item.created_date);
+    const isPending = !!item.key && !item.failed;
+
+    const bubble = (
+      <View style={[s.bubble, mine
+        ? [{ backgroundColor: item.failed ? '#DC2626' : HR_BRAND }, lastOfGroup && { borderBottomRightRadius: moderateScale(4) }]
+        : [s.bubbleHr, { backgroundColor: theme.card, borderColor: theme.border }, lastOfGroup && { borderBottomLeftRadius: moderateScale(4) }]]}
+      >
+        <Text style={[s.msgText, { color: mine ? '#FFF' : theme.text }]}>{item.message}</Text>
+        <View style={s.metaRow}>
+          <Text style={[s.msgTime, { color: mine ? 'rgba(255,255,255,0.75)' : theme.textMuted }]}>
+            {item.failed ? 'Not sent · tap to retry' : fmtTime(item.created_date)}
+          </Text>
+          {mine && !item.failed && (isPending
+            ? <Clock color="rgba(255,255,255,0.75)" size={11} style={s.tick} />
+            : <Check color="rgba(255,255,255,0.85)" size={13} style={s.tick} />)}
+        </View>
+      </View>
+    );
+
     return (
-      <View style={[s.bubbleRow, mine ? s.rowMine : s.rowHr]}>
-        <View style={[s.bubble, mine
-          ? { backgroundColor: theme.primaryDeep, borderBottomRightRadius: moderateScale(4) }
-          : { backgroundColor: theme.card, borderBottomLeftRadius: moderateScale(4) }]}
-        >
-          {!mine && <Text style={[s.sender, { color: theme.primaryDeep }]}>{item.sender_name || 'HR'}</Text>}
-          <Text style={[s.msgText, { color: mine ? '#FFF' : theme.text }]}>{item.message}</Text>
-          <Text style={[s.msgTime, { color: mine ? 'rgba(255,255,255,0.75)' : theme.textMuted }]}>{fmtQueryDate(item.created_date)}</Text>
+      <View>
+        {newDay && (
+          <View style={[s.dayChip, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={[s.dayText, { color: theme.textMuted }]}>{fmtDay(item.created_date)}</Text>
+          </View>
+        )}
+        <View style={[s.bubbleRow, mine ? s.rowMine : s.rowHr, firstOfGroup && !newDay && { marginTop: moderateScale(8) }]}>
+          {!mine && (
+            <View style={s.avatarSlot}>
+              {lastOfGroup && (
+                <View style={[s.avatar, { backgroundColor: HR_BRAND }]}>
+                  <Text style={s.avatarText}>{initials(item.sender_name)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+          <View style={[s.bubbleCol, { alignItems: mine ? 'flex-end' : 'flex-start' }]}>
+            {!mine && firstOfGroup && (
+              <View style={s.senderRow}>
+                <ShieldCheck color={accent} size={11} />
+                <Text style={[s.sender, { color: theme.textMuted }]}>{item.sender_name || 'HR'} · HR</Text>
+              </View>
+            )}
+            {item.failed
+              ? <TouchableOpacity onPress={() => retry(item)} activeOpacity={0.8}>{bubble}</TouchableOpacity>
+              : bubble}
+          </View>
         </View>
       </View>
     );
   };
 
-  const st = STATUS_STYLE[query?.status] || STATUS_STYLE.Closed;
-  const canEscalate = query && query.has_admin_reply && !query.escalated;
+  const status = query?.status;
+  const canEscalate = !!query && !!query.has_admin_reply && !query.escalated && status !== 'Closed';
+  const okText = theme.isDark ? '#34D399' : '#15803D';
+  const badText = theme.isDark ? '#F87171' : '#991B1B';
+
+  const footer = !query ? null : (
+    <View>
+      {!query.has_admin_reply && status === 'Open' && (
+        <Text style={[s.note, { color: theme.textMuted }]}>Your query has been sent. HR will reply here.</Text>
+      )}
+      {status === 'Resolved' && (
+        <View style={[s.banner, { backgroundColor: theme.isDark ? 'rgba(52,211,153,0.14)' : '#DCFCE7' }]}>
+          <CheckCircle2 color={okText} size={15} />
+          <Text style={[s.bannerText, { color: okText }]}>HR marked this as resolved. Still need help? Just reply and it will reopen.</Text>
+        </View>
+      )}
+      {!!query.escalated && (
+        <View style={[s.banner, { backgroundColor: theme.isDark ? 'rgba(248,113,113,0.14)' : '#FEE2E2' }]}>
+          <TriangleAlert color={badText} size={15} />
+          <Text style={[s.bannerText, { color: badText }]}>You escalated this conversation. HR has been flagged to look at it as a priority.</Text>
+        </View>
+      )}
+      {canEscalate && (
+        <View style={[s.escalateCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
+          <Text style={[s.escalateQ, { color: theme.textLight }]}>Not satisfied with HR's response?</Text>
+          <TouchableOpacity onPress={escalate} disabled={escalating} style={[s.escalateBtn, { borderColor: theme.danger }, escalating && { opacity: 0.6 }]}>
+            <TriangleAlert color={theme.danger} size={13} />
+            <Text style={[s.escalateText, { color: theme.danger }]}>{escalating ? 'Escalating…' : 'Escalate'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
+  const subtitle = query ? (
+    <>
+      <Text style={s.subText}>{query.category}</Text>
+      <View style={s.headerPill}><Text style={s.headerPillText}>{status}</Text></View>
+      {!!query.escalated && (
+        <View style={[s.headerPill, s.pillRow, { backgroundColor: '#FEE2E2' }]}>
+          <TriangleAlert color="#991B1B" size={10} />
+          <Text style={[s.headerPillText, { color: '#991B1B', marginLeft: 3 }]}>Escalated</Text>
+        </View>
+      )}
+    </>
+  ) : null;
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-      <View style={[s.header, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={theme.text} size={28} />
-        </TouchableOpacity>
-        <View style={s.headerText}>
-          <Text style={[s.headerTitle, { color: theme.text }]} numberOfLines={1}>{query?.subject || 'Query'}</Text>
-          {!!query && (
-            <View style={s.headerMeta}>
-              <Text style={[s.metaText, { color: theme.textLight }]}>{query.category}</Text>
-              <View style={[s.badge, { backgroundColor: st.bg }]}><Text style={[s.badgeText, { color: st.text }]}>{query.status}</Text></View>
-              {query.escalated && (
-                <View style={[s.badge, { backgroundColor: '#FEF3C7' }]}><Text style={[s.badgeText, { color: '#B45309' }]}>Escalated</Text></View>
-              )}
-            </View>
-          )}
-        </View>
-      </View>
+      <PanelHeader title={query?.subject || 'Loading…'} subtitle={subtitle} onBack={() => navigation.goBack()} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {loading ? (
-          <ActivityIndicator style={{ marginTop: moderateScale(40) }} color={theme.primaryDeep} />
+      <KeyboardAvoidingView style={[s.body, { backgroundColor: theme.bg }]} behavior="padding">
+        {!query ? (
+          <View style={{ flex: 1 }}><ActivityIndicator style={{ marginTop: moderateScale(40) }} color={accent} /></View>
         ) : (
           <FlatList
             ref={listRef}
-            data={messages}
-            keyExtractor={(m) => String(m.hr_query_message_pkey)}
+            data={items}
+            keyExtractor={(m) => m.key || String(m.hr_query_message_pkey)}
             renderItem={renderMessage}
             contentContainerStyle={s.list}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            ListFooterComponent={canEscalate ? (
-              <TouchableOpacity onPress={escalate} disabled={escalating} style={[s.escalateBtn, escalating && { opacity: 0.6 }]}>
-                <AlertTriangle color="#B45309" size={16} />
-                <Text style={s.escalateText}>Not satisfied — Escalate</Text>
-              </TouchableOpacity>
-            ) : null}
+            ListFooterComponent={footer}
           />
         )}
 
-        <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(10), insets.bottom) }]}>
-          <TextInput
-            value={reply}
-            onChangeText={setReply}
-            maxLength={MESSAGE_MAX}
-            placeholder={query && query.status !== 'Open' ? 'Reply to reopen this query…' : 'Type a message…'}
-            placeholderTextColor={theme.textMuted}
-            multiline
-            style={[s.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
-          />
-          <TouchableOpacity
-            onPress={send}
-            disabled={!reply.trim() || sending}
-            style={[s.sendBtn, { backgroundColor: theme.primaryDeep }, (!reply.trim() || sending) && { opacity: 0.5 }]}
-          >
-            {sending ? <ActivityIndicator color="#FFF" size="small" /> : <Send color="#FFF" size={18} />}
-          </TouchableOpacity>
-        </View>
+        {status === 'Closed' ? (
+          <View style={[s.closedBar, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(12), insets.bottom) }]}>
+            <Lock color={theme.textMuted} size={13} />
+            <Text style={[s.closedText, { color: theme.textMuted }]}>This conversation is closed. Start a new one if you need more help.</Text>
+          </View>
+        ) : (
+          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(10), insets.bottom) }]}>
+            <TextInput
+              value={reply}
+              onChangeText={setReply}
+              maxLength={MESSAGE_MAX}
+              editable={!!query}
+              placeholder={status === 'Resolved' ? 'Reply to reopen…' : 'Type a message…'}
+              placeholderTextColor={theme.textMuted}
+              multiline
+              style={[s.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+            />
+            <TouchableOpacity onPress={send} disabled={!reply.trim()} style={[s.sendBtn, !reply.trim() && { opacity: 0.5 }]}>
+              <Send color="#FFF" size={18} />
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -177,27 +292,41 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(8), borderBottomWidth: StyleSheet.hairlineWidth },
-  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerText: { flex: 1, paddingRight: moderateScale(8) },
-  headerTitle: { fontSize: moderateScale(16), fontWeight: '800' },
-  headerMeta: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(3), gap: moderateScale(6) },
-  metaText: { fontSize: moderateScale(11), fontWeight: '700', textTransform: 'uppercase' },
-  badge: { paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(2), borderRadius: moderateScale(9) },
-  badgeText: { fontSize: moderateScale(10), fontWeight: '800' },
-  list: { padding: moderateScale(14), paddingBottom: moderateScale(20) },
-  bubbleRow: { flexDirection: 'row', marginBottom: moderateScale(10) },
+  body: { flex: 1 },
+  subText: { color: 'rgba(255,255,255,0.85)', fontSize: moderateScale(12) },
+  headerPill: { backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(1), borderRadius: moderateScale(10) },
+  headerPillText: { color: '#FFF', fontSize: moderateScale(10.5), fontWeight: '700' },
+  pillRow: { flexDirection: 'row', alignItems: 'center' },
+  list: { paddingHorizontal: moderateScale(10), paddingTop: moderateScale(6), paddingBottom: moderateScale(14) },
+  dayChip: { alignSelf: 'center', marginTop: moderateScale(10), marginBottom: moderateScale(6), borderWidth: 1, borderRadius: moderateScale(12), paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(2) },
+  dayText: { fontSize: moderateScale(11), fontWeight: '700' },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: moderateScale(3) },
   rowMine: { justifyContent: 'flex-end' },
   rowHr: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '82%', borderRadius: moderateScale(16), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8) },
-  sender: { fontSize: moderateScale(11), fontWeight: '800', marginBottom: moderateScale(2) },
+  avatarSlot: { width: moderateScale(30), marginRight: moderateScale(6) },
+  avatar: { width: moderateScale(30), height: moderateScale(30), borderRadius: moderateScale(15), alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#FFF', fontSize: moderateScale(11), fontWeight: '800' },
+  bubbleCol: { maxWidth: '80%' },
+  senderRow: { flexDirection: 'row', alignItems: 'center', marginLeft: moderateScale(4), marginBottom: moderateScale(3) },
+  sender: { fontSize: moderateScale(11), fontWeight: '700', marginLeft: moderateScale(4) },
+  bubble: { borderRadius: moderateScale(14), paddingHorizontal: moderateScale(12), paddingTop: moderateScale(7), paddingBottom: moderateScale(5) },
+  bubbleHr: { borderWidth: StyleSheet.hairlineWidth },
   msgText: { fontSize: moderateScale(14), lineHeight: moderateScale(20) },
-  msgTime: { fontSize: moderateScale(10), marginTop: moderateScale(4), alignSelf: 'flex-end' },
-  escalateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginTop: moderateScale(6), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(9), borderRadius: moderateScale(18), backgroundColor: '#FEF3C7' },
-  escalateText: { color: '#B45309', fontWeight: '800', fontSize: moderateScale(13), marginLeft: moderateScale(6) },
+  metaRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-end', marginTop: moderateScale(2) },
+  msgTime: { fontSize: moderateScale(10) },
+  tick: { marginLeft: moderateScale(4) },
+  note: { alignSelf: 'center', textAlign: 'center', fontSize: moderateScale(12), marginTop: moderateScale(12), maxWidth: '80%' },
+  banner: { flexDirection: 'row', alignItems: 'flex-start', marginTop: moderateScale(12), padding: moderateScale(10), borderRadius: moderateScale(12), gap: moderateScale(8) },
+  bannerText: { flex: 1, fontSize: moderateScale(12), lineHeight: moderateScale(17) },
+  escalateCard: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(12), padding: moderateScale(10), borderRadius: moderateScale(12), borderWidth: 1, borderStyle: 'dashed', gap: moderateScale(10) },
+  escalateQ: { flex: 1, fontSize: moderateScale(12) },
+  escalateBtn: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: moderateScale(9), paddingHorizontal: moderateScale(11), paddingVertical: moderateScale(6), gap: moderateScale(4) },
+  escalateText: { fontSize: moderateScale(12), fontWeight: '800' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: moderateScale(10), paddingTop: moderateScale(10), borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, borderWidth: 1, borderRadius: moderateScale(20), paddingHorizontal: moderateScale(14), paddingTop: moderateScale(10), paddingBottom: moderateScale(10), fontSize: moderateScale(14), maxHeight: moderateScale(120) },
-  sendBtn: { width: moderateScale(42), height: moderateScale(42), borderRadius: moderateScale(21), alignItems: 'center', justifyContent: 'center', marginLeft: moderateScale(8) },
+  sendBtn: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), alignItems: 'center', justifyContent: 'center', marginLeft: moderateScale(8), backgroundColor: HR_BRAND },
+  closedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(16), paddingTop: moderateScale(12), borderTopWidth: StyleSheet.hairlineWidth, gap: moderateScale(6) },
+  closedText: { fontSize: moderateScale(12), textAlign: 'center', flexShrink: 1 },
 });
 
 export default HrQueryThreadScreen;

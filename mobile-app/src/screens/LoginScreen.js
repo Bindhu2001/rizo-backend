@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, ActivityIndicator, Image, StatusBar, Platform
+  KeyboardAvoidingView, ActivityIndicator, Image, StatusBar, Platform, ScrollView
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,6 +42,8 @@ const LoginScreen = ({ navigation }) => {
   const [alertCfg, setAlertCfg] = useState(null);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
+
+  const passwordRef = useRef(null);
 
   const handleLogin = async () => {
     if (!userId || !password) {
@@ -119,9 +121,16 @@ const LoginScreen = ({ navigation }) => {
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.content}
+          behavior="padding"
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
+          style={{ flex: 1 }}
         >
+          {/* Scrolls when the keyboard (or a small screen / large font) leaves too little room */}
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <View style={styles.formContainer}>
             {/* TOP LOGO */}
             <View style={styles.headerGroup}>
@@ -144,6 +153,12 @@ const LoginScreen = ({ navigation }) => {
                   value={userId}
                   onChangeText={setUserId}
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  returnKeyType="next"
+                  blurOnSubmit={false}
+                  onSubmitEditing={() => passwordRef.current?.focus()}
                   placeholderTextColor={theme.textMuted}
                 />
               </View>
@@ -152,10 +167,17 @@ const LoginScreen = ({ navigation }) => {
                 <Lock color={theme.textMuted} size={20} />
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
+                  ref={passwordRef}
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={handleLogin}
                   placeholderTextColor={theme.textMuted}
                 />
                 <TouchableOpacity
@@ -189,6 +211,7 @@ const LoginScreen = ({ navigation }) => {
               <Text style={[styles.signupLabel, { color: theme.textLight }]}>Don't have an account? <Text style={styles.signupText}>Join Rizo</Text></Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 
@@ -204,7 +227,7 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
   safeArea: { flex: 1 },
-  content: { flex: 1, padding: moderateScale(30), justifyContent: 'center' },
+  content: { flexGrow: 1, padding: moderateScale(30), justifyContent: 'center' },
   formContainer: { width: '100%', alignItems: 'center' },
 
   headerGroup: { alignItems: 'center', marginBottom: moderateScale(50), width: '100%' },

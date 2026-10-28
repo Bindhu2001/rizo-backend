@@ -65,3 +65,12 @@ export const HrQueriesApi = {
   reply: (id, message) => request('post', `/hr-queries/${id}/messages`, { message }),
   escalate: (id) => request('post', `/hr-queries/${id}/escalate`),
 };
+
+export const TeamApi = {
+  today: () => request('get', '/team-today'),
+};
+
+export const AnnouncementsApi = {
+  list: () => request('get', '/announcements'),
+  markRead: (id) => request('post', `/announcements/${id}/read`),
+};

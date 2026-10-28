@@ -12,7 +12,7 @@ import {
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale, hp } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import NotificationManager from '../services/NotificationManager';
@@ -163,7 +163,7 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
       <View style={[sm.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[sm.handle, { backgroundColor: theme.border }]} />
         {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
-        <ScrollView style={{ maxHeight: 300 }}>
+        <ScrollView style={{ maxHeight: Math.min(300, hp(40)) }}>
           {options.map((opt, i) => {
             const isStr = typeof opt === 'string';
             const val = isStr ? opt : opt[valueKey];
@@ -481,7 +481,7 @@ const ExpenseScreen = ({ navigation, route }) => {
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
           <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
             {/* Expense Type */}
             <View style={s.inputBox}>

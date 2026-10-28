@@ -344,7 +344,7 @@ const BanIcon = () => (
 const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
   const theme = useTheme();
   return (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+  <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onCancel}>
     <View style={[cm.overlay, { backgroundColor: theme.modalOverlay }]}>
       <View style={[cm.box, { backgroundColor: theme.card }]}>
         <View style={[cm.iconWrap, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E8FF' }]}><BanIcon /></View>
@@ -400,6 +400,7 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLe
       multiline={multiline}
       numberOfLines={multiline ? 3 : 1}
       maxLength={maxLength}
+      returnKeyType={multiline ? 'default' : 'done'}
       placeholderTextColor={theme.textMuted}
     />
   </TouchableOpacity>
@@ -489,7 +490,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
         >
-          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flex: 1 }}>
             <View style={sv.locChipBox}>
               <View style={sv.locWrap}>
                 <MapPin color="#7C3AED" size={14} />
@@ -577,7 +578,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior="padding"
         style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}
@@ -587,7 +588,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
           <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
-          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
             <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
@@ -906,7 +907,7 @@ const VisitsScreen = ({ navigation, route }) => {
 
       {showDatePicker && (
         Platform.OS === 'ios' ? (
-          <Modal transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+          <Modal transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
             <TouchableOpacity style={[s.dateModalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
               {/* Claims taps so only the dimmed area outside the sheet closes it */}
               <View style={[s.dateModalSheet, { backgroundColor: theme.card }]} onStartShouldSetResponder={() => true}>

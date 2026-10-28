@@ -101,6 +101,7 @@ const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChang
               placeholder={placeholder}
               placeholderTextColor={theme.textMuted}
               maxLength={maxLength}
+              returnKeyType="done"
             />
           ) : (
             <Text style={[fi.value, { color: theme.text }]}>{value}</Text>
@@ -903,7 +904,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
         >
-          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
             <View style={[s.formWrap, { backgroundColor: theme.card }]}>
               <FloatingInput
                 label="Reason *"

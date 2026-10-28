@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, BackHandler, Switch, TextInput, Linking,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
-  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, MessageSquare,
+  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, MessageSquare, Megaphone,
   Lock, Eye, EyeOff, ShieldCheck, Trash2,
 } from 'lucide-react-native';
 import axios from 'axios';
@@ -16,7 +17,7 @@ import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
-import { HrQueriesApi } from '../services/RevampApi';
+import { HrQueriesApi, AnnouncementsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import { useTheme } from '../components/ThemeContext';
 
@@ -76,12 +77,14 @@ const ProfileScreen = ({ navigation, route }) => {
     setRemindersEnabled(value, user?.user_id);
   };
 
-  // Unread HR replies for the Connect to HR row — refreshed whenever Profile is shown
+  // Unread HR replies / announcements for the Support rows — refreshed whenever Profile is shown
   const [hrUnread, setHrUnread] = useState(0);
+  const [annUnread, setAnnUnread] = useState(0);
   useEffect(() => {
-    const refreshUnread = () => HrQueriesApi.list()
-      .then((res) => setHrUnread(Number(res?.unread) || 0))
-      .catch(() => {});
+    const refreshUnread = () => {
+      HrQueriesApi.list().then((res) => setHrUnread(Number(res?.unread) || 0)).catch(() => {});
+      AnnouncementsApi.list().then((res) => setAnnUnread(Number(res?.unread) || 0)).catch(() => {});
+    };
     refreshUnread();
     return navigation.addListener('focus', refreshUnread);
   }, [navigation]);
@@ -101,6 +104,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const confirmPwdRef = useRef(null);
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
@@ -324,7 +328,8 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
         <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false}>
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={[s.fieldCard, { backgroundColor: theme.card, paddingVertical: moderateScale(20) }]}>
             <Text style={[s.pwdLabel, { color: theme.textMuted }]}>New Password</Text>
             <View style={[s.pwdInputWrap, { borderColor: theme.divider, backgroundColor: theme.bg }]}>
@@ -337,6 +342,11 @@ const ProfileScreen = ({ navigation, route }) => {
                 value={newPassword}
                 onChangeText={setNewPassword}
                 autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => confirmPwdRef.current?.focus()}
               />
               <TouchableOpacity onPress={() => setShowNewPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 {showNewPwd
@@ -349,6 +359,7 @@ const ProfileScreen = ({ navigation, route }) => {
             <View style={[s.pwdInputWrap, { borderColor: theme.divider, backgroundColor: theme.bg }]}>
               <Lock color={theme.textMuted} size={18} style={{ marginRight: 8 }} />
               <TextInput
+                ref={confirmPwdRef}
                 style={[s.pwdInput, { color: theme.text }]}
                 placeholder="Confirm new password"
                 placeholderTextColor={theme.textMuted}
@@ -356,6 +367,10 @@ const ProfileScreen = ({ navigation, route }) => {
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="newPassword"
+                returnKeyType="done"
+                onSubmitEditing={handleResetPassword}
               />
               <TouchableOpacity onPress={() => setShowConfirmPwd(v => !v)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 {showConfirmPwd
@@ -377,6 +392,7 @@ const ProfileScreen = ({ navigation, route }) => {
           </View>
           <View style={{ height: 32 }} />
         </ScrollView>
+        </KeyboardAvoidingView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       </SafeAreaView>
     );
@@ -443,6 +459,14 @@ const ProfileScreen = ({ navigation, route }) => {
 
         <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Support</Text>
         <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          <SectionItem
+            iconBg="#FFF7ED" icon={<Megaphone color="#EA580C" size={20} />}
+            title="Announcements"
+            subtitle={annUnread > 0
+              ? `${annUnread} new ${annUnread === 1 ? 'announcement' : 'announcements'}`
+              : 'Company updates from HR'}
+            onPress={() => navigation.navigate('Announcements', { user })}
+          />
           <SectionItem
             iconBg="#F5F3FF" icon={<MessageSquare color="#7C3AED" size={20} />}
             title="Connect to HR"

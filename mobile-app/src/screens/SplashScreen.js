@@ -1,10 +1,21 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, StatusBar, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { getLoggedUser } from '../services/LocalDB';
 import { loadPunchConfig, warmUpLocation } from '../services/PunchPrefetch';
 import { useTheme } from '../components/ThemeContext';
 import { SCREEN_WIDTH } from '../components/Theme';
+
+// Rolling vibration: a light tap every ROLL_TICK_DEG of the O's turn (so the taps speed up and slow
+// down with the roll), stronger through the middle; a tap as each letter pops up; a thud on landing.
+// Fire-and-forget — a phone with vibration off, or no haptic motor, just ignores it.
+const ROLL_TOTAL_DEG = 720;
+const ROLL_TICK_DEG = 30;
+// At full speed a tap is due every frame (~17 ms) — a phone's motor turns that into one buzz — so taps
+// are kept at least this far apart and the extra ones skipped.
+const ROLL_MIN_GAP_MS = 55;
+const tap = (style) => { Haptics.impactAsync(style).catch(() => {}); };
 
 const SplashScreen = ({ navigation }) => {
   const theme = useTheme();
@@ -48,6 +59,8 @@ const SplashScreen = ({ navigation }) => {
       easing: Easing.bezier(0.4, 0, 0.2, 1),
       useNativeDriver: true,
     }).start(() => {
+      // The O has landed
+      tap(Haptics.ImpactFeedbackStyle.Heavy);
       // 2. Continuous rotation for the O after it arrives
       Animated.loop(
         Animated.timing(oRotate, {
@@ -90,11 +103,24 @@ const SplashScreen = ({ navigation }) => {
     };
 
     const hasRevealed = { r: false, i: false, z: false };
+    let lastTick = 0;
+    let lastTapAt = 0;
 
     const listenerId = progress.addListener(({ value }) => {
+      // rolling tap for every ROLL_TICK_DEG the O has turned
+      const tick = Math.floor((value * ROLL_TOTAL_DEG) / ROLL_TICK_DEG);
+      if (tick > lastTick && value < 1) {
+        lastTick = tick;
+        const now = Date.now();
+        if (now - lastTapAt >= ROLL_MIN_GAP_MS) {
+          lastTapAt = now;
+          tap(value > 0.25 && value < 0.75 ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+        }
+      }
       // reveal 'r'
       if (value >= thresholds.r && !hasRevealed.r) {
         hasRevealed.r = true;
+        tap(Haptics.ImpactFeedbackStyle.Rigid);
         Animated.parallel([
           Animated.timing(rOp, { toValue: 1, duration: 250, useNativeDriver: true }),
           Animated.spring(rY, { toValue: 0, tension: 60, friction: 7, useNativeDriver: true })
@@ -103,6 +129,7 @@ const SplashScreen = ({ navigation }) => {
       // reveal 'i'
       if (value >= thresholds.i && !hasRevealed.i) {
         hasRevealed.i = true;
+        tap(Haptics.ImpactFeedbackStyle.Rigid);
         Animated.parallel([
           Animated.timing(iOp, { toValue: 1, duration: 250, useNativeDriver: true }),
           Animated.spring(iY, { toValue: 0, tension: 60, friction: 7, useNativeDriver: true })
@@ -111,6 +138,7 @@ const SplashScreen = ({ navigation }) => {
       // reveal 'z' (Much heavier delay to ensure 'o' has cleared more space)
       if (value >= thresholds.z && !hasRevealed.z) {
         hasRevealed.z = true;
+        tap(Haptics.ImpactFeedbackStyle.Rigid);
         Animated.parallel([
           Animated.timing(zOp, { toValue: 1, delay: 100, duration: 300, useNativeDriver: true }),
           Animated.spring(zY, { toValue: 0, delay: 80, tension: 60, friction: 7, useNativeDriver: true })

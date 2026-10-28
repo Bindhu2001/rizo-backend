@@ -16,6 +16,9 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import { API_ENDPOINTS } from '../constants/Config';
 
+// 1 -> '1 day', 1.5 -> '1.5 days'
+const fmtDays = (n) => { const v = Number(n) || 0; return `${v} day${v === 1 ? '' : 's'}`; };
+
 const HIST_FILTERS = {
   Authorized:               { label: 'Authorized',              color: '#6C5CE7', bg: '#F3F0FF' },
   CancellationOfAuthorized: { label: 'Cancelled by Authorizer', color: '#EA580C', bg: '#FEF3C7' },
@@ -300,6 +303,13 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             <View style={s.empInfo}>
               <Text style={[s.empName, { color: theme.text }]}>{item.employee_name || item.emp_name || 'Employee'}</Text>
               <Text style={[s.empId, { color: theme.textLight }]}>{item.employee_id || item.emp_id || ''}</Text>
+              {item.taken_this_month != null && (
+                <Text style={[s.takenText, { color: Number(item.taken_this_month) > 0 ? '#B45309' : theme.textMuted }]}>
+                  {Number(item.taken_this_month) > 0
+                    ? `Already taken ${fmtDays(item.taken_this_month)} this month`
+                    : 'No other leave this month'}
+                </Text>
+              )}
             </View>
             <View style={[s.typeBadge, { backgroundColor: meta.bg }]}>
               <Text style={[s.typeText, { color: meta.text }]}>
@@ -616,6 +626,7 @@ const s = StyleSheet.create({
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(10) },
   empInfo: { flex: 1, marginRight: moderateScale(8) },
   empName: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
+  takenText: { fontSize: moderateScale(12), fontWeight: '700', marginTop: 3 },
   empId: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
   typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8), alignSelf: 'flex-start' },
   typeText: { fontSize: moderateScale(11), fontWeight: '800' },

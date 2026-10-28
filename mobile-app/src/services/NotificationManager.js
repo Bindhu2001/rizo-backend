@@ -2,14 +2,16 @@ import * as Notifications from 'expo-notifications';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
 import { clearShiftReminders } from './ShiftReminders';
-import { clearRevampToken, PushTokenApi } from './RevampApi';
+import { clearRevampToken, PushTokenApi, AnnouncementsApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
 import axios from 'axios';
 import { Platform } from 'react-native';
 
 const BG_TASK_NAME = 'rizo-status-check';
+const ANN_SEEDED_KEY = (userId) => `announcements_seeded_${userId}`;
 
 // Configure Expo Notifications globally
 Notifications.setNotificationHandler({
@@ -136,6 +138,9 @@ class NotificationManager {
 
       // Check Expense Status
       await this.checkExpenseDiff(user);
+
+      // New company announcements
+      await this.checkAnnouncements(user);
 
       this.lastCheckTime = Date.now();
     } catch (e) {
@@ -309,6 +314,40 @@ class NotificationManager {
     }
   }
 
+  // Unread announcements this phone has not shown yet. rizo-revamp pushes one the moment it is
+  // published (data.ref = ann_<id>, recorded by recordPush); this catches scheduled ones whose
+  // publish date has come, and any push that never arrived. The first check after sign-in only
+  // records what is already there, so a new install is not flooded with old announcements.
+  static async checkAnnouncements(user) {
+    try {
+      const res = await AnnouncementsApi.list();
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      const seededKey = ANN_SEEDED_KEY(user.user_id);
+      const seeded = (await AsyncStorage.getItem(seededKey).catch(() => null)) === '1';
+      const { initDB } = require('./LocalDB');
+      const db = await initDB();
+      for (const a of rows) {
+        if (a.is_read) continue;
+        const ref = `ann_${a.announcement_pkey}`;
+        const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+        if (existing) continue;
+        const prefix = a.category === 'Emergency' ? '🚨 Emergency' : a.category === 'Important' ? '📌 Important' : '📢 Announcement';
+        const title = `${prefix}: ${a.title}`;
+        const message = String(a.message || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        await saveNotificationLocal({ userId: user.user_id, title, message, type: ref });
+        if (seeded) {
+          await Notifications.scheduleNotificationAsync({
+            content: { title, body: message, data: { type: 'ANNOUNCEMENT', id: Number(a.announcement_pkey) } },
+            trigger: null,
+          });
+        }
+      }
+      if (!seeded) await AsyncStorage.setItem(seededKey, '1').catch(() => {});
+    } catch (e) {
+      console.log('[NotificationManager] checkAnnouncements error:', e?.message);
+    }
+  }
+
   static async checkExpenseDiff(user) {
     try {
       const res = await axios.get(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}?user_id=${user.user_id}`, { timeout: 10000 });
@@ -367,6 +406,7 @@ TaskManager.defineTask(BG_TASK_NAME, async () => {
     await NotificationManager.checkLeavesDiff(user);
     await NotificationManager.checkRegDiff(user);
     await NotificationManager.checkExpenseDiff(user);
+    await NotificationManager.checkAnnouncements(user);
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;

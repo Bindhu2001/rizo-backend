@@ -1,21 +1,35 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Modal,
-  TextInput, KeyboardAvoidingView, Platform, RefreshControl,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Plus, MessageSquare, X, AlertTriangle } from 'lucide-react-native';
+import {
+  ChevronLeft, ChevronRight, Plus, MessageCircle, MessageSquare, AlertCircle, HelpCircle,
+  ShieldCheck, TriangleAlert, Send,
+} from 'lucide-react-native';
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 
-// "Connect to HR" — the employee's own queries with HR (rizo-revamp hr_queries), raised and
-// answered here; HR replies from the rizo-revamp web inbox.
+// "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
+// the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
+// Active / Closed lists, and a new-conversation form. HR replies from the rizo-revamp web inbox.
 
-const CATEGORIES = ['Complaint', 'Enquiry', 'Other'];
+// Fills stay on the web widget's navy in both themes; accents on surfaces lighten in dark mode
+export const HR_BRAND = '#1E516E';
+export const hrAccent = (theme) => (theme.isDark ? '#7FB8D9' : HR_BRAND);
+export const hrAccentDim = (theme) => (theme.isDark ? 'rgba(127,184,217,0.16)' : 'rgba(30,81,110,0.10)');
+
+const CATEGORIES = [
+  { value: 'Complaint', hint: 'Report a problem', Icon: AlertCircle },
+  { value: 'Enquiry', hint: 'Ask a question', Icon: HelpCircle },
+  { value: 'Other', hint: 'Anything else', Icon: MessageSquare },
+];
+const categoryIcon = (c) => (CATEGORIES.find((x) => x.value === c) || CATEGORIES[2]).Icon;
 const SUBJECT_MAX = 200;
 const MESSAGE_MAX = 2000;
 
@@ -25,32 +39,61 @@ export const STATUS_STYLE = {
   Closed: { bg: '#F3F4F6', text: '#6B7280' },
 };
 
+export const parseQueryDate = (s) => new Date(String(s || '').replace(' ', 'T'));
+const startOfDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x.getTime(); };
+export const dayDiff = (s) => Math.round((startOfDay(new Date()) - startOfDay(parseQueryDate(s))) / 86400000);
+
 export const fmtQueryDate = (s) => {
   if (!s) return '';
-  const d = new Date(String(s).replace(' ', 'T'));
+  const d = parseQueryDate(s);
   return isNaN(d.getTime()) ? s : format(d, 'dd MMM yyyy, hh:mm a');
 };
+// List time: today → time, yesterday → "Yesterday", else "28 Oct"
+const fmtWhen = (s) => {
+  const d = parseQueryDate(s);
+  if (isNaN(d.getTime())) return '';
+  const diff = dayDiff(s);
+  if (diff === 0) return format(d, 'hh:mm a');
+  if (diff === 1) return 'Yesterday';
+  return format(d, 'dd MMM');
+};
 
-const NewQuerySheet = ({ visible, onClose, onCreated }) => {
+// Last list shown, so coming back to the page never starts on a spinner
+let cachedQueries = null;
+
+export const PanelHeader = ({ title, subtitle, onBack, children }) => (
+  <View style={s.panelHeader}>
+    <View style={s.panelRow}>
+      <TouchableOpacity onPress={onBack} style={s.headerIconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <ChevronLeft color="#FFF" size={22} />
+      </TouchableOpacity>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={s.panelTitle} numberOfLines={1}>{title}</Text>
+        {!!subtitle && <View style={s.panelSub}>{subtitle}</View>}
+      </View>
+    </View>
+    {children}
+  </View>
+);
+
+const NewConversation = ({ onBack, onCreated }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const accent = hrAccent(theme);
   const [category, setCategory] = useState('Enquiry');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const reset = () => { setCategory('Enquiry'); setSubject(''); setMessage(''); setError(''); };
-
   const submit = async () => {
-    if (!subject.trim()) { setError('Subject is required'); return; }
-    if (!message.trim()) { setError('Message is required'); return; }
+    if (!subject.trim()) { setError('Please add a subject'); return; }
+    if (!message.trim()) { setError('Please describe your query'); return; }
     setSaving(true);
     setError('');
     try {
       const res = await HrQueriesApi.create({ category, subject: subject.trim(), message: message.trim() });
-      reset();
-      onCreated(res?.id);
+      onCreated(res?.id, { category, subject: subject.trim(), message: message.trim() });
     } catch (e) {
       setError(apiErrorMessage(e, 'Could not send your query. Please check your connection and try again.'));
     } finally {
@@ -58,211 +101,262 @@ const NewQuerySheet = ({ visible, onClose, onCreated }) => {
     }
   };
 
+  const canSend = !!subject.trim() && !!message.trim() && !saving;
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={[s.overlay, { backgroundColor: theme.modalOverlay }]}>
-        <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
-          <View style={s.sheetHeader}>
-            <Text style={[s.sheetTitle, { color: theme.text }]}>New Query</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <X color={theme.textLight} size={22} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={[s.label, { color: theme.textMuted }]}>Category *</Text>
-          <View style={s.chipRow}>
-            {CATEGORIES.map((c) => {
-              const active = c === category;
-              return (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => setCategory(c)}
-                  style={[s.chip, { borderColor: active ? theme.primaryDeep : theme.border, backgroundColor: active ? theme.primaryDeep : theme.inputBg }]}
-                >
-                  <Text style={[s.chipText, { color: active ? '#FFF' : theme.text }]}>{c}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={[s.label, { color: theme.textMuted }]}>Subject *</Text>
-          <TextInput
-            value={subject}
-            onChangeText={setSubject}
-            maxLength={SUBJECT_MAX}
-            placeholder="What is it about?"
-            placeholderTextColor={theme.textMuted}
-            style={[s.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
-          />
-
-          <Text style={[s.label, { color: theme.textMuted }]}>Message *</Text>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            maxLength={MESSAGE_MAX}
-            placeholder="Describe your complaint or question"
-            placeholderTextColor={theme.textMuted}
-            multiline
-            textAlignVertical="top"
-            style={[s.input, s.textArea, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
-          />
-          <Text style={[s.counter, { color: theme.textMuted }]}>{message.length}/{MESSAGE_MAX}</Text>
-
-          {!!error && <Text style={s.errorText}>{error}</Text>}
-
-          <TouchableOpacity onPress={submit} disabled={saving} style={[s.primaryBtn, { backgroundColor: theme.primaryDeep }, saving && { opacity: 0.6 }]}>
-            {saving ? <ActivityIndicator color="#FFF" /> : <Text style={s.primaryBtnText}>Send to HR</Text>}
-          </TouchableOpacity>
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <PanelHeader title="New conversation" subtitle={<Text style={s.panelSubText}>HR will reply right here</Text>} onBack={onBack} />
+      <ScrollView style={{ backgroundColor: theme.bg }} contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
+        <Text style={[s.label, { color: theme.textMuted }]}>WHAT IS THIS ABOUT?</Text>
+        <View style={s.catRow}>
+          {CATEGORIES.map(({ value, hint, Icon }) => {
+            const on = value === category;
+            return (
+              <TouchableOpacity
+                key={value}
+                onPress={() => setCategory(value)}
+                activeOpacity={0.8}
+                style={[s.catCard, { borderColor: on ? accent : theme.border, backgroundColor: on ? hrAccentDim(theme) : theme.card }]}
+              >
+                <Icon color={on ? accent : theme.textLight} size={20} />
+                <Text style={[s.catTitle, { color: on ? accent : theme.text }]}>{value}</Text>
+                <Text style={[s.catHint, { color: theme.textMuted }]} numberOfLines={1}>{hint}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+
+        <Text style={[s.label, { color: theme.textMuted }]}>SUBJECT</Text>
+        <TextInput
+          value={subject}
+          onChangeText={setSubject}
+          maxLength={SUBJECT_MAX}
+          placeholder="e.g. Salary credited late this month"
+          placeholderTextColor={theme.textMuted}
+          returnKeyType="next"
+          style={[s.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+        />
+
+        <Text style={[s.label, { color: theme.textMuted }]}>DETAILS</Text>
+        <TextInput
+          value={message}
+          onChangeText={setMessage}
+          maxLength={MESSAGE_MAX}
+          placeholder="Share as much detail as you can — dates, amounts, who was involved…"
+          placeholderTextColor={theme.textMuted}
+          multiline
+          textAlignVertical="top"
+          style={[s.input, s.textArea, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
+        />
+        <Text style={[s.counter, { color: message.length > 1800 ? theme.warning : theme.textMuted }]}>{message.length}/{MESSAGE_MAX}</Text>
+
+        {!!error && <Text style={[s.errorText, { color: theme.danger }]}>{error}</Text>}
+      </ScrollView>
+      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(12), insets.bottom) }]}>
+        <TouchableOpacity onPress={submit} disabled={!canSend} style={[s.primaryBtn, !canSend && { opacity: 0.5 }]}>
+          {saving ? <ActivityIndicator color="#FFF" /> : (
+            <>
+              <Send color="#FFF" size={16} />
+              <Text style={s.primaryBtnText}>Send to HR</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 };
 
 const HrConnectScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  const accent = hrAccent(theme);
   const user = route?.params?.user;
-  const [queries, setQueries] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const firstName = String(user?.employee_name || '').trim().split(/\s+/)[0] || '';
+  const [queries, setQueries] = useState(cachedQueries);
   const [refreshing, setRefreshing] = useState(false);
-  const [showNew, setShowNew] = useState(false);
+  const [view, setView] = useState('list');
   const [alertCfg, setAlertCfg] = useState(null);
 
   const load = async () => {
     try {
       const res = await HrQueriesApi.list();
-      setQueries(Array.isArray(res?.data) ? res.data : []);
+      cachedQueries = Array.isArray(res?.data) ? res.data : [];
+      setQueries(cachedQueries);
     } catch (e) {
+      if (!cachedQueries) setQueries([]);
       setAlertCfg({ type: 'error', title: 'Could not load', message: apiErrorMessage(e, 'Please check your connection and try again.') });
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Reload on every visit so unread dots clear after reading a thread
+  // Reload on every visit so unread dots clear after reading a conversation
   useFocusEffect(useCallback(() => { load(); }, []));
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const openThread = (id) => navigation.navigate('HrQueryThread', { user, id });
+  const openThread = (id, initial) => navigation.navigate('HrQueryThread', { user, id, initial });
+
+  // Android back on the new-conversation form returns to the list, as its back arrow does
+  useEffect(() => {
+    if (view !== 'new') return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setView('list'); return true; });
+    return () => sub.remove();
+  }, [view]);
+
+  if (view === 'new') {
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right']}>
+        <NewConversation
+          onBack={() => setView('list')}
+          onCreated={(id, q) => {
+            setView('list');
+            const now = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+            if (id) {
+              // Shown at once in the list and the conversation; the server's copy replaces it on reload
+              const row = { hr_query_pkey: id, category: q.category, subject: q.subject, status: 'Open', escalated: false, is_unread: false, last_message: q.message, last_sender_type: 'employee', last_message_date: now, created_date: now };
+              cachedQueries = [row, ...(cachedQueries || [])];
+              setQueries(cachedQueries);
+              openThread(id, {
+                query: { hr_query_pkey: id, category: q.category, subject: q.subject, status: 'Open', escalated: false, has_admin_reply: false, created_date: now },
+                messages: [{ hr_query_message_pkey: `new-${id}`, sender_type: 'employee', message: q.message, created_date: now }],
+              });
+            }
+            load();
+          }}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const active = (queries || []).filter((q) => q.status !== 'Closed');
+  const closed = (queries || []).filter((q) => q.status === 'Closed');
+  const sections = [
+    ...(active.length ? [{ header: 'ACTIVE', key: 'h-active' }] : []),
+    ...active,
+    ...(closed.length ? [{ header: 'CLOSED', key: 'h-closed' }] : []),
+    ...closed,
+  ];
 
   const renderItem = ({ item }) => {
+    if (item.header) return <Text style={[s.sectionLabel, { color: theme.textMuted }]}>{item.header}</Text>;
     const st = STATUS_STYLE[item.status] || STATUS_STYLE.Closed;
-    const fromHr = item.last_sender_type === 'admin';
+    const unread = !!item.is_unread;
+    const Icon = categoryIcon(item.category);
     return (
-      <TouchableOpacity onPress={() => openThread(item.hr_query_pkey)} activeOpacity={0.8} style={[s.card, { backgroundColor: theme.card }]}>
-        <View style={s.cardTop}>
-          <Text style={[s.category, { color: theme.textLight }]}>{item.category}</Text>
-          <View style={s.badges}>
-            {item.escalated && (
-              <View style={[s.badge, { backgroundColor: '#FEF3C7' }]}>
-                <AlertTriangle color="#B45309" size={11} />
-                <Text style={[s.badgeText, { color: '#B45309', marginLeft: 3 }]}>Escalated</Text>
+      <TouchableOpacity onPress={() => openThread(item.hr_query_pkey)} activeOpacity={0.7} style={[s.row, { borderBottomColor: theme.border }]}>
+        <View style={[s.rowIcon, { backgroundColor: hrAccentDim(theme) }]}>
+          <Icon color={accent} size={19} />
+          {unread && <View style={[s.unreadDot, { borderColor: theme.bg }]} />}
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <View style={s.rowTop}>
+            <Text style={[s.subject, { color: theme.text }, unread && s.subjectUnread]} numberOfLines={1}>{item.subject}</Text>
+            <Text style={[s.when, { color: unread ? accent : theme.textMuted }, unread && { fontWeight: '800' }]}>{fmtWhen(item.last_message_date || item.created_date)}</Text>
+          </View>
+          {!!item.last_message && (
+            <Text style={[s.preview, { color: unread ? theme.textLight : theme.textMuted }]} numberOfLines={1}>
+              {item.last_sender_type === 'admin' ? 'HR: ' : 'You: '}{item.last_message}
+            </Text>
+          )}
+          <View style={s.pills}>
+            <View style={[s.pill, { backgroundColor: st.bg }]}><Text style={[s.pillText, { color: st.text }]}>{item.status}</Text></View>
+            <Text style={[s.catSmall, { color: theme.textMuted }]}>{item.category}</Text>
+            {!!item.escalated && (
+              <View style={[s.pill, s.pillRow, { backgroundColor: '#FEE2E2' }]}>
+                <TriangleAlert color="#991B1B" size={10} />
+                <Text style={[s.pillText, { color: '#991B1B', marginLeft: 3 }]}>Escalated</Text>
               </View>
             )}
-            <View style={[s.badge, { backgroundColor: st.bg }]}>
-              <Text style={[s.badgeText, { color: st.text }]}>{item.status}</Text>
-            </View>
           </View>
         </View>
-        <View style={s.subjectRow}>
-          <Text style={[s.subject, { color: theme.text }, item.is_unread && s.subjectUnread]} numberOfLines={1}>{item.subject}</Text>
-          {item.is_unread && <View style={s.unreadDot} />}
-        </View>
-        {!!item.last_message && (
-          <Text style={[s.preview, { color: theme.textLight }]} numberOfLines={2}>
-            {fromHr ? 'HR: ' : 'You: '}{item.last_message}
-          </Text>
-        )}
-        <Text style={[s.date, { color: theme.textMuted }]}>{fmtQueryDate(item.last_message_date || item.created_date)}</Text>
+        <ChevronRight color={theme.textMuted} size={16} />
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right', 'bottom']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-      <View style={[s.header, { backgroundColor: theme.bg }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <ChevronLeft color={theme.text} size={28} />
+      <PanelHeader
+        title={firstName ? `Hi ${firstName}, how can HR help?` : 'How can HR help?'}
+        subtitle={<><ShieldCheck color="#FFF" size={12} /><Text style={[s.panelSubText, { marginLeft: 5 }]}>Only HR can see your conversations</Text></>}
+        onBack={() => navigation.goBack()}
+      >
+        <TouchableOpacity onPress={() => setView('new')} activeOpacity={0.85} style={s.newCard}>
+          <View style={s.newIcon}><Plus color="#FFF" size={17} /></View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.newTitle}>New conversation</Text>
+            <Text style={s.newSub}>Raise a complaint or ask a question</Text>
+          </View>
+          <ChevronRight color="#94A3B8" size={17} />
         </TouchableOpacity>
-        <Text style={[s.headerTitle, { color: theme.text }]}>Connect to HR</Text>
-        <View style={{ width: moderateScale(44) }} />
-      </View>
+      </PanelHeader>
 
-      {loading ? (
-        <ActivityIndicator style={{ marginTop: moderateScale(40) }} color={theme.primaryDeep} />
+      <View style={[s.container, { backgroundColor: theme.bg }]}>
+      {queries == null ? (
+        <ActivityIndicator style={{ marginTop: moderateScale(40) }} color={accent} />
       ) : (
         <FlatList
-          data={queries}
-          keyExtractor={(q) => String(q.hr_query_pkey)}
+          data={sections}
+          keyExtractor={(q) => q.key || String(q.hr_query_pkey)}
           renderItem={renderItem}
-          contentContainerStyle={[s.list, queries.length === 0 && { flexGrow: 1 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          contentContainerStyle={[s.list, sections.length === 0 && { flexGrow: 1 }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[HR_BRAND]} />}
           ListEmptyComponent={
             <View style={s.empty}>
-              <MessageSquare color={theme.textMuted} size={44} />
-              <Text style={[s.emptyTitle, { color: theme.text }]}>No queries yet</Text>
-              <Text style={[s.emptySub, { color: theme.textLight }]}>Raise a complaint or ask HR anything. Replies show up here.</Text>
+              <View style={[s.emptyIcon, { backgroundColor: hrAccentDim(theme) }]}><MessageCircle color={accent} size={26} /></View>
+              <Text style={[s.emptyTitle, { color: theme.text }]}>No conversations yet</Text>
+              <Text style={[s.emptySub, { color: theme.textMuted }]}>Have a concern or a question about policies, payroll or anything else? Start a new conversation above.</Text>
             </View>
           }
         />
       )}
-
-      <TouchableOpacity onPress={() => setShowNew(true)} style={[s.fab, { backgroundColor: theme.primaryDeep }]} activeOpacity={0.85}>
-        <Plus color="#FFF" size={20} />
-        <Text style={s.fabText}>New Query</Text>
-      </TouchableOpacity>
-
-      <NewQuerySheet
-        visible={showNew}
-        onClose={() => setShowNew(false)}
-        onCreated={(id) => {
-          setShowNew(false);
-          load();
-          if (id) openThread(id);
-        }}
-      />
+      </View>
     </SafeAreaView>
   );
 };
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56) },
-  backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: moderateScale(17), fontWeight: '800' },
-  list: { padding: moderateScale(16), paddingBottom: moderateScale(96) },
-  card: { borderRadius: moderateScale(14), padding: moderateScale(14), marginBottom: moderateScale(12), ...SHADOWS.light },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  category: { fontSize: moderateScale(11), fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  badges: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6) },
-  badge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(3), borderRadius: moderateScale(10) },
-  badgeText: { fontSize: moderateScale(10), fontWeight: '800' },
-  subjectRow: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(8) },
-  subject: { flex: 1, fontSize: moderateScale(15), fontWeight: '600' },
+  panelHeader: { backgroundColor: HR_BRAND, paddingHorizontal: moderateScale(12), paddingTop: moderateScale(10), paddingBottom: moderateScale(14) },
+  panelRow: { flexDirection: 'row', alignItems: 'center' },
+  headerIconBtn: { width: moderateScale(34), height: moderateScale(34), borderRadius: moderateScale(10), backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center', marginRight: moderateScale(10) },
+  panelTitle: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(16) },
+  panelSub: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: moderateScale(3), gap: moderateScale(6) },
+  panelSubText: { color: 'rgba(255,255,255,0.85)', fontSize: moderateScale(12) },
+  newCard: { marginTop: moderateScale(12), flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: moderateScale(12), padding: moderateScale(11), ...SHADOWS.light },
+  newIcon: { width: moderateScale(32), height: moderateScale(32), borderRadius: moderateScale(9), backgroundColor: HR_BRAND, alignItems: 'center', justifyContent: 'center', marginRight: moderateScale(10) },
+  newTitle: { color: '#0F172A', fontWeight: '800', fontSize: moderateScale(14) },
+  newSub: { color: '#64748B', fontSize: moderateScale(12), marginTop: 1 },
+  list: { paddingBottom: moderateScale(24) },
+  sectionLabel: { fontSize: moderateScale(11), fontWeight: '700', letterSpacing: 0.4, paddingHorizontal: moderateScale(16), paddingTop: moderateScale(14), paddingBottom: moderateScale(4) },
+  row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(12), borderBottomWidth: StyleSheet.hairlineWidth, gap: moderateScale(12) },
+  rowIcon: { width: moderateScale(40), height: moderateScale(40), borderRadius: moderateScale(12), alignItems: 'center', justifyContent: 'center' },
+  unreadDot: { position: 'absolute', top: -3, right: -3, width: moderateScale(11), height: moderateScale(11), borderRadius: moderateScale(6), backgroundColor: '#DC2626', borderWidth: 2 },
+  rowTop: { flexDirection: 'row', alignItems: 'center' },
+  subject: { flex: 1, fontSize: moderateScale(14), fontWeight: '600', marginRight: moderateScale(8) },
   subjectUnread: { fontWeight: '900' },
-  unreadDot: { width: moderateScale(9), height: moderateScale(9), borderRadius: moderateScale(5), backgroundColor: '#E91E63', marginLeft: moderateScale(8) },
-  preview: { fontSize: moderateScale(13), marginTop: moderateScale(4), lineHeight: moderateScale(18) },
-  date: { fontSize: moderateScale(11), marginTop: moderateScale(8) },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(32) },
-  emptyTitle: { fontSize: moderateScale(16), fontWeight: '800', marginTop: moderateScale(12) },
+  when: { fontSize: moderateScale(11) },
+  preview: { fontSize: moderateScale(13), marginTop: moderateScale(2) },
+  pills: { flexDirection: 'row', alignItems: 'center', marginTop: moderateScale(5), gap: moderateScale(6) },
+  pill: { paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(2), borderRadius: moderateScale(10) },
+  pillRow: { flexDirection: 'row', alignItems: 'center' },
+  pillText: { fontSize: moderateScale(10.5), fontWeight: '700' },
+  catSmall: { fontSize: moderateScale(11) },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(32), paddingVertical: moderateScale(40) },
+  emptyIcon: { width: moderateScale(56), height: moderateScale(56), borderRadius: moderateScale(16), alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: moderateScale(15), fontWeight: '800', marginTop: moderateScale(12) },
   emptySub: { fontSize: moderateScale(13), textAlign: 'center', marginTop: moderateScale(6), lineHeight: moderateScale(19) },
-  fab: { position: 'absolute', right: moderateScale(20), bottom: moderateScale(24), flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(18), height: moderateScale(48), borderRadius: moderateScale(24), ...SHADOWS.medium },
-  fabText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(14), marginLeft: moderateScale(6) },
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(20) },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: moderateScale(12) },
-  sheetTitle: { fontSize: moderateScale(17), fontWeight: '800' },
-  label: { fontSize: moderateScale(12), fontWeight: '700', marginTop: moderateScale(12), marginBottom: moderateScale(6) },
-  chipRow: { flexDirection: 'row', gap: moderateScale(8) },
-  chip: { paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(8), borderRadius: moderateScale(18), borderWidth: 1 },
-  chipText: { fontSize: moderateScale(13), fontWeight: '700' },
-  input: { borderWidth: 1, borderRadius: moderateScale(12), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), fontSize: moderateScale(14) },
-  textArea: { minHeight: moderateScale(110), maxHeight: moderateScale(200) },
+  form: { padding: moderateScale(16), paddingBottom: moderateScale(24) },
+  label: { fontSize: moderateScale(11), fontWeight: '700', letterSpacing: 0.4, marginTop: moderateScale(14), marginBottom: moderateScale(7) },
+  catRow: { flexDirection: 'row', gap: moderateScale(8) },
+  catCard: { flex: 1, borderWidth: 1.5, borderRadius: moderateScale(12), paddingVertical: moderateScale(11), paddingHorizontal: moderateScale(4), alignItems: 'center' },
+  catTitle: { fontSize: moderateScale(13), fontWeight: '800', marginTop: moderateScale(4) },
+  catHint: { fontSize: moderateScale(10.5), marginTop: 2 },
+  input: { borderWidth: 1.5, borderRadius: moderateScale(10), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), fontSize: moderateScale(14) },
+  textArea: { minHeight: moderateScale(130), maxHeight: moderateScale(220) },
   counter: { fontSize: moderateScale(11), textAlign: 'right', marginTop: moderateScale(4) },
-  errorText: { color: '#DC2626', fontSize: moderateScale(13), marginTop: moderateScale(8) },
-  primaryBtn: { height: moderateScale(50), borderRadius: moderateScale(14), alignItems: 'center', justifyContent: 'center', marginTop: moderateScale(16) },
+  errorText: { fontSize: moderateScale(13), marginTop: moderateScale(8) },
+  formFooter: { paddingHorizontal: moderateScale(16), paddingTop: moderateScale(12), borderTopWidth: StyleSheet.hairlineWidth },
+  primaryBtn: { height: moderateScale(48), borderRadius: moderateScale(12), backgroundColor: HR_BRAND, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(8) },
   primaryBtnText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(15) },
 });
 

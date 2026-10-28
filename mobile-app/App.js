@@ -26,6 +26,9 @@ import RegularisationApprovalScreen from './src/screens/RegularisationApprovalSc
 import LeaveApprovalScreen from './src/screens/LeaveApprovalScreen';
 import HrConnectScreen from './src/screens/HrConnectScreen';
 import HrQueryThreadScreen from './src/screens/HrQueryThreadScreen';
+import EventsListScreen from './src/screens/EventsListScreen';
+import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
+import TeamLeaveScreen from './src/screens/TeamLeaveScreen';
 
 import OfflineBanner from './src/components/OfflineBanner';
 import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH } from './src/components/Theme';
@@ -118,7 +121,8 @@ function AppContent() {
 
   const lastNotifResponse = Notifications.useLastNotificationResponse();
 
-  // Short-hours alert → Regularisation, HR query → its thread, shift reminder → just opens the app,
+  // Short-hours alert → Regularisation, HR query → its thread, announcement → Announcements,
+  // shift reminder → just opens the app,
   // anything else → Notifications.
   // On a cold start the tap arrives while Splash is still up, so wait until it has moved on.
   const openFromNotification = async (response) => {
@@ -137,6 +141,10 @@ function AppContent() {
         // HR replied / changed status in rizo-revamp → open that Connect to HR thread
         const user = await getLoggedUser();
         if (user?.user_id) navigationRef.current?.navigate('HrQueryThread', { user, id: Number(data.id) });
+      } else if (type === 'ANNOUNCEMENT') {
+        // New company announcement → open it in Announcements
+        const user = await getLoggedUser();
+        if (user?.user_id) navigationRef.current?.navigate('Announcements', { user, openId: Number(data.id) || null });
       } else if (type === 'SHIFT_REMINDER') {
         // Just open the app — it lands on Home after Splash. Navigating to 'Main'
         // with new params would replace its { user } params.
@@ -201,6 +209,9 @@ function AppContent() {
           <Stack.Screen name="LeaveApproval" component={LeaveApprovalScreen} />
           <Stack.Screen name="HrConnect" component={HrConnectScreen} />
           <Stack.Screen name="HrQueryThread" component={HrQueryThreadScreen} />
+          <Stack.Screen name="EventsList" component={EventsListScreen} />
+          <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
+          <Stack.Screen name="TeamLeave" component={TeamLeaveScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} onBarVisibleChange={setOfflineBarVisible} />

@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
-import { COLORS, SHADOWS, moderateScale } from './Theme';
+import { useNavigation } from '@react-navigation/native';
+import { COLORS, SHADOWS, moderateScale, hp } from './Theme';
 import { useTheme } from './ThemeContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, addMonths } from 'date-fns';
-import axios from 'axios';
-import { ChevronRight, ChevronLeft } from 'lucide-react-native';
-import { API_ENDPOINTS } from '../constants/Config';
+import { ChevronRight, ChevronLeft, CalendarX2, List } from 'lucide-react-native';
+import { fetchMonthEvents, eventsOnDay, eventMeta, normStatus } from '../services/UpcomingEvents';
 
 const CalendarWidget = ({ userId }) => {
   const theme = useTheme();
+  const navigation = useNavigation();
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -22,29 +23,7 @@ const CalendarWidget = ({ userId }) => {
     setEvents([]);
     setLoading(true);
     try {
-      const monthStr = format(date, 'yyyy-MM');
-      const formData = new FormData();
-      formData.append('user_id', userId);
-      formData.append('month', monthStr);
-
-      const resp = await axios.post(API_ENDPOINTS.UPCOMING_EVENTS, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 12000,
-      });
-      console.log('[Calendar] raw response:', JSON.stringify(resp.data).slice(0, 400));
-
-      if (resp.status === 200) {
-        const d = resp.data;
-        let found = null;
-        if (Array.isArray(d)) found = d;
-        else if (d && Array.isArray(d.data)) found = d.data;
-        else if (d && typeof d === 'object') {
-          for (const key of Object.keys(d)) {
-            if (Array.isArray(d[key])) { found = d[key]; break; }
-          }
-        }
-        setEvents(found || []);
-      }
+      setEvents(await fetchMonthEvents(userId, date));
     } catch (e) {
       console.log('[Calendar] fetch error', e);
     } finally {
@@ -60,15 +39,6 @@ const CalendarWidget = ({ userId }) => {
     setCurrentDate(prev => addMonths(prev, -1));
   };
 
-  const normStatus = (s) => {
-    const v = (s || '').replace(/^\/+/, '').toUpperCase().trim();
-    if (v === 'BIRTHDAY' || v === 'BDAY') return 'BIR';
-    if (v === 'ANNIVERSARY' || v === 'JOINING' || v === 'WORK_ANNIVERSARY' || v === 'JOIN') return 'JOIN';
-    if (v === 'HOLIDAY' || v === 'PUBLIC_HOLIDAY') return 'HO';
-    if (v === 'WEEKOFF' || v === 'WEEK_OFF' || v === 'WEEK OFF' || v === 'OFF') return 'WO';
-    return v;
-  };
-
   const getDaysInMonth = () => {
     const start = startOfMonth(currentDate);
     const end = endOfMonth(currentDate);
@@ -82,73 +52,7 @@ const CalendarWidget = ({ userId }) => {
   const days = getDaysInMonth();
   const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const getCellEvents = (day) => {
-    if (!day) return [];
-    const dayNumber = parseInt(format(day, 'd'), 10);
-    const dayMonthName = format(day, 'MMMM');
-    const dayMonthShort = format(day, 'MMM');
-    const monthNum = parseInt(format(day, 'M'), 10);
-
-    try {
-      return events.filter(e => {
-        if (!e) return false;
-        const rawDate = e.date || e.event_date || e.birth_date || e.birthday_date || e.joining_date || e.anniversary_date;
-        if (!rawDate) return false;
-
-        const dm = String(rawDate).trim();
-
-        if (dm.includes('-')) {
-          const parts = dm.split('-');
-          if (parts.length === 2) {
-            const p0 = parts[0].trim();
-            const p1 = parts[1].trim();
-            // "Month-Day" e.g. "May-15"
-            if (isNaN(parseInt(p0, 10))) {
-              return (p0 === dayMonthName || p0 === dayMonthShort) && parseInt(p1, 10) === dayNumber;
-            }
-            // "Day-Month" e.g. "15-May"
-            if (isNaN(parseInt(p1, 10))) {
-              return (p1 === dayMonthName || p1 === dayMonthShort) && parseInt(p0, 10) === dayNumber;
-            }
-            // "MM-DD" e.g. "05-15"
-            return parseInt(p0, 10) === monthNum && parseInt(p1, 10) === dayNumber;
-          } else if (parts.length === 3) {
-            // Try YYYY-MM-DD
-            try {
-              const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), c = parseInt(parts[2], 10);
-              if (a > 31) {
-                // YYYY-MM-DD
-                return isSameDay(new Date(a, b - 1, c), day);
-              } else if (c > 31) {
-                // DD-MM-YYYY
-                return isSameDay(new Date(c, b - 1, a), day);
-              } else {
-                // ambiguous — try both
-                try { if (isSameDay(new Date(dm), day)) return true; } catch (_) {}
-                return isSameDay(new Date(c, b - 1, a), day);
-              }
-            } catch (_) { return false; }
-          }
-        }
-
-        if (dm.includes('/')) {
-          const parts = dm.split('/');
-          if (parts.length === 3) {
-            const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), c = parseInt(parts[2], 10);
-            if (a > 31) return isSameDay(new Date(a, b - 1, c), day); // YYYY/MM/DD
-            if (c > 31) return isSameDay(new Date(c, b - 1, a), day); // DD/MM/YYYY
-            // MM/DD/YYYY — ambiguous, try DD/MM first
-            return isSameDay(new Date(c, b - 1, a), day) || isSameDay(new Date(c, a - 1, b), day);
-          }
-        }
-
-        return parseInt(dm, 10) === dayNumber;
-      });
-    } catch (err) {
-      console.error('[Calendar] Filter error', err);
-      return [];
-    }
-  };
+  const getCellEvents = (day) => eventsOnDay(events, day);
 
   return (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -214,6 +118,16 @@ const CalendarWidget = ({ userId }) => {
         <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} /><Text style={[styles.legendText, { color: theme.textLight }]}>Week Off</Text></View>
       </View>
 
+      <TouchableOpacity
+        onPress={() => navigation.navigate('EventsList', { userId, month: format(currentDate, 'yyyy-MM') })}
+        style={styles.fullListLink}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <List color={theme.primaryDeep} size={15} />
+        <Text style={[styles.fullListText, { color: theme.primaryDeep }]}>View full month list</Text>
+        <ChevronRight color={theme.primaryDeep} size={15} />
+      </TouchableOpacity>
+
       <Modal visible={!!selectedEvent} transparent animationType="fade" onRequestClose={() => setSelectedEvent(null)} statusBarTranslucent>
         <View style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
@@ -221,32 +135,27 @@ const CalendarWidget = ({ userId }) => {
               {selectedEvent ? format(selectedEvent.date, 'dd MMM yyyy') : ''}
             </Text>
             
-            <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black" contentContainerStyle={selectedEvent?.events.length === 0 && { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-              {selectedEvent?.events && selectedEvent.events.length > 0 ? (
-                selectedEvent.events.map((e, idx) => {
-                  const ns = normStatus(e.status || e.type || e.event_type);
-                  const isBir = ns === 'BIR';
-                  const isHol = ns === 'HO';
-                  const isWO = ns === 'WO';
-                  const dotColor = isBir ? '#E91E63' : isHol ? '#FF9800' : isWO ? '#4CAF50' : '#2196F3';
-                  const typeText = e.type || (isBir ? 'Birthday' : isHol ? 'Holiday' : isWO ? 'Week Off' : 'Work Anniversary');
-                  
+            {selectedEvent?.events?.length > 0 ? (
+              <ScrollView style={[styles.eventList, { backgroundColor: theme.cardSoft }]} showsVerticalScrollIndicator={true} indicatorStyle="black">
+                {selectedEvent.events.map((e, idx) => {
+                  const meta = eventMeta(e);
                   return (
                     <View key={idx} style={[styles.eventRow, { backgroundColor: theme.cardSoft }]}>
-                      <View style={[styles.eventDot, { backgroundColor: dotColor }]} />
+                      <View style={[styles.eventDot, { backgroundColor: meta.color }]} />
                       <View style={{ flex: 1 }}>
-                         <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{e.name || e.employee_name || e.title || e.event_name || e.description || 'Unknown'}</Text>
-                         <Text style={[styles.eventType, { color: theme.textLight }]}>{typeText}</Text>
+                         <Text style={[styles.eventName, { color: theme.text }]} numberOfLines={2}>{meta.name}</Text>
+                         <Text style={[styles.eventType, { color: theme.textLight }]}>{meta.label}</Text>
                       </View>
                     </View>
                   );
-                })
-              ) : (
-                <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 20 }}>
-                  <Text style={{ color: theme.textLight, fontSize: moderateScale(14), fontWeight: '700' }}>No events scheduled for this day</Text>
-                </View>
-              )}
-            </ScrollView>
+                })}
+              </ScrollView>
+            ) : (
+              <View style={[styles.emptyBox, { backgroundColor: theme.cardSoft }]}>
+                <CalendarX2 color={theme.textMuted} size={34} />
+                <Text style={[styles.emptyText, { color: theme.text }]}>No event on this date</Text>
+              </View>
+            )}
 
             <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.border }]} onPress={() => setSelectedEvent(null)}>
               <Text style={[styles.closeBtnText, { color: theme.text }]}>Close</Text>
@@ -264,8 +173,8 @@ const styles = StyleSheet.create({
   monthTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, textAlign: 'center' },
   prevBtn: { position: 'absolute', left: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
   nextBtn: { position: 'absolute', right: 0, padding: 8, backgroundColor: '#F9FAFB', borderRadius: 12, zIndex: 10 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 8 },
-  weekDayText: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '700', width: 40, textAlign: 'center' },
+  headerRow: { flexDirection: 'row', marginBottom: 8 },
+  weekDayText: { fontSize: moderateScale(13), color: COLORS.textLight, fontWeight: '700', width: '14.28%', textAlign: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', height: 48, justifyContent: 'center', alignItems: 'center' },
   todayCell: { backgroundColor: '#F3E5F5', borderRadius: 12 },
@@ -281,11 +190,15 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: '#FFF', borderRadius: 24, padding: 24 },
   modalDate: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text, marginBottom: 16, textAlign: 'center' },
-  eventList: { marginBottom: 24, maxHeight: 300, minHeight: 60, backgroundColor: '#F9FAFB', borderRadius: 12 },
+  eventList: { marginBottom: 24, maxHeight: Math.min(300, hp(35)), minHeight: 60, backgroundColor: '#F9FAFB', borderRadius: 12 },
   eventRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12 },
   eventDot: { width: 12, height: 12, borderRadius: 6, marginRight: 12 },
   eventName: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   eventType: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
+  emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 28, borderRadius: 12, marginBottom: 24 },
+  emptyText: { fontSize: moderateScale(15), fontWeight: '800', marginTop: 10 },
+  fullListLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14, gap: 6 },
+  fullListText: { fontSize: moderateScale(13), fontWeight: '800' },
   closeBtn: { backgroundColor: '#E5E7EB', padding: 14, borderRadius: 16, alignItems: 'center' },
   closeBtnText: { color: COLORS.text, fontWeight: '800', fontSize: moderateScale(14) }
 });

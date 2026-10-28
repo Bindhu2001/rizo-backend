@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SIZES, SHADOWS, moderateScale } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
 import CalendarWidget from '../components/CalendarWidget';
+import TeamTodayCard from '../components/TeamTodayCard';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import {
@@ -926,6 +927,8 @@ const HomeScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
               )}
             </View>
+            {/* Team members on leave today, by who this person authorises / approves */}
+            {menus.leaveApproval && <TeamTodayCard user={user} />}
           </>
         )}
 
