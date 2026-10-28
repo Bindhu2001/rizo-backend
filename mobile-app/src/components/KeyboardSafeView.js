@@ -8,25 +8,26 @@ import { Keyboard, KeyboardAvoidingView, Platform, View } from 'react-native';
 //           guessing, the view measures how far the keyboard actually covers its bottom edge, a moment after the
 //           keyboard opens, and adds exactly that much padding — nothing when the window already made room.
 
-const SETTLE_MS = 180; // let the system finish resizing / panning before measuring
+const MEASURE_AT = [120, 350, 700]; // the system pans / resizes over several hundred ms; keep measuring until it settles
 
 const AndroidSafeView = ({ style, children }) => {
   const ref = useRef(null);
   const [overlap, setOverlap] = useState(0);
 
   useEffect(() => {
-    let timer = null;
+    let timers = [];
+    const clear = () => { timers.forEach(clearTimeout); timers = []; };
     const show = Keyboard.addListener('keyboardDidShow', (e) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => {
+      clear();
+      timers = MEASURE_AT.map((ms) => setTimeout(() => {
         ref.current?.measureInWindow((_x, y, _w, h) => {
           const covered = y + h - e.endCoordinates.screenY;
           setOverlap(covered > 2 ? Math.round(covered) : 0);
         });
-      }, SETTLE_MS);
+      }, ms));
     });
-    const hide = Keyboard.addListener('keyboardDidHide', () => { clearTimeout(timer); setOverlap(0); });
-    return () => { clearTimeout(timer); show.remove(); hide.remove(); };
+    const hide = Keyboard.addListener('keyboardDidHide', () => { clear(); setOverlap(0); });
+    return () => { clear(); show.remove(); hide.remove(); };
   }, []);
 
   return (

@@ -210,7 +210,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56) },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(17), fontWeight: '800' },
-  tabsWrap: { flexGrow: 0 },
+  tabsWrap: { flexGrow: 0, flexShrink: 0 },
   tabs: { paddingHorizontal: moderateScale(16), paddingBottom: moderateScale(10), gap: moderateScale(8) },
   tab: { borderWidth: 1, borderRadius: moderateScale(18), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(7) },
   tabText: { fontSize: moderateScale(13), fontWeight: '700' },
