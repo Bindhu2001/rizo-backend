@@ -1,12 +1,13 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput, KeyboardAvoidingView
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronDown, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -346,7 +347,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       )}
 
       <Modal visible={actionModal.visible} transparent animationType="fade" onRequestClose={() => { setActionModal({ visible: false, item: null, type: '' }); setRemarks(''); }} statusBarTranslucent>
-        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>{actionModal.type === 'APPROVE' ? 'Approve' : 'Reject'} Request</Text>
             <Text style={[s.modalSub, { color: theme.textLight }]}>Enter remarks for {actionModal.item?.employee_name}</Text>
@@ -379,7 +380,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </Modal>
 
       <Modal visible={showMonthPicker} transparent animationType="slide" onRequestClose={() => setShowMonthPicker(false)} statusBarTranslucent>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, TextInput,
-  KeyboardAvoidingView, Platform, Keyboard, AppState,
+  Platform, Keyboard, AppState,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -9,6 +9,7 @@ import { Send, TriangleAlert, ShieldCheck, CheckCircle2, Lock, Check, Clock } fr
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
@@ -249,7 +250,7 @@ const id = route?.params?.id;
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <PanelHeader title={query?.subject || 'Loading…'} subtitle={subtitle} onBack={() => navigation.goBack()} />
 
-      <KeyboardAvoidingView style={[s.body, { backgroundColor: theme.bg }]} behavior={KEYBOARD_AVOID_BEHAVIOR}>
+      <KeyboardSafeView style={[s.body, { backgroundColor: theme.bg }]} behavior={KEYBOARD_AVOID_BEHAVIOR}>
         {!query ? (
           <View style={{ flex: 1 }}><ActivityIndicator style={{ marginTop: moderateScale(40) }} color={accent} /></View>
         ) : (
@@ -288,7 +289,7 @@ const id = route?.params?.id;
             </TouchableOpacity>
           </View>
         )}
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </SafeAreaView>
   );
 };

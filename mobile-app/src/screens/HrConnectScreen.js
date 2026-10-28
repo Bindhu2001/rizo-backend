@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
-  TextInput, KeyboardAvoidingView, Platform, RefreshControl, ScrollView, BackHandler,
+  TextInput, Platform, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import {
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 import { useKeyboardVisible } from '../components/KeyboardDoneBar';
@@ -110,7 +111,7 @@ const NewConversation = ({ onBack, onCreated }) => {
   const canSend = !!subject.trim() && !!message.trim() && !saving;
 
   return (
-    <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+    <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
       <PanelHeader title="New conversation" subtitle={<Text style={[s.panelSubText, { color: theme.textLight }]}>HR will reply right here</Text>}onBack={onBack} />
       <ScrollView style={{ backgroundColor: theme.bg }} contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
         <Text style={[s.label, { color: theme.textMuted }]}>WHAT IS THIS ABOUT?</Text>
@@ -168,7 +169,7 @@ const NewConversation = ({ onBack, onCreated }) => {
           )}
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 };
 

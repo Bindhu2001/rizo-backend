@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView,
+  Platform, ScrollView,
   FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch, BackHandler,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -11,6 +11,7 @@ import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'l
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -138,7 +139,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       {/* The sheet rides above the keyboard while searching */}
-      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} style={{ flex: 1 }}>
+      <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} style={{ flex: 1 }}>
       <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
         <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%', paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
           <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
@@ -176,7 +177,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </Modal>
   );
 };
@@ -574,7 +575,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={[st.container, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={[st.backBtnLight, { top: insets.top + 8 }]}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
@@ -603,7 +604,7 @@ const SignupScreen = ({ navigation }) => {
             </ScrollView>
           </View>
         <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </View>
     );
   }
@@ -670,7 +671,7 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
 
@@ -892,7 +893,7 @@ const SignupScreen = ({ navigation }) => {
           </ScrollView>
         </View>
       <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
 
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 

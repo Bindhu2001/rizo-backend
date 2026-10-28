@@ -1,8 +1,7 @@
 ﻿import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, SectionList, FlatList,
-  Pressable, ScrollView, KeyboardAvoidingView,
-  Modal, TextInput, ActivityIndicator, StatusBar
+  Pressable, ScrollView, Modal, TextInput, ActivityIndicator, StatusBar
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +10,7 @@ import {
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -485,7 +485,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" onRequestClose={closeModal} statusBarTranslucent>
-        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>
               {actionModal.actionType === 'REJECT'
@@ -531,7 +531,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </Modal>
 
       {/* Month Picker Modal */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform, Animated, KeyboardAvoidingView, RefreshControl
+  TextInput, ActivityIndicator, Modal, Platform, Animated, RefreshControl
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
@@ -13,6 +13,7 @@ import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { getTodayVisits, getVisitsByDate, getLiveVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
@@ -488,7 +489,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <KeyboardAvoidingView
+        <KeyboardSafeView
           behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
@@ -527,7 +528,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
             </TouchableOpacity>
           </View>
         <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <LocationDisclosureModal
           visible={showDisclosure}
@@ -583,7 +584,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
 
   return (
     <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
+      <KeyboardSafeView
         behavior={KEYBOARD_AVOID_BEHAVIOR}
         style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}
       >
@@ -610,7 +611,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           </View>
         </View>
       <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
     </Modal>
   );
 };

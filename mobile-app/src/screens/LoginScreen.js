@@ -1,13 +1,14 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, ActivityIndicator, Image, StatusBar, Platform, ScrollView
+  ActivityIndicator, Image, StatusBar, Platform, ScrollView
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, wp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
@@ -120,7 +121,7 @@ const LoginScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
+        <KeyboardSafeView
           behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
@@ -212,7 +213,7 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </SafeAreaView>
 
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />

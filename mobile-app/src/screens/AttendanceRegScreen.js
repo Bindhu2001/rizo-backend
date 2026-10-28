@@ -2,7 +2,7 @@
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, ActivityIndicator, Modal, Platform,
-  Pressable, Dimensions, Image, KeyboardAvoidingView, RefreshControl, BackHandler
+  Pressable, Dimensions, Image, RefreshControl, BackHandler
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import axios from 'axios';
 import { SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
@@ -899,7 +900,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           <View style={{ width: 44 }} />
         </View>
 
-        <KeyboardAvoidingView
+        <KeyboardSafeView
           behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
@@ -940,7 +941,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
 
         <AnalogTimePicker
           visible={showTimePicker}

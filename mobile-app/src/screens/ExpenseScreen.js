@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform, Pressable, KeyboardAvoidingView, RefreshControl, BackHandler, Linking
+  TextInput, ActivityIndicator, Modal, Platform, Pressable, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { COLORS, SHADOWS , moderateScale, hp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
@@ -481,7 +482,7 @@ const ExpenseScreen = ({ navigation, route }) => {
       {view === 'APPLY' && (
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
-          <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+          <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
             {/* Expense Type */}
@@ -583,7 +584,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 
           </ScrollView>
           <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
         </View>
       )}
 

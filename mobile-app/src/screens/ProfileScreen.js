@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, BackHandler, Switch, TextInput, Linking,
-  KeyboardAvoidingView, Platform,
+  Platform,
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
@@ -326,7 +327,7 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
         <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
-        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={[s.fieldCard, { backgroundColor: theme.card, paddingVertical: moderateScale(20) }]}>
             <Text style={[s.pwdLabel, { color: theme.textMuted }]}>New Password</Text>
@@ -390,7 +391,7 @@ const ProfileScreen = ({ navigation, route }) => {
           </View>
           <View style={{ height: 32 }} />
         </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       </SafeAreaView>
     );

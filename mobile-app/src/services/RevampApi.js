@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { REVAMP_API_URL } from '../constants/Config';
+import { REVAMP_API_URL, API_ENDPOINTS } from '../constants/Config';
 import { getLoggedUser } from './LocalDB';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -67,8 +67,19 @@ export const HrQueriesApi = {
   escalate: (id) => request('post', `/hr-queries/${id}/escalate`),
 };
 
+// My Team. Read from the PHP API first — the same database the Leave Approval lists come from, so it works for
+// OVH and DigitalOcean companies alike; rizo-revamp's own answer is only the fallback (older server).
 export const TeamApi = {
-  today: () => request('get', '/team-today'),
+  today: async () => {
+    try {
+      const user = await getLoggedUser();
+      if (user?.user_id) {
+        const res = await axios.post(API_ENDPOINTS.TEAM_TODAY, { user_id: user.user_id }, { timeout: 12000 });
+        if (res.data && ('authorise' in res.data || 'approve' in res.data)) return res.data;
+      }
+    } catch (_) { /* fall through */ }
+    return request('get', '/team-today');
+  },
 };
 
 // Salary slips from rizo-revamp (DigitalOcean companies): approved months only, and the PDF made by the

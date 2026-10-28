@@ -1,7 +1,7 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions, Platform, KeyboardAvoidingView, RefreshControl, BackHandler, Linking
+  TextInput, ActivityIndicator, Modal, Dimensions, Platform, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import {
   ChevronRight, CheckCircle, Clock, Paperclip, X, FileText
 } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
@@ -688,7 +689,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
         {/* From Row */}
@@ -826,7 +827,7 @@ const LeaveScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </ScrollView>
       <KeyboardDoneBar />
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
 
       <CalendarModal
         visible={!!calendarTarget}
