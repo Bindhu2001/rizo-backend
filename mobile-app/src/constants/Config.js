@@ -3,6 +3,10 @@ const NEWAPP_URL = 'https://v1.mypayrollmaster.online/api/v1/newapp';
 export const IMAGE_ROOT = 'https://v1.mypayrollmaster.online';
 // rizo-revamp's mobile routes (Connect to HR) — bearer-token auth, see services/RevampApi.js
 export const REVAMP_API_URL = 'https://login.rizohrms.com/api/mobile';
+// Companies on the DigitalOcean database, whose salary slip is the rizo-revamp one (the same companies the
+// PHP API routes to DigitalOcean). Everyone else (OVH) keeps the slip the app has always built itself.
+export const REVAMP_PAYSLIP_COMPANIES = ['GRTL', 'MYPY'];
+export const companyLettersOf = (userId) => String(userId || '').replace(/[^a-zA-Z]+/g, '').toUpperCase();
 
 export const API_ENDPOINTS = {
   AUTH: `${AUTH_URL}/login`,

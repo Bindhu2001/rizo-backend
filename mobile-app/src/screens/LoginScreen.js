@@ -7,7 +7,7 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
-import { COLORS, SHADOWS, moderateScale, wp } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale, wp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import * as Network from 'expo-network';
@@ -121,7 +121,7 @@ const LoginScreen = ({ navigation }) => {
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior="padding"
+          behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
         >

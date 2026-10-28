@@ -11,18 +11,20 @@ import {
 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
-import { moderateScale, SHADOWS } from '../components/Theme';
+import { moderateScale, SHADOWS, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
+import { useKeyboardVisible } from '../components/KeyboardDoneBar';
 
 // "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
 // the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
 // Active / Closed lists, and a new-conversation form. HR replies from the rizo-revamp web inbox.
 
-// Fills stay on the web widget's navy in both themes; accents on surfaces lighten in dark mode
-export const HR_BRAND = '#1E516E';
-export const hrAccent = (theme) => (theme.isDark ? '#7FB8D9' : HR_BRAND);
-export const hrAccentDim = (theme) => (theme.isDark ? 'rgba(127,184,217,0.16)' : 'rgba(30,81,110,0.10)');
+// Same look as the rest of the app: light/dark screen background and the Rizo purple for fills
+// (buttons, own message bubbles) and accents.
+export const hrFill = (theme) => (theme.isDark ? '#7C3AED' : '#4A148C');
+export const hrAccent = (theme) => theme.primaryDeep;
+export const hrAccentDim = (theme) => (theme.isDark ? 'rgba(167,139,250,0.18)' : '#F3E8FF');
 
 const CATEGORIES = [
   { value: 'Complaint', hint: 'Report a problem', Icon: AlertCircle },
@@ -61,26 +63,30 @@ const fmtWhen = (s) => {
 // Last list shown, so coming back to the page never starts on a spinner
 let cachedQueries = null;
 
-export const PanelHeader = ({ title, subtitle, onBack, children }) => (
-  <View style={s.panelHeader}>
-    <View style={s.panelRow}>
-      <TouchableOpacity onPress={onBack} style={s.headerIconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-        <ChevronLeft color="#FFF" size={22} />
-      </TouchableOpacity>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={s.panelTitle} numberOfLines={1}>{title}</Text>
-        {!!subtitle && <View style={s.panelSub}>{subtitle}</View>}
+export const PanelHeader = ({ title, subtitle, onBack, children }) => {
+  const theme = useTheme();
+  return (
+    <View style={[s.panelHeader, { backgroundColor: theme.bg, borderBottomColor: theme.border }]}>
+      <View style={s.panelRow}>
+        <TouchableOpacity onPress={onBack} style={s.headerIconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <ChevronLeft color={theme.text} size={28} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[s.panelTitle, { color: theme.text }]} numberOfLines={1}>{title}</Text>
+          {!!subtitle && <View style={s.panelSub}>{subtitle}</View>}
+        </View>
       </View>
+      {children}
     </View>
-    {children}
-  </View>
-);
+  );
+};
 
 const NewConversation = ({ onBack, onCreated }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardOpen = useKeyboardVisible();
   const accent = hrAccent(theme);
-  const [category, setCategory] = useState('Enquiry');
+  const [category, setCategory]= useState('Enquiry');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
@@ -104,8 +110,8 @@ const NewConversation = ({ onBack, onCreated }) => {
   const canSend = !!subject.trim() && !!message.trim() && !saving;
 
   return (
-    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-      <PanelHeader title="New conversation" subtitle={<Text style={s.panelSubText}>HR will reply right here</Text>} onBack={onBack} />
+    <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <PanelHeader title="New conversation" subtitle={<Text style={[s.panelSubText, { color: theme.textLight }]}>HR will reply right here</Text>}onBack={onBack} />
       <ScrollView style={{ backgroundColor: theme.bg }} contentContainerStyle={s.form} keyboardShouldPersistTaps="handled">
         <Text style={[s.label, { color: theme.textMuted }]}>WHAT IS THIS ABOUT?</Text>
         <View style={s.catRow}>
@@ -152,8 +158,8 @@ const NewConversation = ({ onBack, onCreated }) => {
 
         {!!error && <Text style={[s.errorText, { color: theme.danger }]}>{error}</Text>}
       </ScrollView>
-      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(12), insets.bottom) }]}>
-        <TouchableOpacity onPress={submit} disabled={!canSend} style={[s.primaryBtn, !canSend && { opacity: 0.5 }]}>
+      <View style={[s.formFooter, { borderTopColor: theme.border, backgroundColor: theme.card, paddingBottom: keyboardOpen ? moderateScale(12) : Math.max(moderateScale(12), insets.bottom) }]}>
+        <TouchableOpacity onPress={submit} disabled={!canSend} style={[s.primaryBtn, { backgroundColor: hrFill(theme) }, !canSend && { opacity: 0.5 }]}>
           {saving ? <ActivityIndicator color="#FFF" /> : (
             <>
               <Send color="#FFF" size={16} />
@@ -203,7 +209,7 @@ const HrConnectScreen = ({ navigation, route }) => {
 
   if (view === 'new') {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
         <NewConversation
           onBack={() => setView('list')}
           onCreated={(id, q) => {
@@ -273,20 +279,20 @@ const HrConnectScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <PanelHeader
         title={firstName ? `Hi ${firstName}, how can HR help?` : 'How can HR help?'}
-        subtitle={<><ShieldCheck color="#FFF" size={12} /><Text style={[s.panelSubText, { marginLeft: 5 }]}>Only HR can see your conversations</Text></>}
+        subtitle={<><ShieldCheck color={theme.textLight} size={12} /><Text style={[s.panelSubText, { color: theme.textLight, marginLeft: 5 }]}>Only HR can see your conversations</Text></>}
         onBack={() => navigation.goBack()}
       >
-        <TouchableOpacity onPress={() => setView('new')} activeOpacity={0.85} style={s.newCard}>
+        <TouchableOpacity onPress={() => setView('new')} activeOpacity={0.85} style={[s.newCard, { backgroundColor: hrFill(theme) }]}>
           <View style={s.newIcon}><Plus color="#FFF" size={17} /></View>
           <View style={{ flex: 1 }}>
             <Text style={s.newTitle}>New conversation</Text>
             <Text style={s.newSub}>Raise a complaint or ask a question</Text>
           </View>
-          <ChevronRight color="#94A3B8" size={17} />
+          <ChevronRight color="rgba(255,255,255,0.85)" size={17} />
         </TouchableOpacity>
       </PanelHeader>
 
@@ -299,7 +305,7 @@ const HrConnectScreen = ({ navigation, route }) => {
           keyExtractor={(q) => q.key || String(q.hr_query_pkey)}
           renderItem={renderItem}
           contentContainerStyle={[s.list, sections.length === 0 && { flexGrow: 1 }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[HR_BRAND]} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[theme.primaryDeep]}/>}
           ListEmptyComponent={
             <View style={s.empty}>
               <View style={[s.emptyIcon, { backgroundColor: hrAccentDim(theme) }]}><MessageCircle color={accent} size={26} /></View>
@@ -316,16 +322,16 @@ const HrConnectScreen = ({ navigation, route }) => {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  panelHeader: { backgroundColor: HR_BRAND, paddingHorizontal: moderateScale(12), paddingTop: moderateScale(10), paddingBottom: moderateScale(14) },
+  panelHeader: { paddingHorizontal: moderateScale(8), paddingTop: moderateScale(4), paddingBottom: moderateScale(12), borderBottomWidth: StyleSheet.hairlineWidth },
   panelRow: { flexDirection: 'row', alignItems: 'center' },
-  headerIconBtn: { width: moderateScale(34), height: moderateScale(34), borderRadius: moderateScale(10), backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center', marginRight: moderateScale(10) },
-  panelTitle: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(16) },
+  headerIconBtn: { width: moderateScale(44), height: moderateScale(44), alignItems: 'center', justifyContent: 'center' },
+  panelTitle: { fontWeight: '800', fontSize: moderateScale(17) },
   panelSub: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', marginTop: moderateScale(3), gap: moderateScale(6) },
-  panelSubText: { color: 'rgba(255,255,255,0.85)', fontSize: moderateScale(12) },
-  newCard: { marginTop: moderateScale(12), flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: moderateScale(12), padding: moderateScale(11), ...SHADOWS.light },
-  newIcon: { width: moderateScale(32), height: moderateScale(32), borderRadius: moderateScale(9), backgroundColor: HR_BRAND, alignItems: 'center', justifyContent: 'center', marginRight: moderateScale(10) },
-  newTitle: { color: '#0F172A', fontWeight: '800', fontSize: moderateScale(14) },
-  newSub: { color: '#64748B', fontSize: moderateScale(12), marginTop: 1 },
+  panelSubText: { fontSize: moderateScale(12) },
+  newCard: { marginTop: moderateScale(12), marginHorizontal: moderateScale(8), flexDirection: 'row', alignItems: 'center', borderRadius: moderateScale(14), padding: moderateScale(12), ...SHADOWS.light },
+  newIcon: { width: moderateScale(34), height: moderateScale(34), borderRadius: moderateScale(10), backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginRight: moderateScale(10) },
+  newTitle: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(14) },
+  newSub: { color: 'rgba(255,255,255,0.85)', fontSize: moderateScale(12), marginTop: 1 },
   list: { paddingBottom: moderateScale(24) },
   sectionLabel: { fontSize: moderateScale(11), fontWeight: '700', letterSpacing: 0.4, paddingHorizontal: moderateScale(16), paddingTop: moderateScale(14), paddingBottom: moderateScale(4) },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(12), borderBottomWidth: StyleSheet.hairlineWidth, gap: moderateScale(12) },
@@ -356,7 +362,7 @@ const s = StyleSheet.create({
   counter: { fontSize: moderateScale(11), textAlign: 'right', marginTop: moderateScale(4) },
   errorText: { fontSize: moderateScale(13), marginTop: moderateScale(8) },
   formFooter: { paddingHorizontal: moderateScale(16), paddingTop: moderateScale(12), borderTopWidth: StyleSheet.hairlineWidth },
-  primaryBtn: { height: moderateScale(48), borderRadius: moderateScale(12), backgroundColor: HR_BRAND, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(8) },
+  primaryBtn: { height: moderateScale(48), borderRadius: moderateScale(12), flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(8) },
   primaryBtnText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(15) },
 });
 

@@ -12,7 +12,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { getTodayVisits, getVisitsByDate, getLiveVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
@@ -381,7 +382,7 @@ const cm = StyleSheet.create({
 
 
 // ─── Input Components ────────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength }) => {
+const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength, autoCapitalize }) => {
   const theme = useTheme();
   const inputRef = useRef(null);
   return (
@@ -401,6 +402,8 @@ const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLe
       numberOfLines={multiline ? 3 : 1}
       maxLength={maxLength}
       returnKeyType={multiline ? 'default' : 'done'}
+      autoCapitalize={autoCapitalize || (multiline ? 'sentences' : keyboardType === 'phone-pad' ? 'none' : 'words')}
+      inputAccessoryViewID={doneBarId(keyboardType)}
       placeholderTextColor={theme.textMuted}
     />
   </TouchableOpacity>
@@ -486,7 +489,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
         </View>
 
         <KeyboardAvoidingView
-          behavior="padding"
+          behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
         >
@@ -523,6 +526,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
               {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && sv.startBtnTextDisabled]}>START</Text>}
             </TouchableOpacity>
           </View>
+        <KeyboardDoneBar />
         </KeyboardAvoidingView>
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
         <LocationDisclosureModal
@@ -580,7 +584,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   return (
     <Modal visible={visible} transparent statusBarTranslucent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView
-        behavior="padding"
+        behavior={KEYBOARD_AVOID_BEHAVIOR}
         style={[sm.overlay, { backgroundColor: theme.modalOverlay }]}
       >
         <TouchableOpacity style={{ flex: 1 }} onPress={onClose} activeOpacity={1} />
@@ -605,7 +609,8 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      <KeyboardDoneBar />
+        </KeyboardAvoidingView>
     </Modal>
   );
 };

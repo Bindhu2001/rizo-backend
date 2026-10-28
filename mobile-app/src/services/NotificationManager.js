@@ -3,7 +3,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getLoggedUser, getLeavesLocal, saveNotificationLocal } from './LocalDB';
+import { getLoggedUser, getLeavesLocal, saveNotificationLocal, markNotificationsAsReadLocal } from './LocalDB';
 import { clearShiftReminders } from './ShiftReminders';
 import { clearRevampToken, PushTokenApi, AnnouncementsApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -334,7 +334,9 @@ class NotificationManager {
         const prefix = a.category === 'Emergency' ? '🚨 Emergency' : a.category === 'Important' ? '📌 Important' : '📢 Announcement';
         const title = `${prefix}: ${a.title}`;
         const message = String(a.message || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-        await saveNotificationLocal({ userId: user.user_id, title, message, type: ref });
+        const notifId = await saveNotificationLocal({ userId: user.user_id, title, message, type: ref });
+        // First check after sign-in: kept in the list, but as read — old announcements are not 37 new alerts
+        if (!seeded) await markNotificationsAsReadLocal(user.user_id, notifId);
         if (seeded) {
           await Notifications.scheduleNotificationAsync({
             content: { title, body: message, data: { type: 'ANNOUNCEMENT', id: Number(a.announcement_pkey) } },

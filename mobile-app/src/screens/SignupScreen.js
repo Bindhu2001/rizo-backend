@@ -10,7 +10,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Trash2, ChevronRight, Camera, Check, ChevronDown } from 'lucide-react-native';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
-import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width } from '../components/Theme';
+import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
@@ -19,7 +20,7 @@ const PURPLE = '#4A148C';
 const PURPLE_BG = '#F5F0FF';
 
 // ─── Floating Label Input ──────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '', validation }) => {
+const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secureTextEntry = false, maxLength, placeholder = '', validation, autoCapitalize }) => {
   const theme = useTheme();
   return (
   <View style={st.inputWrap}>
@@ -34,8 +35,12 @@ const FloatInput = ({ label, value, onChangeText, keyboardType = 'default', secu
       placeholderTextColor={theme.textMuted}
       maxLength={maxLength}
       returnKeyType="done"
+      // names / places start each word with a capital; email, numbers and codes don't (an explicit prop wins)
+      autoCapitalize={autoCapitalize || (keyboardType === 'default' && !secureTextEntry ? 'words' : 'none')}
+      autoCorrect={false}
+      inputAccessoryViewID={doneBarId(keyboardType)}
     />
-    {validation?.status && validation.status !== 'idle' && (
+    {validation?.status&& validation.status !== 'idle' && (
       <View style={st.vRow}>
         {validation.status === 'checking'
           ? <ActivityIndicator size="small" color={theme.textMuted} style={{ marginRight: 5 }} />
@@ -133,7 +138,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       {/* The sheet rides above the keyboard while searching */}
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} style={{ flex: 1 }}>
       <TouchableOpacity style={[st.modalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
         <View style={[st.modalSheet, { backgroundColor: theme.card, maxHeight: '80%', paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
           <View style={[st.modalHandle, { backgroundColor: theme.border }]} />
@@ -569,7 +574,7 @@ const SignupScreen = ({ navigation }) => {
       <View style={[st.container, { backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
         <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
-        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
           <View style={[st.step1Top, { backgroundColor: theme.bg }]}>
             <TouchableOpacity onPress={prevStep} style={[st.backBtnLight, { top: insets.top + 8 }]}>
               <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
@@ -597,6 +602,7 @@ const SignupScreen = ({ navigation }) => {
               </TouchableOpacity>
             </ScrollView>
           </View>
+        <KeyboardDoneBar />
         </KeyboardAvoidingView>
       </View>
     );
@@ -664,7 +670,7 @@ const SignupScreen = ({ navigation }) => {
       </View>
 
       {/* ── WHITE CARD BOTTOM ── */}
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
 
@@ -885,7 +891,8 @@ const SignupScreen = ({ navigation }) => {
             <View style={{ height: 80 }} />
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      <KeyboardDoneBar />
+        </KeyboardAvoidingView>
 
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
 

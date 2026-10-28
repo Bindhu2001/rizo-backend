@@ -28,7 +28,8 @@ import HrConnectScreen from './src/screens/HrConnectScreen';
 import HrQueryThreadScreen from './src/screens/HrQueryThreadScreen';
 import EventsListScreen from './src/screens/EventsListScreen';
 import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
-import TeamLeaveScreen from './src/screens/TeamLeaveScreen';
+import MyTeamScreen from './src/screens/MyTeamScreen';
+import HrFloatingButton from './src/components/HrFloatingButton';
 
 import OfflineBanner from './src/components/OfflineBanner';
 import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH } from './src/components/Theme';
@@ -211,9 +212,10 @@ function AppContent() {
           <Stack.Screen name="HrQueryThread" component={HrQueryThreadScreen} />
           <Stack.Screen name="EventsList" component={EventsListScreen} />
           <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
-          <Stack.Screen name="TeamLeave" component={TeamLeaveScreen} />
+          <Stack.Screen name="MyTeam" component={MyTeamScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      <HrFloatingButton currentRoute={currentRoute} navigationRef={navigationRef} />
       <OfflineBanner currentRoute={currentRoute} navigationRef={navigationRef} onBarVisibleChange={setOfflineBarVisible} />
     </OfflineBarContext.Provider>
   );

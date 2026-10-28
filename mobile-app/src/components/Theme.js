@@ -1,4 +1,4 @@
-import { Dimensions } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 
 // On tablets, App.js caps rendered content to LARGE_SCREEN_CAPPED_WIDTH instead
 // of stretching phone-designed screens across the full device width — these
@@ -148,3 +148,7 @@ export const SHADOWS = {
   },
 };
 
+// KeyboardAvoidingView behaviour. The Android window already pans for the keyboard (app.json
+// softwareKeyboardLayoutMode "pan") and RN Modal windows resize by themselves, so padding on top of
+// that pushed content up twice (a gap that vanished once typing started). Only iOS needs the padding.
+export const KEYBOARD_AVOID_BEHAVIOR = Platform.OS === 'ios' ? 'padding' : undefined;

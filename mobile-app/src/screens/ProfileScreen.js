@@ -8,16 +8,16 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
-  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, MessageSquare, Megaphone,
+  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, Megaphone,
   Lock, Eye, EyeOff, ShieldCheck, Trash2,
 } from 'lucide-react-native';
 import axios from 'axios';
-import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
-import { HrQueriesApi, AnnouncementsApi } from '../services/RevampApi';
+import { AnnouncementsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import { useTheme } from '../components/ThemeContext';
 
@@ -77,12 +77,10 @@ const ProfileScreen = ({ navigation, route }) => {
     setRemindersEnabled(value, user?.user_id);
   };
 
-  // Unread HR replies / announcements for the Support rows — refreshed whenever Profile is shown
-  const [hrUnread, setHrUnread] = useState(0);
+  // Unread announcements for the Support row — refreshed whenever Profile is shown
   const [annUnread, setAnnUnread] = useState(0);
   useEffect(() => {
     const refreshUnread = () => {
-      HrQueriesApi.list().then((res) => setHrUnread(Number(res?.unread) || 0)).catch(() => {});
       AnnouncementsApi.list().then((res) => setAnnUnread(Number(res?.unread) || 0)).catch(() => {});
     };
     refreshUnread();
@@ -328,7 +326,7 @@ const ProfileScreen = ({ navigation, route }) => {
     return (
       <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
         <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
-        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={[s.fieldCard, { backgroundColor: theme.card, paddingVertical: moderateScale(20) }]}>
             <Text style={[s.pwdLabel, { color: theme.textMuted }]}>New Password</Text>
@@ -466,14 +464,6 @@ const ProfileScreen = ({ navigation, route }) => {
               ? `${annUnread} new ${annUnread === 1 ? 'announcement' : 'announcements'}`
               : 'Company updates from HR'}
             onPress={() => navigation.navigate('Announcements', { user })}
-          />
-          <SectionItem
-            iconBg="#F5F3FF" icon={<MessageSquare color="#7C3AED" size={20} />}
-            title="Connect to HR"
-            subtitle={hrUnread > 0
-              ? `${hrUnread} new ${hrUnread === 1 ? 'reply' : 'replies'} from HR`
-              : 'Raise a complaint or ask HR a question'}
-            onPress={() => navigation.navigate('HrConnect', { user })}
             last
           />
         </View>

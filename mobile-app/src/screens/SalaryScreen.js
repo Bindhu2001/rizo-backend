@@ -11,7 +11,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES, companyLettersOf } from '../constants/Config';
+import { PayslipsApi } from '../services/RevampApi';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -51,10 +52,25 @@ const SalaryScreen = ({ navigation, route }) => {
         setGrossSalary(grossRes.data.data.gross_salary);
       }
 
-      // Fetch Salary Slips
-      const slipRes = await axios.post(API_ENDPOINTS.SALARY_SLIP, { user_id: user.user_id }, { timeout: 10000 });
-      if (slipRes.data?.success && Array.isArray(slipRes.data?.data)) {
-        setSalarySlips(slipRes.data.data);
+      // Fetch Salary Slips — DigitalOcean companies (GRTL, MYPY): rizo-revamp's approved months, downloaded as
+      // its web-design PDF. OVH companies, and any problem reaching rizo-revamp: the slip the app builds itself.
+      let loaded = false;
+      if (REVAMP_PAYSLIP_COMPANIES.includes(companyLettersOf(user.user_id))) {
+        try {
+          const res = await PayslipsApi.list();
+          if (Array.isArray(res?.data)) {
+            setSalarySlips(res.data.map((p) => ({ month: p.month, revampId: p.id, net_salary: p.net_salary })));
+            loaded = true;
+          }
+        } catch (e) {
+          console.log('rizo-revamp payslips unavailable, using the standard list', e.message);
+        }
+      }
+      if (!loaded) {
+        const slipRes = await axios.post(API_ENDPOINTS.SALARY_SLIP, { user_id: user.user_id }, { timeout: 10000 });
+        if (slipRes.data?.success && Array.isArray(slipRes.data?.data)) {
+          setSalarySlips(slipRes.data.data);
+        }
       }
     } catch (e) {
       console.log('Error fetching salary data', e.message);
@@ -69,9 +85,33 @@ const SalaryScreen = ({ navigation, route }) => {
 
   const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  // rizo-revamp slip: the server's PDF (same design as the web), saved under the usual file name and shared
+  const downloadRevampSlip = async (slip) => {
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const [yy, mm] = String(slip.month || '').split('-');
+    const monthName = MONTHS[parseInt(mm, 10) - 1] || 'Month';
+    const who = (user?.employee_name || 'Employee').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Employee';
+    try {
+      const uri = await PayslipsApi.download(slip.revampId, `${who}_${monthName}${yy}_SalarySlip.pdf`);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Save Salary Slip' });
+      } else {
+        showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
+      }
+    } catch (e) {
+      console.log('revamp payslip download failed', e.message);
+      showAlert('error', 'Could not download', e?.response?.status === 404
+        ? 'This salary slip is not available.'
+        : 'Please check your connection and try again.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const handleDownloadPdf = async (slip) => {
     if (downloadingId) return;
     setDownloadingId(slip.month);
+    if (slip.revampId) return downloadRevampSlip(slip);
 
     try {
       const monthStr = formatMonth(slip.month);
@@ -312,7 +352,9 @@ const SalaryScreen = ({ navigation, route }) => {
               const slipDeductions = Array.isArray(slip.withoutcomponent)
                 ? slip.withoutcomponent.filter(i => i.salary_head_item_desc !== 'No Deductions')
                 : [];
-              if (slipEarnings.length > 0 || slipDeductions.length > 0) {
+              if (slip.net_salary != null) {
+                dispAmountStr = Number(slip.net_salary).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+              } else if (slipEarnings.length > 0 || slipDeductions.length > 0) {
                 const tAdd = slipEarnings.reduce((s, i) => s + Math.abs(parseFloat(i.salary_amount) || 0), 0);
                 const tDed = slipDeductions.reduce((s, i) => s + Math.abs(parseFloat(i.salary_amount) || 0), 0);
                 dispAmountStr = (tAdd - tDed).toLocaleString('en-IN', { minimumFractionDigits: 2 });

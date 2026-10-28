@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, Modal, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Siren, Star, Info, Pin, Megaphone, X } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft, Siren, Star, Info, Pin, Megaphone } from 'lucide-react-native';
 import { format, parse } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS } from '../components/Theme';
@@ -46,7 +46,6 @@ let cached = null;
 
 const AnnouncementsScreen = ({ navigation, route }) => {
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
   const openId = route?.params?.openId;
   const [items, setItems] = useState(cached);
   const [tab, setTab] = useState('all');
@@ -89,6 +88,13 @@ const AnnouncementsScreen = ({ navigation, route }) => {
     })();
   }, [openId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Android back button closes the open announcement before leaving the screen
+  useEffect(() => {
+    if (!open) return undefined;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setOpen(null); return true; });
+    return () => sub.remove();
+  }, [open]);
+
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const visible = (items || []).filter((a) => inTab(a, tab));
@@ -118,7 +124,39 @@ const AnnouncementsScreen = ({ navigation, route }) => {
     );
   };
 
-  const st = open ? styleOf(open) : null;
+  // An opened announcement is a full page (not a popup): header + back, category and date, title, full text
+  if (open) {
+    const dst = styleOf(open);
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => setOpen(null)} style={s.backBtn}>
+            <ChevronLeft color={theme.text} size={28} />
+          </TouchableOpacity>
+          <Text style={[s.headerTitle, { color: theme.text }]}>Announcement</Text>
+          <View style={{ width: moderateScale(44) }} />
+        </View>
+        <ScrollView contentContainerStyle={s.detailScroll}>
+          <View style={[s.detailCard, { backgroundColor: theme.card, borderLeftColor: dst.color }]}>
+            <View style={s.detailTop}>
+              <View style={[s.iconBox, { backgroundColor: dst.bg, borderColor: dst.border }]}>
+                <dst.Icon color={dst.color} size={18} />
+              </View>
+              <Text style={[s.detailMeta, { color: theme.textMuted }]}>
+                <Text style={{ color: dst.color, fontWeight: '800' }}>{String(open.category).toUpperCase()}</Text>
+                {open.is_pinned ? ' · Pinned' : ''} · {fmtDate(open.publish_from)}
+              </Text>
+            </View>
+            <Text style={[s.detailTitle, { color: theme.text }]}>{open.title}</Text>
+            <Text style={[s.detailText, { color: theme.text }]} selectable>{open.message}</Text>
+            {!!open.expires_on && (
+              <Text style={[s.expires, { color: theme.textMuted }]}>Valid till {fmtDate(open.expires_on)}</Text>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
@@ -163,38 +201,6 @@ const AnnouncementsScreen = ({ navigation, route }) => {
         />
       )}
 
-      <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpen(null)} statusBarTranslucent>
-        <View style={[s.overlay, { backgroundColor: theme.modalOverlay }]}>
-          {open && (
-            <View style={[s.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(20), insets.bottom + moderateScale(8)) }]}>
-              <View style={s.sheetTop}>
-                <View style={[s.iconBox, { backgroundColor: st.bg, borderColor: st.border }]}>
-                  <st.Icon color={st.color} size={18} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[s.sheetMeta, { color: theme.textMuted }]}>
-                    <Text style={{ color: st.color, fontWeight: '800' }}>{String(open.category).toUpperCase()}</Text>
-                    {open.is_pinned ? ' · Pinned' : ''} · {fmtDate(open.publish_from)}
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={() => setOpen(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                  <X color={theme.textLight} size={22} />
-                </TouchableOpacity>
-              </View>
-              <Text style={[s.sheetTitle, { color: theme.text }]}>{open.title}</Text>
-              <ScrollView style={s.sheetBody}>
-                <Text style={[s.sheetText, { color: theme.text }]} selectable>{open.message}</Text>
-                {!!open.expires_on && (
-                  <Text style={[s.expires, { color: theme.textMuted }]}>Valid till {fmtDate(open.expires_on)}</Text>
-                )}
-              </ScrollView>
-              <TouchableOpacity onPress={() => setOpen(null)} style={[s.closeBtn, { backgroundColor: theme.cardSoft }]}>
-                <Text style={[s.closeText, { color: theme.text }]}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -222,16 +228,13 @@ const s = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(32) },
   emptyTitle: { fontSize: moderateScale(16), fontWeight: '800', marginTop: moderateScale(12) },
   emptySub: { fontSize: moderateScale(13), textAlign: 'center', marginTop: moderateScale(6) },
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(20), maxHeight: '85%' },
-  sheetTop: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(10) },
-  sheetMeta: { fontSize: moderateScale(11.5) },
-  sheetTitle: { fontSize: moderateScale(18), fontWeight: '900', marginTop: moderateScale(14) },
-  sheetBody: { marginTop: moderateScale(10), flexGrow: 0 },
-  sheetText: { fontSize: moderateScale(14.5), lineHeight: moderateScale(22) },
-  expires: { fontSize: moderateScale(12), marginTop: moderateScale(14) },
-  closeBtn: { marginTop: moderateScale(16), height: moderateScale(48), borderRadius: moderateScale(14), alignItems: 'center', justifyContent: 'center' },
-  closeText: { fontWeight: '800', fontSize: moderateScale(15) },
+  detailScroll: { padding: moderateScale(16), paddingBottom: moderateScale(32) },
+  detailCard: { borderRadius: moderateScale(16), padding: moderateScale(18), borderLeftWidth: 4, ...SHADOWS.light },
+  detailTop: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(10) },
+  detailMeta: { flex: 1, fontSize: moderateScale(11.5) },
+  detailTitle: { fontSize: moderateScale(19), fontWeight: '900', marginTop: moderateScale(14), lineHeight: moderateScale(26) },
+  detailText: { fontSize: moderateScale(15), lineHeight: moderateScale(23), marginTop: moderateScale(12) },
+  expires: { fontSize: moderateScale(12), marginTop: moderateScale(16) },
 });
 
 export default AnnouncementsScreen;

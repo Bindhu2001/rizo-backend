@@ -10,7 +10,7 @@ import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
-import { SHADOWS , moderateScale } from '../components/Theme';
+import { SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
@@ -900,7 +900,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         </View>
 
         <KeyboardAvoidingView
-          behavior="padding"
+          behavior={KEYBOARD_AVOID_BEHAVIOR}
           keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
         >

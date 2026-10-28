@@ -8,10 +8,11 @@ import * as Notifications from 'expo-notifications';
 import { Send, TriangleAlert, ShieldCheck, CheckCircle2, Lock, Check, Clock } from 'lucide-react-native';
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
-import { moderateScale } from '../components/Theme';
+import { moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
-import { HR_BRAND, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
+import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
+import { useKeyboardVisible } from '../components/KeyboardDoneBar';
 
 // One "Connect to HR" conversation, chat-style like the web ESS widget's thread view: day
 // separators, grouped bubbles with HR's avatar and name, status notes (sent / resolved /
@@ -37,7 +38,9 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const accent = hrAccent(theme);
-  const id = route?.params?.id;
+  const fill = hrFill(theme);
+  const keyboardOpen = useKeyboardVisible();
+const id = route?.params?.id;
   // A just-created conversation is passed in, so it shows without waiting for the server
   const initial = route?.params?.initial;
   const [query, setQuery] = useState(initial?.query || null);
@@ -146,7 +149,7 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
 
     const bubble = (
       <View style={[s.bubble, mine
-        ? [{ backgroundColor: item.failed ? '#DC2626' : HR_BRAND }, lastOfGroup && { borderBottomRightRadius: moderateScale(4) }]
+        ? [{ backgroundColor: item.failed ? '#DC2626' : fill },lastOfGroup && { borderBottomRightRadius: moderateScale(4) }]
         : [s.bubbleHr, { backgroundColor: theme.card, borderColor: theme.border }, lastOfGroup && { borderBottomLeftRadius: moderateScale(4) }]]}
       >
         <Text style={[s.msgText, { color: mine ? '#FFF' : theme.text }]}>{item.message}</Text>
@@ -172,7 +175,7 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
           {!mine && (
             <View style={s.avatarSlot}>
               {lastOfGroup && (
-                <View style={[s.avatar, { backgroundColor: HR_BRAND }]}>
+                <View style={[s.avatar, { backgroundColor: fill }]}>
                   <Text style={s.avatarText}>{initials(item.sender_name)}</Text>
                 </View>
               )}
@@ -230,8 +233,8 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
 
   const subtitle = query ? (
     <>
-      <Text style={s.subText}>{query.category}</Text>
-      <View style={s.headerPill}><Text style={s.headerPillText}>{status}</Text></View>
+      <Text style={[s.subText, { color: theme.textLight }]}>{query.category}</Text>
+      <View style={[s.headerPill, { backgroundColor: theme.cardSoft }]}><Text style={[s.headerPillText, { color: theme.text }]}>{status}</Text></View>
       {!!query.escalated && (
         <View style={[s.headerPill, s.pillRow, { backgroundColor: '#FEE2E2' }]}>
           <TriangleAlert color="#991B1B" size={10} />
@@ -242,11 +245,11 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
   ) : null;
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: HR_BRAND }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <PanelHeader title={query?.subject || 'Loading…'} subtitle={subtitle} onBack={() => navigation.goBack()} />
 
-      <KeyboardAvoidingView style={[s.body, { backgroundColor: theme.bg }]} behavior="padding">
+      <KeyboardAvoidingView style={[s.body, { backgroundColor: theme.bg }]} behavior={KEYBOARD_AVOID_BEHAVIOR}>
         {!query ? (
           <View style={{ flex: 1 }}><ActivityIndicator style={{ marginTop: moderateScale(40) }} color={accent} /></View>
         ) : (
@@ -269,7 +272,7 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
             <Text style={[s.closedText, { color: theme.textMuted }]}>This conversation is closed. Start a new one if you need more help.</Text>
           </View>
         ) : (
-          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(10), insets.bottom) }]}>
+          <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: keyboardOpen ? moderateScale(10) : Math.max(moderateScale(10), insets.bottom) }]}>
             <TextInput
               value={reply}
               onChangeText={setReply}
@@ -280,7 +283,7 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
               multiline
               style={[s.input, { color: theme.text, backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}
             />
-            <TouchableOpacity onPress={send} disabled={!reply.trim()} style={[s.sendBtn, !reply.trim() && { opacity: 0.5 }]}>
+            <TouchableOpacity onPress={send} disabled={!reply.trim()} style={[s.sendBtn, { backgroundColor: fill }, !reply.trim() && { opacity: 0.5 }]}>
               <Send color="#FFF" size={18} />
             </TouchableOpacity>
           </View>
@@ -293,9 +296,9 @@ const HrQueryThreadScreen = ({ navigation, route }) => {
 const s = StyleSheet.create({
   container: { flex: 1 },
   body: { flex: 1 },
-  subText: { color: 'rgba(255,255,255,0.85)', fontSize: moderateScale(12) },
-  headerPill: { backgroundColor: 'rgba(255,255,255,0.18)', paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(1), borderRadius: moderateScale(10) },
-  headerPillText: { color: '#FFF', fontSize: moderateScale(10.5), fontWeight: '700' },
+  subText: { fontSize: moderateScale(12) },
+  headerPill: { paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(1), borderRadius: moderateScale(10) },
+  headerPillText: { fontSize: moderateScale(10.5), fontWeight: '700' },
   pillRow: { flexDirection: 'row', alignItems: 'center' },
   list: { paddingHorizontal: moderateScale(10), paddingTop: moderateScale(6), paddingBottom: moderateScale(14) },
   dayChip: { alignSelf: 'center', marginTop: moderateScale(10), marginBottom: moderateScale(6), borderWidth: 1, borderRadius: moderateScale(12), paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(2) },
@@ -324,7 +327,7 @@ const s = StyleSheet.create({
   escalateText: { fontSize: moderateScale(12), fontWeight: '800' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: moderateScale(10), paddingTop: moderateScale(10), borderTopWidth: StyleSheet.hairlineWidth },
   input: { flex: 1, borderWidth: 1, borderRadius: moderateScale(20), paddingHorizontal: moderateScale(14), paddingTop: moderateScale(10), paddingBottom: moderateScale(10), fontSize: moderateScale(14), maxHeight: moderateScale(120) },
-  sendBtn: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), alignItems: 'center', justifyContent: 'center', marginLeft: moderateScale(8), backgroundColor: HR_BRAND },
+  sendBtn: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), alignItems: 'center', justifyContent: 'center', marginLeft: moderateScale(8) },
   closedBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(16), paddingTop: moderateScale(12), borderTopWidth: StyleSheet.hairlineWidth, gap: moderateScale(6) },
   closedText: { fontSize: moderateScale(12), textAlign: 'center', flexShrink: 1 },
 });

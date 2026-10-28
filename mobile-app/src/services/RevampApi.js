@@ -2,6 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { REVAMP_API_URL } from '../constants/Config';
 import { getLoggedUser } from './LocalDB';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Calls into rizo-revamp's /api/mobile/* routes. Signs in silently with the user id + password
 // the app already logged in with (kept in LocalDB user_profile) and keeps the 30-day bearer
@@ -68,6 +69,25 @@ export const HrQueriesApi = {
 
 export const TeamApi = {
   today: () => request('get', '/team-today'),
+};
+
+// Salary slips from rizo-revamp (DigitalOcean companies): approved months only, and the PDF made by the
+// server with the same design as the web employee login's Download PDF.
+export const PayslipsApi = {
+  list: () => request('get', '/payslips'),
+  // Saves the PDF into the cache folder and returns its file uri
+  download: async (id, fileName) => {
+    const dest = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+    const get = (token) => FileSystem.downloadAsync(`${REVAMP_API_URL}/payslips/${id}/pdf`, dest, { headers: { Authorization: `Bearer ${token}` } });
+    let res = await get(await getToken());
+    if (res.status === 401) res = await get(await signIn());
+    if (res.status !== 200) {
+      await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+      throw Object.assign(new Error('Could not download the payslip'), { response: { status: res.status } });
+    }
+    return res.uri;
+  },
 };
 
 export const AnnouncementsApi = {

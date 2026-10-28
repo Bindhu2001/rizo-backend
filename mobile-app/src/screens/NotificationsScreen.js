@@ -194,10 +194,9 @@ const NotificationsScreen = ({ navigation }) => {
           {getIconForType(item.message)}
         </View>
         <View style={styles.notifMain}>
-          <View style={styles.notifTop}>
-            <Text style={[styles.notifTitle, { color: theme.text }, isUnread && styles.unreadTitle]}>{item.title}</Text>
-            <Text style={[styles.notifTime, { color: theme.textMuted }]}>{formatTime(item.created_at)}</Text>
-          </View>
+          {/* Long titles (announcements) stop at 3 lines; the time sits under them, clear of the unread dot */}
+          <Text style={[styles.notifTitle, { color: theme.text }, isUnread && styles.unreadTitle]} numberOfLines={3}>{item.title}</Text>
+          <Text style={[styles.notifTime, { color: theme.textMuted }]}>{formatTime(item.created_at)}</Text>
         </View>
         {isUnread && <View style={styles.unreadDot} />}
       </TouchableOpacity>
@@ -326,9 +325,9 @@ const styles = StyleSheet.create({
   notifTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   notifTitle: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   unreadTitle: { color: COLORS.primaryDeep },
-  notifTime: { fontSize: moderateScale(10), color: COLORS.textMuted, fontWeight: '700' },
+  notifTime: { fontSize: moderateScale(11), color: COLORS.textMuted, fontWeight: '700', marginTop: 6 },
   notifSub: { fontSize: moderateScale(13), color: COLORS.textLight, lineHeight: 18, fontWeight: '500' },
-  unreadDot: { width: moderateScale(10), height: moderateScale(10), borderRadius: 5, backgroundColor: COLORS.primaryDeep, marginLeft: moderateScale(12) },
+  unreadDot: { width: moderateScale(10), height: moderateScale(10), borderRadius: 5, backgroundColor: COLORS.primaryDeep, marginLeft: moderateScale(12), alignSelf: 'flex-start', marginTop: 4 },
 
   emptyGroup: { alignItems: 'center', justifyContent: 'center', marginTop: moderateScale(100) },
   emptyTitle: { fontSize: moderateScale(20), fontWeight: '900', color: COLORS.text, marginBottom: moderateScale(8) },

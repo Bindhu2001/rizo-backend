@@ -9,7 +9,8 @@ import {
   ChevronLeft, Calendar as CalendarIcon, ChevronDown,
   ChevronRight, CheckCircle, Clock, Paperclip, X, FileText
 } from 'lucide-react-native';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -687,7 +688,7 @@ const LeaveScreen = ({ navigation, route }) => {
       <View style={s.remBanner}>
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
         {/* From Row */}
@@ -769,6 +770,7 @@ const LeaveScreen = ({ navigation, route }) => {
             onChangeText={setContactNo}
             placeholder="+91 0000000000"
             keyboardType="phone-pad"
+            inputAccessoryViewID={doneBarId('phone-pad')}
             placeholderTextColor={theme.textMuted}
             maxLength={20}
           />
@@ -782,6 +784,8 @@ const LeaveScreen = ({ navigation, route }) => {
             value={handoverTo}
             onChangeText={setHandoverTo}
             placeholder="e.g. Handed over to Team Lead"
+            autoCapitalize="words"
+            returnKeyType="done"
             placeholderTextColor={theme.textMuted}
             maxLength={20}
           />
@@ -821,7 +825,8 @@ const LeaveScreen = ({ navigation, route }) => {
           {submitting ? <ActivityIndicator color="#FFF" /> : <Text style={s.submitText}>SUBMIT REQUEST</Text>}
         </TouchableOpacity>
       </ScrollView>
-      </KeyboardAvoidingView>
+      <KeyboardDoneBar />
+        </KeyboardAvoidingView>
 
       <CalendarModal
         visible={!!calendarTarget}

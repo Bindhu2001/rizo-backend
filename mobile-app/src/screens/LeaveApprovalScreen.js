@@ -10,7 +10,7 @@ import {
   ChevronLeft, ChevronDown, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
-import { COLORS, SHADOWS, moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -485,7 +485,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       {/* Remarks Modal */}
       <Modal visible={actionModal.visible} transparent animationType="fade" onRequestClose={closeModal} statusBarTranslucent>
-        <KeyboardAvoidingView behavior="padding" style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+        <KeyboardAvoidingView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
             <Text style={[s.modalTitle, { color: theme.text }]}>
               {actionModal.actionType === 'REJECT'
