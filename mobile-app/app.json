@@ -26,7 +26,7 @@
     "android": {
       "package": "com.rizo.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 18,
+      "versionCode": 13,
       "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
