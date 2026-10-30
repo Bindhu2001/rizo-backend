@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rizo.mobile",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
         "NSCameraUsageDescription": "Rizo needs camera access to capture receipts and documents for expense and leave attachments.",
