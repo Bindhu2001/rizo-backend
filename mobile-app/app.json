@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rizo",
     "slug": "rizo",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon_square.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.rizo.mobile",
-      "buildNumber": "2",
+      "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
         "NSCameraUsageDescription": "Rizo needs camera access to capture receipts and documents for expense and leave attachments.",
