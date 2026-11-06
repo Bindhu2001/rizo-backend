@@ -356,7 +356,13 @@ const SignupScreen = ({ navigation }) => {
         }
         if (offer.name) setName((v) => v || offer.name);
         if (offer.mobile) setMobileNo((v) => v || offer.mobile);
-        if (offer.address) setAddress((a) => ({ ...a, house: a.house || offer.address }));
+        setAddress((a) => ({
+          ...a,
+          house: a.house || (offer.address || '').slice(0, 60),
+          district: a.district || (offer.district || '').replace(/[^A-Za-z\s]/g, '').slice(0, 30),
+          state: a.state || (offer.state || '').replace(/[^A-Za-z\s]/g, '').slice(0, 30),
+          pincode: a.pincode || (offer.pincode || '').replace(/\D/g, '').slice(0, 6),
+        }));
       }
       const res = await axios.post(API_ENDPOINTS.CHECK_EMAIL_EXISTS, {
         company_code: companyCode.trim(),
@@ -475,13 +481,14 @@ const SignupScreen = ({ navigation }) => {
     if (step === 1) {
       handleStep1Submit();
     } else if (step === 3) {
-      if (!name.trim()) { showAlert('warning', 'Name Required', 'Please enter your first name to continue.'); return; }
-      if (!mobileNo.trim() || mobileNo.length < 8) { showAlert('warning', 'Invalid Mobile', 'Please enter a valid mobile number.'); return; }
+      if (!name.trim()) { showAlert('warning', 'Name Required', 'Please enter your name to continue.'); return; }
+      if (!/^\d{10,15}$/.test(mobileNo)) { showAlert('warning', 'Invalid Mobile', 'Mobile number must be 10 to 15 digits.'); return; }
       if (!dob.trim()) { showAlert('warning', 'DOB Required', 'Please enter your date of birth.'); return; }
       if (!gender) { showAlert('warning', 'Gender Required', 'Please select your gender.'); return; }
       setStep(4);
     } else if (step === 4) {
       if (!address.house.trim()) { showAlert('warning', 'Address Required', 'Please enter your house or flat address to continue.'); return; }
+      if (address.pincode && !/^[1-9]\d{5}$/.test(address.pincode)) { showAlert('warning', 'Invalid PIN Code', 'PIN Code must be 6 digits.'); return; }
       if (!addrCountry) { showAlert('warning', 'Country Required', 'Please select your country to continue.'); return; }
       setStep(5);
     } else if (step === 5) {
@@ -509,8 +516,8 @@ const SignupScreen = ({ navigation }) => {
       setStep(6);
     } else if (step === 6) {
       // All step-6 fields are optional, but if filled they must match format.
-      if (ifscCode.trim() && !/^[A-Z0-9]{4,12}$/.test(ifscCode)) {
-        showAlert('warning', 'Invalid IFSC', 'IFSC must be 4-12 alphanumeric characters.');
+      if (ifscCode.trim() && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
+        showAlert('warning', 'Invalid IFSC', 'IFSC must be 11 characters, e.g. SBIN0001234.');
         return;
       }
       if (esiNo.trim() && !/^\d{10}$/.test(esiNo)) {
@@ -641,7 +648,7 @@ const SignupScreen = ({ navigation }) => {
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
           <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
@@ -742,8 +749,8 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Personal Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>Let's start with your basic information</Text>
-                <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
-                <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" placeholder="Mobile Number" maxLength={18} />
+                <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z.\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
+                <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Mobile Number" maxLength={15} />
                 <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
                 <PickerRow label="Marital Status" value={maritalStatus} onPress={() => setShowMaritalPicker(true)} />
@@ -759,7 +766,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Address Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>This information will be used for official records</Text>
-                <FloatInput label="House / Flat Name" value={address.house} onChangeText={t => setAddress({ ...address, house: t })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
+                <FloatInput label="House / Flat Name *" value={address.house} onChangeText={t => setAddress({ ...address, house: t })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
                 <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t })} placeholder="Near City Mall" maxLength={60} />
                 <View style={st.inputRow}>
                   <View style={{ flex: 1, marginRight: 10 }}>
@@ -839,15 +846,15 @@ const SignupScreen = ({ navigation }) => {
                 {/* Bank */}
                 <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Bank Details</Text>
-                  <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Bank Name" maxLength={50} />
-                  <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Branch" maxLength={50} />
+                  <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Bank Name" maxLength={50} />
+                  <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Branch" maxLength={50} />
                   <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => {
                     const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
                     setIfscCode(v);
                     if (v.length === 0) setIfscV(IDLE);
-                    else if (v.length < 4) setIfscV({ status: 'error', message: 'IFSC must be 4-12 alphanumeric characters!' });
+                    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v)) setIfscV({ status: 'error', message: 'IFSC must be 11 characters, e.g. SBIN0001234' });
                     else setIfscV({ status: 'valid', message: 'Looks good' });
-                  }} placeholder="SBIN0001234" maxLength={12} validation={ifscV} />
+                  }} placeholder="SBIN0001234" maxLength={11} validation={ifscV} />
                   <FloatInput label="Account Number" value={accountNumber} onChangeText={t => setAccountNumber(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Account Number" maxLength={18} />
                 </View>
 
@@ -957,7 +964,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Education & Documents</Text>
                 <Text style={[st.cardSub, { color: theme.textLight, marginBottom: 16 }]}>Optional. Add what you can now, or skip this step and HR will help you later.</Text>
-                <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} />
+                <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} selfName={name.trim()} />
                 <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>{Object.values(extraDetails).some((rows) => rows.length) ? 'Complete Signup' : 'Skip & Complete Signup'}</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
@@ -965,7 +972,8 @@ const SignupScreen = ({ navigation }) => {
               </>
             )}
 
-            <View style={{ height: 80 }} />
+            {/* Room for the phone's navigation bar, so the last button can always scroll above it. */}
+            <View style={{ height: 80 + insets.bottom }} />
           </ScrollView>
         </View>
       <KeyboardDoneBar />

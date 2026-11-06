@@ -5,7 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, Pencil, Trash2, X, FileText, Calendar } from 'lucide-react-native';
+import { Plus, Pencil, Trash2, X, FileText, Calendar, ChevronDown, Check } from 'lucide-react-native';
 import { moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import KeyboardSafeView from './KeyboardSafeView';
@@ -38,6 +38,11 @@ const DOCUMENT_RULES = {
   'Driving License': { pattern: /^[A-Z]{2}\d{13}$/, max: 15, hint: 'e.g. KL0720110012345', message: 'Driving licence must be 2 letters and 13 digits.' },
   'Voter ID': { pattern: /^[A-Z]{3}\d{7}$/, max: 10, hint: 'e.g. ABC1234567', message: 'Voter ID must be 3 letters and 7 digits.' },
 };
+
+// Employee Joining's lists (rizo-revamp lib/childRowValidation.ts).
+const RELATIONS = ['Self', 'Mother', 'Father', 'Sister', 'Brother', 'Cousin', 'Spouse', 'Other'];
+const GENDERS = ['Male', 'Female', 'Other'];
+const cleanName = (v) => v.replace(/[^A-Za-z0-9.\s]/g, '');
 
 const cleanNumber = (v, type) => {
   const rule = DOCUMENT_RULES[type];
@@ -78,23 +83,33 @@ const SECTIONS = [
   {
     key: 'family', title: 'Family', add: 'Add Family Member',
     fields: [
-      { key: 'name', label: 'Name', required: true, max: 50, clean: (v) => v.replace(/[^A-Za-z0-9.\s]/g, '') },
-      { key: 'relation', label: 'Relation', type: 'choice', required: true, options: ['Father', 'Mother', 'Spouse', 'Son', 'Daughter', 'Brother', 'Sister', 'Other'] },
-      { key: 'gender', label: 'Gender', type: 'choice', options: ['Male', 'Female', 'Other'] },
-      { key: 'DOB', label: 'Date of Birth', type: 'date', past: true },
-      { key: 'contact_number', label: 'Mobile', keyboard: 'number-pad', max: 15, clean: digits },
+      { key: 'name', label: 'Name', required: true, max: 50, clean: cleanName },
+      { key: 'relation', label: 'Relation', type: 'choice', required: true, options: RELATIONS },
+      { key: 'gender', label: 'Gender', type: 'choice', required: true, options: GENDERS },
+      { key: 'DOB', label: 'Date of Birth', type: 'date', required: true, past: true },
+      { key: 'blood_group', label: 'Blood Group', type: 'choice', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] },
+      { key: 'nationality', label: 'Nationality', initial: 'Indian', max: 50, clean: cleanName },
+      { key: 'contact_number', label: 'Contact Number', required: true, keyboard: 'number-pad', max: 15, clean: digits },
+      { key: 'alternate_number', label: 'Alternate Number', keyboard: 'number-pad', max: 15, clean: digits },
       { key: 'is_nominee', label: 'Nominee', type: 'switch' },
       { key: 'emergency_contact', label: 'Emergency contact', type: 'switch' },
     ],
-    check: (f) => (f.contact_number && f.contact_number.length < 10 ? 'Mobile number must be 10 to 15 digits.' : ''),
+    check: (f) => {
+      if (f.contact_number.length < 10) return 'Contact number must be 10 to 15 digits.';
+      return f.alternate_number && f.alternate_number.length < 10 ? 'Alternate number must be 10 to 15 digits.' : '';
+    },
     summary: (f) => [f.name, f.relation, f.contact_number, f.is_nominee === 'Y' && 'Nominee'].filter(Boolean).join(', '),
   },
   {
     key: 'documents', title: 'Documents', add: 'Add Document',
     fields: [
-      { key: 'document_type', label: 'Document Type', type: 'choice', required: true, options: ['Aadhaar', 'PAN', 'Passport', 'Driving License', 'Voter ID', 'Educational Certificate', 'Relieving Letter', 'Other'] },
+      { key: 'document_type', label: 'Document Type', type: 'choice', required: true, options: ['Aadhaar', 'PAN', 'Passport', 'Driving License', 'Voter ID', 'Educational Certificate', 'Offer Letter', 'Relieving Letter', 'Other'] },
       { key: 'document_number', label: 'Document Number', required: true, documentNumber: true },
-      { key: 'valid_from', label: 'Valid From', type: 'date', past: true },
+      { key: 'relation', label: 'Relation', type: 'choice', required: true, options: RELATIONS },
+      { key: 'name', label: 'Name on Document', required: true, max: 50, clean: cleanName },
+      { key: 'classification', label: 'Gender', type: 'choice', options: GENDERS },
+      { key: 'nationality', label: 'Nationality', initial: 'Indian', max: 50, clean: cleanName },
+      { key: 'valid_from', label: 'Valid From', type: 'date', required: true, past: true },
       { key: 'valid_till', label: 'Valid Till', type: 'date', after: 'valid_from' },
       { key: 'file', label: 'Photo or PDF', type: 'file', required: true },
     ],
@@ -157,12 +172,13 @@ function DateField({ field, form, value, onChange, theme }) {
   );
 }
 
-export default function SignupExtraDetails({ value, onChange, showAlert }) {
+export default function SignupExtraDetails({ value, onChange, showAlert, selfName }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [editing, setEditing] = useState(null); // { section, index (null = new), form }
   const [formError, setFormError] = useState('');
   const [reading, setReading] = useState(false);
+  const [openChoice, setOpenChoice] = useState(null);
   const section = SECTIONS.find((s) => s.key === editing?.section);
 
   const openForm = (s, index = null) => {
@@ -171,7 +187,9 @@ export default function SignupExtraDetails({ value, onChange, showAlert }) {
       return;
     }
     setFormError('');
-    setEditing({ section: s.key, index, form: index === null ? {} : { ...value[s.key][index] } });
+    setOpenChoice(null);
+    const start = Object.fromEntries(s.fields.filter((x) => x.initial).map((x) => [x.key, x.initial]));
+    setEditing({ section: s.key, index, form: index === null ? start : { ...value[s.key][index] } });
   };
   const setField = (key, v) => {
     setFormError('');
@@ -179,6 +197,8 @@ export default function SignupExtraDetails({ value, onChange, showAlert }) {
       const form = { ...e.form, [key]: v };
       // Each document type has its own number format.
       if (key === 'document_type' && v !== e.form.document_type) form.document_number = '';
+      // Their own document or family row: the name is the one they signed up with.
+      if (key === 'relation' && v === 'Self' && e.section === 'documents' && selfName) form.name = selfName;
       return { ...e, form };
     });
   };
@@ -246,14 +266,28 @@ export default function SignupExtraDetails({ value, onChange, showAlert }) {
           <DateField field={field} form={form} value={v} onChange={(d) => setField(field.key, d)} theme={theme} />
         )}
         {field.type === 'choice' && (
-          <View style={styles.chips}>
-            {field.options.map((o) => (
-              <TouchableOpacity key={o} onPress={() => { Keyboard.dismiss(); setField(field.key, o); }} accessibilityRole="button" accessibilityState={{ selected: v === o }}
-                style={[styles.chip, { borderColor: v === o ? PURPLE : theme.inputBorder, backgroundColor: v === o ? PURPLE : theme.inputBg }]}>
-                <Text style={{ color: v === o ? '#FFF' : theme.text, fontSize: moderateScale(12.5), fontWeight: '600' }}>{o}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <>
+            <TouchableOpacity
+              style={[styles.dropdown, { backgroundColor: theme.inputBg, borderColor: openChoice === field.key ? PURPLE : theme.inputBorder }]}
+              onPress={() => { Keyboard.dismiss(); setOpenChoice((k) => (k === field.key ? null : field.key)); }}
+              accessibilityRole="button"
+              accessibilityLabel={`${field.label}: ${v || 'select'}`}
+            >
+              <Text style={{ color: v ? theme.text : theme.textMuted, fontSize: moderateScale(14) }}>{v || `Select ${field.label}`}</Text>
+              <ChevronDown color={theme.textMuted} size={18} />
+            </TouchableOpacity>
+            {openChoice === field.key && (
+              <View style={[styles.dropdownList, { backgroundColor: theme.card, borderColor: theme.inputBorder }]}>
+                {field.options.map((o) => (
+                  <TouchableOpacity key={o} onPress={() => { setField(field.key, o); setOpenChoice(null); }} accessibilityRole="button" accessibilityState={{ selected: v === o }}
+                    style={[styles.dropdownItem, { borderBottomColor: theme.inputBorder }]}>
+                    <Text style={{ color: v === o ? PURPLE : theme.text, fontWeight: v === o ? '700' : '400', fontSize: moderateScale(14) }}>{o}</Text>
+                    {v === o && <Check color={PURPLE} size={16} />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
         )}
         {field.type === 'file' && (
           <>
@@ -352,6 +386,10 @@ export function documentPayload(doc) {
   return {
     document_type: doc.document_type,
     document_number: doc.document_number,
+    name: doc.name,
+    relation: doc.relation,
+    classification: doc.classification || '',
+    nationality: doc.nationality || 'Indian',
     valid_from: doc.valid_from || today(),
     valid_till: doc.valid_till || '',
     file: doc.file?.data,
@@ -377,6 +415,9 @@ const styles = StyleSheet.create({
   dateBox: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 10 },
   dateMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 12 },
   dateClear: { paddingHorizontal: 12, paddingVertical: 10 },
+  dropdown: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12 },
+  dropdownList: { borderWidth: 1, borderRadius: 10, marginTop: 6, overflow: 'hidden' },
+  dropdownItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth },
   chips: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 7 },
   chip: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 13, paddingVertical: 8 },
   fileName: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
