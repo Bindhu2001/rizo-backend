@@ -13,6 +13,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
+import SignupExtraDetails, { EMPTY_SIGNUP_DETAILS, documentPayload, signupRows } from '../components/SignupExtraDetails';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 
@@ -214,6 +215,13 @@ const SignupScreen = ({ navigation }) => {
   // Step 1
   const [email, setEmail] = useState('');
   const [companyCode, setCompanyCode] = useState('');
+  // Optional: given to a candidate who accepted an offer letter. It ties this sign-up to that offer.
+  const [offerId, setOfferId] = useState('');
+
+  // Step 7 – Education, experience, family and documents (optional)
+  const [extraDetails, setExtraDetails] = useState(EMPTY_SIGNUP_DETAILS);
+  const [documentsFailed, setDocumentsFailed] = useState(0);
+  const [submitNote, setSubmitNote] = useState('');
 
   // Step 3 – Personal
   const [name, setName] = useState('');
@@ -314,19 +322,45 @@ const SignupScreen = ({ navigation }) => {
   // ── Step 1: Verify email + company code ──────────────────────────────────
   const handleStep1Submit = async () => {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!companyCode.trim() || !email.trim()) {
+    const offerCode = offerId.trim();
+    // With an Offer ID the email can come from the offer.
+    if (!companyCode.trim() || (!email.trim() && !offerCode)) {
       showAlert('error', 'Missing Details', 'Please enter your Company Code and Email to continue.');
       return;
     }
-    if (!emailRegex.test(email.trim())) {
+    if (email.trim() && !emailRegex.test(email.trim())) {
       showAlert('warning', 'Invalid Email', 'Please enter a valid email address (e.g. employee@gmail.com).');
+      return;
+    }
+    if (offerCode && !/^OFR-[A-Z0-9]{6}$/.test(offerCode)) {
+      showAlert('warning', 'Invalid Offer ID', 'An Offer ID looks like OFR-7K3QMX. Please check it, or leave it empty.');
       return;
     }
     setLoading(true);
     try {
+      let emailToCheck = email.trim();
+      if (offerCode) {
+        const offerRes = await axios.post(API_ENDPOINTS.CHECK_OFFER_ID, {
+          company_code: companyCode.trim(),
+          offer_code: offerCode,
+        });
+        if (offerRes.data?.success !== true) {
+          showAlert('error', 'Offer ID', offerRes.data?.message || 'This Offer ID could not be verified. Please check it and try again.');
+          return;
+        }
+        // Fill in what HR already has; anything the person typed stays.
+        const offer = offerRes.data.data || {};
+        if (!emailToCheck && offer.email) {
+          emailToCheck = offer.email;
+          setEmail(offer.email);
+        }
+        if (offer.name) setName((v) => v || offer.name);
+        if (offer.mobile) setMobileNo((v) => v || offer.mobile);
+        if (offer.address) setAddress((a) => ({ ...a, house: a.house || offer.address }));
+      }
       const res = await axios.post(API_ENDPOINTS.CHECK_EMAIL_EXISTS, {
         company_code: companyCode.trim(),
-        email: email.trim(),
+        email: emailToCheck,
       });
       if (res.data) {
         const isSuccess = res.data.success === true || res.data.success === 1 || res.data.success === 'true';
@@ -337,7 +371,7 @@ const SignupScreen = ({ navigation }) => {
           ]);
         } else if (isSuccess) {
           fetchCountries(companyCode.trim());
-          showAlert('success', 'Valid Email', 'Your email has been verified successfully.', [
+          showAlert('success', offerCode ? 'Offer Verified' : 'Valid Email', offerCode ? 'Your offer is verified. We have filled in the details we already have.' : 'Your email has been verified successfully.', [
             { text: 'OK', onPress: () => setStep(3) },
           ]);
         } else {
@@ -402,10 +436,29 @@ const SignupScreen = ({ navigation }) => {
         visual: physHandicap && visual ? 'Y' : 'N',
       };
       if (photoBase64) payload.profile_pic = `data:image/jpeg;base64,${photoBase64}`;
+      if (offerId.trim()) payload.offer_code = offerId.trim();
+      Object.assign(payload, signupRows(extraDetails));
 
       const res = await axios.post(API_ENDPOINTS.REGISTER, payload, { headers: { 'Content-Type': 'application/json' } });
       if (res.data?.success === 1 || res.data?.success === true) {
-        setStep(7);
+        // The sign-up is saved. Documents go one at a time, and one failing doesn't undo it.
+        let failed = 0;
+        for (const [i, doc] of extraDetails.documents.entries()) {
+          setSubmitNote(`Uploading document ${i + 1} of ${extraDetails.documents.length}...`);
+          try {
+            const up = await axios.post(API_ENDPOINTS.SIGNUP_DOCUMENT, {
+              company_code: companyCode,
+              emp_join_id: res.data.emp_join_id,
+              upload_token: res.data.upload_token,
+              ...documentPayload(doc),
+            }, { headers: { 'Content-Type': 'application/json' }, timeout: 120000 });
+            if (up.data?.success !== 1) failed += 1;
+          } catch (e) {
+            failed += 1;
+          }
+        }
+        setDocumentsFailed(failed);
+        setStep(8);
       } else {
         showAlert('error', 'Submission Failed', res.data?.message || 'Could not complete signup. Please try again.');
       }
@@ -413,6 +466,7 @@ const SignupScreen = ({ navigation }) => {
       console.log('Signup error', e.message);
       showAlert('error', 'Error', 'Something went wrong. Please try again.');
     } finally {
+      setSubmitNote('');
       setLoading(false);
     }
   };
@@ -487,6 +541,8 @@ const SignupScreen = ({ navigation }) => {
         showAlert('error', 'LWF Already Registered', lwfV.message || 'This LWF number is already registered.');
         return;
       }
+      setStep(7);
+    } else if (step === 7) {
       handleFinalSubmit();
     }
   };
@@ -496,6 +552,7 @@ const SignupScreen = ({ navigation }) => {
     else if (step === 4) setStep(3);
     else if (step === 5) setStep(4);
     else if (step === 6) setStep(5);
+    else if (step === 7) setStep(6);
     else if (step === 1) setStep(0);
     else navigation.goBack();
   };
@@ -525,6 +582,7 @@ const SignupScreen = ({ navigation }) => {
     if (step === 4) return 2;
     if (step === 5) return 3;
     if (step === 6) return 4;
+    if (step === 7) return 5;
     return 0;
   };
 
@@ -589,6 +647,7 @@ const SignupScreen = ({ navigation }) => {
               <View style={{ marginTop: 28 }}>
                 <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
               </View>
+              <FloatInput label="Offer ID (if you have one)" value={offerId} onChangeText={t => setOfferId(t.replace(/[^A-Za-z0-9-]/g, '').toUpperCase())} autoCapitalize="characters" placeholder="OFR-XXXXXX" maxLength={10} />
               <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase())} keyboardType="email-address" autoCapitalize="none" placeholder="employee@gmail.com" maxLength={100} />
               <TouchableOpacity style={st.nextBtn} onPress={nextStep} disabled={loading}>
                 {loading ? <ActivityIndicator color="#FFF" /> : (
@@ -610,9 +669,9 @@ const SignupScreen = ({ navigation }) => {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // ── STEP 7: SUCCESS
+  // ── STEP 8: SUCCESS
   // ════════════════════════════════════════════════════════════════════════════
-  if (step === 7) {
+  if (step === 8) {
     return (
       <SafeAreaView style={[st.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.bg }]}>
         <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
@@ -621,6 +680,9 @@ const SignupScreen = ({ navigation }) => {
         </View>
         <Text style={[st.successTitle, { color: theme.text }]}>Profile Complete!</Text>
         <Text style={[st.successSub, { color: theme.textLight }]}>Your account has been created successfully. You can now login.</Text>
+        {documentsFailed > 0 && (
+          <Text style={[st.successSub, { color: theme.textLight, marginTop: 10 }]}>{documentsFailed === 1 ? '1 document' : `${documentsFailed} documents`} could not be uploaded. Please give it to HR.</Text>
+        )}
         <TouchableOpacity style={[st.nextBtn, { width: width - 80, marginTop: 40 }]} onPress={() => navigation.navigate('Login')}>
           <Text style={st.nextBtnText}>Go to Login</Text>
           <ChevronRight color="#FFF" size={20} />
@@ -642,8 +704,8 @@ const SignupScreen = ({ navigation }) => {
           <TouchableOpacity onPress={prevStep} style={st.dataBackBtn}>
             <ChevronLeft color={theme.isDark ? theme.text : PURPLE} size={28} />
           </TouchableOpacity>
-          <StepBar current={getStepNum()} total={4} />
-          <Text style={[st.stepCount, { color: theme.isDark ? theme.text : PURPLE }]}>{getStepNum()} / 4</Text>
+          <StepBar current={getStepNum()} total={5} />
+          <Text style={[st.stepCount, { color: theme.isDark ? theme.text : PURPLE }]}>{getStepNum()} / 5</Text>
         </View>
 
         <View style={st.dataTopCenter}>
@@ -666,7 +728,7 @@ const SignupScreen = ({ navigation }) => {
           )}
           {step === 4 && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
           {step === 5 && <Image source={require('../../assets/signup/illustration-3.png')} style={st.topIllustration} resizeMode="contain" />}
-          {step === 6 && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
+          {(step === 6 || step === 7) && <Image source={require('../../assets/signup/group-1.png')} style={st.topIllustration} resizeMode="contain" />}
         </View>
       </View>
 
@@ -883,9 +945,23 @@ const SignupScreen = ({ navigation }) => {
                   )}
                 </View>
 
-                <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669', marginTop: 24 }]} onPress={nextStep} disabled={loading}>
-                  {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Complete Signup</Text><ChevronRight color="#FFF" size={20} /></>}
+                <TouchableOpacity style={[st.nextBtn, { marginTop: 24 }]} onPress={nextStep} disabled={loading}>
+                  <Text style={st.nextBtnText}>Continue</Text>
+                  <ChevronRight color="#FFF" size={20} />
                 </TouchableOpacity>
+              </>
+            )}
+
+            {/* ══ STEP 7 — EDUCATION, EXPERIENCE, FAMILY, DOCUMENTS (optional) ══ */}
+            {step === 7 && (
+              <>
+                <Text style={[st.cardTitle, { color: theme.text }]}>Education & Documents</Text>
+                <Text style={[st.cardSub, { color: theme.textLight, marginBottom: 16 }]}>Optional. Add what you can now, or skip this step and HR will help you later.</Text>
+                <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} />
+                <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={nextStep} disabled={loading}>
+                  {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>{Object.values(extraDetails).some((rows) => rows.length) ? 'Complete Signup' : 'Skip & Complete Signup'}</Text><ChevronRight color="#FFF" size={20} /></>}
+                </TouchableOpacity>
+                {!!submitNote && <Text style={[st.cardSub, { color: theme.textLight, textAlign: 'center', marginTop: 10 }]}>{submitNote}</Text>}
               </>
             )}
 

@@ -46,6 +46,8 @@ export const API_ENDPOINTS = {
   CUSTOMER_VISIT_HISTORY: `${NEWAPP_URL}/customer_visit_history`,
   EXPENSE_REMOVE: `${NEWAPP_URL}/expense_remove`,
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
+  CHECK_OFFER_ID: `${NEWAPP_URL}/checkOfferId`,
+  SIGNUP_DOCUMENT: `${NEWAPP_URL}/signupDocument`,
   REGISTER: `${NEWAPP_URL}/register`,
   EMPLOYEE_PUNCH_DETAILS: `${NEWAPP_URL}/getEmployeePunchDetails`,
   SHIFT_SCHEDULE: `${NEWAPP_URL}/shift_schedule`,
