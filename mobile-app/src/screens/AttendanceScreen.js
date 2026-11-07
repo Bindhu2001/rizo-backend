@@ -141,26 +141,35 @@ const AttendanceScreen = ({ navigation, route }) => {
     const rawStatus = item.status || (item.punch_in_time && item.punch_out_time ? 'P/P' : 'A/A');
     const statusLabel = rawStatus.toUpperCase();
     
-    // Leave days come as the leave's short code (CL, SL, ...) and get the leave colour
+    const isPresent = statusLabel === 'P/P' || statusLabel === 'P' || statusLabel === 'PRESENT' || statusLabel === 'WFH';
+    const isWeekOff = statusLabel === 'WO' || statusLabel === 'OFF' || statusLabel === 'W/O';
+    const isHoliday = statusLabel === 'HO' || statusLabel === 'H' || statusLabel === 'HOLIDAY';
+    const isAbsent = statusLabel === 'A/A' || statusLabel === 'A' || statusLabel === 'ABSENT' || statusLabel.includes('LOP');
+    // Anything else is a leave day: the leave's short code (CL, SL, ...)
+    const isLeave = !isPresent && !isWeekOff && !isHoliday && !isAbsent;
+
     let statusColor = '#8E44AD'; // Leave Purple
     let statusBg = '#F3E5F5';
 
-    if (statusLabel === 'P/P' || statusLabel === 'P' || statusLabel === 'PRESENT' || statusLabel === 'WFH') {
+    if (isPresent) {
       statusColor = '#2ECC71';
       statusBg = '#E8F5E9';
-    } else if (statusLabel === 'WO' || statusLabel === 'OFF' || statusLabel === 'W/O') {
+    } else if (isWeekOff) {
       statusColor = '#9CA3AF';
       statusBg = '#F3F4F6';
-    } else if (statusLabel === 'HO' || statusLabel === 'H' || statusLabel === 'HOLIDAY') {
+    } else if (isHoliday) {
       statusColor = '#3498DB';
       statusBg = '#EBF8FF';
-    } else if (statusLabel === 'A/A' || statusLabel === 'A' || statusLabel === 'ABSENT' || statusLabel.includes('LOP')) {
+    } else if (isAbsent) {
       statusColor = '#E91E63'; // Absent Red
       statusBg = '#FCE4EC';
     }
 
     const punchIn = formatPunchTime(item.punch_in_time);
     const punchOut = formatPunchTime(item.punch_out_time);
+    // A week off / holiday / leave day without punches shows that instead of empty IN / OUT times
+    const dayOffLabel = !item.punch_in_time && !item.punch_out_time
+      && (isWeekOff ? 'Week Off' : isHoliday ? 'Holiday' : isLeave ? 'Leave' : null);
 
     const isExpanded = expandedDate === item.date;
 
@@ -187,14 +196,20 @@ const AttendanceScreen = ({ navigation, route }) => {
           </View>
 
           <View style={s.infoCol}>
-            <View style={s.punchItem}>
-              <Clock size={moderateScale(13)} color={theme.textMuted} />
-              <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchIn} <Text style={[s.timeType, { color: theme.textMuted }]}>IN</Text></Text>
-            </View>
-            <View style={[s.punchItem, { marginTop: moderateScale(4) }]}>
-              <Clock size={moderateScale(13)} color={theme.textMuted} />
-              <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchOut} <Text style={[s.timeType, { color: theme.textMuted }]}>OUT</Text></Text>
-            </View>
+            {dayOffLabel ? (
+              <Text style={[s.timeValue, { color: statusColor }]} numberOfLines={1}>{dayOffLabel}</Text>
+            ) : (
+              <>
+                <View style={s.punchItem}>
+                  <Clock size={moderateScale(13)} color={theme.textMuted} />
+                  <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchIn} <Text style={[s.timeType, { color: theme.textMuted }]}>IN</Text></Text>
+                </View>
+                <View style={[s.punchItem, { marginTop: moderateScale(4) }]}>
+                  <Clock size={moderateScale(13)} color={theme.textMuted} />
+                  <Text style={[s.timeValue, { color: theme.text }]} numberOfLines={1}>{punchOut} <Text style={[s.timeType, { color: theme.textMuted }]}>OUT</Text></Text>
+                </View>
+              </>
+            )}
           </View>
 
           <View style={s.statusGroup}>

@@ -11,7 +11,11 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 const BG_TASK_NAME = 'rizo-status-check';
+// Silent pushes (data only, no alert) — e.g. PUNCH_SYNC from rizo-revamp when a biometric punch lands
+const BG_PUSH_TASK_NAME = 'rizo-silent-push';
 const ANN_SEEDED_KEY = (userId) => `announcements_seeded_${userId}`;
+// Leave / regularisation / expense decisions: the first check after sign-in only records what is already there
+const STATUS_SEEDED_KEY = (userId, kind) => `status_seeded_${kind}_${userId}`;
 
 // Configure Expo Notifications globally
 Notifications.setNotificationHandler({
@@ -50,6 +54,15 @@ class NotificationManager {
     }
 
     await NotificationManager.registerBackgroundFetch();
+    await Notifications.registerTaskAsync(BG_PUSH_TASK_NAME).catch((e) =>
+      console.log('[NotificationManager] Silent push task not registered:', e?.message));
+  }
+
+  // A biometric / web punch was recorded (PUNCH_SYNC push): re-plan the shift reminders from every punch, so a
+  // "check in" / "check out" reminder that punch answers is cancelled before it fires
+  static async onPunchSync() {
+    const user = await getLoggedUser();
+    if (user?.user_id) await refreshShiftReminders(user.user_id, { forceFetch: true });
   }
 
   static async registerBackgroundFetch() {
@@ -74,6 +87,26 @@ class NotificationManager {
       },
       trigger: null, // trigger immediately
     });
+  }
+
+  static async isStatusSeeded(user, kind) {
+    return (await AsyncStorage.getItem(STATUS_SEEDED_KEY(user.user_id, kind)).catch(() => null)) === '1';
+  }
+
+  static async markStatusSeeded(user, kind) {
+    await AsyncStorage.setItem(STATUS_SEEDED_KEY(user.user_id, kind), '1').catch(() => {});
+  }
+
+  // A decision not seen on this phone yet: saved to the Notifications screen, and shown as an alert — except on
+  // the first check after sign-in, when it is saved as read so a login is not a burst of old approvals
+  static async recordStatus(user, ref, title, message, type, seeded) {
+    const { initDB } = require('./LocalDB');
+    const db = await initDB();
+    const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+    if (existing) return;
+    const notifId = await saveNotificationLocal({ userId: user.user_id, title, message, type: ref });
+    if (seeded) await this.triggerLocalNotification(title, message, type);
+    else await markNotificationsAsReadLocal(user.user_id, notifId);
   }
 
   // A server push (PHP approvals) carries data.ref = the same key the status checks below use
@@ -211,6 +244,7 @@ class NotificationManager {
     try {
       const res = await axios.post(API_ENDPOINTS.LEAVE_HISTORY, { user_id: user.user_id, filter: 'all' }, { timeout: 10000 });
       if (res.data && res.data.success === 1 && res.data.data) {
+        const seeded = await this.isStatusSeeded(user, 'leave');
         const serverLeaves = res.data.data;
         const localLeaves = await getLeavesLocal(user.user_id);
         
@@ -240,22 +274,10 @@ class NotificationManager {
 
                 const normalizedStatus = isAuthorised ? 'AUTHORISED' : (isCancelled ? 'CANCELLED' : serverStatus);
                 const uniqueNotifIdRef = `leave_${leaveId}_${normalizedStatus}`;
-
-                const { initDB } = require('./LocalDB');
-                const db = await initDB();
-                const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [uniqueNotifIdRef]);
-                
-                if (!existing) {
-                    await saveNotificationLocal({
-                        userId: user.user_id,
-                        title: title,
-                        message: message,
-                        type: uniqueNotifIdRef
-                    });
-                    await this.triggerLocalNotification(title, message, 'LEAVE');
-                }
+                await this.recordStatus(user, uniqueNotifIdRef, title, message, 'LEAVE', seeded);
             }
         }
+        if (!seeded) await this.markStatusSeeded(user, 'leave');
       }
     } catch(e) {
       console.log('[NotificationManager] checkLeavesDiff error:', e);
@@ -271,6 +293,8 @@ class NotificationManager {
       const prevMonth = `${prev.getFullYear()}-${(prev.getMonth() + 1).toString().padStart(2, '0')}`;
 
       const months = [currentMonth, prevMonth];
+      const seeded = await this.isStatusSeeded(user, 'reg');
+      let allFetched = true;
 
       for (const month of months) {
         const res = await axios.post(API_ENDPOINTS.REGULARISATION_LOGS, { user_id: user.user_id, month }, { timeout: 10000 });
@@ -291,24 +315,14 @@ class NotificationManager {
               const normalizedStatus = isCancelled ? 'CANCELLED' : serverStatus;
               const regId = sReg.reg_id || sReg.id || sReg.regularisation_id;
               const uniqueNotifIdRef = `reg_${regId}_${normalizedStatus}`;
-
-              const { initDB } = require('./LocalDB');
-              const db = await initDB();
-              const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [uniqueNotifIdRef]);
-
-              if (!existing) {
-                await saveNotificationLocal({
-                  userId: user.user_id,
-                  title: title,
-                  message: message,
-                  type: uniqueNotifIdRef
-                });
-                await this.triggerLocalNotification(title, message, 'REGULARIZATION');
-              }
+              await this.recordStatus(user, uniqueNotifIdRef, title, message, 'REGULARIZATION', seeded);
             }
           }
+        } else {
+          allFetched = false;
         }
       }
+      if (!seeded && allFetched) await this.markStatusSeeded(user, 'reg');
     } catch(e) {
       console.log('[NotificationManager] checkRegDiff error:', e);
     }
@@ -354,6 +368,7 @@ class NotificationManager {
     try {
       const res = await axios.get(`${API_ENDPOINTS.GET_SUBMITTED_EXPENSES}?user_id=${user.user_id}`, { timeout: 10000 });
       if (res.data && res.data.success === 1 && res.data.data) {
+        const seeded = await this.isStatusSeeded(user, 'exp');
         const serverExpenses = res.data.data;
         for (const sExp of serverExpenses) {
           const serverStatus = sExp.expense_status?.toUpperCase() || 'PENDING';
@@ -376,22 +391,10 @@ class NotificationManager {
 
             const normalizedStatus = isCancelled ? 'CANCELLED' : effectiveStatus;
             const uniqueNotifIdRef = `exp_${expId}_${normalizedStatus}`;
-
-            const { initDB } = require('./LocalDB');
-            const db = await initDB();
-            const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [uniqueNotifIdRef]);
-
-            if (!existing) {
-              await saveNotificationLocal({
-                userId: user.user_id,
-                title: title,
-                message: message,
-                type: uniqueNotifIdRef
-              });
-              await this.triggerLocalNotification(title, message, 'EXPENSE');
-            }
+            await this.recordStatus(user, uniqueNotifIdRef, title, message, 'EXPENSE', seeded);
           }
         }
+        if (!seeded) await this.markStatusSeeded(user, 'exp');
       }
     } catch(e) {
       console.log('[NotificationManager] checkExpenseDiff error:', e);
@@ -414,6 +417,16 @@ TaskManager.defineTask(BG_TASK_NAME, async () => {
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
+
+// Silent push while the app is in the background or closed. Only PUNCH_SYNC is sent silently today, and
+// re-planning the reminders is harmless, so the payload (its shape differs between Android and iOS) isn't parsed.
+TaskManager.defineTask(BG_PUSH_TASK_NAME, async () => {
+  try {
+    await NotificationManager.onPunchSync();
+  } catch (e) {
+    console.log('[NotificationManager] silent push task failed:', e?.message);
   }
 });
 

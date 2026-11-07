@@ -20,7 +20,8 @@
         "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
         "NSCameraUsageDescription": "Rizo needs camera access to capture receipts and documents for expense and leave attachments.",
         "NSPhotoLibraryUsageDescription": "Rizo needs photo library access so you can attach receipts and documents for expenses and leave requests.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["remote-notification"]
       }
     },
     "android": {
