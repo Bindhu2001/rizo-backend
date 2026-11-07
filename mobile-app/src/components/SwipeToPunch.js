@@ -21,6 +21,8 @@ const SwipeToPunch = ({
   resetTrigger = 0,
   locationName = '',
   punchTime = null,
+  // Check In or Check Out not known yet (the server is being asked): grey, no swiping, "Checking status..."
+  statusPending = false,
 }) => {
   const theme = useTheme();
   const [swipeWidth, setSwipeWidth] = useState(0);
@@ -38,7 +40,7 @@ const SwipeToPunch = ({
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
     maxSlideRef.current = maxSlide;
-    loadingRef.current = loading;
+    loadingRef.current = loading || statusPending;
     swipeWidthRef.current = swipeWidth;
     onSwipeCompleteRef.current = onSwipeComplete;
   });
@@ -101,17 +103,23 @@ const SwipeToPunch = ({
     })
   ).current;
 
-  const trackColor = theme.isDark
+  let trackColor = theme.isDark
     ? (isPunchedIn ? '#3F1F2F' : '#1F3A24')
     : (isPunchedIn ? '#F8F1F5' : '#E8F5E9');
-  const buttonColor = isPunchedIn ? '#E91E63' : '#39B54A';
-  const textColor = theme.isDark
+  let buttonColor = isPunchedIn ? '#E91E63' : '#39B54A';
+  let textColor = theme.isDark
     ? (isPunchedIn ? '#F8BBD0' : '#A5D6A7')
     : (isPunchedIn ? '#8E7D8A' : '#39B54A');
 
   let textVal = isPunchedIn ? 'SWIPE TO CHECK OUT' : 'SWIPE TO CHECK IN';
   if (loading) {
     textVal = loadingType === 'OUT' ? 'Checking Out...' : 'Checking In...';
+  }
+  if (statusPending && !loading) {
+    trackColor = theme.isDark ? '#2A2F36' : '#F1F5F9';
+    buttonColor = '#94A3B8';
+    textColor = theme.isDark ? '#CBD5E1' : '#64748B';
+    textVal = 'Checking status...';
   }
 
   return (
@@ -135,7 +143,7 @@ const SwipeToPunch = ({
       <View style={[styles.textBlock, { paddingHorizontal: buttonWidth + padding * 2 }]}>
         <Text style={[styles.swipeText, { color: textColor }]} allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{textVal}</Text>
 
-        {isPunchedIn && !loading && !!locationName && (
+        {isPunchedIn && !loading && !statusPending && !!locationName && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={moderateScale(10)} />
             <Text style={[styles.locText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>
@@ -159,7 +167,7 @@ const SwipeToPunch = ({
           },
         ]}
       >
-        {loading ? (
+        {loading || statusPending ? (
           <ActivityIndicator color="#FFF" size="small" />
         ) : (
           isPunchedIn ? <ChevronsRight color="#FFF" size={iconSize} strokeWidth={2.5} /> : <Fingerprint color="#FFF" size={iconSize} />

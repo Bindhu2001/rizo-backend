@@ -550,7 +550,7 @@ const s = StyleSheet.create({
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16), height: moderateScale(60) },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 
   scroll: { padding: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: moderateScale(110) },
   formScroll: { padding: moderateScale(20), paddingTop: moderateScale(12), paddingBottom: moderateScale(110) },

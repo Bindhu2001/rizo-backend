@@ -20,13 +20,13 @@ import { API_ENDPOINTS } from '../constants/Config';
 const fmtDays = (n) => { const v = Number(n) || 0; return `${v} day${v === 1 ? '' : 's'}`; };
 
 const HIST_FILTERS = {
-  Authorized:               { label: 'Authorized',              color: '#6C5CE7', bg: '#F3F0FF' },
+  Authorized:               { label: 'Authorized',              color: COLORS.primaryDeep, bg: '#F3F0FF' },
   CancellationOfAuthorized: { label: 'Cancelled by Authorizer', color: '#EA580C', bg: '#FEF3C7' },
   Approved:                 { label: 'Approved',                color: '#16A34A', bg: '#DCFCE7' },
   CancellationOfApproved:   { label: 'Cancelled by Approver',   color: '#DC2626', bg: '#FEE2E2' },
   Rejected:                 { label: 'Rejected',                color: '#DC2626', bg: '#FEE2E2' },
 };
-const DEFAULT_HIST_META = { label: 'Authorized', color: '#6C5CE7', bg: '#F3F0FF' };
+const DEFAULT_HIST_META = { label: 'Authorized', color: COLORS.primaryDeep, bg: '#F3F0FF' };
 
 // Build the dropdown options for the History tab based on the logged-in user's role(s).
 const buildHistFilterOptions = (roles) => {
@@ -42,7 +42,7 @@ const buildHistFilterOptions = (roles) => {
 
 const SECTION_META = {
   authorizer: {
-    side: '#6C5CE7', bg: '#F3F0FF', text: '#6C5CE7',
+    side: COLORS.primaryDeep, bg: '#F3F0FF', text: COLORS.primaryDeep,
     label: 'AUTHORISE', action: 'Authorized', btnLabel: 'Authorize',
   },
   approver: {
@@ -380,7 +380,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
 
       <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
-          <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
+          <CalendarIcon color={COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
           <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
         </TouchableOpacity>
       </View>
@@ -461,6 +461,12 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
                         <View style={[s.histRemarkBox, { backgroundColor: theme.cardSoft }]}>
                           <Text style={[s.histRemarkText, { color: theme.textLight }]} numberOfLines={2}>{item.REMARKS}</Text>
                         </View>
+                      ) : null}
+                      {/* Who rejected and when (stored since 2026-11-07; older rejections have no date) */}
+                      {item.LEAVESTATUS === 'Rejected' && item.rejected_date ? (
+                        <Text style={[s.histDateText, { color: '#DC2626', marginTop: 4 }]}>
+                          Rejected on {String(item.rejected_date).slice(0, 10)}{item.rejected_by_name?.trim() ? ` by ${item.rejected_by_name.trim()}` : ''}
+                        </Text>
                       ) : null}
                       {(histFilter === 'Approved' || histFilter === 'Authorized') && (
                         <TouchableOpacity
@@ -596,7 +602,7 @@ const s = StyleSheet.create({
 
   monthBar: { padding: moderateScale(16), backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20) },
-  monthText: { fontSize: moderateScale(14), fontWeight: '700', color: '#6C5CE7' },
+  monthText: { fontSize: moderateScale(14), fontWeight: '700', color: COLORS.primaryDeep },
 
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -678,9 +684,9 @@ const s = StyleSheet.create({
 
   tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   tab: { flex: 1, paddingVertical: moderateScale(12), alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#6C5CE7' },
+  tabActive: { borderBottomColor: COLORS.primaryDeep },
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
-  tabTextActive: { color: '#6C5CE7' },
+  tabTextActive: { color: COLORS.primaryDeep },
 
   histFilterDropdown: {
     flexDirection: 'row', alignItems: 'center', gap: moderateScale(10),
@@ -716,7 +722,7 @@ const s = StyleSheet.create({
   sheetItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(10) },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
-  sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
+  sheetItemActive: { color: COLORS.primaryDeep, fontWeight: '800' },
 });
 
 export default LeaveApprovalScreen;

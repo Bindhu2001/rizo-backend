@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { API_ENDPOINTS } from '../constants/Config';
 import { getPunchesBetween } from './LocalDB';
 import { assignShiftDates } from './ShiftDate';
+import { fetchServerDay, getCachedServerPunches, mergePunches } from './AllPunches';
 
 // Shift punch reminders (10 min before/after shift start and end) and the
 // short-hours alert, all scheduled on the phone so they fire with the app closed.
@@ -130,8 +131,8 @@ export const clearShiftReminders = async () => {
 };
 
 /**
- * Re-plans every shift notification from the schedule + this phone's punches.
- * Call on app open, after every punch, and when the switch is turned on.
+ * Re-plans every shift notification from the schedule + every punch (this phone's, and the server's: biometric,
+ * web). Call on app open, after every punch, when the switch is turned on, and from the background task.
  */
 export const refreshShiftReminders = async (userId, { forceFetch = false } = {}) => {
   if (!userId) return;
@@ -146,8 +147,13 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
       .filter(({ w }) => w && w.end.getTime() + WINDOW_PAD_MS > now);
 
     const earliest = windows.length ? Math.min(...windows.map(({ w }) => w.start.getTime())) - WINDOW_PAD_MS : now;
-    const punches = await getPunchesBetween(userId, new Date(earliest).toISOString(), new Date(now + 60000).toISOString())
+    const localPunches = await getPunchesBetween(userId, new Date(earliest).toISOString(), new Date(now + 60000).toISOString())
       .catch(() => []);
+    // A punch counts wherever it was made (services/AllPunches.js): ask the server for the shift dates already
+    // under way — a biometric / web check-in answers the "not checked in" reminders too. Offline: the saved copy.
+    const started = windows.filter(({ w }) => w.start.getTime() - WINDOW_PAD_MS <= now).map(({ row }) => row.date);
+    await Promise.all([...new Set(started)].map((d) => fetchServerDay(userId, d)));
+    const punches = mergePunches(localPunches, await getCachedServerPunches(userId));
     // Grouped by shift date the way the server's punch trigger does (night shifts included)
     const assigned = assignShiftDates(punches, days);
 

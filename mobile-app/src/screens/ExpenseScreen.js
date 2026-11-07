@@ -53,7 +53,7 @@ const Header = ({ title, onBack, theme }) => (
 const h = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
   back: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 });
 
 // ─── File Thumbnail ───────────────────────────────────────────────────────────
@@ -671,7 +671,7 @@ const ExpenseScreen = ({ navigation, route }) => {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(48) },
-  fab: { position: 'absolute', bottom: 24, right: 24, width: moderateScale(60), height: moderateScale(60), borderRadius: moderateScale(30), backgroundColor: '#4C1D95', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+  fab: { position: 'absolute', bottom: 24, right: 24, width: moderateScale(60), height: moderateScale(60), borderRadius: moderateScale(30), backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
   // Inputs
   inputBox: { marginBottom: moderateScale(16) },
@@ -686,7 +686,7 @@ const s = StyleSheet.create({
   addMoreThumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },
   addMorePlus: { fontSize: moderateScale(24), color: '#9CA3AF', fontWeight: '300' },
 
-  submitBtn: { backgroundColor: '#4C1D95', height: moderateScale(60), borderRadius: moderateScale(30), justifyContent: 'center', alignItems: 'center', marginTop: moderateScale(16) },
+  submitBtn: { backgroundColor: COLORS.primaryDeep, height: moderateScale(60), borderRadius: moderateScale(30), justifyContent: 'center', alignItems: 'center', marginTop: moderateScale(16) },
   submitText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(14), letterSpacing: 1 },
 
   emptyWrap: { alignItems: 'center', marginTop: moderateScale(80) },

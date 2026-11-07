@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { REVAMP_API_URL, API_ENDPOINTS } from '../constants/Config';
+import { REVAMP_API_URL, REVAMP_WEB_API_URL, API_ENDPOINTS } from '../constants/Config';
 import { getLoggedUser } from './LocalDB';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -34,10 +34,10 @@ export const clearRevampToken = async () => {
   try { await AsyncStorage.removeItem(TOKEN_KEY); } catch (_) {}
 };
 
-const request = async (method, path, data) => {
+const request = async (method, path, data, base = REVAMP_API_URL) => {
   const send = (token) => axios({
     method,
-    url: `${REVAMP_API_URL}${path}`,
+    url: `${base}${path}`,
     data,
     timeout: 15000,
     headers: { Authorization: `Bearer ${token}` },
@@ -104,4 +104,45 @@ export const PayslipsApi = {
 export const AnnouncementsApi = {
   list: () => request('get', '/announcements'),
   markRead: (id) => request('post', `/announcements/${id}/read`),
+};
+
+// The web employee login's own routes (rizo-revamp lib/appSession.ts accepts this app's token on them), so the
+// approvals and Advance & Loan requests run exactly the web's rules. The server always acts as the signed-in
+// employee: a queue query's empFkey is forced to the caller's own.
+const web = (method, path, data) => request(method, path, data, REVAMP_WEB_API_URL);
+
+export const LeaveApprovalsApi = {
+  // Leaves where the caller is authorizer or approver
+  queue: (empFkey) => web('get', `/leave/requests?authorizerFkey=${empFkey}&approverFkey=${empFkey}`),
+  details: (id) => web('get', `/leave/requests/${id}/details`),
+  // action: authorize | approve | reject | cancellation/approve | cancellation/reject
+  act: (id, action, remarks) => web('post', `/leave/requests/${id}/${action}`, { remarks: remarks || '' }),
+};
+
+export const ExpenseApprovalsApi = {
+  queue: (empFkey) => web('get', `/expenses?authorizerFkey=${empFkey}&approverFkey=${empFkey}`),
+  // action: authorize | approve | reject
+  act: (id, action, remarks) => web('put', `/expenses/${id}/${action}`, { remarks: remarks || '' }),
+};
+
+export const AdvanceLoanApi = {
+  people: () => web('get', '/advance-loan/people'),
+  advanceLimit: (empFkey) => web('get', `/advances/limit?empFkey=${empFkey}`),
+  advances: () => web('get', '/advances/requests'),
+  loans: () => web('get', '/loans/requests'),
+  applyAdvance: (body) => web('post', '/advances/requests', body),
+  applyLoan: (body) => web('post', '/loans/requests', body),
+  withdraw: (kind, id) => web('delete', `/${kind === 'advance' ? 'advances' : 'loans'}/requests/${id}`),
+  // Requests the caller authorizes / approves
+  queue: () => Promise.all([web('get', '/advances/requests?queue=1'), web('get', '/loans/requests?queue=1')]),
+  // action: authorize | approve | reject
+  act: (kind, id, action, remarks) => web('post', `/${kind === 'advance' ? 'advances' : 'loans'}/requests/${id}/${action}`, { remarks: remarks || undefined }),
+};
+
+// Requests › Resignation (web ESS My Requests › Resignation): the current request (or null), whether admin
+// started the separation, the Authorize By people and the reasons; apply; withdraw
+export const ResignationApi = {
+  get: () => web('get', '/ess/resignation'),
+  apply: (body) => web('post', '/ess/resignation', body),
+  withdraw: () => web('post', '/ess/resignation/withdraw'),
 };

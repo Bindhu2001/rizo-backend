@@ -241,7 +241,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
       <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
-           <CalendarIcon color="#6C5CE7" size={18} style={{ marginRight: 8 }} />
+           <CalendarIcon color={COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
            <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
         </TouchableOpacity>
       </View>
@@ -439,7 +439,7 @@ const s = StyleSheet.create({
   
   monthBar: { padding: moderateScale(16), backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   monthDropdown: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center', backgroundColor: '#F3F0FF', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(8), borderRadius: moderateScale(20) },
-  monthText: { fontSize: moderateScale(14), fontWeight: '700', color: '#6C5CE7' },
+  monthText: { fontSize: moderateScale(14), fontWeight: '700', color: COLORS.primaryDeep },
 
   list: { padding: moderateScale(16), paddingBottom: moderateScale(40) },
   card: { backgroundColor: '#FFF', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), ...SHADOWS.light },
@@ -487,15 +487,15 @@ const s = StyleSheet.create({
   sheetItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB' },
   sheetItemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: moderateScale(10) },
   sheetItemText: { fontSize: moderateScale(15), color: '#4B5563', textAlign: 'center' },
-  sheetItemActive: { color: '#6C5CE7', fontWeight: '800' },
+  sheetItemActive: { color: COLORS.primaryDeep, fontWeight: '800' },
 
   loaderWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
   tabBar: { flexDirection: 'row', backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   tab: { flex: 1, paddingVertical: moderateScale(12), alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#6C5CE7' },
+  tabActive: { borderBottomColor: COLORS.primaryDeep },
   tabText: { fontSize: moderateScale(14), fontWeight: '700', color: '#9CA3AF' },
-  tabTextActive: { color: '#6C5CE7' },
+  tabTextActive: { color: COLORS.primaryDeep },
 
   histFilterDropdown: {
     flexDirection: 'row', alignItems: 'center', gap: moderateScale(10),

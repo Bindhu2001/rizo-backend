@@ -141,18 +141,22 @@ const AttendanceScreen = ({ navigation, route }) => {
     const rawStatus = item.status || (item.punch_in_time && item.punch_out_time ? 'P/P' : 'A/A');
     const statusLabel = rawStatus.toUpperCase();
     
-    let statusColor = '#E91E63'; // Default Absent Red
-    let statusBg = '#FCE4EC';
-    
-    if (statusLabel === 'P/P' || statusLabel === 'P' || statusLabel === 'PRESENT') {
+    // Leave days come as the leave's short code (CL, SL, ...) and get the leave colour
+    let statusColor = '#8E44AD'; // Leave Purple
+    let statusBg = '#F3E5F5';
+
+    if (statusLabel === 'P/P' || statusLabel === 'P' || statusLabel === 'PRESENT' || statusLabel === 'WFH') {
       statusColor = '#2ECC71';
       statusBg = '#E8F5E9';
     } else if (statusLabel === 'WO' || statusLabel === 'OFF' || statusLabel === 'W/O') {
       statusColor = '#9CA3AF';
       statusBg = '#F3F4F6';
-    } else if (statusLabel === 'H' || statusLabel === 'HOLIDAY') {
+    } else if (statusLabel === 'HO' || statusLabel === 'H' || statusLabel === 'HOLIDAY') {
       statusColor = '#3498DB';
       statusBg = '#EBF8FF';
+    } else if (statusLabel === 'A/A' || statusLabel === 'A' || statusLabel === 'ABSENT' || statusLabel.includes('LOP')) {
+      statusColor = '#E91E63'; // Absent Red
+      statusBg = '#FCE4EC';
     }
 
     const punchIn = formatPunchTime(item.punch_in_time);
@@ -197,6 +201,9 @@ const AttendanceScreen = ({ navigation, route }) => {
             <View style={[s.badge, { backgroundColor: statusBg }]}>
               <Text style={[s.badgeText, { color: statusColor }]} numberOfLines={1}>{statusLabel}</Text>
             </View>
+            {item.leave_status === 'Applied' && (
+              <Text style={[s.durationText, { color: '#D97706' }]} numberOfLines={1}>Pending</Text>
+            )}
             {!!item.duration && item.duration !== "0" && (
               <Text style={[s.durationText, { color: theme.textLight }]} numberOfLines={1}>{item.duration} mins</Text>
             )}
@@ -212,7 +219,7 @@ const AttendanceScreen = ({ navigation, route }) => {
           <View style={[s.detailSection, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
             <Text style={[s.detailTitle, { color: theme.text }]}>Detailed Punch History</Text>
             {fetchingDevicePunches && !hasDevicePunches ? (
-              <ActivityIndicator size="small" color="#6C5CE7" style={{ marginVertical: 10 }} />
+              <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginVertical: 10 }} />
             ) : (
               <>
                 {hasDevicePunches ? (
@@ -262,9 +269,9 @@ const AttendanceScreen = ({ navigation, route }) => {
           activeOpacity={0.7}
           onPress={() => setShowMonthPicker(true)}
         >
-          <CalendarIcon color="#6C5CE7" size={20} style={{ marginRight: 10 }} />
+          <CalendarIcon color={COLORS.primaryDeep} size={20} style={{ marginRight: 10 }} />
           <Text style={s.monthText}>{getMonthDisplayText()}</Text>
-          <ChevronDown color="#6C5CE7" size={18} style={{ marginLeft: 8 }} />
+          <ChevronDown color={COLORS.primaryDeep} size={18} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
 
@@ -272,7 +279,7 @@ const AttendanceScreen = ({ navigation, route }) => {
       <View style={[s.listContainer, { backgroundColor: theme.bg }]}>
         {loading ? (
           <View style={s.center}>
-            <ActivityIndicator size="large" color="#6C5CE7" />
+            <ActivityIndicator size="large" color={COLORS.primaryDeep} />
           </View>
         ) : (
           <FlatList
@@ -333,14 +340,14 @@ const s = StyleSheet.create({
     paddingHorizontal: moderateScale(16), height: moderateScale(60), backgroundColor: '#FFF'
   },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center' },
-  headerTitle: { fontSize: moderateScale(20), fontWeight: '800', color: COLORS.text },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 
   monthBar: { paddingVertical: moderateScale(15), alignItems: 'center', backgroundColor: '#FFF' },
   monthDropdown: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F0FF',
     paddingHorizontal: moderateScale(20), paddingVertical: moderateScale(10), borderRadius: moderateScale(25)
   },
-  monthText: { fontSize: moderateScale(16), fontWeight: '700', color: '#6C5CE7' },
+  monthText: { fontSize: moderateScale(16), fontWeight: '700', color: COLORS.primaryDeep },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
   listContents: { padding: moderateScale(16), paddingBottom: moderateScale(110) },
@@ -398,7 +405,7 @@ const s = StyleSheet.create({
   pBadgeText: { fontSize: moderateScale(10), fontWeight: '900' },
 
   punchAddressBox: { flex: 1, paddingHorizontal: moderateScale(12) },
-  shiftBadgeText: { fontSize: moderateScale(10), fontWeight: '800', color: '#6C5CE7', marginBottom: 2, textTransform: 'uppercase' },
+  shiftBadgeText: { fontSize: moderateScale(10), fontWeight: '800', color: COLORS.primaryDeep, marginBottom: 2, textTransform: 'uppercase' },
   addressText: { fontSize: moderateScale(11), color: '#6B7280', fontWeight: '600' },
   syncBox: { width: moderateScale(24), alignItems: 'center' },
   noDetailText: { fontSize: moderateScale(12), color: '#9CA3AF', fontStyle: 'italic', textAlign: 'center', paddingVertical: moderateScale(10) },
@@ -413,7 +420,7 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16), textAlign: 'center' },
   monthItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
   monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
-  monthItemTextActive: { color: '#6C5CE7', fontWeight: '800' },
+  monthItemTextActive: { color: COLORS.primaryDeep, fontWeight: '800' },
 });
 
 export default AttendanceScreen;

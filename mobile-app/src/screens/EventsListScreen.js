@@ -142,7 +142,7 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56) },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: moderateScale(17), fontWeight: '800' },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800' },
   monthBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16), marginBottom: moderateScale(10) },
   monthBtn: { padding: moderateScale(8), borderRadius: moderateScale(12) },
   monthTitle: { fontSize: moderateScale(17), fontWeight: '900' },

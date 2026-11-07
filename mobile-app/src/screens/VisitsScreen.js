@@ -553,7 +553,7 @@ const sv = StyleSheet.create({
   locWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4, alignSelf: 'center' },
   locLabel: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: moderateScale(6), textAlign: 'center' },
   locTextWrap: { minHeight: moderateScale(36), justifyContent: 'center', alignItems: 'center', width: '100%' },
-  locText: { fontSize: moderateScale(12), color: '#4C1D95', textAlign: 'center', lineHeight: 18, width: '100%' },
+  locText: { fontSize: moderateScale(12), color: COLORS.primaryDeep, textAlign: 'center', lineHeight: 18, width: '100%' },
   formWrap: { backgroundColor: '#FFF', padding: moderateScale(16), borderRadius: moderateScale(16), ...SHADOWS.light },
   footer: { padding: moderateScale(20), backgroundColor: '#F9FAFB' },
   startBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
@@ -986,7 +986,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: moderateScale(17), fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827' },
   scroll: { padding: moderateScale(16), paddingTop: moderateScale(20), paddingBottom: moderateScale(110) },
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },

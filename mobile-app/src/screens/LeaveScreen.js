@@ -29,8 +29,14 @@ const STATUS_COLORS = {
   Approved: { bg: '#DCFCE7', text: '#16A34A', side: '#16A34A' },
   Applied: { bg: '#DBEAFE', text: '#1D4ED8', side: '#1D4ED8' },
   Rejected: { bg: '#FEE2E2', text: '#DC2626', side: '#DC2626' },
-  Authorised: { bg: '#F3F0FF', text: '#6C5CE7', side: '#6C5CE7' },
+  Authorised: { bg: '#F3F0FF', text: COLORS.primaryDeep, side: COLORS.primaryDeep },
   Cancelled: { bg: '#FEF3C7', text: '#D97706', side: '#D97706' },
+};
+
+// "07-11-2026 by Name" from rejected_date ('YYYY-MM-DD HH:MM:SS') / rejected_by_name
+const formatRejected = (item) => {
+  const [y, m, d] = String(item.rejected_date).slice(0, 10).split('-');
+  return `${d}-${m}-${y}${item.rejected_by_name?.trim() ? ` by ${item.rejected_by_name.trim()}` : ''}`;
 };
 
 // Formats "YYYY-MM-DD" + half (1=Forenoon, 2=Afternoon) as "DD-MM-YYYY(FH)"/"(SH)"
@@ -81,7 +87,7 @@ const LeaveHeader = ({ title, onBack, theme }) => (
 const h = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
   back: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: moderateScale(17), fontWeight: '800', color: COLORS.text },
+  title: { fontSize: moderateScale(18), fontWeight: '800', color: COLORS.text },
 });
 
 // ─── History Card ─────────────────────────────────────────────────────────────
@@ -158,6 +164,14 @@ const HistoryCard = ({ item, onCancel, cancelling, userId }) => {
                 </View>
               ) : null}
             </View>
+
+            {/* Who rejected and when (stored since 2026-11-07; older rejections have no date) */}
+            {item.leave_status === 'Rejected' && item.rejected_date ? (
+              <View style={hc.metaRow}>
+                <Text style={[hc.metaLabel, { color: theme.textLight }]}>Rejected :</Text>
+                <Text style={[hc.metaValue, { color: '#DC2626' }]}> {formatRejected(item)}</Text>
+              </View>
+            ) : null}
 
             {/* Leave Days */}
             <View style={hc.metaRow}>

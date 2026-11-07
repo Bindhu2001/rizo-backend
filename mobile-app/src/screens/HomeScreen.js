@@ -33,6 +33,8 @@ import NotificationManager from '../services/NotificationManager';
 import { refreshShiftReminders, getCachedShiftSchedule } from '../services/ShiftReminders';
 import { nextPunch, SHIFT_DATE_LOOKBACK_MS } from '../services/ShiftDate';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
+import { loadMenuAccess, useMenuAccess, menuStatus, BLURRED_MESSAGE } from '../services/MenuAccess';
+import { fetchServerDay, getCachedServerDay, getCachedServerPunches, mergePunches } from '../services/AllPunches';
 import { useTheme } from '../components/ThemeContext';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
@@ -96,14 +98,18 @@ const HomeScreen = ({ navigation, route }) => {
   const msgFade = useRef(new Animated.Value(1)).current;
   const [punchInTime, setPunchInTime] = useState(null);
   const [punchInAddress, setPunchInAddress] = useState('');
+  // Worked time of the button's shift date: finished IN→OUT sessions from its punches, and the day's duration as the
+  // Attendance screen shows it (attendance_punches; null = not known for this shift date)
+  const [closedMins, setClosedMins] = useState(0);
+  const [serverDurationMins, setServerDurationMins] = useState(null);
+  const [, setClockTick] = useState(0);
+  // Check In / Check Out not known yet: the saved server punches are old and the server is being asked
+  const [statusPending, setStatusPending] = useState(false);
   const [roles, setRoles] = useState({
     is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
     is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
   });
-  const [menus, setMenus] = useState({
-    leaveApproval: false,
-    regularisationApproval: false,
-  });
+  const menuAccess = useMenuAccess(user?.user_id);
   const [alertCfg, setAlertCfg] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showLocationDisclosure, setShowLocationDisclosure] = useState(false);
@@ -274,60 +280,51 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
-  const fetchMenus = async () => {
-    try {
-      const res = await axios.post(API_ENDPOINTS.ALLOCATE_MENUS, { user_id: user.user_id });
-      if (res.data && (res.data.success == 1 || res.data.success === true)) {
-        const data = res.data.data || {};
-        setMenus({
-          leaveApproval: data['Team Leave Requests'] === 'Y',
-          regularisationApproval: data['Approve/Reject Regularisation'] === 'Y',
-        });
-      }
-    } catch (e) {
-      console.log('[Home] Menu allocation fetch error:', e);
-    }
+  // Same menus as the Requests / Approvals tabs (services/MenuAccess.js)
+  const fetchMenus = () => loadMenuAccess(user.user_id);
+
+  // Client Visit (mobile menu 'customer-visits'): opens Visits, or — blurred — says why it can't
+  const visitStatus = menuStatus(menuAccess, { key: 'customer-visits', route: 'Visits' });
+  const visitMenu = {
+    blurred: visitStatus !== 'on',
+    onPress: () => (visitStatus === 'on'
+      ? navigation.navigate('Visits', { user })
+      : showAlert('info', BLURRED_MESSAGE[visitStatus].title, BLURRED_MESSAGE[visitStatus].message)),
   };
 
   // ── Status ────────────────────────────────────────────────────────────────
-  // Asks the payroll server what it actually recorded for today, rather than
-  // trusting our own optimistic local guess. The server may apply IN/OUT
-  // logic we don't control (e.g. resetting to IN on a new day even after a
-  // missed punch-out) — SyncService pushes a punch but never reads the
-  // response, so this is the only place that finds out what really stuck.
-  // Returns null (meaning "keep local state") if offline, unreachable, or the
-  // server has no punches yet for today (e.g. a carried-over unclosed
-  // yesterday session, before today's first punch).
-  // Server punches of one shift date (get_device_attendance filters on SHIFTDATE)
-  const fetchServerPunchStatus = async (userId, shiftDate) => {
-    try {
-      const net = await Network.getNetworkStateAsync();
-      if (!net.isConnected) return null;
+  // A punch counts wherever it was made — biometric device, web or this phone (services/AllPunches.js). The
+  // button opens on the phone's punches + the last known server punches. When that server copy is older than
+  // SERVER_FRESH_MS it may miss a biometric / web punch made since, so the button shows "Checking status..."
+  // until the server answers instead of a state that could then flip.
+  const SERVER_FRESH_MS = 60 * 1000;
+  // The phone's own punch within this is the newest punch anyway — no need to wait on the server
+  const OWN_PUNCH_RECENT_MS = 2 * 60 * 1000;
 
-      const res = await axios.post(
-        API_ENDPOINTS.DEVICE_ATTENDANCE,
-        { user_id: userId, date: shiftDate },
-        { timeout: 8000 },
-      );
-      if (res.data?.success !== 1) return null;
-
-      const punches = Array.isArray(res.data.data)
-        ? res.data.data
-        : (res.data.data ? Object.values(res.data.data) : []);
-      if (!punches.length) return null;
-
-      const sorted = [...punches].sort(
-        (a, b) => new Date(a.LOGDATE.replace(' ', 'T')) - new Date(b.LOGDATE.replace(' ', 'T'))
-      );
-      const last = sorted[sorted.length - 1];
-      const type = last?.C1?.toUpperCase();
-      if (type !== 'IN' && type !== 'OUT') return null;
-
-      return { type, time: last.LOGDATE, address: last.C3 || '' };
-    } catch (e) {
-      console.log('[Home] Server punch status fetch failed:', e.message);
-      return null;
+  // Button, check-in time and finished sessions from the shift date's punches (all sources)
+  const applyPunchState = (next) => {
+    const last = next.onShift[next.onShift.length - 1] || null;
+    setIsPunchedIn(next.direction === 'OUT');
+    setStatus(prev => ({ ...prev, lastType: last ? String(last.type).toUpperCase() : 'NONE' }));
+    if (next.direction === 'OUT' && last) {
+      setPunchInTime(new Date(last.punch_time));
+      setPunchInAddress(last.address || '');
+    } else {
+      setPunchInTime(null);
+      setPunchInAddress('');
     }
+    let closed = 0;
+    let openIn = null;
+    for (const p of next.onShift) {
+      const ms = new Date(p.punch_time).getTime();
+      if (String(p.type).toUpperCase() === 'IN') {
+        if (openIn === null) openIn = ms;
+      } else if (openIn !== null) {
+        closed += ms - openIn;
+        openIn = null;
+      }
+    }
+    setClosedMins(Math.floor(closed / 60000));
   };
 
   const fetchStatus = async () => {
@@ -336,68 +333,55 @@ const HomeScreen = ({ navigation, route }) => {
     // should ever be applied, otherwise a slower/stale call resolving last can
     // clobber the button state with outdated data.
     const requestId = ++fetchStatusRequestId.current;
-    // 1. Instantly load from Local DB to prevent UI flicker. The next punch is decided like the
+    // 1. Instantly, from the phone's punches + the last known server punches. The next punch is decided like the
     //    server's punch trigger (services/ShiftDate.js): its shift date — a night shift keeps
     //    early-morning punches on the previous day — then IN if that shift date has no punch yet,
     //    else the opposite of its last punch. So a missed check-out yesterday shows Check In today.
     let shiftDate = null;
-    let localLast = null;
+    let schedule = [];
+    let localPunches = [];
     try {
       const now = new Date();
-      const [schedule, punches] = await Promise.all([
+      const [sched, punches, cachedServer, lastStored] = await Promise.all([
         getCachedShiftSchedule(user.user_id),
         getPunchesBetween(user.user_id, new Date(now.getTime() - SHIFT_DATE_LOOKBACK_MS).toISOString(), new Date(now.getTime() + 60000).toISOString()).catch(() => []),
+        getCachedServerPunches(user.user_id),
+        AsyncStorage.getItem(`LAST_ACTION_${user.user_id}`).catch(() => null),
       ]);
-      const next = nextPunch(now, punches, schedule);
+      schedule = sched;
+      localPunches = punches;
+      if (lastStored) lastActionTime.current = parseInt(lastStored, 10);
+      const next = nextPunch(now, mergePunches(punches, cachedServer), schedule);
       shiftDate = next.shiftDate;
-      localLast = next.onShift[next.onShift.length - 1] || null;
+      const cachedDay = await getCachedServerDay(user.user_id, shiftDate);
 
       if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
 
-      const localType = localLast ? String(localLast.type).toUpperCase() : 'NONE';
-      setIsPunchedIn(next.direction === 'OUT');
-      setStatus(prev => ({ ...prev, lastType: localType }));
-
-      if (next.direction === 'OUT' && localLast) {
-        setPunchInTime(new Date(localLast.punch_time));
-        setPunchInAddress(localLast.address || '');
-      } else {
-        setPunchInTime(null);
-        setPunchInAddress('');
-      }
-
-      // Load persistent action time
-      const lastStored = await AsyncStorage.getItem(`LAST_ACTION_${user.user_id}`);
-      if (lastStored) lastActionTime.current = parseInt(lastStored, 10);
+      applyPunchState(next);
+      // A new shift date (button back to Check In) has no worked time yet
+      setServerDurationMins(cachedDay ? cachedDay.durationMins : null);
+      const serverCopyStale = !cachedDay?.fetchedAt || Date.now() - cachedDay.fetchedAt > SERVER_FRESH_MS;
+      const ownPunchRecent = Date.now() - lastActionTime.current < OWN_PUNCH_RECENT_MS;
+      setStatusPending(serverCopyStale && !ownPunchRecent);
     } catch (e) {
       console.log('[Home] Local status fetch error:', e);
     } finally {
       if (requestId === fetchStatusRequestId.current) setLoading(false);
     }
 
-    // 2. Reconcile with server truth. Local state above is optimistic (based
-    // on our own last write); if the server has already recorded today's
-    // punches, its answer wins — this is what actually determines payroll,
-    // regardless of what direction we assumed client-side.
-    if (!shiftDate) return;
-    const serverStatus = await fetchServerPunchStatus(user.user_id, shiftDate);
-    if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
-    // A punch still waiting to sync that is newer than the server's last one is the truth
-    // until it syncs — the server would otherwise flip the button back
-    const serverMs = serverStatus ? new Date(String(serverStatus.time).replace(' ', 'T')).getTime() : 0;
-    const localPendingNewer = localLast && localLast.sync_status === 'PENDING'
-      && new Date(localLast.punch_time).getTime() > serverMs;
-    if (serverStatus && !localPendingNewer) {
-      setIsPunchedIn(serverStatus.type === 'IN');
-      setStatus(prev => ({ ...prev, lastType: serverStatus.type }));
-      if (serverStatus.type === 'IN') {
-        const t = new Date(serverStatus.time.replace(' ', 'T'));
-        if (!isNaN(t.getTime())) setPunchInTime(t);
-        setPunchInAddress(serverStatus.address);
-      } else {
-        setPunchInTime(null);
-        setPunchInAddress('');
-      }
+    // 2. The server's punches of the shift date — biometric and web punches the phone can't know about. Applied
+    //    the same way, so the button only changes when there really is a new punch. Offline or no answer
+    //    (fetchServerDay gives up after 8 s): the button stays on the saved copy.
+    try {
+      if (!shiftDate) return;
+      const server = await fetchServerDay(user.user_id, shiftDate);
+      if (requestId !== fetchStatusRequestId.current || !server) return; // superseded, or offline
+      const serverPunches = await getCachedServerPunches(user.user_id); // now holding this answer
+      if (requestId !== fetchStatusRequestId.current) return;
+      applyPunchState(nextPunch(new Date(), mergePunches(localPunches, serverPunches), schedule));
+      setServerDurationMins(server.durationMins);
+    } finally {
+      if (requestId === fetchStatusRequestId.current) setStatusPending(false);
     }
   };
 
@@ -689,6 +673,8 @@ const HomeScreen = ({ navigation, route }) => {
       if (isNowIn) {
         setPunchInTime(new Date(punchTime));
       } else {
+        // The session this check-out ends counts as worked right away
+        if (punchInTime) setClosedMins((m) => m + Math.max(0, Math.floor((new Date(punchTime).getTime() - new Date(punchInTime).getTime()) / 60000)));
         setPunchInTime(null);
         setPunchInAddress('');
       }
@@ -716,22 +702,43 @@ const HomeScreen = ({ navigation, route }) => {
     return 'Evening,';
   };
 
+  // Worked time of the button's shift date, from punches of every source.
+  //   Checked in:  finished sessions + the running one since the last check-in
+  //   Checked out: the day's duration as the Attendance screen shows it — the finished sessions while the server
+  //                hasn't processed the last punch yet (its duration is then still the older, smaller one)
+  // A new shift date (button back to Check In, no punch yet) has none, so the message goes away.
   const getWorkDuration = () => {
-    if (!punchInTime) return null;
-    const diffMs = Date.now() - new Date(punchInTime).getTime();
-    const hours = Math.floor(diffMs / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    return { hours, minutes, totalHours: hours + minutes / 60 };
+    let mins;
+    if (isPunchedIn && punchInTime) {
+      mins = closedMins + Math.max(0, Math.floor((Date.now() - new Date(punchInTime).getTime()) / 60000));
+    } else {
+      mins = Math.max(serverDurationMins || 0, closedMins);
+    }
+    if (!mins) return null;
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    return { hours, minutes, totalHours: mins / 60 };
   };
+
+  // Keep the running worked time current while checked in
+  useEffect(() => {
+    if (!isPunchedIn) return;
+    const timer = setInterval(() => setClockTick((t) => t + 1), 60000);
+    return () => clearInterval(timer);
+  }, [isPunchedIn]);
 
   const getSystemMessages = () => {
     const dur = getWorkDuration();
     const msgs = [];
 
-    if (!dur) return msgs;
+    if (!dur || statusPending) return msgs;
 
     const { hours, minutes } = dur;
-    msgs.push({ icon: '⏱️', text: `You have worked ${hours}h ${minutes}m today.`, color: '#0369A1' });
+    msgs.push({
+      icon: '⏱️',
+      text: isPunchedIn ? `You have worked ${hours}h ${minutes}m today.` : `You worked ${hours}h ${minutes}m today.`,
+      color: '#0369A1',
+    });
 
     return msgs;
   };
@@ -808,7 +815,7 @@ const HomeScreen = ({ navigation, route }) => {
           <View style={[styles.punchCard, { backgroundColor: theme.card }]}>
 
             {/* Status row — only shown when punched in and time is known */}
-            {isPunchedIn && !!punchInTime && (
+            {isPunchedIn && !!punchInTime && !statusPending && (
               <View style={styles.punchStatusRow}>
                 <View style={[styles.punchDot, { backgroundColor: '#39B54A' }]} />
                 <Text style={[styles.punchStatusText, { color: '#2E7D32' }]}>
@@ -818,10 +825,10 @@ const HomeScreen = ({ navigation, route }) => {
             )}
 
             {/* Action title */}
-            <Text style={[styles.punchActionTitle, { color: punching ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
+            <Text style={[styles.punchActionTitle, { color: punching || statusPending ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
               {punching
                 ? (punchingType === 'OUT' ? 'Checking Out…' : 'Checking In…')
-                : (isPunchedIn ? 'Check Out' : 'Check In')}
+                : statusPending ? 'Checking…' : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
             {/* Swipe */}
@@ -835,6 +842,7 @@ const HomeScreen = ({ navigation, route }) => {
                 trackHeight={SWIPE_TRACK_HEIGHT}
                 locationName={isPunchedIn ? punchInAddress : ''}
                 punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
+                statusPending={statusPending}
               />
             </View>
 
@@ -885,59 +893,15 @@ const HomeScreen = ({ navigation, route }) => {
             <Text style={[styles.gridLabel, { color: theme.textLight }]}>Check Payroll</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Leave', { user })}>
-            <View style={[styles.gridIcon, { backgroundColor: '#F3E5F5' }]}>
-              <Briefcase color={COLORS.primaryDeep} size={20} />
-            </View>
-            <Text style={[styles.gridVal, { color: theme.text }]}>Leave</Text>
-            <Text style={[styles.gridLabel, { color: theme.textLight }]}>Apply / View</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.gridCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('Expense', { user })}>
-            <View style={[styles.gridIcon, { backgroundColor: '#FFEBEE' }]}>
-              <FileText color="#E91E63" size={20} />
-            </View>
-            <Text style={[styles.gridVal, { color: theme.text }]}>Expense</Text>
-            <Text style={[styles.gridLabel, { color: theme.textLight }]}>Add / Track</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* APPROVALS ROW */}
-        {(menus.leaveApproval || menus.regularisationApproval) && (
-          <>
-            <Text style={[styles.sectionLabel, { color: theme.textLight }]}>Approvals</Text>
-            <View style={styles.approvalRow}>
-              {menus.leaveApproval && (
-                <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('LeaveApproval', { user })}>
-                  <View style={[styles.approvalIconBox, { backgroundColor: '#DCFCE7' }]}>
-                    <CheckCircle color="#16A34A" size={22} />
-                  </View>
-                  <Text style={[styles.approvalTitle, { color: theme.text }]}>Leave</Text>
-                  <Text style={[styles.approvalSub, { color: theme.textLight }]}>Approval</Text>
-                </TouchableOpacity>
-              )}
-
-              {menus.regularisationApproval && (
-                <TouchableOpacity style={[styles.approvalCard, { backgroundColor: theme.card }]} activeOpacity={0.7} onPress={() => navigation.navigate('RegularisationApproval', { user })}>
-                  <View style={[styles.approvalIconBox, { backgroundColor: '#FFF3E0' }]}>
-                    <ClipboardList color="#F97316" size={22} />
-                  </View>
-                  <Text style={[styles.approvalTitle, { color: theme.text }]}>Regularisation</Text>
-                  <Text style={[styles.approvalSub, { color: theme.textLight }]}>Approval</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
-
-        {/* MY TEAM — only for someone with a team they authorise / approve leave for */}
-        <TeamTile user={user} />
+        {/* Leave, Expense, Regularization and the approvals live in the Requests / Approvals tabs */}
 
         {/* CLIENT VISIT */}
         <TouchableOpacity
-          style={[styles.visitButton, { backgroundColor: theme.card }]}
+          style={[styles.visitButton, { backgroundColor: theme.card }, visitMenu.blurred && styles.blurred]}
           activeOpacity={0.8}
-          onPress={() => navigation.navigate('Visits', { user })}
+          onPress={visitMenu.onPress}
         >
           <View style={styles.visitButtonLeft}>
             <View style={styles.visitIconBox}>
@@ -951,23 +915,8 @@ const HomeScreen = ({ navigation, route }) => {
           <ChevronRight color={theme.textLight} size={20} />
         </TouchableOpacity>
 
-        {/* REGULARIZATION */}
-        <TouchableOpacity
-          style={[styles.visitButton, { backgroundColor: theme.card, marginBottom: 24, marginTop: -12 }]}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('AttendanceReg', { user, initialTab: 'LOG' })}
-        >
-          <View style={styles.visitButtonLeft}>
-            <View style={[styles.visitIconBox, { backgroundColor: '#FF9800' }]}>
-              <History color="#FFF" size={20} />
-            </View>
-            <View>
-              <Text style={[styles.visitBtnTitle, { color: theme.text }]}>Regularization</Text>
-              <Text style={[styles.visitBtnSub, { color: theme.textLight }]}>Late In / Early Out requests</Text>
-            </View>
-          </View>
-          <ChevronRight color={theme.textLight} size={20} />
-        </TouchableOpacity>
+        {/* MY TEAM — only for someone with a team they authorise / approve leave for */}
+        <TeamTile user={user} />
 
         {/* UPCOMING EVENTS DROPDOWN */}
         <View style={[styles.eventsSection, { backgroundColor: theme.card }]}>
@@ -1127,17 +1076,12 @@ const styles = StyleSheet.create({
   clockOutBtn: { width: moderateScale(52), height: moderateScale(52), borderRadius: moderateScale(26), backgroundColor: '#FFD1D1', justifyContent: 'center', alignItems: 'center' },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: moderateScale(24) },
+  blurred: { opacity: 0.45 },
   gridCard: { width: '48%', backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), marginBottom: moderateScale(16), ...SHADOWS.light },
   gridIcon: { width: moderateScale(40), height: moderateScale(40), borderRadius: moderateScale(12), justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(12) },
   gridVal: { fontSize: moderateScale(16), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
   gridLabel: { fontSize: moderateScale(11), color: COLORS.textLight, fontWeight: '500' },
 
-  sectionLabel: { fontSize: moderateScale(13), fontWeight: '800', color: COLORS.textLight, letterSpacing: 0.5, marginBottom: moderateScale(12), marginLeft: 4, textTransform: 'uppercase' },
-  approvalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(24) },
-  approvalCard: { width: '48%', backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(20), ...SHADOWS.light },
-  approvalIconBox: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(14), justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(14) },
-  approvalTitle: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginBottom: 2 },
-  approvalSub: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600' },
 
   // Visit Button
   visitButton: {

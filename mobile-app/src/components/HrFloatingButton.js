@@ -12,7 +12,7 @@ import { getLoggedUser } from '../services/LocalDB';
 // screens, with a badge for unread HR replies. Drag it anywhere (like the Ask RIZO logo on the web); the spot is
 // remembered, and a tap (no drag) opens Connect to HR.
 
-const TAB_SCREENS = ['HomeTab', 'LeaveTab', 'ProfileTab'];
+const TAB_SCREENS = ['HomeTab', 'RequestsTab', 'ApprovalsTab', 'ProfileTab'];
 const SIZE = moderateScale(56);
 const MARGIN = 8;
 const DRAG_THRESHOLD = 5;

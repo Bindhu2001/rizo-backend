@@ -10,7 +10,7 @@ import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
-import { SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import { SHADOWS, COLORS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -124,11 +124,11 @@ const FloatingInput = ({ label, value, onPress, icon, active, multiline, onChang
 
 const fi = StyleSheet.create({
   container: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: moderateScale(12), paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(14), marginBottom: moderateScale(24), position: 'relative' },
-  activeContainer: { borderColor: '#E91E63' },
+  activeContainer: { borderColor: COLORS.primaryDeep },
   multiline: { height: moderateScale(120), paddingVertical: moderateScale(12) },
   labelContainer: { position: 'absolute', top: -10, left: 12, backgroundColor: '#FFF', paddingHorizontal: 4 },
   label: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '500' },
-  activeLabel: { color: '#E91E63', fontWeight: '600' },
+  activeLabel: { color: COLORS.primaryDeep, fontWeight: '600' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   value: { flex: 1, fontSize: moderateScale(15), color: '#111827', fontWeight: '500' },
   singleInput: { flex: 1, fontSize: moderateScale(15), color: '#000', fontWeight: '500', paddingVertical: 0 },
@@ -1014,7 +1014,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       </View>
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color="#E91E63" /></View>
+        <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
       ) : (
         <ScrollView contentContainerStyle={s.listScroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {tab === 'LOG' && attLogs.map((item, i) => (
@@ -1065,14 +1065,14 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F9FAFB' },
   headerBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: moderateScale(60), paddingHorizontal: moderateScale(8), backgroundColor: '#FFF' },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: moderateScale(16), fontWeight: '600', color: '#111827' },
+  headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827' },
 
   tabBox: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: moderateScale(20), backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   tabsWrap: { flexDirection: 'row' },
   tabItem: { paddingVertical: moderateScale(14), marginRight: moderateScale(24), position: 'relative' },
   tabLabel: { fontSize: moderateScale(14), fontWeight: '500', color: '#9CA3AF' },
-  tabLabelActive: { color: '#E91E63', fontWeight: '700' },
-  tabLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 3, backgroundColor: '#E91E63', borderTopLeftRadius: 3, borderTopRightRadius: 3 },
+  tabLabelActive: { color: COLORS.primaryDeep, fontWeight: '700' },
+  tabLine: { position: 'absolute', bottom: -1, left: 0, right: 0, height: 3, backgroundColor: COLORS.primaryDeep, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
   monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8), borderRadius: moderateScale(12), marginBottom: moderateScale(10), alignSelf: 'center' },
   monthText: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
 
@@ -1081,7 +1081,7 @@ const s = StyleSheet.create({
   formScroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
   formWrap: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: moderateScale(24), ...SHADOWS.light },
   submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), alignItems: 'center', marginTop: moderateScale(8) },
-  submitBtnActive: { backgroundColor: '#E91E63' },
+  submitBtnActive: { backgroundColor: COLORS.primaryDeep },
   submitText: { color: '#9CA3AF', fontSize: moderateScale(14), fontWeight: '700', letterSpacing: 0.5 },
   submitTextActive: { color: '#FFF' },
 
@@ -1099,7 +1099,7 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: moderateScale(16), fontWeight: '800', color: '#111827', marginBottom: moderateScale(16), textAlign: 'center' },
   monthItem: { paddingVertical: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F9FAFB', alignItems: 'center' },
   monthItemText: { fontSize: moderateScale(15), color: '#4B5563', fontWeight: '500' },
-  monthItemTextActive: { color: '#E91E63', fontWeight: '800' },
+  monthItemTextActive: { color: COLORS.primaryDeep, fontWeight: '800' },
 });
 
 export default AttendanceRegScreen;

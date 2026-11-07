@@ -5,7 +5,7 @@ import { View, ActivityIndicator, Platform, useWindowDimensions } from 'react-na
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, Clock, Calendar, FileText, User } from 'lucide-react-native';
+import { Home, Clock, Calendar, FileText, User, Send, CheckCircle } from 'lucide-react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Screens
@@ -29,6 +29,13 @@ import HrQueryThreadScreen from './src/screens/HrQueryThreadScreen';
 import EventsListScreen from './src/screens/EventsListScreen';
 import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
 import MyTeamScreen from './src/screens/MyTeamScreen';
+import RequestsScreen from './src/screens/RequestsScreen';
+import ApprovalsScreen from './src/screens/ApprovalsScreen';
+import EssLeaveApprovalScreen from './src/screens/EssLeaveApprovalScreen';
+import EssExpenseApprovalScreen from './src/screens/EssExpenseApprovalScreen';
+import EssAdvanceLoanApprovalScreen from './src/screens/EssAdvanceLoanApprovalScreen';
+import EssAdvanceLoanScreen from './src/screens/EssAdvanceLoanScreen';
+import EssResignationScreen from './src/screens/EssResignationScreen';
 import HrFloatingButton from './src/components/HrFloatingButton';
 
 import OfflineBanner from './src/components/OfflineBanner';
@@ -90,12 +97,21 @@ function TabNavigator({ route }) {
       />
 
       <Tab.Screen
-        name="LeaveTab"
-        component={LeaveScreen}
+        name="RequestsTab"
+        component={RequestsScreen}
         initialParams={{ user: route.params?.user }}
         options={{
-          tabBarLabel: 'Leave',
-          tabBarIcon: ({ color }) => <Calendar color={color} size={24} strokeWidth={2.5} />,
+          tabBarLabel: 'Requests',
+          tabBarIcon: ({ color }) => <Send color={color} size={24} strokeWidth={2.5} />,
+        }}
+      />
+      <Tab.Screen
+        name="ApprovalsTab"
+        component={ApprovalsScreen}
+        initialParams={{ user: route.params?.user }}
+        options={{
+          tabBarLabel: 'Approvals',
+          tabBarIcon: ({ color }) => <CheckCircle color={color} size={24} strokeWidth={2.5} />,
         }}
       />
       <Tab.Screen
@@ -213,6 +229,11 @@ function AppContent() {
           <Stack.Screen name="EventsList" component={EventsListScreen} />
           <Stack.Screen name="Announcements" component={AnnouncementsScreen} />
           <Stack.Screen name="MyTeam" component={MyTeamScreen} />
+          <Stack.Screen name="EssLeaveApproval" component={EssLeaveApprovalScreen} />
+          <Stack.Screen name="EssExpenseApproval" component={EssExpenseApprovalScreen} />
+          <Stack.Screen name="EssAdvanceLoanApproval" component={EssAdvanceLoanApprovalScreen} />
+          <Stack.Screen name="EssAdvanceLoan" component={EssAdvanceLoanScreen} />
+          <Stack.Screen name="EssResignation" component={EssResignationScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <HrFloatingButton currentRoute={currentRoute} navigationRef={navigationRef} />

@@ -2,11 +2,23 @@ const AUTH_URL = 'https://v1.mypayrollmaster.online/api/v1';
 const NEWAPP_URL = 'https://v1.mypayrollmaster.online/api/v1/newapp';
 export const IMAGE_ROOT = 'https://v1.mypayrollmaster.online';
 // rizo-revamp's mobile routes (Connect to HR) — bearer-token auth, see services/RevampApi.js
-export const REVAMP_API_URL = 'https://login.rizohrms.com/api/mobile';
+export const REVAMP_ORIGIN = 'https://login.rizohrms.com';
+export const REVAMP_API_URL = `${REVAMP_ORIGIN}/api/mobile`;
+// rizo-revamp's employee self-service routes the app shares with the web employee login (same bearer token):
+// Leave / Expense / Advance & Loan approvals and the Advance & Loan requests
+export const REVAMP_WEB_API_URL = `${REVAMP_ORIGIN}/api`;
+// A file path rizo-revamp stores as "/uploads/..." → a full link; full links stay as they are
+export const revampFileUrl = (v) => {
+  const s = String(v || '').trim();
+  if (/^https?:\/\//.test(s)) return s;
+  return s.startsWith('/') ? `${REVAMP_ORIGIN}${s}` : null;
+};
 // Companies on the DigitalOcean database, whose salary slip is the rizo-revamp one (the same companies the
 // PHP API routes to DigitalOcean). Everyone else (OVH) keeps the slip the app has always built itself.
 export const REVAMP_PAYSLIP_COMPANIES = ['GRTL', 'MYPY'];
 export const companyLettersOf = (userId) => String(userId || '').replace(/[^a-zA-Z]+/g, '').toUpperCase();
+// DigitalOcean company: its approvals and Advance & Loan run on the web employee login's own routes (RevampApi.js)
+export const isRevampCompany = (userId) => REVAMP_PAYSLIP_COMPANIES.includes(companyLettersOf(userId));
 
 export const API_ENDPOINTS = {
   AUTH: `${AUTH_URL}/login`,

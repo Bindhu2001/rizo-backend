@@ -4,7 +4,7 @@ import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getLoggedUser, getLeavesLocal, saveNotificationLocal, markNotificationsAsReadLocal } from './LocalDB';
-import { clearShiftReminders } from './ShiftReminders';
+import { clearShiftReminders, refreshShiftReminders } from './ShiftReminders';
 import { clearRevampToken, PushTokenApi, AnnouncementsApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
 import axios from 'axios';
@@ -409,6 +409,8 @@ TaskManager.defineTask(BG_TASK_NAME, async () => {
     await NotificationManager.checkRegDiff(user);
     await NotificationManager.checkExpenseDiff(user);
     await NotificationManager.checkAnnouncements(user);
+    // A biometric / web punch made while the app is closed cancels the reminders it answers
+    await refreshShiftReminders(user.user_id);
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;
