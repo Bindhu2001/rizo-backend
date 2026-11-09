@@ -140,8 +140,15 @@ const NotificationsScreen = ({ navigation }) => {
     setSelectedNotif(null);
   };
 
+  // created_at is saved as UTC (toISOString): compare the phone's own date, or a notification from 00:00 to
+  // 05:30 India time was filed under the previous day
+  const localDay = (iso) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso || '').slice(0, 10);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
   const filteredNotifications = selectedDate
-    ? notifications.filter(n => n.created_at && n.created_at.startsWith(selectedDate))
+    ? notifications.filter(n => n.created_at && localDay(n.created_at) === selectedDate)
     : notifications;
 
   const unreadCount = filteredNotifications.filter(n => n.is_read === 0).length;

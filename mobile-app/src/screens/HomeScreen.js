@@ -55,6 +55,8 @@ const SWIPE_TRACK_HEIGHT = moderateScale(68);
 const HomeScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const [user, setUser] = useState(route?.params?.user);
+  // The profile photo path that failed to load → the placeholder instead of a blank circle
+  const [avatarFailed, setAvatarFailed] = useState(null);
   // Always keep a ref to the latest user so focus-listener closures never go stale
   const userRef = useRef(route?.params?.user);
   useEffect(() => { userRef.current = user; }, [user]);
@@ -803,11 +805,13 @@ const HomeScreen = ({ navigation, route }) => {
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
               <Image
                 // A website-only '/uploads/...' file needs the website login, so the app shows the placeholder for it
+                // and a photo that fails to load (e.g. deleted on the server) falls back to it too, not a blank circle
                 source={
-                  user.profile_pic && !user.profile_pic.startsWith('/')
+                  user.profile_pic && !user.profile_pic.startsWith('/') && avatarFailed !== user.profile_pic
                     ? { uri: user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}` }
                     : PLACEHOLDER_AVATAR
                 }
+                onError={() => setAvatarFailed(user.profile_pic)}
                 style={styles.avatar}
                 resizeMode="cover"
               />

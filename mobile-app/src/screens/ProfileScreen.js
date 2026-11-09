@@ -78,6 +78,8 @@ const ProfileScreen = ({ navigation, route }) => {
   const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
   const safeEdges = inTabs ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
   const [user, setUser] = useState(route?.params?.user);
+  // The profile photo path that failed to load → the placeholder instead of a blank circle
+  const [failedPic, setFailedPic] = useState(null);
   const [remindersOn, setRemindersOn] = useState(true);
   useEffect(() => { isRemindersEnabled().then(setRemindersOn); }, []);
   const toggleReminders = (value) => {
@@ -228,7 +230,7 @@ const ProfileScreen = ({ navigation, route }) => {
 
   const getAvatarSource = (customPic) => {
     const pic = customPic || user.profile_pic;
-    if (!pic) return PLACEHOLDER_AVATAR;
+    if (!pic || pic === failedPic) return PLACEHOLDER_AVATAR; // none, or it failed to load (e.g. deleted on the server)
     if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return { uri: pic };
     // A website-only file ('/uploads/...', a photo HR uploaded on the website when it stores files on its own
     // disk) is served only behind the website login, so the app can't load it: the placeholder, not a blank circle
@@ -259,7 +261,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <>
         <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 10 }}>
           <View style={s.avatarWrap}>
-            <Image source={getAvatarSource(d.profile_pic)} style={s.avatarLg} />
+            <Image source={getAvatarSource(d.profile_pic)} onError={() => setFailedPic(d.profile_pic || user.profile_pic)} style={s.avatarLg} />
           </View>
         </View>
         <Field label="First Name" value={dash(d.name)} />
@@ -421,7 +423,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={[s.profileCard, { backgroundColor: theme.card }]}>
           <View style={s.avatarWrap}>
-            <Image source={getAvatarSource()} style={s.avatarLg} />
+            <Image source={getAvatarSource()} onError={() => setFailedPic(user.profile_pic)} style={s.avatarLg} />
           </View>
           <Text style={[s.profileName, { color: theme.text }]}>{user.employee_name}</Text>
           <Text style={[s.profileRole, { color: theme.textLight }]}>{user.designation}</Text>

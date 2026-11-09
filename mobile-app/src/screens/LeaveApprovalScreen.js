@@ -62,7 +62,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   const [actionModal, setActionModal] = useState({ visible: false, item: null, sectionKey: '', actionType: '' });
   const [remarks, setRemarks] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
+  // This month in India time (toISOString is UTC: from 00:00 to 05:30 on the 1st it gave last month)
+  const [currentMonthStr, setCurrentMonthStr] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
   const [activeTab, setActiveTab] = useState('PENDING');
@@ -95,9 +96,15 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
           isApprover: prev.isApprover || approver_leaves.length > 0,
         }));
 
-        // Filter locally since API returns all months
-        const filteredAuth = authorizer_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
-        const filteredAppr = approver_leaves.filter(l => (l.FROMDATE || l.from_date || '').startsWith(month));
+        // Filter locally since API returns all months. A leave belongs to every month it covers (30 Oct – 2 Nov
+        // is in October and November), like the ESS approval screens — not only its start month.
+        const coversMonth = (l) => {
+          const a = String(l.FROMDATE || l.from_date || '').slice(0, 7);
+          const b = String(l.TODATE || l.to_date || '').slice(0, 7) || a;
+          return !!a && a <= month && month <= b;
+        };
+        const filteredAuth = authorizer_leaves.filter(coversMonth);
+        const filteredAppr = approver_leaves.filter(coversMonth);
 
         // If a LEAVEENTRYID appears in BOTH lists it's already past authorisation —
         // drop the duplicate from the authoriser section so it only shows as Approve.
@@ -198,19 +205,19 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       });
       const list = res.data?.success === 1 ? (res.data.data || []) : [];
       // API may return records for all months — keep only the selected month.
-      const inMonth = (d) => {
-        if (!d || typeof d !== 'string') return false;
-        if (d.startsWith(month)) return true; // YYYY-MM-DD
+      // 'YYYY-MM-DD' or 'DD-MM-YYYY' → 'YYYY-MM'
+      const ym = (d) => {
+        if (!d || typeof d !== 'string') return '';
+        if (/^\d{4}-\d{2}/.test(d)) return d.slice(0, 7);
         const parts = d.split(/[-/]/);
-        if (parts.length === 3 && parts[2].length === 4) {
-          // DD-MM-YYYY → YYYY-MM
-          return `${parts[2]}-${parts[1].padStart(2, '0')}` === month;
-        }
-        return false;
+        return parts.length === 3 && parts[2].length === 4 ? `${parts[2].slice(0, 4)}-${parts[1].padStart(2, '0')}` : '';
       };
-      const filtered = list.filter((it) =>
-        inMonth(it.FROMDATE || it.from_date || it.APPLIEDDATE || it.applied_date)
-      );
+      // A leave belongs to every month it covers (30 Oct – 2 Nov is in October and November), like the pending list
+      const filtered = list.filter((it) => {
+        const a = ym(it.FROMDATE || it.from_date || it.APPLIEDDATE || it.applied_date);
+        const b = ym(it.TODATE || it.to_date) || a;
+        return !!a && a <= month && month <= b;
+      });
       setHistoryData(filtered);
     } catch (e) {
       console.log('Leave approved list error', e);

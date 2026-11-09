@@ -153,7 +153,7 @@ const EssExpenseApprovalScreen = ({ navigation, route }) => {
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: moderateScale(32) }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListEmptyComponent={<EmptyState text={error ? 'Could not load. Pull to retry.' : tab === 'pending' ? "No pending approvals — you're all caught up!" : 'No records found.'} />}
+          ListEmptyComponent={<EmptyState text={error ? 'Could not load. Pull to retry.' : list.length > 0 ? 'No records match these filters.' : tab === 'pending' ? "No pending approvals — you're all caught up!" : 'No records found.'} />}
         />
       )}
       <ActionSheet

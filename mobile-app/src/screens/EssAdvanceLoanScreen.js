@@ -260,7 +260,7 @@ const EssAdvanceLoanScreen = ({ navigation, route }) => {
           renderItem={isAdvance ? renderAdvance : renderLoan}
           contentContainerStyle={{ paddingBottom: moderateScale(32) }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListEmptyComponent={<EmptyState text={isAdvance ? 'No advance requests yet' : 'No loan applications found'} />}
+          ListEmptyComponent={<EmptyState text={rowsOfTab.length > 0 ? 'No requests match these filters. Try All months.' : isAdvance ? 'No advance requests yet' : 'No loan applications found'} />}
         />
       )}
 

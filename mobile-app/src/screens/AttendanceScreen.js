@@ -35,7 +35,8 @@ const AttendanceScreen = ({ navigation, route }) => {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentMonthStr, setCurrentMonthStr] = useState(new Date().toISOString().slice(0, 7));
+  // This month in India time (toISOString is UTC: from 00:00 to 05:30 on the 1st it gave last month)
+  const [currentMonthStr, setCurrentMonthStr] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
   const [showMonthPicker, setShowMonthPicker] = useState(false);
   const [logs, setLogs] = useState([]);
   const [expandedDate, setExpandedDate] = useState(null);
