@@ -20,6 +20,7 @@ import * as DocumentPicker from 'expo-document-picker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+import { FilterBar, ALL, valueFilterOptions, monthOf, rangeInMonth, fmtMonth } from '../components/EssUi';
 
 // Uploaded attachments are stored under a company-code folder derived the
 // same way the backend does: the alphabetic prefix of the login user_id
@@ -413,6 +414,9 @@ const LeaveScreen = ({ navigation, route }) => {
   const [histFilter, setHistFilter] = useState('all');
   const [histLoading, setHistLoading] = useState(false);
   const [histLeaves, setHistLeaves] = useState([]);
+  // History filters (leave type, month), the same pills as the approval pages (EssUi FilterBar)
+  const [histType, setHistType] = useState(ALL);
+  const [histMonth, setHistMonth] = useState(ALL);
   const [authorizedByList, setAuthorizedByList] = useState([]);
   const [approvedByList, setApprovedByList] = useState([]);
   const [selectedAuthBy, setSelectedAuthBy] = useState(null);
@@ -908,27 +912,58 @@ const LeaveScreen = ({ navigation, route }) => {
       { key: 'upcoming', label: 'Upcoming' },
       { key: 'past', label: 'Past' },
     ];
+    // Leave type and month filters over the tab's list. The months come from the leaves themselves (so an
+    // upcoming leave's future month can be picked); a leave spanning two months is in both.
+    const typeOf = (l) => String(l.leave_name || '').trim();
+    const typeOptions = valueFilterOptions('All leave types', histLeaves.map(typeOf));
+    const monthSet = new Set();
+    histLeaves.forEach((l) => {
+      const a = monthOf(l.from_date);
+      const b = monthOf(l.to_date) || a;
+      if (!a) return;
+      let [y, m] = a.split('-').map(Number);
+      for (let i = 0; i < 24; i++) {
+        const key = `${y}-${String(m).padStart(2, '0')}`;
+        monthSet.add(key);
+        if (key >= b) break;
+        m += 1;
+        if (m > 12) { m = 1; y += 1; }
+      }
+    });
+    const monthOptions = [{ value: ALL, label: 'All months' }, ...[...monthSet].sort().reverse().map((v) => ({ value: v, label: fmtMonth(v) }))];
+    const shown = histLeaves.filter((l) => (histType === ALL || typeOf(l) === histType)
+      && rangeInMonth(l.from_date, l.to_date, histMonth));
     return (
       <View style={{ flex: 1 }}>
         <LeaveHeader title="Leave History" onBack={() => setView('DASHBOARD')} theme={theme} />
         {/* Tab Bar */}
         <View style={[s.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
           {tabs.map(t => (
-            <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive, histFilter === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => { setHistFilter(t.key); fetchHistory(t.key); }}>
+            <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive, histFilter === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => { setHistFilter(t.key); setHistType(ALL); setHistMonth(ALL); fetchHistory(t.key); }}>
               <Text style={[s.tabText, { color: theme.textMuted }, histFilter === t.key && s.tabTextActive, histFilter === t.key && theme.isDark && { color: theme.primaryDeep }]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        {!histLoading && histLeaves.length > 0 && (
+          <View style={{ paddingTop: moderateScale(12) }}>
+            <FilterBar filters={[
+              { key: 'type', kind: 'list', value: histType, options: typeOptions, onChange: setHistType },
+              { key: 'month', kind: 'month', value: histMonth, options: monthOptions, onChange: setHistMonth },
+            ]} />
+          </View>
+        )}
         {histLoading ? (
           <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
-        ) : histLeaves.length === 0 ? (
+        ) : shown.length === 0 ? (
           <View style={s.emptyWrap}>
             <Clock color={theme.textMuted} size={48} />
-            <Text style={[s.emptyText, { color: theme.textMuted }]}>No leaves found</Text>
+            <Text style={[s.emptyText, { color: theme.textMuted }]}>
+              {histLeaves.length === 0 ? 'No leaves found' : 'No leaves match these filters'}
+            </Text>
           </View>
         ) : (
           <ScrollView contentContainerStyle={s.scroll}>
-            {histLeaves.map((item, idx) => (
+            {shown.map((item, idx) => (
               <HistoryCard
                 key={item.leave_id || idx}
                 item={item}
