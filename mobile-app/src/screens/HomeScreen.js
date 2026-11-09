@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect, useContext } from 'react';
 import { OfflineBarContext } from '../../App';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity, ScrollView,
   Image, Animated, Easing, Modal, ActivityIndicator, Dimensions, LayoutAnimation, UIManager, Platform, RefreshControl, BackHandler, AppState
 } from 'react-native';
+import { Text } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -777,7 +778,8 @@ const HomeScreen = ({ navigation, route }) => {
         {/* TOP BAR */}
         <View style={styles.topBar}>
           <View style={styles.logoAndGreeting}>
-            <View>
+            {/* flex: 1 so a long name / location is cut with "…" instead of pushing the icons off screen */}
+            <View style={{ flex: 1, marginRight: moderateScale(8) }}>
               <Text style={[styles.greetingHeader, { color: theme.textLight }]}>{getGreeting()}</Text>
               <Text style={[styles.userNameHeader, { color: theme.text }]} numberOfLines={1} allowFontScaling={false}>{user.employee_name || user.name}</Text>
               <View style={styles.locationBadge}>

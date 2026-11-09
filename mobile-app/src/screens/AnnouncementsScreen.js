@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, ScrollView, BackHandler,
+  View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
+import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Siren, Star, Info, Pin, Megaphone } from 'lucide-react-native';
@@ -115,7 +116,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
           </View>
           <Text style={[s.preview, { color: theme.textLight }]} numberOfLines={2}>{item.message}</Text>
           <View style={s.metaRow}>
-            <Text style={[s.cat, { color: st.color }]}>{String(item.category).toUpperCase()}</Text>
+            <Text style={[s.cat, { color: st.color, flexShrink: 1 }]} numberOfLines={1}>{String(item.category).toUpperCase()}</Text>
             <Text style={[s.meta, { color: theme.textMuted }]}> · {fmtDate(item.publish_from)}</Text>
             {item.is_pinned && <Pin color={theme.textMuted} size={11} style={{ marginLeft: 6 }} />}
           </View>

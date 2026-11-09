@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Image, ActivityIndicator, BackHandler, Switch, TextInput, Linking,
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  Image, ActivityIndicator, BackHandler, Switch, Linking,
   Platform,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {

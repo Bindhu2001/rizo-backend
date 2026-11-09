@@ -1,12 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Animated,
   PanResponder,
   ActivityIndicator
 } from 'react-native';
+import { Text } from './AppText';
 import { Fingerprint, MapPin, ChevronsRight } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';

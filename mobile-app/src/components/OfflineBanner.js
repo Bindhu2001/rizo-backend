@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Animated, Platform, TouchableOpacity } from 'react-native';
+import { Text } from './AppText';
 import * as Network from 'expo-network';
 import { CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

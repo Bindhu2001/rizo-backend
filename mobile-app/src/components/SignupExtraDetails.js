@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Switch, Keyboard, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Switch, Keyboard, ActivityIndicator } from 'react-native';
+import { Text, TextInput } from './AppText';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -252,7 +253,7 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
     if (field.type === 'switch') {
       return (
         <View key={field.key} style={styles.switchRow}>
-          <Text style={[styles.label, { color: theme.text, marginBottom: 0 }]}>{field.label}</Text>
+          <Text style={[styles.label, { color: theme.text, marginBottom: 0, flex: 1, marginRight: moderateScale(8) }]}>{field.label}</Text>
           <Switch value={v === 'Y'} onValueChange={(on) => setField(field.key, on ? 'Y' : 'N')} trackColor={{ true: PURPLE }} />
         </View>
       );

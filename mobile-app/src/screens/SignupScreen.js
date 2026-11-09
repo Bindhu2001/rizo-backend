@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, TouchableOpacity, StyleSheet,
   Platform, ScrollView,
   FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch, BackHandler,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -194,6 +195,11 @@ const SLIDES = [
 const SignupScreen = ({ navigation }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  // The white form card stops above the phone's own navigation bar (Back / Home / gesture line) instead of
+  // scrolling behind it: its bottom padding is the bar's height, filled with the card colour. While the keyboard
+  // is open it covers that bar, so no padding then (no empty strip above the keyboard).
+  const keyboardOpen = useKeyboardVisible();
+  const cardBottomPad = keyboardOpen ? 0 : insets.bottom;
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -647,8 +653,8 @@ const SignupScreen = ({ navigation }) => {
             </TouchableOpacity>
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
-          <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 + insets.bottom }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <View style={[st.bottomCard, { backgroundColor: theme.card, paddingBottom: cardBottomPad }]}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: moderateScale(28) }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
@@ -741,7 +747,7 @@ const SignupScreen = ({ navigation }) => {
 
       {/* ── WHITE CARD BOTTOM ── */}
       <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-        <View style={[st.bottomCard, { backgroundColor: theme.card }]}>
+        <View style={[st.bottomCard, { backgroundColor: theme.card, paddingBottom: cardBottomPad }]}>
           <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
 
             {/* ══ STEP 3 — PERSONAL DETAILS ══ */}
@@ -972,8 +978,9 @@ const SignupScreen = ({ navigation }) => {
               </>
             )}
 
-            {/* Room for the phone's navigation bar, so the last button can always scroll above it. */}
-            <View style={{ height: 80 + insets.bottom }} />
+            {/* The card already stops above the phone's navigation bar (cardBottomPad); a little space after the
+                last button */}
+            <View style={{ height: moderateScale(16) }} />
           </ScrollView>
         </View>
       <KeyboardDoneBar />
@@ -1185,7 +1192,7 @@ const st = StyleSheet.create({
   checkRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(8), paddingVertical: 4 },
   checkBox: { width: moderateScale(22), height: moderateScale(22), borderRadius: moderateScale(6), borderWidth: 2, borderColor: '#D1D5DB', backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center' },
   checkBoxActive: { backgroundColor: PURPLE, borderColor: PURPLE },
-  checkLabel: { fontSize: moderateScale(14), fontWeight: '600', color: '#374151' },
+  checkLabel: { fontSize: moderateScale(14), fontWeight: '600', color: '#374151', flexShrink: 1 },
 
   // Success
   successCircle: { width: moderateScale(100), height: moderateScale(100), borderRadius: moderateScale(50), backgroundColor: '#059669', justifyContent: 'center', alignItems: 'center', marginBottom: moderateScale(24), ...SHADOWS.medium },

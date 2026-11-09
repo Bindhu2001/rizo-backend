@@ -1,8 +1,9 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Dimensions, Platform, RefreshControl, BackHandler, Linking
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Modal, Dimensions, Platform, RefreshControl, BackHandler, Linking
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -241,12 +242,12 @@ const hc = StyleSheet.create({
   detailRow: { flexDirection: 'row', marginBottom: moderateScale(14) },
   detailLabel: { fontSize: moderateScale(10), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   detailValue: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
-  dateRangeRow: { flexDirection: 'row', alignItems: 'center' },
+  dateRangeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   dateRangeGap: { marginLeft: moderateScale(14) },
   remarkText: { fontSize: moderateScale(11), fontStyle: 'italic', marginTop: 2, color: '#9CA3AF' },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(14) },
   metaLabel: { fontSize: moderateScale(12), color: '#6B7280', fontWeight: '600' },
-  metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700' },
+  metaValue: { fontSize: moderateScale(13), color: '#111827', fontWeight: '700', flexShrink: 1 },
   statusTag: { alignSelf: 'flex-start', paddingHorizontal: moderateScale(12), paddingVertical: 5, borderRadius: moderateScale(20) },
   statusTagText: { fontSize: moderateScale(11), fontWeight: '800', letterSpacing: 0.5 },
   fileChip: {
@@ -970,9 +971,9 @@ const s = StyleSheet.create({
   scroll: { flexGrow: 1, padding: moderateScale(20), paddingBottom: moderateScale(48) },
 
   // Balance cards
-  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', height: moderateScale(80), ...SHADOWS.light },
+  balCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(16), marginBottom: moderateScale(12), overflow: 'hidden', minHeight: moderateScale(80), ...SHADOWS.light },
   balBar: { width: 5 },
-  balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16) },
+  balBody: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(16), paddingVertical: moderateScale(10) },
   balType: { fontSize: moderateScale(14), fontWeight: '800', color: COLORS.text, marginBottom: 3 },
   balUsed: { fontSize: moderateScale(11), color: '#9CA3AF', fontWeight: '500' },
   balRight: { alignItems: 'flex-end', marginRight: moderateScale(4) },

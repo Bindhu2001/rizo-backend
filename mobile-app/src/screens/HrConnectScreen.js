@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
-  TextInput, Platform, RefreshControl, ScrollView, BackHandler,
+  View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
+  Platform, RefreshControl, ScrollView, BackHandler,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -19,7 +20,7 @@ import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 
 // "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
 // the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
-// Active / Closed lists, and a new-conversation form. HR replies from the rizo-revamp web inbox.
+// Active / Closed & withdrawn lists, and a new-conversation form. HR replies from the rizo-revamp web inbox.
 
 // Same look as the rest of the app: light/dark screen background and the Rizo purple for fills
 // (buttons, own message bubbles) and accents.
@@ -40,6 +41,7 @@ export const STATUS_STYLE = {
   Open: { bg: '#DBEAFE', text: '#1D4ED8' },
   Resolved: { bg: '#DCFCE7', text: '#16A34A' },
   Closed: { bg: '#F3F4F6', text: '#6B7280' },
+  Withdrawn: { bg: '#FEF3C7', text: '#92400E' },
 };
 
 export const parseQueryDate = (s) => new Date(String(s || '').replace(' ', 'T'));
@@ -232,12 +234,14 @@ const HrConnectScreen = ({ navigation, route }) => {
     );
   }
 
-  const active = (queries || []).filter((q) => q.status !== 'Closed');
-  const closed = (queries || []).filter((q) => q.status === 'Closed');
+  // Closed and Withdrawn threads are finished (no more messages): listed together, like the web widget
+  const finished = (q) => q.status === 'Closed' || q.status === 'Withdrawn';
+  const active = (queries || []).filter((q) => !finished(q));
+  const closed = (queries || []).filter(finished);
   const sections = [
     ...(active.length ? [{ header: 'ACTIVE', key: 'h-active' }] : []),
     ...active,
-    ...(closed.length ? [{ header: 'CLOSED', key: 'h-closed' }] : []),
+    ...(closed.length ? [{ header: 'CLOSED & WITHDRAWN', key: 'h-closed' }] : []),
     ...closed,
   ];
 
@@ -264,7 +268,7 @@ const HrConnectScreen = ({ navigation, route }) => {
           )}
           <View style={s.pills}>
             <View style={[s.pill, { backgroundColor: st.bg }]}><Text style={[s.pillText, { color: st.text }]}>{item.status}</Text></View>
-            <Text style={[s.catSmall, { color: theme.textMuted }]}>{item.category}</Text>
+            <Text style={[s.catSmall, { color: theme.textMuted }]} numberOfLines={1}>{item.category}</Text>
             {!!item.escalated && (
               <View style={[s.pill, s.pillRow, { backgroundColor: '#FEE2E2' }]}>
                 <TriangleAlert color="#991B1B" size={10} />
@@ -346,7 +350,7 @@ const s = StyleSheet.create({
   pill: { paddingHorizontal: moderateScale(7), paddingVertical: moderateScale(2), borderRadius: moderateScale(10) },
   pillRow: { flexDirection: 'row', alignItems: 'center' },
   pillText: { fontSize: moderateScale(10.5), fontWeight: '700' },
-  catSmall: { fontSize: moderateScale(11) },
+  catSmall: { fontSize: moderateScale(11), flexShrink: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(32), paddingVertical: moderateScale(40) },
   emptyIcon: { width: moderateScale(56), height: moderateScale(56), borderRadius: moderateScale(16), alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: moderateScale(15), fontWeight: '800', marginTop: moderateScale(12) },

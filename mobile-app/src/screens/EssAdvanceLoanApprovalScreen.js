@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
@@ -71,10 +72,10 @@ const EssAdvanceLoanApprovalScreen = ({ navigation, route }) => {
           <Text style={[s.name, { color: theme.text }]} numberOfLines={1}>{row.emp_name}</Text>
           {!!row.emp_id && <Text style={[s.sub, { color: theme.textMuted }]}>{row.emp_id}</Text>}
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={{ alignItems: 'flex-end', maxWidth: '45%', marginLeft: moderateScale(8) }}>
           <StatusChip status={row.request_status} colors={ADVANCE_LOAN_STATUS_COLOR} />
           {row.request_status === 'Authorized' && !!row.authorized_by_name && (
-            <Text style={[s.sub, { color: theme.textMuted, marginTop: 3 }]}>by {row.authorized_by_name}</Text>
+            <Text style={[s.sub, { color: theme.textMuted, marginTop: 3 }]} numberOfLines={1}>by {row.authorized_by_name}</Text>
           )}
         </View>
       </View>

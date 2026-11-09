@@ -1,8 +1,9 @@
 ﻿import { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, SectionList, FlatList,
-  Pressable, ScrollView, Modal, TextInput, ActivityIndicator, StatusBar
+  View, StyleSheet, TouchableOpacity, SectionList, FlatList,
+  Pressable, ScrollView, Modal, ActivityIndicator, StatusBar
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -634,7 +635,7 @@ const s = StyleSheet.create({
   empName: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
   takenText: { fontSize: moderateScale(12), fontWeight: '700', marginTop: 3 },
   empId: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
-  typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8), alignSelf: 'flex-start' },
+  typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8), alignSelf: 'flex-start', maxWidth: '45%' },
   typeText: { fontSize: moderateScale(11), fontWeight: '800' },
 
   detailsRow: { flexDirection: 'row', marginBottom: moderateScale(10), gap: moderateScale(16), flexWrap: 'wrap' },
@@ -702,7 +703,7 @@ const s = StyleSheet.create({
   histBody: { flex: 1, padding: moderateScale(14) },
   histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: moderateScale(8) },
   histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: moderateScale(8) },
-  histBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(8) },
+  histBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(8), maxWidth: '45%' },
   histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
   histDates: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6), marginBottom: moderateScale(8), flexWrap: 'wrap' },
   histDateText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600', flex: 1 },

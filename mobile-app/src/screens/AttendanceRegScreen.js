@@ -1,9 +1,10 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform,
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Modal, Platform,
   Pressable, Dimensions, Image, RefreshControl, BackHandler
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -321,9 +322,9 @@ const LogCard = ({ item, isRegularisedTab, regsForDate, onRegularise }) => {
   return (
     <View style={[lc.card, { backgroundColor: theme.card }]}>
       <View style={lc.headerRow}>
-        <View>
+        <View style={{ flex: 1, marginRight: moderateScale(8) }}>
           <Text style={[lc.dateTitle, { color: theme.text }]}>{displayMonthDay}</Text>
-          <Text style={[lc.shiftText, { color: theme.textLight }]}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
+          <Text style={[lc.shiftText, { color: theme.textLight }]} numberOfLines={2}>{item.shift ? item.shift.replace(/_/g, ' ') : 'General Shift (9:30 AM - 6:30 PM)'}</Text>
         </View>
         <View style={[lc.badgeWo, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
           <Text style={[lc.badgeWoText, { color: theme.textMuted }]}>{item.status || 'WO'}</Text>
@@ -650,7 +651,8 @@ const AnalogTimePicker = ({ visible, value, onClose, onConfirm }) => {
 
 const tp = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  box: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: moderateScale(320), ...SHADOWS.medium },
+  // 90% of a small phone, never wider than before on a big one (the 200 px clock face still fits inside)
+  box: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: '90%', maxWidth: moderateScale(320), ...SHADOWS.medium },
   title: { fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280', letterSpacing: 1, marginBottom: moderateScale(20) },
   displayRow: { flexDirection: 'row', alignItems: 'center', marginBottom: moderateScale(30) },
   timeBox: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(12), paddingHorizontal: moderateScale(20), borderRadius: moderateScale(12) },

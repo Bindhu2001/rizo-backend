@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, AppState, PanResponder, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, AppState, PanResponder, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Text } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MessageCircle } from 'lucide-react-native';

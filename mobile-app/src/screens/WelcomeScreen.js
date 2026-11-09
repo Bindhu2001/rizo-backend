@@ -1,12 +1,17 @@
 ﻿import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, StatusBar } from 'react-native';
+import { Text } from '../components/AppText';
 import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const WelcomeScreen = ({ navigation }) => {
   const theme = useTheme();
+  // The app draws under the phone's status bar and navigation bar (edge-to-edge): keep the page's 30px margin
+  // clear of both, so "POWERED BY RIZO SOLUTIONS" never sits behind the Back / Home buttons
+  const insets = useSafeAreaInsets();
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: 30 + insets.top, paddingBottom: 30 + insets.bottom }]}>
       <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.bg} />
       
       <View style={styles.content}>

@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image, TextInput
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronDown, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
@@ -444,9 +445,10 @@ const s = StyleSheet.create({
   list: { padding: moderateScale(16), paddingBottom: moderateScale(40) },
   card: { backgroundColor: '#FFF', borderRadius: moderateScale(16), padding: moderateScale(16), marginBottom: moderateScale(16), ...SHADOWS.light },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: moderateScale(12) },
+  empInfo: { flex: 1, marginRight: moderateScale(8) },
   empName: { fontSize: moderateScale(15), fontWeight: '800', color: '#111827' },
   empId: { fontSize: moderateScale(12), color: '#6B7280', marginTop: 2 },
-  typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8) },
+  typeBadge: { paddingHorizontal: moderateScale(10), paddingVertical: 4, borderRadius: moderateScale(8), maxWidth: '45%', alignSelf: 'flex-start' },
   typeText: { fontSize: moderateScale(11), fontWeight: '800' },
 
   detailsRow: { flexDirection: 'row', marginBottom: moderateScale(12), gap: moderateScale(20) },
@@ -511,7 +513,7 @@ const s = StyleSheet.create({
   histBody: { flex: 1, padding: moderateScale(14) },
   histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: moderateScale(8) },
   histEmpName: { fontSize: moderateScale(14), fontWeight: '800', color: '#111827', flex: 1, marginRight: moderateScale(8) },
-  histBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(8) },
+  histBadge: { paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(8), maxWidth: '45%' },
   histBadgeText: { fontSize: moderateScale(11), fontWeight: '800' },
   histDetail: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(6), marginBottom: moderateScale(8), flexWrap: 'wrap' },
   histDetailText: { fontSize: moderateScale(12), color: '#4B5563', fontWeight: '600' },

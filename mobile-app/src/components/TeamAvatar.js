@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, View } from 'react-native';
+import { Text } from './AppText';
 import { IMAGE_ROOT, REVAMP_API_URL } from '../constants/Config';
 
 // A team member's photo, or a coloured circle with their initials when there is none (or it fails to load).

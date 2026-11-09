@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Platform } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, Platform } from 'react-native';
+import { Text } from './AppText';
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react-native';
 import { SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';

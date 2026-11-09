@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
+import { Text } from './AppText';
 import { useNavigation } from '@react-navigation/native';
 import { COLORS, SHADOWS, moderateScale, hp } from './Theme';
 import { useTheme } from './ThemeContext';
@@ -96,7 +97,7 @@ const CalendarWidget = ({ userId }) => {
                 setSelectedEvent({ date: day, events: dayEvents });
               }}
             >
-              <Text style={[styles.dayText, { color: theme.text }, isToday && styles.todayText]}>
+              <Text style={[styles.dayText, { color: theme.text }, isToday && styles.todayText, isToday && theme.isDark && { color: '#FFFFFF' }]}>
                 {format(day, 'd')}
               </Text>
               

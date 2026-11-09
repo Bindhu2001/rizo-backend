@@ -65,6 +65,8 @@ export const HrQueriesApi = {
   thread: (id) => request('get', `/hr-queries/${id}`),
   reply: (id, message) => request('post', `/hr-queries/${id}/messages`, { message }),
   escalate: (id) => request('post', `/hr-queries/${id}/escalate`),
+  // Take back a query HR hasn't replied to yet (becomes 'Withdrawn', read-only)
+  withdraw: (id) => request('post', `/hr-queries/${id}/withdraw`),
 };
 
 // My Team. Read from the PHP API first — the same database the Leave Approval lists come from, so it works for

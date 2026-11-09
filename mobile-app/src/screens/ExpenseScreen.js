@@ -1,8 +1,9 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform, Pressable, RefreshControl, BackHandler, Linking
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Modal, Platform, Pressable, RefreshControl, BackHandler, Linking
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {

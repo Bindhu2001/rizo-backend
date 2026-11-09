@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, TextInput,
+  View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, 
   Platform, Keyboard, AppState,
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
-import { Send, TriangleAlert, ShieldCheck, CheckCircle2, Lock, Check, Clock } from 'lucide-react-native';
+import { Send, TriangleAlert, ShieldCheck, CheckCircle2, Lock, Check, Clock, X } from 'lucide-react-native';
 import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
@@ -17,7 +18,9 @@ import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConn
 
 // One "Connect to HR" conversation, chat-style like the web ESS widget's thread view: day
 // separators, grouped bubbles with HR's avatar and name, status notes (sent / resolved /
-// escalated), "Escalate" once HR has replied, and no reply box once HR closes it.
+// escalated / withdrawn), and no reply box once HR closes it or the employee withdraws it.
+// Escalate / Withdraw come from the server (rizo-revamp lib/hrQueries.ts employeeActions, same rule as the
+// web): Escalate once HR has replied, or after 2 days with no HR reply; Withdraw any time before HR's first reply.
 // A sent message shows straight away and is confirmed by the server in the background.
 // Opening it marks HR's replies as read (server side).
 
@@ -32,6 +35,15 @@ const fmtDay = (s) => {
   if (diff === 1) return 'Yesterday';
   const d = parseQueryDate(s);
   return isNaN(d.getTime()) ? '' : format(d, 'dd MMM yyyy');
+};
+// "today at 11:26 AM" / "on 07 Nov 2026 at 11:26 AM"; a deadline: "11:26 AM today" / "11:26 AM on 11 Nov 2026"
+const atPhrase = (s) => {
+  const day = fmtDay(s);
+  return `${day === 'Today' || day === 'Yesterday' ? day.toLowerCase() : `on ${day}`} at ${fmtTime(s)}`;
+};
+const byPhrase = (s) => {
+  const day = fmtDay(s);
+  return `${fmtTime(s)} ${day === 'Today' ? 'today' : `on ${day}`}`;
 };
 const initials = (name) => String(name || 'HR').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'HR';
 
@@ -50,6 +62,7 @@ const id = route?.params?.id;
   const [pending, setPending] = useState([]);
   const [reply, setReply] = useState('');
   const [escalating, setEscalating] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
   const listRef = useRef(null);
 
@@ -113,11 +126,38 @@ const id = route?.params?.id;
     deliver(m.key, m.message);
   };
 
+  const withdraw = () => {
+    setAlertCfg({
+      type: 'warning',
+      title: 'Withdraw this query?',
+      message: "HR won't be able to reply to it, and you can't undo this.",
+      buttons: [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Withdraw', style: 'destructive', onPress: async () => {
+            setWithdrawing(true);
+            try {
+              await HrQueriesApi.withdraw(id);
+              await load();
+            } catch (e) {
+              setAlertCfg({ type: 'error', title: 'Could not withdraw', message: apiErrorMessage(e, 'Please try again.') });
+              load();
+            } finally {
+              setWithdrawing(false);
+            }
+          },
+        },
+      ],
+    });
+  };
+
   const escalate = () => {
     setAlertCfg({
       type: 'warning',
       title: 'Escalate this conversation?',
-      message: "Not satisfied with HR's response? HR will be flagged to look at it as a priority.",
+      message: query?.has_admin_reply
+        ? "Not satisfied with HR's response? HR will be flagged to look at it as a priority."
+        : "HR hasn't replied yet. HR will be flagged to look at it as a priority.",
       buttons: [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -186,7 +226,7 @@ const id = route?.params?.id;
             {!mine && firstOfGroup && (
               <View style={s.senderRow}>
                 <ShieldCheck color={accent} size={11} />
-                <Text style={[s.sender, { color: theme.textMuted }]}>{item.sender_name || 'HR'} · HR</Text>
+                <Text style={[s.sender, { color: theme.textMuted }]} numberOfLines={1}>{item.sender_name || 'HR'} · HR</Text>
               </View>
             )}
             {item.failed
@@ -199,14 +239,31 @@ const id = route?.params?.id;
   };
 
   const status = query?.status;
-  const canEscalate = !!query && !!query.has_admin_reply && !query.escalated && status !== 'Closed';
+  const finished = status === 'Closed' || status === 'Withdrawn';
+  // An older server sends no can_escalate: the old rule (only after an HR reply)
+  const canEscalate = !!query && (query.can_escalate ?? (!!query.has_admin_reply && !query.escalated && status !== 'Closed'));
+  const canWithdraw = !!query?.can_withdraw;
+  const warnText = theme.isDark ? '#FBBF24' : '#92400E';
   const okText = theme.isDark ? '#34D399' : '#15803D';
   const badText = theme.isDark ? '#F87171' : '#991B1B';
 
   const footer = !query ? null : (
     <View>
       {!query.has_admin_reply && status === 'Open' && (
-        <Text style={[s.note, { color: theme.textMuted }]}>Your query has been sent. HR will reply here.</Text>
+        <Text style={[s.note, { color: theme.textMuted }]}>
+          Your query has been sent. HR will reply here.
+          {!!query.escalate_pending && !!query.escalate_from && (
+            <> If there's no reply by <Text style={{ fontWeight: '800' }}>{byPhrase(query.escalate_from)}</Text>, you can escalate it.</>
+          )}
+        </Text>
+      )}
+      {status === 'Withdrawn' && (
+        <View style={[s.banner, { backgroundColor: theme.isDark ? 'rgba(251,191,36,0.14)' : '#FEF3C7' }]}>
+          <X color={warnText} size={15} />
+          <Text style={[s.bannerText, { color: warnText }]}>
+            You withdrew this query{query.withdrawn_date ? ` ${atPhrase(query.withdrawn_date)}` : ''}. HR can no longer reply to it.
+          </Text>
+        </View>
       )}
       {status === 'Resolved' && (
         <View style={[s.banner, { backgroundColor: theme.isDark ? 'rgba(52,211,153,0.14)' : '#DCFCE7' }]}>
@@ -222,10 +279,21 @@ const id = route?.params?.id;
       )}
       {canEscalate && (
         <View style={[s.escalateCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
-          <Text style={[s.escalateQ, { color: theme.textLight }]}>Not satisfied with HR's response?</Text>
+          <Text style={[s.escalateQ, { color: theme.textLight }]}>
+            {query.has_admin_reply ? "Not satisfied with HR's response?" : 'No reply from HR in 2 days?'}
+          </Text>
           <TouchableOpacity onPress={escalate} disabled={escalating} style={[s.escalateBtn, { borderColor: theme.danger }, escalating && { opacity: 0.6 }]}>
             <TriangleAlert color={theme.danger} size={13} />
             <Text style={[s.escalateText, { color: theme.danger }]}>{escalating ? 'Escalating…' : 'Escalate'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {canWithdraw && (
+        <View style={[s.escalateCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
+          <Text style={[s.escalateQ, { color: theme.textLight }]}>Don't need this any more?</Text>
+          <TouchableOpacity onPress={withdraw} disabled={withdrawing} style={[s.escalateBtn, { borderColor: theme.border }, withdrawing && { opacity: 0.6 }]}>
+            <X color={theme.textLight} size={13} />
+            <Text style={[s.escalateText, { color: theme.textLight }]}>{withdrawing ? 'Withdrawing…' : 'Withdraw'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -267,10 +335,12 @@ const id = route?.params?.id;
           />
         )}
 
-        {status === 'Closed' ? (
+        {finished ? (
           <View style={[s.closedBar, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Math.max(moderateScale(12), insets.bottom) }]}>
             <Lock color={theme.textMuted} size={13} />
-            <Text style={[s.closedText, { color: theme.textMuted }]}>This conversation is closed. Start a new one if you need more help.</Text>
+            <Text style={[s.closedText, { color: theme.textMuted }]}>
+              {status === 'Withdrawn' ? 'You withdrew this query.' : 'This conversation is closed.'} Start a new one if you need more help.
+            </Text>
           </View>
         ) : (
           <View style={[s.composer, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: footerPad }]}>
@@ -312,7 +382,7 @@ const s = StyleSheet.create({
   avatarText: { color: '#FFF', fontSize: moderateScale(11), fontWeight: '800' },
   bubbleCol: { maxWidth: '80%' },
   senderRow: { flexDirection: 'row', alignItems: 'center', marginLeft: moderateScale(4), marginBottom: moderateScale(3) },
-  sender: { fontSize: moderateScale(11), fontWeight: '700', marginLeft: moderateScale(4) },
+  sender: { fontSize: moderateScale(11), fontWeight: '700', marginLeft: moderateScale(4), flexShrink: 1 },
   bubble: { borderRadius: moderateScale(14), paddingHorizontal: moderateScale(12), paddingTop: moderateScale(7), paddingBottom: moderateScale(5) },
   bubbleHr: { borderWidth: StyleSheet.hairlineWidth },
   msgText: { fontSize: moderateScale(14), lineHeight: moderateScale(20) },

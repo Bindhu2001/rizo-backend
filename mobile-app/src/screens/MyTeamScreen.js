@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronDown, ChevronUp, ShieldCheck, BadgeCheck, CalendarX2, CalendarClock, Users } from 'lucide-react-native';
@@ -12,8 +13,9 @@ import TeamAvatar from '../components/TeamAvatar';
 // Home "My Team" tile → this page. The two teams the employee has (rizo-revamp /api/mobile/team-today):
 //   You authorise: people whose reporting manager they are
 //   You approve:   people whose leave they approve
-// Each shows "N members · M on leave ⌄"; the arrow opens the list — names, and for anyone on leave today the
-// leave type and which part of the day.
+// Each shows "N members · 3 in · 1 on leave · 1 not punched in ⌄"; the arrow opens the list — names, and per
+// person: leave type + part of the day (approved leave), "In · 09:32", "Not punched in · Shift 09:30",
+// "Week off" or "Holiday", for their current shift.
 
 const ROLES = [
   { key: 'authorise', title: 'You authorise', note: 'Your reporting team', Icon: ShieldCheck, color: '#2563EB', bg: '#DBEAFE' },
@@ -50,6 +52,55 @@ const MyTeamScreen = ({ navigation }) => {
 
   const groups = ROLES.filter((r) => data?.[r.key]);
 
+  // Status for the member's current shift (server decides it like the Check In / Check Out button — a night
+  // shift that started yesterday still counts). An older server sends no status: "In today" as before.
+  const renderStatus = (p) => {
+    const line = (text, color, sub) => (
+      <View style={s.statusBox}>
+        <Text style={[s.statusText, { color }]} numberOfLines={1}>{text}</Text>
+        {!!sub && <Text style={[s.statusSub, { color: theme.textMuted }]} numberOfLines={1}>{sub}</Text>}
+      </View>
+    );
+    switch (p.status) {
+      case 'IN': {
+        const otherDay = p.inDate && p.inDate !== format(new Date(), 'yyyy-MM-dd');
+        return line(`In · ${p.inTime}`, '#16A34A', otherDay ? `since ${format(new Date(`${p.inDate}T00:00:00`), 'dd MMM')}` : null);
+      }
+      case 'NOT_IN':
+        return line('Not punched in', '#DC2626', p.shiftStart ? `Shift ${p.shiftStart}` : null);
+      case 'WEEK_OFF':
+        return line('Week off', theme.textMuted, null);
+      case 'HOLIDAY':
+        return line('Holiday', '#7C3AED', p.holidayName || null);
+      default:
+        return <Text style={[s.inText, { color: theme.textMuted }]}>In today</Text>;
+    }
+  };
+
+  // "3 in · 1 on leave · 1 not punched in · 1 week off · 1 holiday" (from each member's status);
+  // older server (no status): "N on leave" / "all in today"
+  const summaryParts = (group, out) => {
+    const people = group.members || [];
+    if (!people.some((m) => m.status)) {
+      return [{ text: out > 0 ? `${out} on leave` : 'all in today', color: out > 0 ? '#EA580C' : '#16A34A' }];
+    }
+    const c = { in: 0, leave: 0, notIn: 0, weekOff: 0, holiday: 0 };
+    people.forEach((m) => {
+      if (m.leave || m.status === 'LEAVE') c.leave += 1;
+      else if (m.status === 'IN') c.in += 1;
+      else if (m.status === 'WEEK_OFF') c.weekOff += 1;
+      else if (m.status === 'HOLIDAY') c.holiday += 1;
+      else c.notIn += 1;
+    });
+    const parts = [];
+    if (c.in) parts.push({ text: `${c.in} in`, color: '#16A34A' });
+    if (c.leave) parts.push({ text: `${c.leave} on leave`, color: '#EA580C' });
+    if (c.notIn) parts.push({ text: `${c.notIn} not punched in`, color: '#DC2626' });
+    if (c.weekOff) parts.push({ text: `${c.weekOff} week off`, color: theme.textMuted });
+    if (c.holiday) parts.push({ text: `${c.holiday} holiday`, color: '#7C3AED' });
+    return parts;
+  };
+
   const renderPerson = (p) => {
     const half = p.leave && p.leave.session !== 'Full day';
     return (
@@ -67,9 +118,7 @@ const MyTeamScreen = ({ navigation }) => {
               <Text style={[s.badgeSession, { color: half ? '#B45309' : '#C2410C' }]}>{p.leave.session}</Text>
             </View>
           </View>
-        ) : (
-          <Text style={[s.inText, { color: theme.textMuted }]}>In today</Text>
-        )}
+        ) : renderStatus(p)}
       </View>
     );
   };
@@ -122,8 +171,11 @@ const MyTeamScreen = ({ navigation }) => {
                   onPress={() => setOpen((o) => ({ ...o, [r.key]: !o[r.key] }))}
                   style={[s.summary, { backgroundColor: theme.cardSoft }]}
                 >
-                  <Text style={[s.summaryText, { color: theme.text }]}>
-                    {group.size} {group.size === 1 ? 'member' : 'members'} · <Text style={{ color: out > 0 ? '#EA580C' : '#16A34A' }}>{out > 0 ? `${out} on leave` : 'all in today'}</Text>
+                  <Text style={[s.summaryText, { color: theme.text, flex: 1, marginRight: moderateScale(8) }]}>
+                    {group.size} {group.size === 1 ? 'member' : 'members'}
+                    {summaryParts(group, out).map((part) => (
+                      <Text key={part.text}> · <Text style={{ color: part.color }}>{part.text}</Text></Text>
+                    ))}
                   </Text>
                   {expanded ? <ChevronUp color={theme.textLight} size={20} /> : <ChevronDown color={theme.textLight} size={20} />}
                 </TouchableOpacity>
@@ -159,6 +211,9 @@ const s = StyleSheet.create({
   badgeType: { fontSize: moderateScale(11), fontWeight: '800' },
   badgeSession: { fontSize: moderateScale(10), fontWeight: '600' },
   inText: { fontSize: moderateScale(11.5), fontWeight: '600' },
+  statusBox: { alignItems: 'flex-end', maxWidth: '48%', marginLeft: moderateScale(8) },
+  statusText: { fontSize: moderateScale(12), fontWeight: '800' },
+  statusSub: { fontSize: moderateScale(10.5), fontWeight: '600', marginTop: 1 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: moderateScale(32) },
   emptyTitle: { fontSize: moderateScale(16), fontWeight: '800', marginTop: moderateScale(12) },
   emptySub: { fontSize: moderateScale(13), textAlign: 'center', marginTop: moderateScale(6) },

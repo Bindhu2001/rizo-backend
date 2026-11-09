@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Modal, Platform, Animated, RefreshControl
+  View, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Modal, Platform, Animated, RefreshControl
 } from 'react-native';
+import { Text, TextInput } from '../components/AppText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
@@ -259,7 +260,7 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
     return (
       <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <View style={cs.cardHeader}>
-          <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
+          <Text style={[cs.clientName, { color: theme.text, flex: 1, marginRight: moderateScale(8) }]} numberOfLines={2}>{visit.client_name}</Text>
           <View style={cs.liveBadge}>
             <Animated.View style={[cs.liveDot, { transform: [{ scale: pulse }] }]} />
             <Text style={cs.liveText}>LIVE</Text>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { InputAccessoryView, Keyboard, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { InputAccessoryView, Keyboard, Platform, TouchableOpacity, View } from 'react-native';
+import { Text } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';

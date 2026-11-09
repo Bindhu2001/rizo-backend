@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text } from './AppText';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Users, ChevronRight } from 'lucide-react-native';
 import { SHADOWS, moderateScale } from './Theme';
@@ -7,7 +8,8 @@ import { useTheme } from './ThemeContext';
 import { TeamApi } from '../services/RevampApi';
 
 // Home "My Team" tile (rizo-revamp /api/mobile/team-today): full width like the Client Visit tile, but shorter.
-// Shows how many people are in the team the employee authorises / approves and how many are on leave today;
+// Shows how many people are in the team the employee authorises / approves and how many are in / on leave /
+// not punched in / off for their current shift (each person once, even when in both teams);
 // tapping opens the My Team page. Nothing at all when the employee has no team.
 
 // Unique people across the "authorise" and "approve" teams (a reportee can be in both)
@@ -16,12 +18,39 @@ export const teamSummary = (data) => {
   if (!groups.length) return null;
   const members = new Set();
   const out = new Set();
+  const status = new Map(); // empPkey → IN / NOT_IN / WEEK_OFF / HOLIDAY / LEAVE (newer server only)
   groups.forEach((g) => {
-    (g.members || []).forEach((m) => members.add(m.empPkey));
+    (g.members || []).forEach((m) => {
+      members.add(m.empPkey);
+      if (m.status) status.set(m.empPkey, m.status);
+    });
     (g.onLeave || []).forEach((p) => out.add(p.empPkey));
   });
   const total = members.size || Math.max(...groups.map((g) => g.size || 0));
-  return { total, onLeave: out.size };
+  if (!status.size) return { total, onLeave: out.size, counts: null };
+  const counts = { in: 0, notIn: 0, weekOff: 0, holiday: 0 };
+  status.forEach((st, key) => {
+    if (out.has(key) || st === 'LEAVE') return;
+    if (st === 'IN') counts.in += 1;
+    else if (st === 'WEEK_OFF') counts.weekOff += 1;
+    else if (st === 'HOLIDAY') counts.holiday += 1;
+    else counts.notIn += 1;
+  });
+  return { total, onLeave: out.size, counts };
+};
+
+// "3 in · 1 on leave · 1 not in · 1 week off · 1 holiday" (newer server); older server: "1 on leave today" /
+// "everyone is in today"
+const subText = (sum) => {
+  const head = `${sum.total} ${sum.total === 1 ? 'member' : 'members'}`;
+  if (!sum.counts) return `${head} · ${sum.onLeave > 0 ? `${sum.onLeave} on leave today` : 'everyone is in today'}`;
+  const parts = [];
+  if (sum.counts.in) parts.push(`${sum.counts.in} in`);
+  if (sum.onLeave) parts.push(`${sum.onLeave} on leave`);
+  if (sum.counts.notIn) parts.push(`${sum.counts.notIn} not in`);
+  if (sum.counts.weekOff) parts.push(`${sum.counts.weekOff} week off`);
+  if (sum.counts.holiday) parts.push(`${sum.counts.holiday} holiday`);
+  return [head, ...parts].join(' · ');
 };
 
 // Last answer, so returning to Home never makes the tile jump
@@ -53,11 +82,9 @@ const TeamTile = ({ user }) => {
         <View style={s.iconBox}>
           <Users color="#FFF" size={18} />
         </View>
-        <View>
+        <View style={s.textBox}>
           <Text style={[s.title, { color: theme.text }]}>My Team</Text>
-          <Text style={[s.sub, { color: theme.textLight }]}>
-            {sum.total} {sum.total === 1 ? 'member' : 'members'} · {sum.onLeave > 0 ? `${sum.onLeave} on leave today` : 'everyone is in today'}
-          </Text>
+          <Text style={[s.sub, { color: theme.textLight }]} numberOfLines={2}>{subText(sum)}</Text>
         </View>
       </View>
       <ChevronRight color={theme.textLight} size={20} />
@@ -72,6 +99,8 @@ const s = StyleSheet.create({
     marginBottom: moderateScale(16), ...SHADOWS.light,
   },
   left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  // Takes the room left of the arrow, so a long summary wraps to a second line instead of running under it
+  textBox: { flex: 1, marginRight: moderateScale(8) },
   iconBox: { width: moderateScale(38), height: moderateScale(38), borderRadius: moderateScale(12), backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(14) },
   title: { fontSize: moderateScale(15), fontWeight: '900', marginBottom: 1 },
   sub: { fontSize: moderateScale(11.5), fontWeight: '600' },

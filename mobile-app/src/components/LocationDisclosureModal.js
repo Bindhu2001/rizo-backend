@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Modal, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Text } from './AppText';
 import { MapPin, Shield } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
