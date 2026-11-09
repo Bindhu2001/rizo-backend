@@ -10,8 +10,8 @@ import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
-  MapPin, CreditCard, FileText, ClipboardList, Moon, Sun, BellRing, Megaphone,
-  Lock, Eye, EyeOff, ShieldCheck, Trash2,
+  MapPin, CreditCard, FileText, Moon, Sun, BellRing, Megaphone,
+  Lock, Eye, EyeOff, ShieldCheck, Trash2, Mail, Briefcase, CalendarCheck, Users, Landmark,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
@@ -38,6 +38,29 @@ const Field = ({ label, value }) => {
     <View style={[s.fieldRow, { borderBottomColor: theme.divider }]}>
       <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{label}</Text>
       <Text style={[s.fieldValue, { color: theme.text }]}>{value}</Text>
+    </View>
+  );
+};
+
+// One entry of a list in Other Details (an education, experience or family member): a bold title and muted lines
+const ListGroup = ({ title, rows, empty, renderItem }) => {
+  const theme = useTheme();
+  return (
+    <View style={[s.listGroup, { borderBottomColor: theme.divider }]}>
+      <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{title}</Text>
+      {rows.length === 0 ? (
+        <Text style={[s.listEmpty, { color: theme.textLight }]}>{empty}</Text>
+      ) : rows.map((row, i) => {
+        const { heading, lines } = renderItem(row);
+        return (
+          <View key={i} style={[s.listItem, { backgroundColor: theme.bg }]}>
+            <Text style={[s.fieldValue, { color: theme.text }]}>{heading}</Text>
+            {lines.filter(Boolean).map((line, j) => (
+              <Text key={j} style={[s.listLine, { color: theme.textLight }]}>{line}</Text>
+            ))}
+          </View>
+        );
+      })}
     </View>
   );
 };
@@ -174,7 +197,8 @@ const ProfileScreen = ({ navigation, route }) => {
 
   const openSection = (key) => {
     setSection(key);
-    if (key === 'personal') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_PERSONAL, setPersonal, personal);
+    // Official, Company, Policy and Other Details all come with the personal details (one call)
+    if (['personal', 'official', 'company', 'policy', 'otherInfo'].includes(key)) fetchSection(API_ENDPOINTS.GET_EMPLOYEE_PERSONAL, setPersonal, personal);
     if (key === 'address') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_ADDRESS, setAddress, address);
     if (key === 'kyc') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_DOCUMENTS, setDocuments, documents);
     if (key === 'other') fetchSection(API_ENDPOINTS.GET_EMPLOYEE_BANK, setBank, bank);
@@ -279,6 +303,86 @@ const ProfileScreen = ({ navigation, route }) => {
   }
 
   // ── ADDRESS DETAILS ─────────────────────────────────────────────────────────
+  // ── OFFICIAL DETAILS (set by HR on the website) ─────────────────────────────
+  if (section === 'official') {
+    const d = personal || {};
+    return renderSectionView('Official Details', (
+      <>
+        <Field label="Official Email" value={dash(d.official_email)} />
+        <Field label="Official Mobile" value={dash(d.official_mobile)} />
+      </>
+    ));
+  }
+
+  // ── COMPANY DETAILS ─────────────────────────────────────────────────────────
+  if (section === 'company') {
+    const c = (personal && personal.company) || {};
+    return renderSectionView('Company Details', (
+      <>
+        <Field label="Joining Date" value={dash(c.joining_date || user.joining_date)} />
+        <Field label="Employee ID" value={dash(c.employee_id || user.user_id)} />
+        <Field label="Employment Type" value={dash(c.employment_type)} />
+        <Field label="Branch" value={dash(c.branch)} />
+        <Field label="Department" value={dash(c.department || user.department)} />
+        <Field label="Designation" value={dash(c.designation || user.designation)} />
+        <Field label="Grade" value={dash(c.grade)} />
+        <Field label="Notice Period" value={dash(c.notice_period)} />
+        {/* Like the website: probation days only for a Probation hire, the end date only for a Contract one */}
+        {c.employment_type === 'Probation' ? <Field label="Probation Period (days)" value={dash(c.probation_days)} /> : null}
+        {c.employment_type === 'Contract' ? <Field label="Contract End Date" value={dash(c.contract_end_date)} /> : null}
+      </>
+    ));
+  }
+
+  // ── POLICY DETAILS ──────────────────────────────────────────────────────────
+  if (section === 'policy') {
+    const p = (personal && personal.policy) || {};
+    return renderSectionView('Policy Details', (
+      <>
+        <Field label="Shift Policy" value={dash(p.shift)} />
+        <Field label="Holiday Group" value={dash(p.holiday_group)} />
+        <Field label="Leave Policy Group" value={dash(p.leave_policy_group)} />
+        <Field label="Reporting Manager" value={dash(p.reporting_manager)} />
+      </>
+    ));
+  }
+
+  // ── OTHER DETAILS (education, experience, family — the website's Other Details tab) ──
+  if (section === 'otherInfo') {
+    const d = personal || {};
+    const list = (v) => (Array.isArray(v) ? v : []);
+    const has = (v) => v != null && String(v).trim() !== '';
+    return renderSectionView('Other Details', (
+      <>
+        <ListGroup
+          title="Education" rows={list(d.education)} empty="No education added"
+          renderItem={(r) => ({
+            heading: dash(r.course),
+            lines: [r.university, [has(r.duration) && r.duration, has(r.mark) && `${r.mark}%`].filter(Boolean).join(' · ')],
+          })}
+        />
+        <ListGroup
+          title="Experience" rows={list(d.experience)} empty="No experience added"
+          renderItem={(r) => ({
+            heading: dash(r.company),
+            lines: [[r.designation, r.department].filter(has).join(' · '),
+              has(r.from_date) ? `${r.from_date} – ${has(r.to_date) && !String(r.to_date).startsWith('0000') ? r.to_date : 'Present'}` : ''],
+          })}
+        />
+        <ListGroup
+          title="Family" rows={list(d.family)} empty="No family members added"
+          renderItem={(r) => ({
+            heading: dash(r.name),
+            lines: [[r.relation, r.gender && String(r.gender).charAt(0).toUpperCase() + String(r.gender).slice(1)].filter(has).join(' · '),
+              [has(r.DOB) && `DOB ${r.DOB}`, has(r.blood_group) && r.blood_group].filter(Boolean).join(' · '),
+              r.contact_number,
+              String(r.is_nominee).toUpperCase() === 'Y' ? 'Nominee' : ''],
+          })}
+        />
+      </>
+    ));
+  }
+
   if (section === 'address') {
     const d = address || {};
     return renderSectionView('Address Details', (
@@ -309,7 +413,7 @@ const ProfileScreen = ({ navigation, route }) => {
   // ── OTHER DETAILS ───────────────────────────────────────────────────────────
   if (section === 'other') {
     const d = bank || {};
-    return renderSectionView('Other Details', (
+    return renderSectionView('Bank & Statutory', (
       <>
         <Field label="Guardian Name" value={dash(d.guradian || d.guardian)} />
         <Field label="Relation" value={dash(d.relation_guardian)} />
@@ -461,8 +565,28 @@ const ProfileScreen = ({ navigation, route }) => {
             onPress={() => openSection('kyc')}
           />
           <SectionItem
-            iconBg="#F0FDF4" icon={<ClipboardList color="#16A34A" size={20} />}
-            title="Other Details" subtitle="Statutory & worker info"
+            iconBg="#EFF6FF" icon={<Mail color="#2563EB" size={20} />}
+            title="Official Details" subtitle="Official email & mobile"
+            onPress={() => openSection('official')}
+          />
+          <SectionItem
+            iconBg="#FFF7ED" icon={<Briefcase color="#EA580C" size={20} />}
+            title="Company Details" subtitle="Joining, branch, department & grade"
+            onPress={() => openSection('company')}
+          />
+          <SectionItem
+            iconBg="#FDF2F8" icon={<CalendarCheck color="#DB2777" size={20} />}
+            title="Policy Details" subtitle="Shift, holiday, leave policy & manager"
+            onPress={() => openSection('policy')}
+          />
+          <SectionItem
+            iconBg="#F0FDFA" icon={<Users color="#0D9488" size={20} />}
+            title="Other Details" subtitle="Education, experience & family"
+            onPress={() => openSection('otherInfo')}
+          />
+          <SectionItem
+            iconBg="#F0FDF4" icon={<Landmark color="#16A34A" size={20} />}
+            title="Bank & Statutory" subtitle="Bank, PF, ESI & worker info"
             onPress={() => openSection('other')}
             last
           />
@@ -615,6 +739,10 @@ const s = StyleSheet.create({
   fieldRow: { paddingVertical: moderateScale(14), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   fieldLabel: { fontSize: moderateScale(12), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.3 },
   fieldValue: { fontSize: moderateScale(15), color: COLORS.text, fontWeight: '600' },
+  listGroup: { paddingVertical: moderateScale(14), borderBottomWidth: 1 },
+  listItem: { borderRadius: moderateScale(12), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), marginTop: moderateScale(8) },
+  listLine: { fontSize: moderateScale(13), marginTop: 2, flexShrink: 1 },
+  listEmpty: { fontSize: moderateScale(14), marginTop: 2 },
 });
 
 export default ProfileScreen;
