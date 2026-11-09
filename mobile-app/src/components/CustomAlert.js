@@ -103,7 +103,8 @@ const CustomAlert = ({ config, onClose }) => {
                     resolvedButtons.length === 1 && { flex: 0, minWidth: 140 },
                     i > 0 && { marginLeft: 10 },
                     isDestructive && s.btnDestructive,
-                    isCancel && [s.btnCancel, { backgroundColor: theme.cardSoft, borderColor: theme.border }],
+                    // Cancel: outlined, like the Leave / Loan forms' secondary button
+                    isCancel && [s.btnCancel, { borderColor: theme.isDark ? theme.border : '#E5E7EB' }],
                     !isDestructive && !isCancel && s.btnPrimary,
                   ]}
                   onPress={() => handlePress(btn)}
@@ -200,8 +201,8 @@ const s = StyleSheet.create({
     backgroundColor: '#DC2626',
   },
   btnCancel: {
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1.5,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
     borderColor: '#E5E7EB',
   },
   btnText: {

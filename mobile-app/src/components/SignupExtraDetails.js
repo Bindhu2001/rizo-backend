@@ -57,7 +57,8 @@ const SECTIONS = [
     key: 'education', title: 'Education', add: 'Add Education',
     fields: [
       { key: 'course', label: 'Course', required: true, max: 100 },
-      { key: 'university', label: 'University / School', required: true, max: 150 },
+      // 100 = the web's limit (lib/employeeFieldLimits.ts CHILD_FIELD_LIMITS) and the DB column; longer failed the save
+      { key: 'university', label: 'University / School', required: true, max: 100 },
       { key: 'start_date', label: 'From', type: 'date', required: true, past: true },
       { key: 'end_date', label: 'To', type: 'date', required: true, after: 'start_date' },
       { key: 'mark', label: 'Marks (%)', keyboard: 'decimal-pad', required: true, max: 6, clean: (v) => v.replace(/[^\d.]/g, '') },
@@ -76,7 +77,8 @@ const SECTIONS = [
       { key: 'department', label: 'Department', required: true, max: 100 },
       { key: 'from_date', label: 'From', type: 'date', required: true, past: true },
       { key: 'to_date', label: 'To', type: 'date', required: true, past: true, after: 'from_date' },
-      { key: 'salary', label: 'Salary', keyboard: 'number-pad', max: 9, clean: digits },
+      // Required, up to 10 digits — same as the web's Employee Joining experience row
+      { key: 'salary', label: 'Salary', keyboard: 'number-pad', required: true, max: 10, clean: digits },
     ],
     check: (f) => (f.to_date < f.from_date ? 'The To date cannot be before the From date.' : ''),
     summary: (f) => [f.company, f.designation, `${prettyDate(f.from_date)} to ${prettyDate(f.to_date)}`].filter(Boolean).join(', '),

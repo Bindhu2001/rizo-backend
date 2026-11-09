@@ -71,14 +71,15 @@ export const EssScreen = ({ title, onBack, children, right }) => {
   );
 };
 
-// Pending / History tabs, the app's tab bar: white, the active tab underlined in the violet accent
+// Pending / History tabs, the app's tab bar: white, the active tab underlined in the violet accent.
+// Dark theme: the lighter purple (theme.primaryDeep), or the deep #4A148C is unreadable on the dark background.
 export const SegTabs = ({ tabs, active, onChange }) => {
   const theme = useTheme();
   return (
     <View style={[s.tabs, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
       {tabs.map((t) => (
-        <TouchableOpacity key={t.key} style={[s.tab, active === t.key && s.tabActive]} onPress={() => onChange(t.key)}>
-          <Text style={[s.tabText, { color: active === t.key ? ACCENT : theme.textMuted }]}>{t.label}</Text>
+        <TouchableOpacity key={t.key} style={[s.tab, active === t.key && s.tabActive, active === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => onChange(t.key)}>
+          <Text style={[s.tabText, { color: active === t.key ? (theme.isDark ? theme.primaryDeep : ACCENT) : theme.textMuted }]}>{t.label}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -131,11 +132,14 @@ export const FileLink = ({ url, label }) => (
 export const ActionButton = ({ label, tone = 'primary', soft, outline, onPress, disabled }) => {
   const theme = useTheme();
   const t = TONES[tone] || TONES.primary;
+  // Same look as the Leave screen in light and dark theme: the main button is RIZO purple (#4A148C) with white
+  // text — never the light lavender theme.primaryDeep, which made white text unreadable in dark theme — and
+  // Cancel / Close is an outlined button like Leave's secondary button.
   const look = outline
-    ? { box: { backgroundColor: theme.isDark ? theme.cardSoft : '#F3F4F6' }, text: theme.isDark ? theme.textLight : '#4B5563' }
+    ? { box: { backgroundColor: 'transparent', borderWidth: 1, borderColor: theme.isDark ? theme.border : '#E5E7EB' }, text: theme.text }
     : soft
       ? { box: { backgroundColor: t.bg, borderColor: t.border, borderWidth: 1 }, text: t.text }
-      : { box: { backgroundColor: theme.isDark && tone === 'primary' ? theme.primaryDeep : t.solid }, text: '#FFF' };
+      : { box: { backgroundColor: t.solid }, text: '#FFF' };
   return (
     <TouchableOpacity disabled={disabled} onPress={onPress} style={[s.btn, look.box, disabled && { opacity: 0.5 }]}>
       <Text style={[s.btnText, { color: look.text }]} numberOfLines={1}>{label}</Text>
@@ -444,7 +448,9 @@ const FilterPill = ({ icon: Icon, value, options, onChange }) => {
  * skipped). Month pills show a calendar icon, the others a filter icon.
  */
 export const FilterBar = ({ filters }) => (
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterBar}>
+  // A ScrollView grows to fill free space by default (flexGrow 1): with an empty / short list below it the
+  // row grew tall and stretched the pills, and with a long list it got squeezed. Fixed to its own height.
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll} contentContainerStyle={s.filterBar}>
     {filters.filter(Boolean).map((f) => (
       <FilterPill key={f.key} icon={f.kind === 'month' ? CalendarIcon : Filter} value={f.value} options={f.options} onChange={f.onChange} />
     ))}
@@ -526,7 +532,8 @@ const s = StyleSheet.create({
   monthList: { marginHorizontal: moderateScale(40), maxHeight: '70%', borderRadius: 16, paddingVertical: 6 },
   monthItem: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: moderateScale(12), padding: moderateScale(12), marginBottom: 6 },
-  filterBar: { paddingHorizontal: moderateScale(16), paddingBottom: moderateScale(12), gap: 8 },
+  filterScroll: { flexGrow: 0, flexShrink: 0 },
+  filterBar: { paddingHorizontal: moderateScale(16), paddingBottom: moderateScale(12), gap: 8, alignItems: 'center' },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(8), borderRadius: moderateScale(20), maxWidth: moderateScale(220) },
   pillText: { fontSize: moderateScale(13), fontWeight: '700', flexShrink: 1 },
   check: { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },

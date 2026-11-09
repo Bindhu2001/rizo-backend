@@ -52,7 +52,7 @@ export default function LocationDisclosureModal({ visible, onAccept }) {
           </ScrollView>
 
           <TouchableOpacity
-            style={[styles.btnAccept, { backgroundColor: theme.primaryDeep }]}
+            style={[styles.btnAccept, { backgroundColor: COLORS.primaryDeep }]}
             onPress={onAccept}
             activeOpacity={0.85}
           >

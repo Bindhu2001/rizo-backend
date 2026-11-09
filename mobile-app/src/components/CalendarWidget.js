@@ -158,7 +158,7 @@ const CalendarWidget = ({ userId }) => {
               </View>
             )}
 
-            <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.border }]} onPress={() => setSelectedEvent(null)}>
+            <TouchableOpacity style={[styles.closeBtn, { borderColor: theme.isDark ? theme.border : '#E5E7EB' }]} onPress={() => setSelectedEvent(null)}>
               <Text style={[styles.closeBtnText, { color: theme.text }]}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -200,7 +200,8 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: moderateScale(15), fontWeight: '800', marginTop: 10 },
   fullListLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14, gap: 6 },
   fullListText: { fontSize: moderateScale(13), fontWeight: '800' },
-  closeBtn: { backgroundColor: '#E5E7EB', padding: 14, borderRadius: 16, alignItems: 'center' },
+  // Outlined, like the Leave / Loan forms' secondary button
+  closeBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E5E7EB', padding: 14, borderRadius: 16, alignItems: 'center' },
   closeBtnText: { color: COLORS.text, fontWeight: '800', fontSize: moderateScale(14) }
 });
 

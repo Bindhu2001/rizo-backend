@@ -222,7 +222,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
           style={[s.actionBtn, s.approveBtn]} 
           onPress={() => setActionModal({ visible: true, item, type: 'APPROVE' })}
         >
-          <CheckCircle size={18} color="#10B981" />
+          <CheckCircle size={18} color="#16A34A" />
           <Text style={s.approveBtnText}>Approve</Text>
         </TouchableOpacity>
       </View>
@@ -241,17 +241,17 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
       </View>
 
       <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
-        <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
-           <CalendarIcon color={COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
-           <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
+        <TouchableOpacity style={[s.monthDropdown, theme.isDark && { backgroundColor: theme.cardSoft }]} onPress={() => setShowMonthPicker(true)}>
+           <CalendarIcon color={theme.isDark ? theme.primaryDeep : COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
+           <Text style={[s.monthText, theme.isDark && { color: theme.primaryDeep }]}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
       <View style={[s.tabBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
-          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
-            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive, activeTab === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => setActiveTab(t.key)}>
+            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive, activeTab === t.key && theme.isDark && { color: theme.primaryDeep }]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -366,10 +366,10 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
 
             <View style={s.modalActions}>
               <TouchableOpacity
-                style={[s.modalCancel, { backgroundColor: theme.cardSoft }]}
+                style={[s.modalCancel, { borderColor: theme.isDark ? theme.border : '#E5E7EB' }]}
                 onPress={() => { setActionModal({ visible: false, item: null, type: '' }); setRemarks(''); }}
               >
-                <Text style={[s.modalCancelText, { color: theme.textLight }]}>Cancel</Text>
+                <Text style={[s.modalCancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -460,8 +460,8 @@ const s = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: moderateScale(12) },
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: moderateScale(12), borderRadius: moderateScale(12), gap: moderateScale(8), borderWidth: 1 },
-  approveBtn: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
-  approveBtnText: { color: '#047857', fontWeight: '800', fontSize: moderateScale(14) },
+  approveBtn: { backgroundColor: '#DCFCE7', borderColor: '#16A34A55' }, // same green as Leave Approval and the ESS approvals
+  approveBtnText: { color: '#16A34A', fontWeight: '800', fontSize: moderateScale(14) },
   rejectBtn: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
   rejectBtnText: { color: '#B91C1C', fontWeight: '800', fontSize: moderateScale(14) },
 
@@ -478,9 +478,10 @@ const s = StyleSheet.create({
     color: '#000',
   },
   modalActions: { flexDirection: 'row', gap: moderateScale(12) },
-  modalCancel: { flex: 1, paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center', backgroundColor: '#F3F4F6' },
+  // Outlined, like the Leave / Loan forms' secondary button
+  modalCancel: { flex: 1, paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center', backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E5E7EB' },
   modalCancelText: { color: '#4B5563', fontWeight: '800' },
-  modalConfirm: { flex: 2, paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center', backgroundColor: '#10B981' },
+  modalConfirm: { flex: 2, paddingVertical: moderateScale(14), borderRadius: moderateScale(12), alignItems: 'center', backgroundColor: '#16A34A' },
   modalConfirmText: { color: '#FFF', fontWeight: '800' },
 
   sheet: { backgroundColor: '#FFF', borderTopLeftRadius: moderateScale(24), borderTopRightRadius: moderateScale(24), padding: moderateScale(24), width: '100%', position: 'absolute', bottom: 0, maxHeight: '60%' },

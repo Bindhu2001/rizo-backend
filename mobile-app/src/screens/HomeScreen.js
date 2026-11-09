@@ -767,7 +767,9 @@ const HomeScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    // No bottom edge: Home is a tab, and the app's tab bar already sits over the phone's navigation bar (a
+    // bottom safe edge added that space again — a blank strip above the tab bar)
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
@@ -1116,8 +1118,9 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: moderateScale(22), fontWeight: '900', color: COLORS.text, textAlign: 'center', marginBottom: moderateScale(10) },
   modalSub: { fontSize: moderateScale(14), color: COLORS.textLight, textAlign: 'center', lineHeight: 20, marginBottom: moderateScale(32) },
   modalBtns: { flexDirection: 'row', width: '100%', justifyContent: 'space-between' },
-  cancelBtn: { flex: 1, paddingVertical: moderateScale(16), marginRight: moderateScale(12), borderRadius: moderateScale(16), borderWidth: 1, borderColor: '#EEF2F7', alignItems: 'center', backgroundColor: '#F9FAFB' },
-  cancelBtnText: { color: COLORS.textLight, fontWeight: '700' },
+  // Outlined, like the Leave / Loan forms' secondary button (this pop-up's card is always white)
+  cancelBtn: { flex: 1, paddingVertical: moderateScale(16), marginRight: moderateScale(12), borderRadius: moderateScale(16), borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center', backgroundColor: 'transparent' },
+  cancelBtnText: { color: COLORS.text, fontWeight: '700' },
   logoutBtn: { flex: 1, paddingVertical: moderateScale(16), borderRadius: moderateScale(16), backgroundColor: COLORS.danger, alignItems: 'center' },
   logoutBtnText: { color: '#FFF', fontWeight: '800' },
 });

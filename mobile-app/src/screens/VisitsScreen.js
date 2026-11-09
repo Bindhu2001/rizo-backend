@@ -327,7 +327,7 @@ const cs = StyleSheet.create({
   liveText: { fontSize: moderateScale(10), fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
   liveTimeText: { fontSize: moderateScale(13), color: '#4B5563', marginBottom: 4, fontWeight: '600' },
   liveLocText: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: moderateScale(16), lineHeight: 18 },
-  purpleBtnFull: { backgroundColor: '#62338B', paddingVertical: moderateScale(14), borderRadius: moderateScale(50), alignItems: 'center' },
+  purpleBtnFull: { backgroundColor: COLORS.primaryDeep, paddingVertical: moderateScale(14), borderRadius: moderateScale(50), alignItems: 'center' },
   purpleBtnText: { color: '#FFF', fontSize: moderateScale(13), fontWeight: '800', letterSpacing: 1 },
 
   // Completed Headers
@@ -378,7 +378,7 @@ const cm = StyleSheet.create({
   row: { flexDirection: 'row', gap: moderateScale(12), width: '100%' },
   cancelBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
   cancelText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151' },
-  confirmBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: '#581C87', alignItems: 'center' },
+  confirmBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: COLORS.primaryDeep, alignItems: 'center' },
   confirmText: { fontSize: moderateScale(14), fontWeight: '800', color: '#FFF' },
 });
 
@@ -557,7 +557,7 @@ const sv = StyleSheet.create({
   locText: { fontSize: moderateScale(12), color: COLORS.primaryDeep, textAlign: 'center', lineHeight: 18, width: '100%' },
   formWrap: { backgroundColor: '#FFF', padding: moderateScale(16), borderRadius: moderateScale(16), ...SHADOWS.light },
   footer: { padding: moderateScale(20), backgroundColor: '#F9FAFB' },
-  startBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
+  startBtn: { backgroundColor: COLORS.primaryDeep, paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   startBtnDisabled: { backgroundColor: '#D1C4E9' },
   startBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
   startBtnTextDisabled: { color: '#9E9E9E' },
@@ -624,7 +624,7 @@ const sm = StyleSheet.create({
   dragHandle: { width: moderateScale(40), height: 4, backgroundColor: '#E5E7EB', borderRadius: 2, alignSelf: 'center', marginBottom: moderateScale(20) },
   title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', marginBottom: moderateScale(20), marginLeft: 4 },
   footer: { paddingTop: moderateScale(8), paddingBottom: moderateScale(24) },
-  saveBtn: { backgroundColor: '#62338B', paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
+  saveBtn: { backgroundColor: COLORS.primaryDeep, paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
@@ -891,7 +891,6 @@ const VisitsScreen = ({ navigation, route }) => {
               processing={processing}
             />
           ))}
-          <View style={{ height: 120 }} />
         </ScrollView>
       )}
 
@@ -988,11 +987,11 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), height: moderateScale(56), backgroundColor: '#FFF' },
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827' },
-  scroll: { padding: moderateScale(16), paddingTop: moderateScale(20), paddingBottom: moderateScale(110) },
+  scroll: { padding: moderateScale(16), paddingTop: moderateScale(20), paddingBottom: moderateScale(100) }, // room for the + button
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fabWrap: { position: 'absolute', bottom: 100, right: 20, zIndex: 99 },
-  fab: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(32), backgroundColor: '#62338B', justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+  fabWrap: { position: 'absolute', bottom: 24, right: 20, zIndex: 99 }, // bottom corner like Expense's + (100 was for an old floating tab bar)
+  fab: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(32), backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(10), borderBottomWidth: 1 },
   dateArrow: { width: moderateScale(36), height: moderateScale(36), justifyContent: 'center', alignItems: 'center' },

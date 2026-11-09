@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import {
   View, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, BackHandler, Switch, Linking,
@@ -71,6 +72,11 @@ const SectionHeader = ({ title, onBack, theme }) => (
 // ─── ProfileScreen ────────────────────────────────────────────────────────────
 const ProfileScreen = ({ navigation, route }) => {
   const theme = useTheme();
+  // Opened as the Profile tab, the app's tab bar already sits over the phone's navigation bar: a bottom safe
+  // edge here added that space a second time (a blank strip above the tab bar). Opened as a page of its own
+  // (no tab bar), it still needs the bottom edge.
+  const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  const safeEdges = inTabs ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
   const [user, setUser] = useState(route?.params?.user);
   const [remindersOn, setRemindersOn] = useState(true);
   useEffect(() => { isRemindersEnabled().then(setRemindersOn); }, []);
@@ -229,7 +235,7 @@ const ProfileScreen = ({ navigation, route }) => {
 
   // ── Section view wrapper ────────────────────────────────────────────────────
   const renderSectionView = (title, children) => (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={safeEdges}>
       <SectionHeader title={title} onBack={() => setSection(null)} theme={theme} />
       {busy ? (
         <View style={s.loaderWrap}><ActivityIndicator size="large" color={PURPLE} /></View>
@@ -326,7 +332,7 @@ const ProfileScreen = ({ navigation, route }) => {
   // ── RESET PASSWORD ──────────────────────────────────────────────────────────
   if (section === 'resetPassword') {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={safeEdges}>
         <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
         <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -400,7 +406,7 @@ const ProfileScreen = ({ navigation, route }) => {
 
   // ── MAIN PROFILE VIEW ───────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={safeEdges}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />

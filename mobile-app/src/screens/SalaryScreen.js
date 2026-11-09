@@ -384,8 +384,6 @@ const SalaryScreen = ({ navigation, route }) => {
               );
             })}
           </View>
-
-          <View style={{ height: 100 }} />
         </ScrollView>
       )}
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
@@ -399,7 +397,7 @@ const styles = StyleSheet.create({
   backBtn: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: moderateScale(18), fontWeight: '900', color: COLORS.text },
   headerIcon: { width: moderateScale(44), height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(110) },
+  scroll: { padding: moderateScale(20), paddingBottom: moderateScale(32) },
 
   // Salary Card
   salaryCard: { borderRadius: moderateScale(30), padding: moderateScale(24), marginBottom: moderateScale(32), ...SHADOWS.medium },

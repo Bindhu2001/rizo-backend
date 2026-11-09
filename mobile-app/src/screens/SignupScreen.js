@@ -755,7 +755,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Personal Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>Let's start with your basic information</Text>
-                <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z.\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
+                <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z0-9.\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
                 <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Mobile Number" maxLength={15} />
                 <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
                 <PickerRow label="Gender *" value={gender} onPress={() => setShowGenderPicker(true)} />
@@ -772,8 +772,8 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Address Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>This information will be used for official records</Text>
-                <FloatInput label="House / Flat Name *" value={address.house} onChangeText={t => setAddress({ ...address, house: t })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
-                <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t })} placeholder="Near City Mall" maxLength={60} />
+                <FloatInput label="House / Flat Name *" value={address.house} onChangeText={t => setAddress({ ...address, house: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
+                <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Near City Mall" maxLength={60} />
                 <View style={st.inputRow}>
                   <View style={{ flex: 1, marginRight: 10 }}>
                     <FloatInput label="City" value={address.city} onChangeText={t => setAddress({ ...address, city: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Mumbai" maxLength={30} />
@@ -782,8 +782,8 @@ const SignupScreen = ({ navigation }) => {
                     <FloatInput label="Pin Code" value={address.pincode} onChangeText={t => setAddress({ ...address, pincode: t.replace(/[^0-9]/g, '') })} keyboardType="number-pad" placeholder="400001" maxLength={6} />
                   </View>
                 </View>
-                <FloatInput label="District" value={address.district} onChangeText={t => setAddress({ ...address, district: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="District" maxLength={30} />
-                <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={30} />
+                <FloatInput label="District" value={address.district} onChangeText={t => setAddress({ ...address, district: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="District" maxLength={50} />
+                <FloatInput label="State" value={address.state} onChangeText={t => setAddress({ ...address, state: t.replace(/[^A-Za-z\s]/g, '') })} placeholder="Maharashtra" maxLength={50} />
                 <PickerRow label="Country *" value={addrCountry?.country_name} onPress={() => setShowAddrCountryPicker(true)} />
                 <TouchableOpacity style={[st.nextBtn, { marginTop: 24 }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>Continue</Text><ChevronRight color="#FFF" size={20} /></>}
@@ -845,15 +845,15 @@ const SignupScreen = ({ navigation }) => {
                 {/* Guardian */}
                 <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Guardian Details</Text>
-                  <FloatInput label="Guardian Name" value={guardianName} onChangeText={t => setGuardianName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Guardian Name" maxLength={40} />
-                  <FloatInput label="Relation" value={guardianRelation} onChangeText={setGuardianRelation} placeholder="Father / Mother / Spouse" maxLength={30} />
+                  <FloatInput label="Guardian Name" value={guardianName} onChangeText={t => setGuardianName(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Guardian Name" maxLength={50} />
+                  <FloatInput label="Relation" value={guardianRelation} onChangeText={t => setGuardianRelation(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="Father / Mother / Spouse" maxLength={100} />
                 </View>
 
                 {/* Bank */}
                 <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Bank Details</Text>
-                  <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Bank Name" maxLength={50} />
-                  <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Branch" maxLength={50} />
+                  <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Bank Name" maxLength={100} />
+                  <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Branch" maxLength={100} />
                   <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => {
                     const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
                     setIfscCode(v);
@@ -881,7 +881,7 @@ const SignupScreen = ({ navigation }) => {
                       <FloatInput label="PF No" value={pfNo} onChangeText={t => { const v = t.replace(/[^A-Za-z0-9]/g, ''); setPfNo(v); validateField('pf', API_ENDPOINTS.CHECK_PF, v, setPfV); }} placeholder="PF No" maxLength={22} validation={pfV} />
                     </View>
                   </View>
-                  <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={t => setEsiDispensary(t.replace(/[^A-Za-z\s]/g, ''))} placeholder="ESI Dispensary" maxLength={50} />
+                  <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={t => setEsiDispensary(t.replace(/[^A-Za-z0-9\s]/g, ''))} placeholder="ESI Dispensary" maxLength={100} />
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
                       <FloatInput label="UAN No" value={uanNo} onChangeText={t => {
@@ -893,7 +893,7 @@ const SignupScreen = ({ navigation }) => {
                       }} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={t => setPrevMemberId(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Prev Member ID" maxLength={15} />
+                      <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={t => setPrevMemberId(t.replace(/[^A-Za-z0-9]/g, ''))} autoCapitalize="characters" placeholder="Prev Member ID" maxLength={15} />
                     </View>
                   </View>
                   <View style={st.inputRow}>
@@ -971,7 +971,7 @@ const SignupScreen = ({ navigation }) => {
                 <Text style={[st.cardTitle, { color: theme.text }]}>Education & Documents</Text>
                 <Text style={[st.cardSub, { color: theme.textLight, marginBottom: 16 }]}>Optional. Add what you can now, or skip this step and HR will help you later.</Text>
                 <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} selfName={name.trim()} />
-                <TouchableOpacity style={[st.nextBtn, { backgroundColor: '#059669', marginTop: 12 }]} onPress={nextStep} disabled={loading}>
+                <TouchableOpacity style={[st.nextBtn, { marginTop: 12 }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>{Object.values(extraDetails).some((rows) => rows.length) ? 'Complete Signup' : 'Skip & Complete Signup'}</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>
                 {!!submitNote && <Text style={[st.cardSub, { color: theme.textLight, textAlign: 'center', marginTop: 10 }]}>{submitNote}</Text>}

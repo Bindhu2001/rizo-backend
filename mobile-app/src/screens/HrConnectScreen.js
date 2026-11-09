@@ -24,7 +24,8 @@ import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
 
 // Same look as the rest of the app: light/dark screen background and the Rizo purple for fills
 // (buttons, own message bubbles) and accents.
-export const hrFill = (theme) => (theme.isDark ? '#7C3AED' : '#4A148C');
+// Buttons / header fill: RIZO purple in both themes, like the Leave screen's Submit
+export const hrFill = () => '#4A148C';
 export const hrAccent = (theme) => theme.primaryDeep;
 export const hrAccentDim = (theme) => (theme.isDark ? 'rgba(167,139,250,0.18)' : '#F3E8FF');
 

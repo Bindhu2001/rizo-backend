@@ -380,17 +380,17 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       </View>
 
       <View style={[s.monthBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
-        <TouchableOpacity style={s.monthDropdown} onPress={() => setShowMonthPicker(true)}>
-          <CalendarIcon color={COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
-          <Text style={s.monthText}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
+        <TouchableOpacity style={[s.monthDropdown, theme.isDark && { backgroundColor: theme.cardSoft }]} onPress={() => setShowMonthPicker(true)}>
+          <CalendarIcon color={theme.isDark ? theme.primaryDeep : COLORS.primaryDeep} size={18} style={{ marginRight: 8 }} />
+          <Text style={[s.monthText, theme.isDark && { color: theme.primaryDeep }]}>{pastMonths.find(m => m.value === currentMonthStr)?.label}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Bar */}
       <View style={[s.tabBar, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         {[{ key: 'PENDING', label: 'Pending' }, { key: 'HISTORY', label: 'History' }].map(t => (
-          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive]} onPress={() => setActiveTab(t.key)}>
-            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
+          <TouchableOpacity key={t.key} style={[s.tab, activeTab === t.key && s.tabActive, activeTab === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => setActiveTab(t.key)}>
+            <Text style={[s.tabText, { color: theme.textMuted }, activeTab === t.key && s.tabTextActive, activeTab === t.key && theme.isDark && { color: theme.primaryDeep }]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -515,8 +515,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             />
 
             <View style={s.modalActions}>
-              <TouchableOpacity style={[s.modalCancel, { backgroundColor: theme.cardSoft }]} onPress={closeModal}>
-                <Text style={[s.modalCancelText, { color: theme.textLight }]}>Cancel</Text>
+              <TouchableOpacity style={[s.modalCancel, { borderColor: theme.isDark ? theme.border : '#E5E7EB' }]} onPress={closeModal}>
+                <Text style={[s.modalCancelText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -673,9 +673,10 @@ const s = StyleSheet.create({
     color: '#000',
   },
   modalActions: { flexDirection: 'row', gap: moderateScale(12) },
+  // Outlined, like the Leave / Loan forms' secondary button
   modalCancel: {
     flex: 1, paddingVertical: moderateScale(14), borderRadius: moderateScale(12),
-    alignItems: 'center', backgroundColor: '#F3F4F6',
+    alignItems: 'center', backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E5E7EB',
   },
   modalCancelText: { color: '#4B5563', fontWeight: '800' },
   modalConfirm: {

@@ -995,13 +995,13 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       <View style={[s.tabBox, { backgroundColor: theme.bg, borderBottomColor: theme.divider }]}>
         <View style={s.tabsWrap}>
           <TouchableOpacity style={s.tabItem} onPress={() => setTab('LOG')}>
-            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'LOG' && s.tabLabelActive]}>Log</Text>
-            {tab === 'LOG' && <View style={s.tabLine} />}
+            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'LOG' && s.tabLabelActive, tab === 'LOG' && theme.isDark && { color: theme.primaryDeep }]}>Log</Text>
+            {tab === 'LOG' && <View style={[s.tabLine, theme.isDark && { backgroundColor: theme.primaryDeep }]} />}
           </TouchableOpacity>
 
           <TouchableOpacity style={s.tabItem} onPress={() => setTab('REGULARISED')}>
-            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'REGULARISED' && s.tabLabelActive]}>Regularised</Text>
-            {tab === 'REGULARISED' && <View style={s.tabLine} />}
+            <Text style={[s.tabLabel, { color: theme.textMuted }, tab === 'REGULARISED' && s.tabLabelActive, tab === 'REGULARISED' && theme.isDark && { color: theme.primaryDeep }]}>Regularised</Text>
+            {tab === 'REGULARISED' && <View style={[s.tabLine, theme.isDark && { backgroundColor: theme.primaryDeep }]} />}
           </TouchableOpacity>
         </View>
 
@@ -1078,9 +1078,9 @@ const s = StyleSheet.create({
   monthDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8), borderRadius: moderateScale(12), marginBottom: moderateScale(10), alignSelf: 'center' },
   monthText: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
 
-  listScroll: { padding: moderateScale(16), paddingBottom: moderateScale(120) },
+  listScroll: { padding: moderateScale(16), paddingBottom: moderateScale(32) },
 
-  formScroll: { padding: moderateScale(20), paddingBottom: moderateScale(120) },
+  formScroll: { padding: moderateScale(20), paddingBottom: moderateScale(32) },
   formWrap: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), paddingBottom: moderateScale(24), ...SHADOWS.light },
   submitBtn: { backgroundColor: '#F3F4F6', paddingVertical: moderateScale(16), borderRadius: moderateScale(50), alignItems: 'center', marginTop: moderateScale(8) },
   submitBtnActive: { backgroundColor: COLORS.primaryDeep },

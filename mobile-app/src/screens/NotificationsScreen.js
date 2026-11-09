@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.textLight, paddingVertical: moderateScale(14) },
   markAll: { fontSize: moderateScale(12), fontWeight: '800', color: COLORS.primaryDeep },
 
-  list: { padding: moderateScale(20), paddingBottom: moderateScale(110) },
+  list: { padding: moderateScale(20), paddingBottom: moderateScale(32) },
   notifCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF',
     padding: moderateScale(16), borderRadius: moderateScale(24), marginBottom: moderateScale(16), ...SHADOWS.light,

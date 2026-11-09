@@ -829,7 +829,7 @@ const LeaveScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         )}
         {attachedFiles.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), marginBottom: moderateScale(16), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible' }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), marginBottom: moderateScale(16), overflow: 'visible', flexGrow: 0 }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible' }}>
             {attachedFiles.map((f, i) => (
               <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
@@ -914,8 +914,8 @@ const LeaveScreen = ({ navigation, route }) => {
         {/* Tab Bar */}
         <View style={[s.tabBar, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
           {tabs.map(t => (
-            <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive]} onPress={() => { setHistFilter(t.key); fetchHistory(t.key); }}>
-              <Text style={[s.tabText, { color: theme.textMuted }, histFilter === t.key && s.tabTextActive]}>{t.label}</Text>
+            <TouchableOpacity key={t.key} style={[s.tab, histFilter === t.key && s.tabActive, histFilter === t.key && theme.isDark && { borderBottomColor: theme.primaryDeep }]} onPress={() => { setHistFilter(t.key); fetchHistory(t.key); }}>
+              <Text style={[s.tabText, { color: theme.textMuted }, histFilter === t.key && s.tabTextActive, histFilter === t.key && theme.isDark && { color: theme.primaryDeep }]}>{t.label}</Text>
             </TouchableOpacity>
           ))}
         </View>

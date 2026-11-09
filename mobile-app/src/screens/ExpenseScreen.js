@@ -570,7 +570,7 @@ const ExpenseScreen = ({ navigation, route }) => {
               )}
 
               {attachedFiles.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible' }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible', flexGrow: 0 }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
                   {attachedFiles.map((f, i) => (
                     <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
                   ))}

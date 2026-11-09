@@ -281,13 +281,13 @@ const AttendanceScreen = ({ navigation, route }) => {
       {/* ── Month Selector ── */}
       <View style={[s.monthBar, { backgroundColor: theme.bg }]}>
         <TouchableOpacity
-          style={s.monthDropdown}
+          style={[s.monthDropdown, theme.isDark && { backgroundColor: theme.cardSoft }]}
           activeOpacity={0.7}
           onPress={() => setShowMonthPicker(true)}
         >
-          <CalendarIcon color={COLORS.primaryDeep} size={20} style={{ marginRight: 10 }} />
-          <Text style={s.monthText}>{getMonthDisplayText()}</Text>
-          <ChevronDown color={COLORS.primaryDeep} size={18} style={{ marginLeft: 8 }} />
+          <CalendarIcon color={theme.isDark ? theme.primaryDeep : COLORS.primaryDeep} size={20} style={{ marginRight: 10 }} />
+          <Text style={[s.monthText, theme.isDark && { color: theme.primaryDeep }]}>{getMonthDisplayText()}</Text>
+          <ChevronDown color={theme.isDark ? theme.primaryDeep : COLORS.primaryDeep} size={18} style={{ marginLeft: 8 }} />
         </TouchableOpacity>
       </View>
 
@@ -366,7 +366,7 @@ const s = StyleSheet.create({
   monthText: { fontSize: moderateScale(16), fontWeight: '700', color: COLORS.primaryDeep },
 
   listContainer: { flex: 1, backgroundColor: '#F9FAFB' },
-  listContents: { padding: moderateScale(16), paddingBottom: moderateScale(110) },
+  listContents: { padding: moderateScale(16), paddingBottom: moderateScale(32) },
 
   card: {
     flexDirection: 'row', backgroundColor: '#FFF', borderRadius: moderateScale(20),
