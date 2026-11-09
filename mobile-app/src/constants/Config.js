@@ -60,6 +60,8 @@ export const API_ENDPOINTS = {
   CHECK_EMAIL_EXISTS: `${NEWAPP_URL}/checkEmailExists`,
   CHECK_OFFER_ID: `${NEWAPP_URL}/checkOfferId`,
   SIGNUP_DOCUMENT: `${NEWAPP_URL}/signupDocument`,
+  // DigitalOcean company sign-up photo → the website's own storage (rizo-revamp, checked with the PHP's upload token)
+  SIGNUP_PHOTO: `${REVAMP_API_URL}/signup/photo`,
   REGISTER: `${NEWAPP_URL}/register`,
   EMPLOYEE_PUNCH_DETAILS: `${NEWAPP_URL}/getEmployeePunchDetails`,
   SHIFT_SCHEDULE: `${NEWAPP_URL}/shift_schedule`,

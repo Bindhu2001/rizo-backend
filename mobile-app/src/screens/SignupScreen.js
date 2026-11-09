@@ -16,7 +16,7 @@ import KeyboardSafeView from '../components/KeyboardSafeView';
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import SignupExtraDetails, { EMPTY_SIGNUP_DETAILS, documentPayload, signupRows } from '../components/SignupExtraDetails';
 import { useTheme } from '../components/ThemeContext';
-import { API_ENDPOINTS } from '../constants/Config';
+import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES } from '../constants/Config';
 
 const MAX_DOB = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })();
 const PURPLE = '#4A148C';
@@ -453,6 +453,23 @@ const SignupScreen = ({ navigation }) => {
 
       const res = await axios.post(API_ENDPOINTS.REGISTER, payload, { headers: { 'Content-Type': 'application/json' } });
       if (res.data?.success === 1 || res.data?.success === true) {
+        // DigitalOcean company (GRTL / MYPY): the photo also goes to the website's own storage (rizo-revamp
+        // api/mobile/signup/photo, checked with the PHP's upload token), which then points the Employee Joining
+        // record at that copy, so it shows in Employee Joining / Onboarding. The copy the PHP saved on the old
+        // server stays as the fallback: if this upload fails, that one still shows (through the v1 path).
+        if (photoBase64 && REVAMP_PAYSLIP_COMPANIES.includes(companyCode.trim().toUpperCase()) && res.data.upload_token) {
+          setSubmitNote('Uploading photo...');
+          try {
+            await axios.post(API_ENDPOINTS.SIGNUP_PHOTO, {
+              company_code: companyCode,
+              emp_join_id: res.data.emp_join_id,
+              upload_token: res.data.upload_token,
+              image: `data:image/jpeg;base64,${photoBase64}`,
+            }, { headers: { 'Content-Type': 'application/json' }, timeout: 60000 });
+          } catch (e) {
+            console.log('Signup photo upload failed; the old-server copy stays', e.message);
+          }
+        }
         // The sign-up is saved. Documents go one at a time, and one failing doesn't undo it.
         let failed = 0;
         for (const [i, doc] of extraDetails.documents.entries()) {
