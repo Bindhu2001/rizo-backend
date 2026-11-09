@@ -230,6 +230,9 @@ const ProfileScreen = ({ navigation, route }) => {
     const pic = customPic || user.profile_pic;
     if (!pic) return PLACEHOLDER_AVATAR;
     if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return { uri: pic };
+    // A website-only file ('/uploads/...', a photo HR uploaded on the website when it stores files on its own
+    // disk) is served only behind the website login, so the app can't load it: the placeholder, not a blank circle
+    if (pic.startsWith('/')) return PLACEHOLDER_AVATAR;
     return { uri: `${IMAGE_ROOT}/${pic}` };
   };
 

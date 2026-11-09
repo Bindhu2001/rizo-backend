@@ -802,8 +802,9 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
               <Image
+                // A website-only '/uploads/...' file needs the website login, so the app shows the placeholder for it
                 source={
-                  user.profile_pic
+                  user.profile_pic && !user.profile_pic.startsWith('/')
                     ? { uri: user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}` }
                     : PLACEHOLDER_AVATAR
                 }
