@@ -295,6 +295,8 @@ const ProfileScreen = ({ navigation, route }) => {
         <Field label="Gender" value={dash(d.gender)} />
         <Field label="Marital Status" value={dash(d.maritual_status)} />
         <Field label="Blood Group" value={dash(d.blood)} />
+        <Field label="Guardian Name" value={dash(d.guradian || d.guardian)} />
+        <Field label="Guardian Relation" value={dash(d.relation_guardian)} />
         <Field label="Employee ID" value={dash(d.employee_id || user.user_id)} />
         <Field label="Designation" value={dash(d.designation || user.designation)} />
         <Field label="Department" value={dash(d.department || user.department)} />
@@ -415,8 +417,6 @@ const ProfileScreen = ({ navigation, route }) => {
     const d = bank || {};
     return renderSectionView('Bank & Statutory', (
       <>
-        <Field label="Guardian Name" value={dash(d.guradian || d.guardian)} />
-        <Field label="Relation" value={dash(d.relation_guardian)} />
         <Field label="Bank Name" value={dash(d.bank_name)} />
         <Field label="Branch" value={dash(d.bank_branch)} />
         <Field label="IFSC Code" value={dash(d.ifsc_code)} />
