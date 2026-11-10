@@ -374,6 +374,8 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
       <View style={[sm.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(24), insets.bottom + moderateScale(8)) }]}>
         <View style={[sm.handle, { backgroundColor: theme.border }]} />
         {title && <Text style={[sm.title, { color: theme.text }]}>{title}</Text>}
+        {/* Scrolls when the list is longer than the sheet (e.g. many Comp Off available dates) */}
+        <ScrollView style={{ flexGrow: 0 }} showsVerticalScrollIndicator={options.length > 5}>
         {options.map((opt, idx) => {
           const isObj = opt && typeof opt === 'object';
           const itemKey = isObj ? String(opt.id ?? idx) : String(opt);
@@ -386,11 +388,29 @@ const SelectionModal = ({ visible, options, selectedValue, onClose, onSelect, ti
             </TouchableOpacity>
           );
         })}
+        </ScrollView>
       </View>
     </TouchableOpacity>
   </Modal>
   );
 };
+
+// Leave days for a From/To date + session pick — the same count the server (leave_apply) makes
+const leaveDaysFor = (from, to, fromHalf, toHalf) => {
+  if (!from) return 0;
+  const fh = fromHalf === 'Second Half' ? 2 : 1;
+  const th = toHalf === 'First Half' ? 1 : 2;
+  let minus = 0;
+  if ((fh === 2 && th === 2) || (fh === 1 && th === 1)) minus = 0.5;
+  if (fh === 2 && th === 1) minus = 1;
+  const end = to || from;
+  if (end === from) return 1 - minus;
+  const diff = Math.round((new Date(`${end}T00:00:00`) - new Date(`${from}T00:00:00`)) / 86400000);
+  return diff - minus + 1;
+};
+
+// "2026-10-05 · 1 day" / "· Half day" for a Comp Off available date
+const compOffLabel = (d) => `${d.date} · ${Number(d.days) === 0.5 ? 'Half day' : `${d.days} day${Number(d.days) === 1 ? '' : 's'}`}`;
 
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
@@ -434,6 +454,11 @@ const LeaveScreen = ({ navigation, route }) => {
   const [handoverTo, setHandoverTo] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  // Comp Off: the earned days (Available Dates) the leave can be taken against, loaded for the chosen From Date.
+  // manual = the employee's shift is "Comp Off - Manual": a date must be picked and there must be one.
+  const [compOff, setCompOff] = useState({ loading: false, loaded: false, manual: false, dates: [] });
+  const [compOffId, setCompOffId] = useState(null);
+  const [showCompOffPicker, setShowCompOffPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
   const [cancellingId, setCancellingId] = useState(null);
@@ -453,6 +478,8 @@ const LeaveScreen = ({ navigation, route }) => {
     setContactNo('');
     setHandoverTo('');
     setAttachedFiles([]);
+    setCompOff({ loading: false, loaded: false, manual: false, dates: [] });
+    setCompOffId(null);
   };
 
   useEffect(() => {
@@ -583,6 +610,32 @@ const LeaveScreen = ({ navigation, route }) => {
     return () => sub.remove();
   }, [view]);
 
+  // Comp Off: the Available Dates for the chosen From Date (the earned days in the Comp Off policy's cycle that
+  // contains it), as on the website's Apply Leave form. Reloaded whenever the From Date changes.
+  const isCompOffType = String(selectedLeave?.occurance || '').trim().toUpperCase() === 'COFF';
+  useEffect(() => {
+    if (view !== 'APPLY' || !isCompOffType || !fromDate) {
+      setCompOff({ loading: false, loaded: false, manual: false, dates: [] });
+      return undefined;
+    }
+    let stale = false;
+    setCompOff((c) => ({ ...c, loading: true }));
+    axios.post(API_ENDPOINTS.LEAVE_ITEMS, {
+      user_id: user.user_id, compoff_dates: 1, salary_head_item_fkey: selectedLeave.leave_id, from_date: fromDate,
+    })
+      .then((res) => {
+        if (stale) return;
+        const d = res.data?.success ? res.data.data || {} : {};
+        const dates = Array.isArray(d.dates) ? d.dates : [];
+        setCompOff({ loading: false, loaded: true, manual: Number(d.manual) === 1, dates });
+        // Keep the picked date only while it is still in the list
+        setCompOffId((prev) => (dates.some((x) => x.id === prev) ? prev : null));
+      })
+      .catch(() => { if (!stale) setCompOff({ loading: false, loaded: false, manual: false, dates: [] }); });
+    return () => { stale = true; };
+  }, [view, isCompOffType, fromDate, selectedLeave?.leave_id]);
+  const selectedCompOff = compOff.dates.find((d) => d.id === compOffId) || null;
+
   // ── File Picker ──────────────────────────────────────────────────────────────
   const pickFile = async () => {
     try {
@@ -617,6 +670,24 @@ const LeaveScreen = ({ navigation, route }) => {
     if (approvedByList.length === 0) { showAlert('warning', 'No Approver Assigned', 'No approved person is assigned. Please contact HR.'); return; }
     if (!selectedAuthBy) { showAlert('warning', 'Authorised By Required', 'Please select an authorised person to continue.'); return; }
     if (!selectedAppBy) { showAlert('warning', 'Approved By Required', 'Please select an approved person to continue.'); return; }
+    // Comp Off (same checks as the website's form): an Available Date must be picked when there are any, a Manual
+    // employee needs one, and the leave can't be longer than the picked date's earned days
+    if (isCompOffType) {
+      if (compOff.loading) { showAlert('warning', 'Please Wait', 'Checking the Comp Off available dates.'); return; }
+      if (compOff.manual && compOff.dates.length === 0) {
+        showAlert('warning', 'No Comp Off Available', 'Leave cannot be applied, no Comp Off available date found for this date.');
+        return;
+      }
+      if (compOff.dates.length > 0 && !selectedCompOff) {
+        showAlert('warning', 'Available Date Required', 'Please select an available comp-off date.');
+        return;
+      }
+      const days = leaveDaysFor(fromDate, toDate, fromHalf, toHalf);
+      if (selectedCompOff && days > Number(selectedCompOff.days)) {
+        showAlert('warning', 'Not Enough Balance', `You do not have enough leave balance. Available: ${selectedCompOff.days} day(s), requested: ${days}.`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       const formData = new FormData();
@@ -631,6 +702,7 @@ const LeaveScreen = ({ navigation, route }) => {
       formData.append('duties_handed_over', handoverTo || 'N/A');
       formData.append('authorized_by', selectedAuthBy?.id || '0');
       formData.append('approved_by', selectedAppBy?.id || '0');
+      if (isCompOffType && selectedCompOff) formData.append('compoff_id', String(selectedCompOff.id));
 
       // Send attachments as real multipart binary uploads under the field
       // name `document` (matches backend). React Native's fetch/axios accepts
@@ -654,6 +726,7 @@ const LeaveScreen = ({ navigation, route }) => {
         setView('SUCCESS');
         setAttachedFiles([]);
         setReason(''); setContactNo(''); setFromDate(''); setToDate('');
+        setCompOffId(null);
       } else {
         showAlert('error', 'Submission Failed', res.data?.message || 'Submission failed.');
       }
@@ -746,6 +819,30 @@ const LeaveScreen = ({ navigation, route }) => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Comp Off: the earned day this leave is taken against (needs the From Date first) */}
+        {isCompOffType && !!fromDate && (compOff.loading || compOff.dates.length > 0 || compOff.manual) && (
+          <View style={s.inputBox}>
+            <Text style={[s.label, { color: theme.textMuted }]}>Available Date{compOff.dates.length > 0 || compOff.manual ? ' *' : ''}</Text>
+            {compOff.loading ? (
+              <View style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]}>
+                <ActivityIndicator size="small" color={COLORS.primaryDeep} />
+                <Text style={[s.inputVal, { color: theme.textMuted, marginLeft: 8, flex: 1 }]}>Checking available dates…</Text>
+              </View>
+            ) : compOff.dates.length > 0 ? (
+              <TouchableOpacity style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder }]} onPress={() => setShowCompOffPicker(true)}>
+                <Text style={[s.inputVal, { color: selectedCompOff ? theme.text : theme.textMuted }]}>
+                  {selectedCompOff ? compOffLabel(selectedCompOff) : 'Select available date'}
+                </Text>
+                <ChevronDown color={theme.textMuted} size={16} />
+              </TouchableOpacity>
+            ) : (
+              <View style={[s.inputRow, { backgroundColor: '#FEF3C7', borderColor: '#D97706' }]}>
+                <Text style={[s.inputVal, { color: '#92400E', flex: 1 }]}>No Comp Off available date for this date</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Authorised By */}
         <View style={s.inputBox}>
@@ -877,6 +974,18 @@ const LeaveScreen = ({ navigation, route }) => {
         onSelect={(val) => {
           if (halfTarget === 'FROM') setFromHalf(val);
           else setToHalf(val);
+        }}
+      />
+
+      <SelectionModal
+        visible={showCompOffPicker}
+        title="Select Available Date"
+        options={compOff.dates.map((d) => ({ id: d.id, name: compOffLabel(d) }))}
+        selectedValue={compOffId}
+        onClose={() => setShowCompOffPicker(false)}
+        onSelect={(item) => {
+          setCompOffId(item ? item.id : null);
+          setShowCompOffPicker(false);
         }}
       />
 
