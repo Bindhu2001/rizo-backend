@@ -23,6 +23,10 @@ const SwipeToPunch = ({
   punchTime = null,
   // Check In or Check Out not known yet (the server is being asked): grey, no swiping, "Checking status..."
   statusPending = false,
+  // Told when a drag starts / ends, so the screen can stop its own scrolling meanwhile (on iPhone the page
+  // otherwise moved up and down while the button was being swiped)
+  onDragStart,
+  onDragEnd,
 }) => {
   const theme = useTheme();
   const [swipeWidth, setSwipeWidth] = useState(0);
@@ -36,6 +40,8 @@ const SwipeToPunch = ({
   const loadingRef = useRef(loading);
   const swipeWidthRef = useRef(swipeWidth);
   const onSwipeCompleteRef = useRef(onSwipeComplete);
+  const onDragStartRef = useRef(onDragStart);
+  const onDragEndRef = useRef(onDragEnd);
 
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
@@ -43,6 +49,8 @@ const SwipeToPunch = ({
     loadingRef.current = loading || statusPending;
     swipeWidthRef.current = swipeWidth;
     onSwipeCompleteRef.current = onSwipeComplete;
+    onDragStartRef.current = onDragStart;
+    onDragEndRef.current = onDragEnd;
   });
 
   useEffect(() => {
@@ -61,8 +69,15 @@ const SwipeToPunch = ({
         if (loadingRef.current) return false;
         return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy);
       },
+      // A sideways drag is claimed in the capture phase too, before the page's ScrollView can start scrolling
+      onMoveShouldSetPanResponderCapture: (_, gs) => {
+        if (loadingRef.current) return false;
+        return gs.dx > 5 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.2;
+      },
       // Don't let the parent ScrollView take the gesture mid-swipe (iOS)
       onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: () => { onDragStartRef.current?.(); },
 
       onPanResponderMove: (_, gs) => {
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
@@ -71,6 +86,7 @@ const SwipeToPunch = ({
       },
 
       onPanResponderRelease: (_, gs) => {
+        onDragEndRef.current?.();
         if (swipeWidthRef.current === 0 || loadingRef.current) return;
         const mSlide = maxSlideRef.current;
         // Half-way, or a quick flick past 30%, completes the swipe
@@ -95,6 +111,7 @@ const SwipeToPunch = ({
       },
 
       onPanResponderTerminate: () => {
+        onDragEndRef.current?.();
         Animated.spring(pan, {
           toValue: 0,
           useNativeDriver: true,

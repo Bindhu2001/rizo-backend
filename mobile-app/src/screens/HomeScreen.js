@@ -82,6 +82,7 @@ const HomeScreen = ({ navigation, route }) => {
   const fetchStatusRequestId = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
+  const [swipeDragging, setSwipeDragging] = useState(false); // Check In / Out button being dragged
 
   // Block Android back button only when HomeScreen is the focused screen. Placed after eventsOpen is declared:
   // above it, the dependency list read eventsOpen before it existed (a crash wherever const isn't rewritten to var).
@@ -778,6 +779,8 @@ const HomeScreen = ({ navigation, route }) => {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        // No page scrolling while the Check In / Out button is being swiped
+        scrollEnabled={!swipeDragging}
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primaryDeep]} tintColor={COLORS.primaryDeep} />}
       >
@@ -851,6 +854,8 @@ const HomeScreen = ({ navigation, route }) => {
                 locationName={isPunchedIn ? punchInAddress : ''}
                 punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
                 statusPending={statusPending}
+                onDragStart={() => setSwipeDragging(true)}
+                onDragEnd={() => setSwipeDragging(false)}
               />
             </View>
 
