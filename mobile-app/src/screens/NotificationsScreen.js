@@ -64,11 +64,13 @@ const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
               return (
                 <TouchableOpacity
                   key={i}
-                  style={[dp.cell, isSelected && dp.cellSelected, isToday && [dp.cellToday, { borderColor: todayColor }]]}
+                  style={dp.cell}
                   onPress={() => d && handleSelect(d)}
                   disabled={!d}
                 >
-                  <Text style={[dp.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
+                  <View style={[dp.dayCircle, isSelected && dp.dayCircleSelected, isToday && { borderColor: todayColor }]}>
+                    <Text maxFontSizeMultiplier={1.15} style={[dp.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -88,10 +90,11 @@ const dp = StyleSheet.create({
   daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: moderateScale(8), marginBottom: moderateScale(8) },
   dhText: { flex: 1, textAlign: 'center', fontSize: moderateScale(12), fontWeight: '700', color: '#6B7280' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
-  cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: moderateScale(20) },
-  cellToday: { borderWidth: 1.5, borderRadius: moderateScale(20) },
-  cellText: { fontSize: moderateScale(13), color: '#111827', fontWeight: '500' },
+  // Fixed height (Android doesn't keep aspectRatio cells square in a wrapping row) and a fixed circle per day
+  cell: { width: '14.28%', height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
+  dayCircle: { width: moderateScale(36), height: moderateScale(36), borderRadius: moderateScale(18), borderWidth: 1.5, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  dayCircleSelected: { backgroundColor: COLORS.primaryDeep, borderColor: COLORS.primaryDeep },
+  cellText: { fontSize: moderateScale(13), color: '#111827', fontWeight: '500', textAlign: 'center', includeFontPadding: false, textAlignVertical: 'center' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' },
 });
 

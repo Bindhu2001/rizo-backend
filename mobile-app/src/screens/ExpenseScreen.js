@@ -135,8 +135,10 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm, minDate }) =
               const todayColor = theme.isDark ? '#A78BFA' : COLORS.primaryDeep;
               const isDisabled = !d || (minDate && dateStr < minDate);
               return (
-                <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected, isToday && [cal.cellToday, { borderColor: todayColor }]]} onPress={() => !isDisabled && handleSelect(d)} disabled={isDisabled}>
-                  <Text style={[cal.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && cal.cellTextSelected, isDisabled && d && { opacity: 0.25 }]}>{d || ''}</Text>
+                <TouchableOpacity key={i} style={cal.cell} onPress={() => !isDisabled && handleSelect(d)} disabled={isDisabled}>
+                  <View style={[cal.dayCircle, isSelected && cal.dayCircleSelected, isToday && { borderColor: todayColor }]}>
+                    <Text maxFontSizeMultiplier={1.15} style={[cal.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && cal.cellTextSelected, isDisabled && d && { opacity: 0.25 }]}>{d || ''}</Text>
+                  </View>
                 </TouchableOpacity>
               );
             })}
@@ -155,10 +157,11 @@ const cal = StyleSheet.create({
   daysHeader: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', paddingBottom: moderateScale(10), marginBottom: moderateScale(10) },
   dhText: { flex: 1, textAlign: 'center', fontSize: moderateScale(13), fontWeight: '700', color: '#6B7280' },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
-  cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: moderateScale(20) },
-  cellToday: { borderWidth: 1.5, borderRadius: moderateScale(20) },
-  cellText: { fontSize: moderateScale(14), color: '#111827', fontWeight: '500' },
+  // Fixed height (Android doesn't keep aspectRatio cells square in a wrapping row) and a fixed circle per day
+  cell: { width: '14.28%', height: moderateScale(44), justifyContent: 'center', alignItems: 'center' },
+  dayCircle: { width: moderateScale(36), height: moderateScale(36), borderRadius: moderateScale(18), borderWidth: 1.5, borderColor: 'transparent', justifyContent: 'center', alignItems: 'center' },
+  dayCircleSelected: { backgroundColor: COLORS.primaryDeep, borderColor: COLORS.primaryDeep },
+  cellText: { fontSize: moderateScale(14), color: '#111827', fontWeight: '500', textAlign: 'center', includeFontPadding: false, textAlignVertical: 'center' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' }
 });
 

@@ -266,7 +266,7 @@ const s = StyleSheet.create({
   },
   btnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '900', letterSpacing: 2 },
   linksRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: moderateScale(24), paddingHorizontal: moderateScale(4) },
-  link: { color: COLORS.primaryDeep || '#4A148C', fontSize: moderateScale(14), fontWeight: '800' },
+  link: { color: COLORS.primaryDeep || '#4A148C', fontSize: moderateScale(14), fontWeight: '800', textDecorationLine: 'none' },
 });
 
 export default ForgotPasswordScreen;
