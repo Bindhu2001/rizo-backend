@@ -4,9 +4,11 @@ import { Text } from './AppText';
 import { MapPin, Shield } from 'lucide-react-native';
 import { useTheme } from './ThemeContext';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
+import { usePopupSpace } from './popupSpace';
 
 export default function LocationDisclosureModal({ visible, onAccept }) {
   const theme = useTheme();
+  const pop = usePopupSpace(0.85); // stays between the status bar and the navigation bar
 
   return (
     <Modal
@@ -16,8 +18,8 @@ export default function LocationDisclosureModal({ visible, onAccept }) {
       onRequestClose={onAccept}
       statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <View style={[styles.card, { backgroundColor: theme.card }, SHADOWS.large]}>
+      <View style={[styles.overlay, pop.overlayPad]}>
+        <View style={[styles.card, { backgroundColor: theme.card, maxHeight: pop.maxHeight }, SHADOWS.large]}>
           <View style={[styles.iconWrap, { backgroundColor: '#EEF2FF' }]}>
             <MapPin color={theme.primaryDeep} size={28} strokeWidth={2} />
           </View>

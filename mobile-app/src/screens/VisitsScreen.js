@@ -922,7 +922,7 @@ const VisitsScreen = ({ navigation, route }) => {
           <Modal transparent statusBarTranslucent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
             <TouchableOpacity style={[s.dateModalOverlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={() => setShowDatePicker(false)}>
               {/* Claims taps so only the dimmed area outside the sheet closes it */}
-              <View style={[s.dateModalSheet, { backgroundColor: theme.card }]} onStartShouldSetResponder={() => true}>
+              <View style={[s.dateModalSheet, { backgroundColor: theme.card, paddingBottom: Math.max(moderateScale(36), insets.bottom + moderateScale(16)) }]} onStartShouldSetResponder={() => true}>
                 <View style={[s.dateModalHandle, { backgroundColor: theme.border }]} />
                 <DateTimePicker
                   value={new Date(selectedDate + 'T00:00:00')}

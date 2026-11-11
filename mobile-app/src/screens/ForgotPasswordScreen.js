@@ -190,7 +190,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
                 {!!codeError && <Text style={s.fieldError}>{codeError}</Text>}
                 {!!expiresAt && (
                   <Text style={[s.expiry, { color: expired || secondsLeft < 60 ? '#DC2626' : theme.textMuted }]}>
-                    {expired ? 'Code expired — tap Resend code' : `Code expires in ${timeLeft}`}
+                    {expired ? 'Code expired. Tap Resend code.' : `Code expires in ${timeLeft}`}
                   </Text>
                 )}
                 <View style={box}>

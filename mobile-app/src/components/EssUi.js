@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronDown, Check, X, Paperclip, Calendar as CalendarIcon
 import { moderateScale, SHADOWS, COLORS } from './Theme';
 import { useTheme } from './ThemeContext';
 import KeyboardSafeView from './KeyboardSafeView';
+import { usePopupSpace } from './popupSpace';
 import { getLoggedUser } from '../services/LocalDB';
 
 // Building blocks of the screens that mirror the web employee login (Leave / Expense / Advance & Loan approvals,
@@ -278,6 +279,7 @@ export const Input = (props) => {
 // <input type="month">: this year's and the next / previous year's months
 export const MonthSelect = ({ value, onChange }) => {
   const theme = useTheme();
+  const pop = usePopupSpace(); // the list stays between the status bar and the navigation bar
   const [open, setOpen] = useState(false);
   const now = new Date();
   const months = [];
@@ -292,8 +294,8 @@ export const MonthSelect = ({ value, onChange }) => {
         <ChevronDown color={theme.textMuted} size={18} />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={[s.overlay, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
-          <View style={[s.monthList, { backgroundColor: theme.card }]}>
+        <Pressable style={[s.overlay, pop.overlayPad, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
+          <View style={[s.monthList, { backgroundColor: theme.card, maxHeight: pop.maxHeight }]}>
             <ScrollView>
               {months.map((m) => (
                 <TouchableOpacity key={m} style={s.monthItem} onPress={() => { onChange(m); setOpen(false); }}>
@@ -344,6 +346,7 @@ export const DateSelect = ({ value, onChange, minimumDate, maximumDate, placehol
 // The web's [--Select--] dropdown: options [{ value, label }]
 export const Select = ({ value, options, onChange, placeholder = '[--Select--]' }) => {
   const theme = useTheme();
+  const pop = usePopupSpace();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
   return (
@@ -353,8 +356,8 @@ export const Select = ({ value, options, onChange, placeholder = '[--Select--]' 
         <ChevronDown color={theme.textMuted} size={18} />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={[s.overlay, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
-          <View style={[s.monthList, { backgroundColor: theme.card }]}>
+        <Pressable style={[s.overlay, pop.overlayPad, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
+          <View style={[s.monthList, { backgroundColor: theme.card, maxHeight: pop.maxHeight }]}>
             <ScrollView>
               {options.map((o) => (
                 <TouchableOpacity key={o.value} style={s.monthItem} onPress={() => { onChange(o.value); setOpen(false); }}>
@@ -412,6 +415,7 @@ export const rangeInMonth = (from, to, month) => {
 
 const FilterPill = ({ icon: Icon, value, options, onChange }) => {
   const theme = useTheme();
+  const pop = usePopupSpace();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value) || options[0];
   const active = value !== ALL;
@@ -426,8 +430,8 @@ const FilterPill = ({ icon: Icon, value, options, onChange }) => {
         <ChevronDown color={theme.isDark ? theme.primaryDeep : BRAND} size={15} />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={[s.overlay, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
-          <View style={[s.monthList, { backgroundColor: theme.card }]}>
+        <Pressable style={[s.overlay, pop.overlayPad, { backgroundColor: theme.modalOverlay, justifyContent: 'center' }]} onPress={() => setOpen(false)}>
+          <View style={[s.monthList, { backgroundColor: theme.card, maxHeight: pop.maxHeight }]}>
             <ScrollView>
               {options.map((o) => (
                 <TouchableOpacity key={o.value} style={s.monthItem} onPress={() => { onChange(o.value); setOpen(false); }}>
@@ -529,7 +533,7 @@ const s = StyleSheet.create({
   input: { borderWidth: 1, borderRadius: moderateScale(12), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(12), fontSize: moderateScale(14), marginBottom: moderateScale(12) },
   select: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   error: { color: '#DC2626', fontSize: moderateScale(12), marginTop: 8 },
-  monthList: { marginHorizontal: moderateScale(40), maxHeight: '70%', borderRadius: 16, paddingVertical: 6 },
+  monthList: { marginHorizontal: moderateScale(40), borderRadius: 16, paddingVertical: 6 }, // maxHeight: usePopupSpace()
   monthItem: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: moderateScale(12), padding: moderateScale(12), marginBottom: 6 },
   filterScroll: { flexGrow: 0, flexShrink: 0 },
