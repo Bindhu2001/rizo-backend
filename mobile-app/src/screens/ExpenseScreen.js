@@ -128,10 +128,15 @@ const CalendarModal = ({ visible, selectedDate, onClose, onConfirm, minDate }) =
             {days.map((d, i) => {
               const dateStr = d ? `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null;
               const isSelected = dateStr === selectedDate;
+              // Today: a ring (the picked date keeps the filled circle)
+              const now = new Date();
+              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              const isToday = !!d && !isSelected && dateStr === today;
+              const todayColor = theme.isDark ? '#A78BFA' : COLORS.primaryDeep;
               const isDisabled = !d || (minDate && dateStr < minDate);
               return (
-                <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected]} onPress={() => !isDisabled && handleSelect(d)} disabled={isDisabled}>
-                  <Text style={[cal.cellText, { color: theme.text }, isSelected && cal.cellTextSelected, isDisabled && d && { opacity: 0.25 }]}>{d || ''}</Text>
+                <TouchableOpacity key={i} style={[cal.cell, isSelected && cal.cellSelected, isToday && [cal.cellToday, { borderColor: todayColor }]]} onPress={() => !isDisabled && handleSelect(d)} disabled={isDisabled}>
+                  <Text style={[cal.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && cal.cellTextSelected, isDisabled && d && { opacity: 0.25 }]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -152,6 +157,7 @@ const cal = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
   cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: moderateScale(20) },
+  cellToday: { borderWidth: 1.5, borderRadius: moderateScale(20) },
   cellText: { fontSize: moderateScale(14), color: '#111827', fontWeight: '500' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' }
 });

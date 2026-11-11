@@ -56,14 +56,19 @@ const DatePickerModal = ({ visible, selectedDate, onClose, onConfirm }) => {
             {days.map((d, i) => {
               const dateStr = d ? `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}` : null;
               const isSelected = dateStr === selectedDate;
+              // Today: a ring (the picked date keeps the filled circle)
+              const now = new Date();
+              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              const isToday = !!d && !isSelected && dateStr === today;
+              const todayColor = theme.isDark ? '#A78BFA' : COLORS.primaryDeep;
               return (
                 <TouchableOpacity
                   key={i}
-                  style={[dp.cell, isSelected && dp.cellSelected]}
+                  style={[dp.cell, isSelected && dp.cellSelected, isToday && [dp.cellToday, { borderColor: todayColor }]]}
                   onPress={() => d && handleSelect(d)}
                   disabled={!d}
                 >
-                  <Text style={[dp.cellText, { color: theme.text }, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
+                  <Text style={[dp.cellText, { color: theme.text }, isToday && { color: todayColor, fontWeight: '800' }, isSelected && dp.cellTextSelected]}>{d || ''}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -85,6 +90,7 @@ const dp = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   cell: { width: '14.28%', aspectRatio: 1, justifyContent: 'center', alignItems: 'center' },
   cellSelected: { backgroundColor: COLORS.primaryDeep, borderRadius: moderateScale(20) },
+  cellToday: { borderWidth: 1.5, borderRadius: moderateScale(20) },
   cellText: { fontSize: moderateScale(13), color: '#111827', fontWeight: '500' },
   cellTextSelected: { color: '#FFF', fontWeight: '800' },
 });
