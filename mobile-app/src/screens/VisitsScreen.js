@@ -496,7 +496,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
           style={{ flex: 1 }}
         >
-          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" style={{ flex: 1 }}>
             <View style={sv.locChipBox}>
               <View style={sv.locWrap}>
                 <MapPin color="#7C3AED" size={14} />
@@ -596,7 +596,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <View style={[sm.dragHandle, { backgroundColor: theme.border }]} />
           <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
-          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
             <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
             <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />

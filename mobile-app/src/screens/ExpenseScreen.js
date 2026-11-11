@@ -484,7 +484,7 @@ const ExpenseScreen = ({ navigation, route }) => {
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
           <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
 
             {/* Expense Type */}
             <View style={s.inputBox}>

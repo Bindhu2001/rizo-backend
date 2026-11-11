@@ -358,7 +358,7 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
               <Text style={[styles.sheetTitle, { color: theme.text }]}>{section?.add}</Text>
               <TouchableOpacity onPress={() => setEditing(null)} hitSlop={HIT} accessibilityLabel="Close"><X color={theme.textMuted} size={22} /></TouchableOpacity>
             </View>
-            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+            <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false}>
               {section?.fields.map(renderField)}
               {!!formError && <Text style={styles.error}>{formError}</Text>}
               <TouchableOpacity style={[styles.saveBtn, reading && { opacity: 0.6 }]} onPress={save} disabled={reading} accessibilityRole="button">

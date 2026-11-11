@@ -160,7 +160,7 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
             keyExtractor={c => String(c.id)}
             style={{ maxHeight: Math.min(320, hp(40)) }}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode="none"
             ListEmptyComponent={<Text style={[st.countryItemText, { color: theme.textMuted, textAlign: 'center', paddingVertical: 20 }]}>{query ? 'No results found' : 'Loading countries…'}</Text>}
             renderItem={({ item: c }) => (
               <TouchableOpacity
@@ -671,7 +671,7 @@ const SignupScreen = ({ navigation }) => {
             <Image source={require('../../assets/signup/group.png')} style={st.step1Img} resizeMode="contain" />
           </View>
           <View style={[st.bottomCard, { backgroundColor: theme.card, paddingBottom: cardBottomPad }]}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: moderateScale(28) }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: moderateScale(28) }} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
@@ -765,7 +765,7 @@ const SignupScreen = ({ navigation }) => {
       {/* ── WHITE CARD BOTTOM ── */}
       <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <View style={[st.bottomCard, { backgroundColor: theme.card, paddingBottom: cardBottomPad }]}>
-          <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
+          <ScrollView contentContainerStyle={st.cardScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} keyboardDismissMode="none">
 
             {/* ══ STEP 3 — PERSONAL DETAILS ══ */}
             {step === 3 && (

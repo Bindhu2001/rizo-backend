@@ -180,7 +180,7 @@ export const FormSheet = ({ visible, title, subtitle, onClose, children, footer 
               <X color={theme.textMuted} size={20} />
             </TouchableOpacity>
           </View>
-          <ScrollView style={s.sheetBody} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+          <ScrollView style={s.sheetBody} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
           {footer}

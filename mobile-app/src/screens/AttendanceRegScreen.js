@@ -907,7 +907,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
         >
-          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
             <View style={[s.formWrap, { backgroundColor: theme.card }]}>
               <FloatingInput
                 label="Reason *"
