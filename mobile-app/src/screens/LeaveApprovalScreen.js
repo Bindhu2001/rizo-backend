@@ -501,6 +501,8 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
       <Modal visible={actionModal.visible} transparent animationType="fade" onRequestClose={closeModal} statusBarTranslucent>
         <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} style={[s.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[s.modalContent, { backgroundColor: theme.card }]}>
+          {/* Scrolls when the box doesn't fit above the keyboard (small phone / large text): Confirm stays reachable */}
+          <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={[s.modalTitle, { color: theme.text }]}>
               {actionModal.actionType === 'REJECT'
                 ? 'Reject'
@@ -544,6 +546,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
                 }
               </TouchableOpacity>
             </View>
+          </ScrollView>
           </View>
         </KeyboardSafeView>
       </Modal>
@@ -671,7 +674,7 @@ const s = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center', alignItems: 'center', padding: moderateScale(20),
   },
-  modalContent: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: '100%' },
+  modalContent: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(24), width: '100%', maxHeight: '100%' },
   modalTitle: { fontSize: moderateScale(18), fontWeight: '900', color: '#111827', marginBottom: moderateScale(8) },
   modalSub: { fontSize: moderateScale(14), color: '#6B7280', marginBottom: moderateScale(20) },
   remarksInput: {

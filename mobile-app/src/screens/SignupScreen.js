@@ -158,7 +158,8 @@ const CountryPickerModal = ({ visible, countries, selected, onClose, onSelect })
           <FlatList
             data={filtered}
             keyExtractor={c => String(c.id)}
-            style={{ maxHeight: Math.min(320, hp(40)) }}
+            // Shrinks (and scrolls) when the keyboard leaves less room, so Cancel stays on screen
+            style={{ maxHeight: Math.min(320, hp(40)), flexShrink: 1 }}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="none"
             ListEmptyComponent={<Text style={[st.countryItemText, { color: theme.textMuted, textAlign: 'center', paddingVertical: 20 }]}>{query ? 'No results found' : 'Loading countries…'}</Text>}
