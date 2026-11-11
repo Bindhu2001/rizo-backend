@@ -26,6 +26,10 @@ const STRONG_PASSWORD_CHECKS = [
 const strongEnough = (p) => STRONG_PASSWORD_CHECKS.every((c) => c.test(p));
 const ok = (res) => res?.data?.success === 1 || res?.data?.success === true || res?.data?.success === '1';
 const NETWORK = 'Could not reach the server. Please check your internet connection and try again.';
+// The server answered with an error: its own message (or a plain one); no answer at all: the network message
+const serverMessage = (e) => (e?.response
+  ? (e.response.data?.message || e.response.data?.error || 'Something went wrong on the server. Please try again in a few minutes.')
+  : NETWORK);
 
 const ForgotPasswordScreen = ({ navigation, route }) => {
   const theme = useTheme();
@@ -68,7 +72,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
         showAlert('error', 'Could not send code', res?.data?.message || 'Please try again.');
       }
     } catch (e) {
-      showAlert('error', 'Could not send code', NETWORK);
+      showAlert('error', 'Could not send code', serverMessage(e));
     } finally {
       setBusy(false);
     }
@@ -98,7 +102,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
         showAlert('error', 'Could not change password', res?.data?.message || 'Please try again.');
       }
     } catch (e) {
-      showAlert('error', 'Could not change password', NETWORK);
+      showAlert('error', 'Could not change password', serverMessage(e));
     } finally {
       setBusy(false);
     }
