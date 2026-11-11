@@ -108,6 +108,23 @@ export const PayslipsApi = {
   },
 };
 
+// The employee's own document (Profile > Other Details > Documents) stored on the website (/uploads/...):
+// saved into the cache folder with the login token (the website shows those files only to a signed-in user).
+export const DocumentsApi = {
+  download: async (id, fileName) => {
+    const dest = `${FileSystem.cacheDirectory}${fileName}`;
+    await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+    const get = (token) => FileSystem.downloadAsync(`${REVAMP_API_URL}/document/${id}`, dest, { headers: { Authorization: `Bearer ${token}` } });
+    let res = await get(await getToken());
+    if (res.status === 401) res = await get(await signIn());
+    if (res.status !== 200) {
+      await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+      throw Object.assign(new Error('Could not open the document'), { response: { status: res.status } });
+    }
+    return res.uri;
+  },
+};
+
 export const AnnouncementsApi = {
   list: () => request('get', '/announcements'),
   markRead: (id) => request('post', `/announcements/${id}/read`),

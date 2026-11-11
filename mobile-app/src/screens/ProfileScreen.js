@@ -3,15 +3,16 @@ import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import {
   View, StyleSheet, TouchableOpacity, ScrollView,
   Image, ActivityIndicator, BackHandler, Switch, Linking,
-  Platform,
+  Platform, Modal,
 } from 'react-native';
+import * as Sharing from 'expo-sharing';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   User, LogOut, ChevronLeft, ChevronRight,
   MapPin, CreditCard, FileText, Moon, Sun, BellRing, Megaphone,
-  Lock, Eye, EyeOff, ShieldCheck, Trash2, Mail, Briefcase, CalendarCheck, Users, Landmark,
+  Lock, Eye, EyeOff, ShieldCheck, Trash2, Mail, Briefcase, CalendarCheck, Users, Landmark, X,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
@@ -20,7 +21,7 @@ import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
-import { AnnouncementsApi } from '../services/RevampApi';
+import { AnnouncementsApi, DocumentsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import { usePhotoSource, retryPhoto } from '../services/photoSource';
 import { useTheme } from '../components/ThemeContext';
@@ -52,13 +53,26 @@ const ListGroup = ({ title, rows, empty, renderItem }) => {
       {rows.length === 0 ? (
         <Text style={[s.listEmpty, { color: theme.textLight }]}>{empty}</Text>
       ) : rows.map((row, i) => {
-        const { heading, lines } = renderItem(row);
+        const { heading, lines, action } = renderItem(row);
         return (
-          <View key={i} style={[s.listItem, { backgroundColor: theme.bg }]}>
-            <Text style={[s.fieldValue, { color: theme.text }]}>{heading}</Text>
-            {lines.filter(Boolean).map((line, j) => (
-              <Text key={j} style={[s.listLine, { color: theme.textLight }]}>{line}</Text>
-            ))}
+          <View key={i} style={[s.listItem, { backgroundColor: theme.bg }, action && s.listItemRow]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.fieldValue, { color: theme.text }]}>{heading}</Text>
+              {lines.filter(Boolean).map((line, j) => (
+                <Text key={j} style={[s.listLine, { color: theme.textLight }]}>{line}</Text>
+              ))}
+            </View>
+            {/* e.g. a document's View */}
+            {action && (
+              <TouchableOpacity onPress={action.onPress} disabled={action.busy} style={[s.listAction, { borderColor: theme.border }]} accessibilityLabel={action.label}>
+                {action.busy ? <ActivityIndicator size="small" color={PURPLE} /> : (
+                  <>
+                    <Eye color={theme.isDark ? '#C4B5FD' : PURPLE} size={15} />
+                    <Text style={[s.listActionText, { color: theme.isDark ? '#C4B5FD' : PURPLE }]}>{action.label}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
           </View>
         );
       })}
@@ -132,6 +146,40 @@ const ProfileScreen = ({ navigation, route }) => {
   const [address, setAddress] = useState(null);
   const [documents, setDocuments] = useState(null);
   const [bank, setBank] = useState(null);
+
+  // Other Details > Documents: the one being opened, and an image document shown in the app
+  const [docBusy, setDocBusy] = useState(null);
+  const [docPreview, setDocPreview] = useState(null); // { uri, title }
+  const DOC_TYPES = { pdf: 'application/pdf', doc: 'application/msword', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xls: 'application/vnd.ms-excel', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' };
+  // A website file (/uploads/...) is downloaded with the login, then an image is shown here and anything else
+  // (PDF, Word...) opens in a viewer app. A full link or an old-server path (public) opens directly.
+  const openDocument = async (doc) => {
+    const file = String(doc.files || '').trim();
+    if (!file) return;
+    const title = [doc.document_type || 'Document', doc.document_number].filter(Boolean).join(' · ');
+    const ext = ((file.split('?')[0].match(/\.([A-Za-z0-9]+)$/) || [])[1] || '').toLowerCase();
+    const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+    try {
+      if (file.startsWith('/uploads/')) {
+        setDocBusy(doc.id);
+        const uri = await DocumentsApi.download(doc.id, `document_${doc.id}${ext ? `.${ext}` : ''}`);
+        if (isImage) { setDocPreview({ uri, title }); return; }
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, { mimeType: DOC_TYPES[ext], UTI: ext === 'pdf' ? '.pdf' : undefined, dialogTitle: title });
+        } else {
+          showAlert('error', 'Document', 'No app on this phone can open this file.');
+        }
+        return;
+      }
+      const url = /^https?:\/\//i.test(file) ? file : `${IMAGE_ROOT}/${file.replace(/^\/+/, '')}`;
+      if (isImage) { setDocPreview({ uri: url, title }); return; }
+      await Linking.openURL(url);
+    } catch (e) {
+      showAlert('error', 'Document', 'Could not open this document. Please try again.');
+    } finally {
+      setDocBusy(null);
+    }
+  };
   const [busy, setBusy] = useState(false);
 
   // Reset password state
@@ -383,6 +431,38 @@ const ProfileScreen = ({ navigation, route }) => {
               String(r.is_nominee).toUpperCase() === 'Y' ? 'Nominee' : ''],
           })}
         />
+        {/* The website's 4th Other Details section: each document with a View when a file is attached */}
+        <ListGroup
+          title="Documents" rows={list(d.documents)} empty="No documents added"
+          renderItem={(r) => {
+            const validFrom = has(r.valid_from) && !String(r.valid_from).startsWith('0000') ? r.valid_from : '';
+            const validTill = has(r.valid_till) && !String(r.valid_till).startsWith('0000') ? r.valid_till : '';
+            return {
+              heading: [has(r.document_type) ? r.document_type : 'Document', has(r.document_number) && r.document_number].filter(Boolean).join(' · '),
+              lines: [r.name, validFrom ? `Valid ${validFrom}${validTill ? ` to ${validTill}` : ''}` : ''],
+              action: has(r.files) ? { label: 'View', busy: docBusy === r.id, onPress: () => openDocument(r) } : null,
+            };
+          }}
+        />
+        {/* An image document, shown in the app */}
+        <Modal visible={!!docPreview} transparent={false} animationType="fade" onRequestClose={() => setDocPreview(null)}>
+          <SafeAreaView style={s.previewWrap} edges={['top', 'bottom']}>
+            <View style={s.previewHead}>
+              <Text style={s.previewTitle} numberOfLines={1}>{docPreview?.title}</Text>
+              <TouchableOpacity onPress={() => setDocPreview(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityLabel="Close">
+                <X color="#FFF" size={24} />
+              </TouchableOpacity>
+            </View>
+            {!!docPreview && (
+              <Image
+                source={{ uri: docPreview.uri }}
+                style={s.previewImage}
+                resizeMode="contain"
+                onError={() => { setDocPreview(null); showAlert('error', 'Document', 'Could not open this document. Please try again.'); }}
+              />
+            )}
+          </SafeAreaView>
+        </Modal>
       </>
     ));
   }
@@ -583,7 +663,7 @@ const ProfileScreen = ({ navigation, route }) => {
           />
           <SectionItem
             iconBg="#F0FDFA" icon={<Users color="#0D9488" size={20} />}
-            title="Other Details" subtitle="Education, experience & family"
+            title="Other Details" subtitle="Education, experience, family & documents"
             onPress={() => openSection('otherInfo')}
           />
           <SectionItem
@@ -745,6 +825,13 @@ const s = StyleSheet.create({
   listItem: { borderRadius: moderateScale(12), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), marginTop: moderateScale(8) },
   listLine: { fontSize: moderateScale(13), marginTop: 2, flexShrink: 1 },
   listEmpty: { fontSize: moderateScale(14), marginTop: 2 },
+  listItemRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(10) },
+  listAction: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: moderateScale(10), paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(7), minWidth: moderateScale(70), justifyContent: 'center' },
+  listActionText: { fontSize: moderateScale(13), fontWeight: '800' },
+  previewWrap: { flex: 1, backgroundColor: '#000' },
+  previewHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), gap: moderateScale(10) },
+  previewTitle: { flex: 1, color: '#FFF', fontSize: moderateScale(15), fontWeight: '700' },
+  previewImage: { flex: 1, width: '100%' },
 });
 
 export default ProfileScreen;
