@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View, TouchableOpacity, StyleSheet,
   ActivityIndicator, Image, StatusBar, Platform, ScrollView
@@ -34,10 +34,15 @@ const getOrCreateDeviceImei = async () => {
 
 const API_URL = API_ENDPOINTS.AUTH;
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [userId, setUserId] = useState('');
+  // Back from Forgot password: the User ID is filled in, the new password is typed
+  useEffect(() => {
+    const id = route?.params?.prefillUserId;
+    if (id) { setUserId(String(id)); setPassword(''); }
+  }, [route?.params?.prefillUserId]);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -194,6 +199,14 @@ const LoginScreen = ({ navigation }) => {
                   )}
                 </TouchableOpacity>
               </View>
+              {/* Code to the registered email + new password, all in the app (ForgotPasswordScreen) */}
+              <TouchableOpacity
+                style={styles.forgotLink}
+                onPress={() => navigation.navigate('ForgotPassword', { login: userId.trim() })}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </TouchableOpacity>
             </View>
 
             {/* LOGIN BUTTON */}
@@ -257,6 +270,8 @@ const styles = StyleSheet.create({
   },
   btnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '900', letterSpacing: 2 },
 
+  forgotLink: { alignSelf: 'flex-end', marginTop: -moderateScale(4), paddingVertical: moderateScale(4) },
+  forgotText: { color: COLORS.primaryDeep || '#4A148C', fontSize: moderateScale(14), fontWeight: '800' },
   signupLink: { marginTop: moderateScale(32), alignItems: 'center' },
   signupLabel: { color: '#64748B', fontSize: moderateScale(14), fontWeight: '600' },
   signupText: { color: COLORS.primaryDeep || '#4A148C', fontWeight: '900' },

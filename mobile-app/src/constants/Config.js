@@ -78,5 +78,8 @@ export const API_ENDPOINTS = {
   CHECK_ESI: `${NEWAPP_URL}/checkEsi`,
   CHECK_LWF: `${NEWAPP_URL}/checkLwf`,
   RESET_PASSWORD: `${NEWAPP_URL}/reset_password`,
+  // Login page "Forgot password?" (no login): a code to the registered email, then a new password
+  FORGOT_PASSWORD_CODE: `${NEWAPP_URL}/forgot_password_code`,
+  FORGOT_PASSWORD_RESET: `${NEWAPP_URL}/forgot_password_reset`,
 };
 
