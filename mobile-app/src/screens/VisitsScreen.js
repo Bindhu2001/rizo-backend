@@ -632,6 +632,9 @@ const sm = StyleSheet.create({
 const VisitsScreen = ({ navigation, route }) => {
   const theme = useTheme();
   const user = route?.params?.user;
+  // The + sits straight on the SafeAreaView, and an absolute child ignores its bottom padding — so the phone's
+  // navigation bar height is added, putting it where Expense's + is (above the navigation bar)
+  const insets = useSafeAreaInsets();
 
   // All hooks must be declared before any conditional return
   const [loading, setLoading] = useState(true);
@@ -896,9 +899,10 @@ const VisitsScreen = ({ navigation, route }) => {
 
       {/* FAB — only for today */}
       {selectedDate === todayStr() && (
-        <View style={s.fabWrap}>
+        <View style={[s.fabWrap, { bottom: 24 + insets.bottom }]}>
           <TouchableOpacity
             style={s.fab}
+            activeOpacity={0.8}
             onPress={() => {
               const hasActive = visits.some(v => v.status === 'REACHED' || v.status === 'step_in');
               if (hasActive) {
@@ -908,7 +912,7 @@ const VisitsScreen = ({ navigation, route }) => {
               setShowStartScreen(true);
             }}
           >
-            <Plus color="#FFF" size={28} strokeWidth={2.5} />
+            <Plus color="#FFF" size={28} />
           </TouchableOpacity>
         </View>
       )}
@@ -990,8 +994,9 @@ const s = StyleSheet.create({
   scroll: { padding: moderateScale(16), paddingTop: moderateScale(20), paddingBottom: moderateScale(100) }, // room for the + button
 
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  fabWrap: { position: 'absolute', bottom: 24, right: 20, zIndex: 99 }, // bottom corner like Expense's + (100 was for an old floating tab bar)
-  fab: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(32), backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
+  // Same corner, size and look as Expense's + (bottom gets the navigation bar height in the render)
+  fabWrap: { position: 'absolute', bottom: 24, right: 24, zIndex: 99 },
+  fab: { width: moderateScale(60), height: moderateScale(60), borderRadius: moderateScale(30), backgroundColor: COLORS.primaryDeep, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
 
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), paddingVertical: moderateScale(10), borderBottomWidth: 1 },
   dateArrow: { width: moderateScale(36), height: moderateScale(36), justifyContent: 'center', alignItems: 'center' },
