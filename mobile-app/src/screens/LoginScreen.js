@@ -205,7 +205,7 @@ const LoginScreen = ({ navigation, route }) => {
                 onPress={() => navigation.navigate('ForgotPassword', { login: userId.trim() })}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.forgotText}>Forgot password?</Text>
+                <Text style={[styles.forgotText, { color: theme.primaryDeep }]}>Forgot password?</Text>
               </TouchableOpacity>
             </View>
 
@@ -223,7 +223,7 @@ const LoginScreen = ({ navigation, route }) => {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.signupLink} onPress={() => navigation.navigate('Signup')}>
-              <Text style={[styles.signupLabel, { color: theme.textLight }]}>Don't have an account? <Text style={styles.signupText}>Join Rizo</Text></Text>
+              <Text style={[styles.signupLabel, { color: theme.textLight }]}>Don't have an account? <Text style={[styles.signupText, { color: theme.primaryDeep }]}>Join Rizo</Text></Text>
             </TouchableOpacity>
           </View>
           </ScrollView>

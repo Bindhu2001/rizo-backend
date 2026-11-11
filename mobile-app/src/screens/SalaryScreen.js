@@ -338,7 +338,7 @@ const SalaryScreen = ({ navigation, route }) => {
           {/* Payout History */}
           <View style={styles.sectionHeader}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Payout History</Text>
-            <TouchableOpacity onPress={fetchSalaryData}><Text style={styles.seeAll}>Refresh</Text></TouchableOpacity>
+            <TouchableOpacity onPress={fetchSalaryData}><Text style={[styles.seeAll, { color: theme.primaryDeep }]}>Refresh</Text></TouchableOpacity>
           </View>
 
           <View style={[styles.listCard, { backgroundColor: theme.card }]}>

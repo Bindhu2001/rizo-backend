@@ -782,9 +782,9 @@ const LeaveScreen = ({ navigation, route }) => {
               </TouchableOpacity>
             );
           })}
-          <TouchableOpacity style={s.histBtn} onPress={() => { fetchHistory('all'); setHistFilter('all'); setView('HISTORY'); }}>
-            <Text style={s.histBtnText}>View applied & past leaves</Text>
-            <ChevronRight color={COLORS.primaryDeep} size={18} />
+          <TouchableOpacity style={[s.histBtn, theme.isDark && { backgroundColor: '#2E1065' }]} onPress={() => { fetchHistory('all'); setHistFilter('all'); setView('HISTORY'); }}>
+            <Text style={[s.histBtnText, { color: theme.primaryDeep }]}>View applied & past leaves</Text>
+            <ChevronRight color={theme.primaryDeep} size={18} />
           </TouchableOpacity>
         </ScrollView>
       )}

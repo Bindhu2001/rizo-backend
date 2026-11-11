@@ -251,10 +251,10 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
                 </TouchableOpacity>
                 <View style={s.linksRow}>
                   <TouchableOpacity onPress={sendCode} disabled={busy || wait > 0} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={[s.link, (busy || wait > 0) && { color: theme.textMuted }]}>{wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</Text>
+                    <Text style={[s.link, { color: theme.primaryDeep }, (busy || wait > 0) && { color: theme.textMuted }]}>{wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setStep(1)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Text style={s.link}>Change User ID / email</Text>
+                    <Text style={[s.link, { color: theme.primaryDeep }]}>Change User ID / email</Text>
                   </TouchableOpacity>
                 </View>
               </>

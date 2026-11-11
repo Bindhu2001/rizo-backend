@@ -64,22 +64,6 @@ const HomeScreen = ({ navigation, route }) => {
   const userRef = useRef(route?.params?.user);
   useEffect(() => { userRef.current = user; }, [user]);
 
-  // Block Android back button only when HomeScreen is the focused screen
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (navigation.isFocused()) {
-        if (eventsOpen) {
-          setEventsOpen(false);
-          return true;
-        }
-        BackHandler.exitApp();
-        return true;
-      }
-      return false;
-    });
-    return () => sub.remove();
-  }, [navigation, eventsOpen]);
-
   const [loading, setLoading] = useState(true);
   const [punching, setPunching] = useState(false);
   const [punchingType, setPunchingType] = useState(null); // 'IN' | 'OUT' — action actually in flight
@@ -98,6 +82,23 @@ const HomeScreen = ({ navigation, route }) => {
   const fetchStatusRequestId = useRef(0);
 
   const [eventsOpen, setEventsOpen] = useState(false);
+
+  // Block Android back button only when HomeScreen is the focused screen. Placed after eventsOpen is declared:
+  // above it, the dependency list read eventsOpen before it existed (a crash wherever const isn't rewritten to var).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (navigation.isFocused()) {
+        if (eventsOpen) {
+          setEventsOpen(false);
+          return true;
+        }
+        BackHandler.exitApp();
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [navigation, eventsOpen]);
   const [cancelTrigger, setCancelTrigger] = useState(0);
   const [punchMessage, setPunchMessage] = useState('');
   const [msgIndex, setMsgIndex] = useState(0);
@@ -765,7 +766,7 @@ const HomeScreen = ({ navigation, route }) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.bg }]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );

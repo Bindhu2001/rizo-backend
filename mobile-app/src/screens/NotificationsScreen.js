@@ -252,7 +252,7 @@ const NotificationsScreen = ({ navigation }) => {
       <View style={[styles.summaryBar, { backgroundColor: theme.card, borderBottomColor: theme.divider }]}>
         <Text style={[styles.summaryText, { color: theme.textLight }]}>{unreadCount} Unread Notifications</Text>
         <TouchableOpacity onPress={handleMarkAllRead}>
-          <Text style={styles.markAll}>Mark all as read</Text>
+          <Text style={[styles.markAll, { color: theme.primaryDeep }]}>Mark all as read</Text>
         </TouchableOpacity>
       </View>
 
