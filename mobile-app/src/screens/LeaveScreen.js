@@ -422,8 +422,11 @@ const leaveDaysFor = (from, to, fromHalf, toHalf) => {
   return diff - minus + 1;
 };
 
-// "2026-10-05 · 1 day" / "· Half day" for a Comp Off available date
-const compOffLabel = (d) => `${d.date} · ${Number(d.days) === 0.5 ? 'Half day' : `${d.days} day${Number(d.days) === 1 ? '' : 's'}`}`;
+// A Comp Off available date with its count, as on the website: "2026-10-05 (1 day)" / "2026-10-05 (0.5 days)"
+const compOffLabel = (d) => {
+  const n = Number(d.days);
+  return `${d.date} (${n} day${n === 1 ? '' : 's'})`;
+};
 
 const sm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
