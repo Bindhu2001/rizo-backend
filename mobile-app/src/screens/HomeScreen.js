@@ -24,7 +24,7 @@ import CalendarWidget from '../components/CalendarWidget';
 import TeamTile from '../components/TeamTile';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
-import { usePhotoSource } from '../services/photoSource';
+import { usePhotoSource, retryPhoto } from '../services/photoSource';
 import {
   savePunchLocal, getPunchesBetween, updatePunchLocation,
   getPendingCount, getPendingSyncCount, initDB
@@ -809,7 +809,7 @@ const HomeScreen = ({ navigation, route }) => {
               <Image
                 // No photo, or one that fails to load (e.g. deleted on the server): the placeholder, not a blank circle
                 source={homePhoto && avatarFailed !== user.profile_pic ? homePhoto : PLACEHOLDER_AVATAR}
-                onError={() => setAvatarFailed(user.profile_pic)}
+                onError={() => { const pic = user.profile_pic; retryPhoto(homePhoto).then((again) => { if (!again) setAvatarFailed(pic); }); }}
                 style={styles.avatar}
                 resizeMode="cover"
               />

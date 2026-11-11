@@ -32,6 +32,8 @@ const getToken = async () => {
 
 /** The rizo-revamp token (signs in when there is none) — for loading a website photo (services/photoSource.js). */
 export const getRevampToken = () => getToken();
+/** A fresh sign-in (the saved token expired) — for a website photo that failed to load. */
+export const renewRevampToken = () => signIn();
 
 export const clearRevampToken = async () => {
   try { await AsyncStorage.removeItem(TOKEN_KEY); } catch (_) {}

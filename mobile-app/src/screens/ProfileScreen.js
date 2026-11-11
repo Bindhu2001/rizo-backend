@@ -22,7 +22,7 @@ import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
 import { AnnouncementsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
-import { usePhotoSource } from '../services/photoSource';
+import { usePhotoSource, retryPhoto } from '../services/photoSource';
 import { useTheme } from '../components/ThemeContext';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
@@ -287,7 +287,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <>
         <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 10 }}>
           <View style={s.avatarWrap}>
-            <Image source={getAvatarSource(d.profile_pic)} onError={() => setFailedPic(d.profile_pic || user.profile_pic)} style={s.avatarLg} />
+            <Image source={getAvatarSource(d.profile_pic)} onError={() => { const pic = d.profile_pic || user.profile_pic; retryPhoto(d.profile_pic ? personalPhoto : mainPhoto).then((again) => { if (!again) setFailedPic(pic); }); }} style={s.avatarLg} />
           </View>
         </View>
         <Field label="First Name" value={dash(d.name)} />
@@ -529,7 +529,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <View style={[s.profileCard, { backgroundColor: theme.card }]}>
           <View style={s.avatarWrap}>
-            <Image source={getAvatarSource()} onError={() => setFailedPic(user.profile_pic)} style={s.avatarLg} />
+            <Image source={getAvatarSource()} onError={() => { const pic = user.profile_pic; retryPhoto(mainPhoto).then((again) => { if (!again) setFailedPic(pic); }); }} style={s.avatarLg} />
           </View>
           <Text style={[s.profileName, { color: theme.text }]}>{user.employee_name}</Text>
           <Text style={[s.profileRole, { color: theme.textLight }]}>{user.designation}</Text>

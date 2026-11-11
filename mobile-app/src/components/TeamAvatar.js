@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Image, View } from 'react-native';
 import { Text } from './AppText';
 import { IMAGE_ROOT, REVAMP_API_URL } from '../constants/Config';
-import { usePhotoSource } from '../services/photoSource';
+import { usePhotoSource, retryPhoto } from '../services/photoSource';
 
 // A team member's photo, or a coloured circle with their initials when there is none (or it fails to load).
 
@@ -23,7 +23,7 @@ const TeamAvatar = ({ person, size, ring }) => {
   // A website photo (/uploads/...) loads with the app's login token (services/photoSource.js)
   const source = usePhotoSource(person.profilePic);
   const box = { width: size, height: size, borderRadius: size / 2, borderWidth: ring ? 2 : 0, borderColor: ring };
-  if (source && !failed) return <Image source={source} style={box} onError={() => setFailed(true)} />;
+  if (source && !failed) return <Image source={source} style={box} onError={() => { retryPhoto(source).then((again) => { if (!again) setFailed(true); }); }} />;
   const bg = AVATAR_COLORS[Number(person.empPkey || 0) % AVATAR_COLORS.length];
   return (
     <View style={[box, { backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }]}>
