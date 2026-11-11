@@ -30,6 +30,9 @@ const getToken = async () => {
   return signIn();
 };
 
+/** The rizo-revamp token (signs in when there is none) — for loading a website photo (services/photoSource.js). */
+export const getRevampToken = () => getToken();
+
 export const clearRevampToken = async () => {
   try { await AsyncStorage.removeItem(TOKEN_KEY); } catch (_) {}
 };

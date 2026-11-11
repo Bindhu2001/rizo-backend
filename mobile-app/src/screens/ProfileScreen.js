@@ -22,6 +22,7 @@ import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
 import { AnnouncementsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+import { usePhotoSource } from '../services/photoSource';
 import { useTheme } from '../components/ThemeContext';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
@@ -103,6 +104,8 @@ const ProfileScreen = ({ navigation, route }) => {
   const [user, setUser] = useState(route?.params?.user);
   // The profile photo path that failed to load → the placeholder instead of a blank circle
   const [failedPic, setFailedPic] = useState(null);
+  // A website photo (/uploads/...) loads with the app's login token (services/photoSource.js)
+  const mainPhoto = usePhotoSource(user?.profile_pic);
   const [remindersOn, setRemindersOn] = useState(true);
   useEffect(() => { isRemindersEnabled().then(setRemindersOn); }, []);
   const toggleReminders = (value) => {
@@ -125,6 +128,7 @@ const ProfileScreen = ({ navigation, route }) => {
 
   // Fetched section data
   const [personal, setPersonal] = useState(null);
+  const personalPhoto = usePhotoSource(personal?.profile_pic);
   const [address, setAddress] = useState(null);
   const [documents, setDocuments] = useState(null);
   const [bank, setBank] = useState(null);
@@ -255,11 +259,9 @@ const ProfileScreen = ({ navigation, route }) => {
   const getAvatarSource = (customPic) => {
     const pic = customPic || user.profile_pic;
     if (!pic || pic === failedPic) return PLACEHOLDER_AVATAR; // none, or it failed to load (e.g. deleted on the server)
-    if (pic.startsWith('http') || pic.startsWith('data:') || pic.startsWith('file:')) return { uri: pic };
-    // A website-only file ('/uploads/...', a photo HR uploaded on the website when it stores files on its own
-    // disk) is served only behind the website login, so the app can't load it: the placeholder, not a blank circle
-    if (pic.startsWith('/')) return PLACEHOLDER_AVATAR;
-    return { uri: `${IMAGE_ROOT}/${pic}` };
+    // The Personal Details photo (customPic) or the main one — website photos come with the login token
+    const source = customPic ? personalPhoto : mainPhoto;
+    return source || PLACEHOLDER_AVATAR;
   };
 
   // ── Section view wrapper ────────────────────────────────────────────────────

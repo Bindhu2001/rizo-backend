@@ -24,6 +24,7 @@ import CalendarWidget from '../components/CalendarWidget';
 import TeamTile from '../components/TeamTile';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+import { usePhotoSource } from '../services/photoSource';
 import {
   savePunchLocal, getPunchesBetween, updatePunchLocation,
   getPendingCount, getPendingSyncCount, initDB
@@ -57,6 +58,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [user, setUser] = useState(route?.params?.user);
   // The profile photo path that failed to load → the placeholder instead of a blank circle
   const [avatarFailed, setAvatarFailed] = useState(null);
+  // The photo the website shows; a website photo (/uploads/...) loads with the app's login token
+  const homePhoto = usePhotoSource(user?.profile_pic);
   // Always keep a ref to the latest user so focus-listener closures never go stale
   const userRef = useRef(route?.params?.user);
   useEffect(() => { userRef.current = user; }, [user]);
@@ -804,13 +807,8 @@ const HomeScreen = ({ navigation, route }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.avatarCircle} onPress={() => navigation.navigate('ProfileTab')}>
               <Image
-                // A website-only '/uploads/...' file needs the website login, so the app shows the placeholder for it
-                // and a photo that fails to load (e.g. deleted on the server) falls back to it too, not a blank circle
-                source={
-                  user.profile_pic && !user.profile_pic.startsWith('/') && avatarFailed !== user.profile_pic
-                    ? { uri: user.profile_pic.startsWith('http') ? user.profile_pic : `${IMAGE_ROOT}/${user.profile_pic}` }
-                    : PLACEHOLDER_AVATAR
-                }
+                // No photo, or one that fails to load (e.g. deleted on the server): the placeholder, not a blank circle
+                source={homePhoto && avatarFailed !== user.profile_pic ? homePhoto : PLACEHOLDER_AVATAR}
                 onError={() => setAvatarFailed(user.profile_pic)}
                 style={styles.avatar}
                 resizeMode="cover"
