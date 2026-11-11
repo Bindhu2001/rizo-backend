@@ -409,11 +409,7 @@ const ProfileScreen = ({ navigation, route }) => {
           <Field icon={UserCheck} tint="teal" label="Guardian Name" value={dash(d.guradian || d.guardian)} />
           <Field icon={HeartHandshake} tint="teal" label="Relation" value={dash(d.relation_guardian)} />
         </Group>
-        <Group title="Job">
-          <Field icon={IdCard} tint="purple" label="Employee ID" value={dash(d.employee_id || user.user_id)} />
-          <Field icon={Briefcase} tint="orange" label="Designation" value={dash(d.designation || user.designation)} />
-          <Field icon={Building2} tint="amber" label="Department" value={dash(d.department || user.department)} />
-        </Group>
+        {/* Employee ID, designation and department are in Company Details */}
       </>
     ));
   }
