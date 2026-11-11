@@ -13,6 +13,10 @@ import {
   User, LogOut, ChevronLeft, ChevronRight,
   MapPin, CreditCard, FileText, Moon, Sun, BellRing, Megaphone,
   Lock, Eye, EyeOff, ShieldCheck, Trash2, Mail, Briefcase, CalendarCheck, Users, Landmark, X,
+  Cake, VenusAndMars, Heart, Droplet, Phone, UserCheck, HeartHandshake, IdCard, Building2, AtSign, Smartphone,
+  CalendarDays, BadgeCheck, Hourglass, CalendarX, Clock, Building, Award, Timer, ClipboardList, UserRoundCog,
+  GraduationCap, House, Map as MapIcon, Hash, Globe, KeyRound, Wallet, PiggyBank, Stethoscope, Percent, Plane,
+  Accessibility, TrainFront, Ear,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
@@ -34,48 +38,96 @@ const PURPLE = '#4A148C';
 const yesNo = (v) => (String(v).toUpperCase() === 'Y' || v === true ? 'Yes' : 'No');
 const dash = (v) => (v != null && String(v).trim() !== '' ? String(v).trim() : '—');
 
-const Field = ({ label, value }) => {
+// Tinted icon colours (light background, icon colour); dark theme uses the icon colour at low opacity
+const TINTS = {
+  purple: ['#F3E8FF', '#7C3AED'], blue: ['#EFF6FF', '#2563EB'], green: ['#ECFDF5', '#059669'],
+  orange: ['#FFF7ED', '#EA580C'], pink: ['#FDF2F8', '#DB2777'], teal: ['#F0FDFA', '#0D9488'],
+  amber: ['#FFFBEB', '#D97706'], red: ['#FEF2F2', '#DC2626'], indigo: ['#EEF2FF', '#4F46E5'],
+};
+const tintOf = (tint, theme) => {
+  const [bg, fg] = TINTS[tint] || TINTS.purple;
+  return { bg: theme.isDark ? `${fg}26` : bg, fg };
+};
+const isBlank = (v) => v == null || String(v).trim() === '' || String(v).trim() === '—' || String(v).trim() === '-';
+
+// One detail: a tinted icon, the label, then the value ("Not added" when empty). chip: a Yes / No pill instead.
+const Field = ({ label, value, icon: Icon, tint = 'purple', chip, last }) => {
   const theme = useTheme();
+  const t = tintOf(tint, theme);
+  const blank = isBlank(value);
+  const yes = String(value) === 'Yes';
   return (
-    <View style={[s.fieldRow, { borderBottomColor: theme.divider }]}>
-      <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{label}</Text>
-      <Text style={[s.fieldValue, { color: theme.text }]}>{value}</Text>
+    <View style={[s.fieldRow, !last && { borderBottomColor: theme.divider, borderBottomWidth: 1 }]}>
+      {Icon ? <View style={[s.fieldIcon, { backgroundColor: t.bg }]}><Icon color={t.fg} size={18} /></View> : null}
+      <View style={{ flex: 1 }}>
+        <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{label}</Text>
+        {chip ? (
+          <View style={[s.chip, { backgroundColor: yes ? (theme.isDark ? '#05966933' : '#ECFDF5') : theme.cardSoft }]}>
+            <Text style={[s.chipText, { color: yes ? '#059669' : theme.textMuted }]}>{yes ? 'Yes' : 'No'}</Text>
+          </View>
+        ) : (
+          <Text style={[s.fieldValue, { color: blank ? theme.textMuted : theme.text }, blank && s.fieldBlank]} selectable={!blank}>
+            {blank ? 'Not added' : String(value).trim()}
+          </Text>
+        )}
+      </View>
     </View>
   );
 };
 
-// One entry of a list in Other Details (an education, experience or family member): a bold title and muted lines
-const ListGroup = ({ title, rows, empty, renderItem }) => {
+// A titled card of details (the last row has no divider)
+const Group = ({ title, children }) => {
   const theme = useTheme();
+  const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[s.listGroup, { borderBottomColor: theme.divider }]}>
-      <Text style={[s.fieldLabel, { color: theme.textMuted }]}>{title}</Text>
-      {rows.length === 0 ? (
-        <Text style={[s.listEmpty, { color: theme.textLight }]}>{empty}</Text>
-      ) : rows.map((row, i) => {
-        const { heading, lines, action } = renderItem(row);
-        return (
-          <View key={i} style={[s.listItem, { backgroundColor: theme.bg }, action && s.listItemRow]}>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.fieldValue, { color: theme.text }]}>{heading}</Text>
-              {lines.filter(Boolean).map((line, j) => (
-                <Text key={j} style={[s.listLine, { color: theme.textLight }]}>{line}</Text>
-              ))}
-            </View>
-            {/* e.g. a document's View */}
-            {action && (
-              <TouchableOpacity onPress={action.onPress} disabled={action.busy} style={[s.listAction, { borderColor: theme.border }]} accessibilityLabel={action.label}>
-                {action.busy ? <ActivityIndicator size="small" color={PURPLE} /> : (
-                  <>
-                    <Eye color={theme.isDark ? '#C4B5FD' : PURPLE} size={15} />
-                    <Text style={[s.listActionText, { color: theme.isDark ? '#C4B5FD' : PURPLE }]}>{action.label}</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
+    <View style={s.group}>
+      {!!title && <Text style={[s.groupTitle, { color: theme.textMuted }]}>{title}</Text>}
+      <View style={[s.fieldCard, { backgroundColor: theme.card }]}>
+        {items.map((c, i) => React.cloneElement(c, { last: i === items.length - 1 }))}
+      </View>
+    </View>
+  );
+};
+
+// A list in Other Details (education, experience, family, documents): a titled card, each entry with an icon,
+// a bold title, muted lines and an optional action (a document's View)
+const ListGroup = ({ title, rows, empty, renderItem, icon: Icon, tint = 'purple' }) => {
+  const theme = useTheme();
+  const t = tintOf(tint, theme);
+  return (
+    <View style={s.group}>
+      <Text style={[s.groupTitle, { color: theme.textMuted }]}>{title}{rows.length ? `  ·  ${rows.length}` : ''}</Text>
+      <View style={[s.fieldCard, { backgroundColor: theme.card }]}>
+        {rows.length === 0 ? (
+          <View style={s.listEmptyRow}>
+            {Icon ? <View style={[s.fieldIcon, { backgroundColor: theme.cardSoft }]}><Icon color={theme.textMuted} size={18} /></View> : null}
+            <Text style={[s.listEmpty, { color: theme.textMuted }]}>{empty}</Text>
           </View>
-        );
-      })}
+        ) : rows.map((row, i) => {
+          const { heading, lines, action } = renderItem(row);
+          return (
+            <View key={i} style={[s.listItem, i < rows.length - 1 && { borderBottomColor: theme.divider, borderBottomWidth: 1 }]}>
+              {Icon ? <View style={[s.fieldIcon, { backgroundColor: t.bg }]}><Icon color={t.fg} size={18} /></View> : null}
+              <View style={{ flex: 1 }}>
+                <Text style={[s.listHeading, { color: theme.text }]}>{heading}</Text>
+                {lines.filter(Boolean).map((line, j) => (
+                  <Text key={j} style={[s.listLine, { color: theme.textLight }]}>{line}</Text>
+                ))}
+              </View>
+              {action && (
+                <TouchableOpacity onPress={action.onPress} disabled={action.busy} style={[s.listAction, { backgroundColor: theme.isDark ? '#7C3AED26' : '#F3E8FF' }]} accessibilityLabel={action.label}>
+                  {action.busy ? <ActivityIndicator size="small" color={PURPLE} /> : (
+                    <>
+                      <Eye color={theme.isDark ? '#C4B5FD' : PURPLE} size={15} />
+                      <Text style={[s.listActionText, { color: theme.isDark ? '#C4B5FD' : PURPLE }]}>{action.label}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -320,7 +372,7 @@ const ProfileScreen = ({ navigation, route }) => {
         <View style={s.loaderWrap}><ActivityIndicator size="large" color={PURPLE} /></View>
       ) : (
         <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false}>
-          <View style={[s.fieldCard, { backgroundColor: theme.card }]}>{children}</View>
+          {children}
           <View style={{ height: 32 }} />
         </ScrollView>
       )}
@@ -331,38 +383,49 @@ const ProfileScreen = ({ navigation, route }) => {
   // ── PERSONAL DETAILS ────────────────────────────────────────────────────────
   if (section === 'personal') {
     const d = personal || {};
+    const jobLine = [d.designation || user.designation, d.employee_id || user.user_id].filter((v) => !isBlank(v)).join('  ·  ');
     return renderSectionView('Personal Details', (
       <>
-        <View style={{ alignItems: 'center', marginBottom: 20, marginTop: 10 }}>
-          <View style={s.avatarWrap}>
-            <Image source={getAvatarSource(d.profile_pic)} onError={() => { const pic = d.profile_pic || user.profile_pic; retryPhoto(d.profile_pic ? personalPhoto : mainPhoto).then((again) => { if (!again) setFailedPic(pic); }); }} style={s.avatarLg} />
+        {/* Photo, name and ID on top, like a profile card */}
+        <View style={[s.hero, { backgroundColor: theme.card }]}>
+          <View style={[s.heroRing, { borderColor: theme.isDark ? '#7C3AED66' : '#E9D5FF' }]}>
+            <Image source={getAvatarSource(d.profile_pic)} onError={() => { const pic = d.profile_pic || user.profile_pic; retryPhoto(d.profile_pic ? personalPhoto : mainPhoto).then((again) => { if (!again) setFailedPic(pic); }); }} style={s.heroAvatar} />
           </View>
+          <Text style={[s.heroName, { color: theme.text }]}>{isBlank(d.name) ? (user.employee_name || user.name || '') : d.name}</Text>
+          {!!jobLine && <Text style={[s.heroSub, { color: theme.textMuted }]}>{jobLine}</Text>}
         </View>
-        <Field label="First Name" value={dash(d.name)} />
-        <Field label="Email Address" value={dash(d.email)} />
-        <Field label="Mobile Number" value={dash(d.mobile_number)} />
-        <Field label="Date of Birth" value={dash(d.date_of_birth)} />
-        <Field label="Gender" value={dash(d.gender)} />
-        <Field label="Marital Status" value={dash(d.maritual_status)} />
-        <Field label="Blood Group" value={dash(d.blood)} />
-        <Field label="Guardian Name" value={dash(d.guradian || d.guardian)} />
-        <Field label="Guardian Relation" value={dash(d.relation_guardian)} />
-        <Field label="Employee ID" value={dash(d.employee_id || user.user_id)} />
-        <Field label="Designation" value={dash(d.designation || user.designation)} />
-        <Field label="Department" value={dash(d.department || user.department)} />
+        <Group title="Basic Info">
+          <Field icon={User} tint="purple" label="Name" value={dash(d.name)} />
+          <Field icon={Cake} tint="pink" label="Date of Birth" value={dash(d.date_of_birth)} />
+          <Field icon={VenusAndMars} tint="indigo" label="Gender" value={dash(d.gender)} />
+          <Field icon={Heart} tint="red" label="Marital Status" value={dash(d.maritual_status)} />
+          <Field icon={Droplet} tint="red" label="Blood Group" value={dash(d.blood)} />
+        </Group>
+        <Group title="Contact">
+          <Field icon={Mail} tint="blue" label="Email Address" value={dash(d.email)} />
+          <Field icon={Phone} tint="green" label="Mobile Number" value={dash(d.mobile_number)} />
+        </Group>
+        <Group title="Guardian">
+          <Field icon={UserCheck} tint="teal" label="Guardian Name" value={dash(d.guradian || d.guardian)} />
+          <Field icon={HeartHandshake} tint="teal" label="Relation" value={dash(d.relation_guardian)} />
+        </Group>
+        <Group title="Job">
+          <Field icon={IdCard} tint="purple" label="Employee ID" value={dash(d.employee_id || user.user_id)} />
+          <Field icon={Briefcase} tint="orange" label="Designation" value={dash(d.designation || user.designation)} />
+          <Field icon={Building2} tint="amber" label="Department" value={dash(d.department || user.department)} />
+        </Group>
       </>
     ));
   }
 
-  // ── ADDRESS DETAILS ─────────────────────────────────────────────────────────
   // ── OFFICIAL DETAILS (set by HR on the website) ─────────────────────────────
   if (section === 'official') {
     const d = personal || {};
     return renderSectionView('Official Details', (
-      <>
-        <Field label="Official Email" value={dash(d.official_email)} />
-        <Field label="Official Mobile" value={dash(d.official_mobile)} />
-      </>
+      <Group title="Given by your company">
+        <Field icon={AtSign} tint="blue" label="Official Email" value={dash(d.official_email)} />
+        <Field icon={Smartphone} tint="green" label="Official Mobile" value={dash(d.official_mobile)} />
+      </Group>
     ));
   }
 
@@ -371,17 +434,21 @@ const ProfileScreen = ({ navigation, route }) => {
     const c = (personal && personal.company) || {};
     return renderSectionView('Company Details', (
       <>
-        <Field label="Joining Date" value={dash(c.joining_date || user.joining_date)} />
-        <Field label="Employee ID" value={dash(c.employee_id || user.user_id)} />
-        <Field label="Employment Type" value={dash(c.employment_type)} />
-        <Field label="Branch" value={dash(c.branch)} />
-        <Field label="Department" value={dash(c.department || user.department)} />
-        <Field label="Designation" value={dash(c.designation || user.designation)} />
-        <Field label="Grade" value={dash(c.grade)} />
-        <Field label="Notice Period" value={dash(c.notice_period)} />
-        {/* Like the website: probation days only for a Probation hire, the end date only for a Contract one */}
-        {c.employment_type === 'Probation' ? <Field label="Probation Period (days)" value={dash(c.probation_days)} /> : null}
-        {c.employment_type === 'Contract' ? <Field label="Contract End Date" value={dash(c.contract_end_date)} /> : null}
+        <Group title="Employment">
+          <Field icon={CalendarDays} tint="green" label="Joining Date" value={dash(c.joining_date || user.joining_date)} />
+          <Field icon={IdCard} tint="purple" label="Employee ID" value={dash(c.employee_id || user.user_id)} />
+          <Field icon={BadgeCheck} tint="blue" label="Employment Type" value={dash(c.employment_type)} />
+          {/* Like the website: probation days only for a Probation hire, the end date only for a Contract one */}
+          {c.employment_type === 'Probation' ? <Field icon={Hourglass} tint="amber" label="Probation Period (days)" value={dash(c.probation_days)} /> : null}
+          {c.employment_type === 'Contract' ? <Field icon={CalendarX} tint="red" label="Contract End Date" value={dash(c.contract_end_date)} /> : null}
+          <Field icon={Clock} tint="orange" label="Notice Period" value={dash(c.notice_period)} />
+        </Group>
+        <Group title="Role">
+          <Field icon={Building} tint="teal" label="Branch" value={dash(c.branch)} />
+          <Field icon={Building2} tint="amber" label="Department" value={dash(c.department || user.department)} />
+          <Field icon={Briefcase} tint="orange" label="Designation" value={dash(c.designation || user.designation)} />
+          <Field icon={Award} tint="pink" label="Grade" value={dash(c.grade)} />
+        </Group>
       </>
     ));
   }
@@ -390,16 +457,16 @@ const ProfileScreen = ({ navigation, route }) => {
   if (section === 'policy') {
     const p = (personal && personal.policy) || {};
     return renderSectionView('Policy Details', (
-      <>
-        <Field label="Shift Policy" value={dash(p.shift)} />
-        <Field label="Holiday Group" value={dash(p.holiday_group)} />
-        <Field label="Leave Policy Group" value={dash(p.leave_policy_group)} />
-        <Field label="Reporting Manager" value={dash(p.reporting_manager)} />
-      </>
+      <Group title="Your policies">
+        <Field icon={Timer} tint="blue" label="Shift Policy" value={dash(p.shift)} />
+        <Field icon={CalendarCheck} tint="green" label="Holiday Group" value={dash(p.holiday_group)} />
+        <Field icon={ClipboardList} tint="purple" label="Leave Policy Group" value={dash(p.leave_policy_group)} />
+        <Field icon={UserRoundCog} tint="orange" label="Reporting Manager" value={dash(p.reporting_manager)} />
+      </Group>
     ));
   }
 
-  // ── OTHER DETAILS (education, experience, family — the website's Other Details tab) ──
+  // ── OTHER DETAILS (education, experience, family, documents — the website's Other Details tab) ──
   if (section === 'otherInfo') {
     const d = personal || {};
     const list = (v) => (Array.isArray(v) ? v : []);
@@ -407,22 +474,22 @@ const ProfileScreen = ({ navigation, route }) => {
     return renderSectionView('Other Details', (
       <>
         <ListGroup
-          title="Education" rows={list(d.education)} empty="No education added"
+          title="Education" icon={GraduationCap} tint="blue" rows={list(d.education)} empty="No education added"
           renderItem={(r) => ({
             heading: dash(r.course),
             lines: [r.university, [has(r.duration) && r.duration, has(r.mark) && `${r.mark}%`].filter(Boolean).join(' · ')],
           })}
         />
         <ListGroup
-          title="Experience" rows={list(d.experience)} empty="No experience added"
+          title="Experience" icon={Briefcase} tint="orange" rows={list(d.experience)} empty="No experience added"
           renderItem={(r) => ({
             heading: dash(r.company),
             lines: [[r.designation, r.department].filter(has).join(' · '),
-              has(r.from_date) ? `${r.from_date} – ${has(r.to_date) && !String(r.to_date).startsWith('0000') ? r.to_date : 'Present'}` : ''],
+              has(r.from_date) ? `${r.from_date} to ${has(r.to_date) && !String(r.to_date).startsWith('0000') ? r.to_date : 'Present'}` : ''],
           })}
         />
         <ListGroup
-          title="Family" rows={list(d.family)} empty="No family members added"
+          title="Family" icon={Users} tint="teal" rows={list(d.family)} empty="No family members added"
           renderItem={(r) => ({
             heading: dash(r.name),
             lines: [[r.relation, r.gender && String(r.gender).charAt(0).toUpperCase() + String(r.gender).slice(1)].filter(has).join(' · '),
@@ -433,13 +500,14 @@ const ProfileScreen = ({ navigation, route }) => {
         />
         {/* The website's 4th Other Details section: each document with a View when a file is attached */}
         <ListGroup
-          title="Documents" rows={list(d.documents)} empty="No documents added"
+          title="Documents" icon={FileText} tint="purple" rows={list(d.documents)} empty="No documents added"
           renderItem={(r) => {
             const validFrom = has(r.valid_from) && !String(r.valid_from).startsWith('0000') ? r.valid_from : '';
             const validTill = has(r.valid_till) && !String(r.valid_till).startsWith('0000') ? r.valid_till : '';
             return {
               heading: [has(r.document_type) ? r.document_type : 'Document', has(r.document_number) && r.document_number].filter(Boolean).join(' · '),
-              lines: [r.name, validFrom ? `Valid ${validFrom}${validTill ? ` to ${validTill}` : ''}` : ''],
+              // non-breaking hyphens: a date never splits across two lines
+              lines: [r.name, validFrom ? `Valid ${validFrom}${validTill ? ` to ${validTill}` : ''}`.replace(/-/g, '‑') : ''],
               action: has(r.files) ? { label: 'View', busy: docBusy === r.id, onPress: () => openDocument(r) } : null,
             };
           }}
@@ -467,18 +535,19 @@ const ProfileScreen = ({ navigation, route }) => {
     ));
   }
 
+  // ── ADDRESS DETAILS ─────────────────────────────────────────────────────────
   if (section === 'address') {
     const d = address || {};
     return renderSectionView('Address Details', (
-      <>
-        <Field label="House / Flat Name" value={dash(d.address)} />
-        <Field label="Address Line 2" value={dash(d.address_line2 || d.line2)} />
-        <Field label="City" value={dash(d.city)} />
-        <Field label="District" value={dash(d.district)} />
-        <Field label="State" value={dash(d.state)} />
-        <Field label="Pin Code" value={dash(d.pin)} />
-        <Field label="Country" value={dash(d.country)} />
-      </>
+      <Group title="Residential address">
+        <Field icon={House} tint="green" label="House / Flat Name" value={dash(d.address)} />
+        <Field icon={MapPin} tint="teal" label="Address Line 2" value={dash(d.address_line2 || d.line2)} />
+        <Field icon={Building} tint="blue" label="City" value={dash(d.city)} />
+        <Field icon={MapIcon} tint="indigo" label="District" value={dash(d.district)} />
+        <Field icon={MapIcon} tint="purple" label="State" value={dash(d.state)} />
+        <Field icon={Hash} tint="amber" label="Pin Code" value={dash(d.pin)} />
+        <Field icon={Globe} tint="orange" label="Country" value={dash(d.country)} />
+      </Group>
     ));
   }
 
@@ -486,36 +555,43 @@ const ProfileScreen = ({ navigation, route }) => {
   if (section === 'kyc') {
     const d = documents || {};
     return renderSectionView('KYC Details', (
-      <>
-        <Field label="Aadhaar Number" value={dash(d.aadhar)} />
-        <Field label="PAN Number" value={dash(d.pan)} />
-      </>
+      <Group title="Identity">
+        <Field icon={CreditCard} tint="purple" label="Aadhaar Number" value={dash(d.aadhar)} />
+        <Field icon={FileText} tint="blue" label="PAN Number" value={dash(d.pan)} />
+      </Group>
     ));
   }
 
-
-  // ── OTHER DETAILS ───────────────────────────────────────────────────────────
+  // ── BANK & STATUTORY ────────────────────────────────────────────────────────
   if (section === 'other') {
     const d = bank || {};
     return renderSectionView('Bank & Statutory', (
       <>
-        <Field label="Bank Name" value={dash(d.bank_name)} />
-        <Field label="Branch" value={dash(d.bank_branch)} />
-        <Field label="IFSC Code" value={dash(d.ifsc_code)} />
-        <Field label="Account Number" value={dash(d.account_number)} />
-        <Field label="ESI Number" value={dash(d.esi)} />
-        <Field label="ESI Dispensary" value={dash(d.esi_dispensary)} />
-        <Field label="PF Number" value={dash(d.pf)} />
-        <Field label="UAN Number" value={dash(d.uan)} />
-        <Field label="Previous Member ID" value={dash(d.previous_member_id)} />
-        <Field label="WPS ID" value={dash(d.wps_code)} />
-        <Field label="LWF Registration Number" value={dash(d.lwf_code)} />
-        <Field label="EPS Eligibility" value={yesNo(d.eps)} />
-        <Field label="International Worker" value={yesNo(d.international_worker)} />
-        <Field label="Physically Handicapped" value={yesNo(d.physically_handicapped)} />
-        <Field label="Locomotive" value={yesNo(d.locomotive)} />
-        <Field label="Hearing" value={yesNo(d.hearing)} />
-        <Field label="Visual" value={yesNo(d.visual)} />
+        <Group title="Bank">
+          <Field icon={Landmark} tint="green" label="Bank Name" value={dash(d.bank_name)} />
+          <Field icon={Building} tint="teal" label="Branch" value={dash(d.bank_branch)} />
+          <Field icon={KeyRound} tint="amber" label="IFSC Code" value={dash(d.ifsc_code)} />
+          <Field icon={Wallet} tint="purple" label="Account Number" value={dash(d.account_number)} />
+        </Group>
+        <Group title="PF & ESI">
+          <Field icon={PiggyBank} tint="pink" label="PF Number" value={dash(d.pf)} />
+          <Field icon={Hash} tint="indigo" label="UAN Number" value={dash(d.uan)} />
+          <Field icon={IdCard} tint="blue" label="Previous Member ID" value={dash(d.previous_member_id)} />
+          <Field icon={ShieldCheck} tint="green" label="ESI Number" value={dash(d.esi)} />
+          <Field icon={Stethoscope} tint="red" label="ESI Dispensary" value={dash(d.esi_dispensary)} />
+        </Group>
+        <Group title="Other Registrations">
+          <Field icon={BadgeCheck} tint="blue" label="WPS ID" value={dash(d.wps_code)} />
+          <Field icon={ClipboardList} tint="orange" label="LWF Registration Number" value={dash(d.lwf_code)} />
+          <Field icon={Percent} tint="purple" label="EPS Eligibility" value={yesNo(d.eps)} chip />
+          <Field icon={Plane} tint="blue" label="International Worker" value={yesNo(d.international_worker)} chip />
+        </Group>
+        <Group title="Disability">
+          <Field icon={Accessibility} tint="teal" label="Physically Handicapped" value={yesNo(d.physically_handicapped)} chip />
+          <Field icon={TrainFront} tint="amber" label="Locomotive" value={yesNo(d.locomotive)} chip />
+          <Field icon={Ear} tint="pink" label="Hearing" value={yesNo(d.hearing)} chip />
+          <Field icon={Eye} tint="indigo" label="Visual" value={yesNo(d.visual)} chip />
+        </Group>
       </>
     ));
   }
@@ -817,16 +893,27 @@ const s = StyleSheet.create({
   resetBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800' },
 
   // Read-only field card
-  fieldCard: { backgroundColor: '#FFF', borderRadius: moderateScale(20), paddingHorizontal: moderateScale(18), paddingVertical: moderateScale(6), ...SHADOWS.light },
-  fieldRow: { paddingVertical: moderateScale(14), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  fieldLabel: { fontSize: moderateScale(12), color: '#9CA3AF', fontWeight: '600', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.3 },
-  fieldValue: { fontSize: moderateScale(15), color: COLORS.text, fontWeight: '600' },
-  listGroup: { paddingVertical: moderateScale(14), borderBottomWidth: 1 },
-  listItem: { borderRadius: moderateScale(12), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), marginTop: moderateScale(8) },
+  fieldCard: { backgroundColor: '#FFF', borderRadius: moderateScale(18), paddingHorizontal: moderateScale(14), paddingVertical: moderateScale(2), ...SHADOWS.light },
+  group: { marginBottom: moderateScale(18) },
+  groupTitle: { fontSize: moderateScale(12), fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: moderateScale(8), marginLeft: moderateScale(4) },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(12), paddingVertical: moderateScale(12) },
+  fieldIcon: { width: moderateScale(38), height: moderateScale(38), borderRadius: moderateScale(12), alignItems: 'center', justifyContent: 'center' },
+  fieldLabel: { fontSize: moderateScale(12), fontWeight: '600', marginBottom: 2 },
+  fieldValue: { fontSize: moderateScale(15), fontWeight: '700' },
+  fieldBlank: { fontSize: moderateScale(14), fontWeight: '500', fontStyle: 'italic' },
+  chip: { alignSelf: 'flex-start', borderRadius: moderateScale(8), paddingHorizontal: moderateScale(10), paddingVertical: 3, marginTop: 2 },
+  chipText: { fontSize: moderateScale(12.5), fontWeight: '800' },
+  hero: { alignItems: 'center', borderRadius: moderateScale(18), paddingVertical: moderateScale(20), paddingHorizontal: moderateScale(16), marginBottom: moderateScale(18), ...SHADOWS.light },
+  heroRing: { padding: 4, borderRadius: moderateScale(60), borderWidth: 2, marginBottom: moderateScale(12) },
+  heroAvatar: { width: moderateScale(96), height: moderateScale(96), borderRadius: moderateScale(48) },
+  heroName: { fontSize: moderateScale(19), fontWeight: '800', textAlign: 'center' },
+  heroSub: { fontSize: moderateScale(13), fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  listItem: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(12), paddingVertical: moderateScale(12) },
+  listHeading: { fontSize: moderateScale(15), fontWeight: '700' },
   listLine: { fontSize: moderateScale(13), marginTop: 2, flexShrink: 1 },
-  listEmpty: { fontSize: moderateScale(14), marginTop: 2 },
-  listItemRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(10) },
-  listAction: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderRadius: moderateScale(10), paddingHorizontal: moderateScale(10), paddingVertical: moderateScale(7), minWidth: moderateScale(70), justifyContent: 'center' },
+  listEmptyRow: { flexDirection: 'row', alignItems: 'center', gap: moderateScale(12), paddingVertical: moderateScale(12) },
+  listEmpty: { fontSize: moderateScale(14), fontStyle: 'italic' },
+  listAction: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: moderateScale(10), paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(8), minWidth: moderateScale(72), justifyContent: 'center' },
   listActionText: { fontSize: moderateScale(13), fontWeight: '800' },
   previewWrap: { flex: 1, backgroundColor: '#000' },
   previewHead: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(10), gap: moderateScale(10) },
