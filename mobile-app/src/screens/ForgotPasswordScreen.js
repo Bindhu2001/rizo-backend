@@ -44,6 +44,19 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(0); // seconds until "Resend code" works
   const [tried, setTried] = useState(false); // Reset tapped at least once
+  const [expiresAt, setExpiresAt] = useState(0); // when the code stops working (the server's 10 minutes)
+  const [now, setNow] = useState(Date.now());
+
+  // Live "Code expires in 9:41" while the code step is open
+  useEffect(() => {
+    if (step !== 2 || !expiresAt) return undefined;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [step, expiresAt]);
+  const secondsLeft = expiresAt ? Math.max(0, Math.ceil((expiresAt - now) / 1000)) : 0;
+  const expired = step === 2 && !!expiresAt && secondsLeft === 0;
+  const timeLeft = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`;
   const [alertCfg, setAlertCfg] = useState(null);
   const passwordRef = useRef(null);
   const confirmRef = useRef(null);
@@ -65,6 +78,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
         setRequestId(res.data.data?.request_id || '');
         setEmailHint(res.data.data?.email_hint || '');
         setWait(Number(res.data.data?.resend_after) || 60);
+        setExpiresAt(Date.now() + (Number(res.data.data?.expires_in) || 600) * 1000);
         setCode('');
         setTried(false);
         setStep(2);
@@ -86,6 +100,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
 
   const resetPassword = async () => {
     setTried(true);
+    if (expired) { showAlert('warning', 'Code expired', 'This code has expired. Please tap Resend code for a new one.'); return; }
     if (!/^\d{6}$/.test(code.trim()) || !strongEnough(password) || !confirm || password !== confirm) return;
     setBusy(true);
     try {
@@ -173,6 +188,11 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
                   />
                 </View>
                 {!!codeError && <Text style={s.fieldError}>{codeError}</Text>}
+                {!!expiresAt && (
+                  <Text style={[s.expiry, { color: expired || secondsLeft < 60 ? '#DC2626' : theme.textMuted }]}>
+                    {expired ? 'Code expired — tap Resend code' : `Code expires in ${timeLeft}`}
+                  </Text>
+                )}
                 <View style={box}>
                   <Lock color={theme.textMuted} size={20} />
                   <TextInput
@@ -263,6 +283,7 @@ const s = StyleSheet.create({
   codeInput: { letterSpacing: 6 },
   checks: { marginTop: -moderateScale(8), marginBottom: moderateScale(16), marginLeft: moderateScale(6) },
   checkItem: { fontSize: moderateScale(12.5), lineHeight: moderateScale(19), fontWeight: '600' },
+  expiry: { fontSize: moderateScale(12.5), fontWeight: '700', marginTop: -moderateScale(8), marginBottom: moderateScale(14), marginLeft: moderateScale(6) },
   fieldError: { color: '#DC2626', fontSize: moderateScale(12.5), fontWeight: '600', marginTop: -moderateScale(8), marginBottom: moderateScale(14), marginLeft: moderateScale(6) },
   btn: {
     width: '100%', height: moderateScale(60), backgroundColor: COLORS.primaryDeep || '#4A148C', borderRadius: moderateScale(30),
