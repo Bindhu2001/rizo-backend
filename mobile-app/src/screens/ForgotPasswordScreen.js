@@ -44,7 +44,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
   const [busy, setBusy] = useState(false);
   const [wait, setWait] = useState(0); // seconds until "Resend code" works
   const [tried, setTried] = useState(false); // Reset tapped at least once
-  const [expiresAt, setExpiresAt] = useState(0); // when the code stops working (the server's 10 minutes)
+  const [expiresAt, setExpiresAt] = useState(0); // when the code stops working (the server's 5 minutes)
   const [now, setNow] = useState(Date.now());
 
   // Live "Code expires in 9:41" while the code step is open
@@ -78,7 +78,7 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
         setRequestId(res.data.data?.request_id || '');
         setEmailHint(res.data.data?.email_hint || '');
         setWait(Number(res.data.data?.resend_after) || 60);
-        setExpiresAt(Date.now() + (Number(res.data.data?.expires_in) || 600) * 1000);
+        setExpiresAt(Date.now() + (Number(res.data.data?.expires_in) || 300) * 1000);
         setCode('');
         setTried(false);
         setStep(2);
