@@ -482,7 +482,12 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView style={[sv.container, { backgroundColor: theme.bg }]}>
+      {/* iOS: inside a sliding Modal the SafeAreaView measures itself off-screen and reads a 0 top inset,
+          so the header sat on the clock/signal row. Take the top from the app-level insets instead. */}
+      <SafeAreaView
+        edges={Platform.OS === 'ios' ? ['left', 'right', 'bottom'] : undefined}
+        style={[sv.container, { backgroundColor: theme.bg }, Platform.OS === 'ios' && { paddingTop: insets.top }]}
+      >
         <View style={[sv.headerRow, { backgroundColor: theme.bg }]}>
           <TouchableOpacity onPress={() => { reset(); onClose(); }} style={sv.backBtn}>
             <ChevronLeft color={theme.text} size={28} />

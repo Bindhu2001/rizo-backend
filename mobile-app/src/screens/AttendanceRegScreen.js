@@ -836,6 +836,9 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     return s;
   };
 
+  // Server sends the month oldest-first; show latest date on top. YYYY-MM-DD compares correctly as a string.
+  const sortedAttLogs = attLogs.slice().sort((a, b) => String(normalizeDate(b.date) || '').localeCompare(String(normalizeDate(a.date) || '')));
+
   const regMap = {};
   regLogs.forEach(r => {
     const raw = r.date || r.dates;
@@ -1019,13 +1022,13 @@ const AttendanceRegScreen = ({ navigation, route }) => {
         <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
       ) : (
         <ScrollView contentContainerStyle={s.listScroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
-          {tab === 'LOG' && attLogs.map((item, i) => (
+          {tab === 'LOG' && sortedAttLogs.map((item, i) => (
             <LogCard key={item.date || i} item={item} isRegularisedTab={false} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
           ))}
           {tab === 'REGULARISED' && regLogs.length === 0 ? (
              <View style={{ padding: 40, alignItems: 'center' }}><Text style={{ color: theme.textMuted }}>No regularised logs found.</Text></View>
           ) : (
-             tab === 'REGULARISED' && attLogs.filter(a => (regMap[a.date] || []).length > 0).map((item, i) => (
+             tab === 'REGULARISED' && sortedAttLogs.filter(a => (regMap[a.date] || []).length > 0).map((item, i) => (
                <LogCard key={`reg-${i}`} item={item} isRegularisedTab={true} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
              ))
           )}
