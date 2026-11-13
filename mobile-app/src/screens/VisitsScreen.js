@@ -384,19 +384,21 @@ const cm = StyleSheet.create({
 
 
 // ─── Input Components ────────────────────────────────────────────────────────
-const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength, autoCapitalize }) => {
+// editable={false}: shown dimmed and can't be changed (e.g. the visit place once the visit has started).
+const FloatInput = ({ label, value, onChangeText, keyboardType, multiline, maxLength, autoCapitalize, editable = true }) => {
   const theme = useTheme();
   const inputRef = useRef(null);
   return (
   <TouchableOpacity
     activeOpacity={1}
-    onPress={() => inputRef.current?.focus()}
-    style={[fi.wrap, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }]}
+    onPress={() => { if (editable) inputRef.current?.focus(); }}
+    style={[fi.wrap, { borderColor: theme.inputBorder, backgroundColor: theme.inputBg }, !editable && fi.locked]}
   >
     <Text style={[fi.label, { color: theme.textMuted }]}>{label}</Text>
     <TextInput
       ref={inputRef}
-      style={[fi.input, { color: theme.text }, multiline && fi.multiline]}
+      editable={editable}
+      style={[fi.input, { color: editable ? theme.text : theme.textMuted }, multiline && fi.multiline]}
       value={value}
       onChangeText={onChangeText}
       keyboardType={keyboardType || 'default'}
@@ -417,6 +419,7 @@ const fi = StyleSheet.create({
   label: { fontSize: moderateScale(10), fontWeight: '600', color: '#9CA3AF', marginBottom: 2 },
   input: { fontSize: moderateScale(14), color: '#111827', fontWeight: '600', paddingVertical: 2 },
   multiline: { height: moderateScale(72), textAlignVertical: 'top' },
+  locked: { opacity: 0.55 },
 });
 
 // ─── Going to Meet (Fullscreen START Component) ───────────────────────────
@@ -602,7 +605,8 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
-            <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+            {/* The visit place is fixed once the visit has started (set on the Going to Meet screen). */}
+            <FloatInput label="Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} editable={false} />
             <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
