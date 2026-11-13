@@ -447,8 +447,8 @@ const HomeScreen = ({ navigation, route }) => {
   const checkPunchAllowed = async () => {
     verifiedPunchLoc.current = null;
 
-    // 1. Punch type — LocalDB copy if under 30 min old (no wait), otherwise
-    //    re-fetched when online. Usually already refreshed by Splash.
+    // 1. Punch type — fetched from the server when online (and saved to LocalDB);
+    //    the last saved LocalDB copy when offline.
     const { data, serverTimeMs } = await loadPunchConfig(user.user_id);
 
     // Clock drift check (server Date header vs device clock, allow 2 min jitter)

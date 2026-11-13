@@ -44,9 +44,9 @@ const SplashScreen = ({ navigation }) => {
   const oRotate = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 0. While the animation plays, refresh the punch type (if the LocalDB copy
-    //    is over 30 min old and we're online) and start a GPS fix, so the
-    //    first punch doesn't wait on either. Never blocks navigation.
+    // 0. While the animation plays, refresh the punch type from the server
+    //    (when online; saved to LocalDB for offline use) and start a GPS fix.
+    //    Never blocks navigation.
     getLoggedUser().then((user) => {
       if (!user?.user_id) return;
       loadPunchConfig(user.user_id).catch(() => {});

@@ -4,8 +4,6 @@ import * as Location from 'expo-location';
 import { API_ENDPOINTS } from '../constants/Config';
 import { savePunchConfig, getPunchConfig } from './LocalDB';
 
-// Punch type is re-fetched from the server once the LocalDB copy is older than this
-export const PUNCH_CONFIG_MAX_AGE_MS = 30 * 60 * 1000;
 // A GPS fix this recent is good enough for the 100 m office check
 const RECENT_FIX_MAX_AGE_MS = 60 * 1000;
 
@@ -14,27 +12,25 @@ let lastFix = null;
 
 const fetchPunchConfig = async (userId) => {
   let data = null;
-  let fetchedAt = 0;
   let serverTimeMs = null;
 
-  try {
-    const cached = await getPunchConfig(userId);
-    if (cached) { data = cached.data; fetchedAt = cached.fetchedAt; }
-  } catch (_) {}
-
-  const age = Date.now() - fetchedAt;
-  const isStale = !data || age < 0 || age > PUNCH_CONFIG_MAX_AGE_MS;
-  if (!isStale) {
-    console.log(`[PunchPrefetch] using LocalDB config (age ${Math.round(age / 1000)}s)`);
-    return { data, serverTimeMs };
-  }
+  // Last config saved while online — used only when offline or the API call fails
+  const loadLocal = async () => {
+    try {
+      const cached = await getPunchConfig(userId);
+      return cached ? cached.data : null;
+    } catch (_) {
+      return null;
+    }
+  };
 
   const net = await Network.getNetworkStateAsync().catch(() => null);
   if (!net?.isConnected) {
     console.log('[PunchPrefetch] offline — using LocalDB config');
-    return { data, serverTimeMs };
+    return { data: await loadLocal(), serverTimeMs };
   }
 
+  // Online → always ask the server so an admin punch-type / office change applies at once
   try {
     const res = await axios.post(
       `${API_ENDPOINTS.EMPLOYEE_PUNCH_DETAILS}?user_id=${encodeURIComponent(userId)}`,
@@ -56,11 +52,12 @@ const fetchPunchConfig = async (userId) => {
   } catch (e) {
     console.log('[PunchPrefetch] fetch failed — using LocalDB config', e?.message);
   }
+  if (!data) data = await loadLocal();
   return { data, serverTimeMs };
 };
 
-// Returns { data, serverTimeMs }. A LocalDB copy under 30 min old is used with no
-// network wait; older or missing → re-fetched when online, else LocalDB is used.
+// Returns { data, serverTimeMs }. Online → fetched from the server every time and
+// saved to LocalDB; offline (or the call fails) → the last saved LocalDB copy.
 // serverTimeMs is set only when this call actually hit the server.
 export const loadPunchConfig = (userId) => {
   if (!inflightConfig) {
