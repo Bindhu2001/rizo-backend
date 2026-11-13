@@ -8,7 +8,7 @@
     "icon": "./assets/icon_square.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/logo_with_margin.png",
+      "image": "./assets/splash_logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -51,6 +51,16 @@
     "plugins": [
       "./plugins/withAgpCompatibility",
       "./plugins/withNetworkSecurityConfig",
+      ["expo-splash-screen", {
+        "image": "./assets/splash_logo.png",
+        "imageWidth": 200,
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF",
+        "dark": {
+          "image": "./assets/splash_logo.png",
+          "backgroundColor": "#0F172A"
+        }
+      }],
       "expo-sqlite",
       ["expo-location", {
         "isAndroidBackgroundLocationEnabled": false

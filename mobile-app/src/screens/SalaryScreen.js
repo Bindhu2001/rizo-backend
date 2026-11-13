@@ -6,10 +6,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   MoreHorizontal, FileText,
   Calendar, Download, Landmark, ShieldCheck,
-  ArrowUpRight, Wallet, ChevronLeft
+  ArrowUpRight, Wallet, ChevronLeft, Eye
 } from 'lucide-react-native';
+import PdfViewerModal from '../components/PdfViewerModal';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SHADOWS , moderateScale } from '../components/Theme';
+import { COLORS, SHADOWS , moderateScale, SCREEN_WIDTH } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES, companyLettersOf } from '../constants/Config';
@@ -25,7 +26,10 @@ const SalaryScreen = ({ navigation, route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [salarySlips, setSalarySlips] = useState([]);
   const [grossSalary, setGrossSalary] = useState(0);
-  const [downloadingId, setDownloadingId] = useState(null);
+  // The slip being prepared: { month, kind: 'download' | 'view' } — one at a time
+  const [busy, setBusy] = useState(null);
+  // The PDF open in the viewer popup: { uri, title }
+  const [viewer, setViewer] = useState(null);
   const [alertCfg, setAlertCfg] = useState(null);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
@@ -86,33 +90,32 @@ const SalaryScreen = ({ navigation, route }) => {
 
   const escHtml = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-  // rizo-revamp slip: the server's PDF (same design as the web), saved under the usual file name and shared
-  const downloadRevampSlip = async (slip) => {
-    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const [yy, mm] = String(slip.month || '').split('-');
-    const monthName = MONTHS[parseInt(mm, 10) - 1] || 'Month';
-    const who = (user?.employee_name || 'Employee').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Employee';
-    try {
-      const uri = await PayslipsApi.download(slip.revampId, `${who}_${monthName}${yy}_SalarySlip.pdf`);
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Save Salary Slip' });
-      } else {
-        showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
-      }
-    } catch (e) {
-      console.log('revamp payslip download failed', e.message);
-      showAlert('error', 'Could not download', e?.response?.status === 404
-        ? 'This salary slip is not available.'
-        : 'Please check your connection and try again.');
-    } finally {
-      setDownloadingId(null);
-    }
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Ravi_Kumar_October2026_SalarySlip.pdf
+  const slipFileName = (slip) => {
+    const empName = (slip.empdet?.[0]?.EmpName || user?.employee_name || 'Employee').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Employee';
+    const [slipYear, slipMo] = String(slip.month || '2000-01').split('-');
+    const moIndex = parseInt(slipMo, 10) - 1;
+    const slipMonthName = (moIndex >= 0 && moIndex <= 11) ? MONTH_NAMES[moIndex] : 'Month';
+    return `${empName}_${slipMonthName}${slipYear}_SalarySlip.pdf`;
   };
 
-  const handleDownloadPdf = async (slip) => {
-    if (downloadingId) return;
-    setDownloadingId(slip.month);
-    if (slip.revampId) return downloadRevampSlip(slip);
+  // The slip's PDF saved in the cache folder; returns its file uri. Used by both Download (share / save) and
+  // View (opened in the app). DigitalOcean companies: rizo-revamp's PDF (same design as the web); others: the
+  // slip the app builds itself. A failure carries the alert to show (alertTitle / alertMessage).
+  const makeSlipPdf = async (slip) => {
+    if (slip.revampId) {
+      try {
+        return await PayslipsApi.download(slip.revampId, slipFileName(slip));
+      } catch (e) {
+        console.log('revamp payslip download failed', e.message);
+        throw Object.assign(new Error(e.message), {
+          alertTitle: 'Could not download',
+          alertMessage: e?.response?.status === 404 ? 'This salary slip is not available.' : 'Please check your connection and try again.',
+        });
+      }
+    }
 
     try {
       const monthStr = formatMonth(slip.month);
@@ -226,22 +229,9 @@ const SalaryScreen = ({ navigation, route }) => {
         </html>
       `;
 
-      const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      const empName = (slip.empdet?.[0]?.EmpName || user?.employee_name || 'Employee').trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Employee';
-      const [slipYear, slipMo] = (slip.month || '2000-01').split('-');
-      const moIndex = parseInt(slipMo, 10) - 1;
-      const slipMonthName = (moIndex >= 0 && moIndex <= 11) ? MONTH_NAMES[moIndex] : 'Month';
-      const pdfFileName = `${empName}_${slipMonthName}${slipYear}_SalarySlip.pdf`;
+      const pdfFileName = slipFileName(slip);
 
-      let uri;
-      try {
-        const result = await Print.printToFileAsync({ html: htmlContent, base64: false });
-        uri = result.uri;
-      } catch (printErr) {
-        console.error('PDF generation error:', printErr);
-        showAlert('error', 'Error', `Failed to generate PDF: ${printErr.message || 'Unknown error'}`);
-        return;
-      }
+      const { uri } = await Print.printToFileAsync({ html: htmlContent, base64: false });
 
       let finalUri = uri;
       try {
@@ -256,32 +246,65 @@ const SalaryScreen = ({ navigation, route }) => {
         console.warn('PDF rename failed, sharing original:', renameErr.message);
         finalUri = uri;
       }
-
-      try {
-        const isSharingAvailable = await Sharing.isAvailableAsync();
-        if (isSharingAvailable) {
-          await Sharing.shareAsync(finalUri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Save Salary Slip' });
-        } else {
-          showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
-        }
-      } catch (shareErr) {
-        console.warn('PDF share error:', shareErr.message);
-      }
-
+      return finalUri;
     } catch (e) {
       console.error('PDF generation error:', e);
-      showAlert('error', 'Error', `Failed to generate PDF: ${e.message || 'Unknown error'}`);
-    } finally {
-      setDownloadingId(null);
+      throw Object.assign(e instanceof Error ? e : new Error(String(e)), {
+        alertTitle: 'Error',
+        alertMessage: `Failed to generate PDF: ${e?.message || 'Unknown error'}`,
+      });
     }
   };
 
-  const formatMonth = (str) => {
+  const failAlert = (e) => showAlert('error', e?.alertTitle || 'Error', e?.alertMessage || 'Please try again.');
+
+  const shareSlip = async (uri) => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Save Salary Slip' });
+      } else {
+        showAlert('error', 'Error', 'Sharing/Downloading is not available on this device.');
+      }
+    } catch (shareErr) {
+      console.warn('PDF share error:', shareErr.message);
+    }
+  };
+
+  // Download icon (and tapping the row): straight to share / save, as before
+  const handleDownloadPdf = async (slip) => {
+    if (busy) return;
+    setBusy({ month: slip.month, kind: 'download' });
+    try {
+      await shareSlip(await makeSlipPdf(slip));
+    } catch (e) {
+      failAlert(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // Eye icon: the same PDF, opened inside the app
+  const handleViewPdf = async (slip) => {
+    if (busy) return;
+    setBusy({ month: slip.month, kind: 'view' });
+    try {
+      const uri = await makeSlipPdf(slip);
+      setViewer({ uri, title: formatMonth(slip.month) });
+    } catch (e) {
+      failAlert(e);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // 'October 2026'; short ('Oct 2026') for the list on a narrow phone, where the full name beside the
+  // View / Download buttons would be cut off
+  const formatMonth = (str, short = false) => {
     if (!str) return '';
     try {
       const [year, month] = str.split('-');
       const d = new Date(year, parseInt(month) - 1, 1);
-      return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      return d.toLocaleDateString('en-GB', { month: short ? 'short' : 'long', year: 'numeric' });
     } catch (e) { return str; }
   };
 
@@ -366,17 +389,25 @@ const SalaryScreen = ({ navigation, route }) => {
                   <View style={[styles.slipIcon, { backgroundColor: theme.cardSoft }]}>
                     <FileText color={theme.textLight} size={20} />
                   </View>
+                  {/* Amount under the month: with both the View and Download icons, a long month
+                      (September 2026) no longer fits beside the amount */}
                   <View style={styles.slipMain}>
-                    <Text style={[styles.slipMonth, { color: theme.text }]}>{formatMonth(slip.month)}</Text>
-                    <Text style={[styles.slipDate, { color: theme.textLight }]}>Slip available</Text>
+                    <Text style={[styles.slipMonth, { color: theme.text }]} numberOfLines={1}>{formatMonth(slip.month, SCREEN_WIDTH < 360)}</Text>
+                    <Text style={[styles.slipAmount, { color: theme.text }]} numberOfLines={1}>₹{dispAmountStr}</Text>
                   </View>
                   <View style={styles.slipEnd}>
-                    <Text style={[styles.slipAmount, { color: theme.text }]}>₹{dispAmountStr}</Text>
-                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.cardSoft }]} onPress={() => handleDownloadPdf(slip)} disabled={downloadingId === slip.month}>
-                      {downloadingId === slip.month ? (
+                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.cardSoft, marginRight: moderateScale(8) }]} onPress={() => handleViewPdf(slip)} disabled={!!busy} accessibilityLabel="View salary slip">
+                      {busy?.month === slip.month && busy.kind === 'view' ? (
                         <ActivityIndicator size="small" color={COLORS.primaryDeep} />
                       ) : (
-                        <Download color={theme.textMuted} size={14} />
+                        <Eye color={theme.isDark ? theme.textLight : theme.textMuted} size={16} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: theme.cardSoft }]} onPress={() => handleDownloadPdf(slip)} disabled={!!busy} accessibilityLabel="Download salary slip">
+                      {busy?.month === slip.month && busy.kind === 'download' ? (
+                        <ActivityIndicator size="small" color={COLORS.primaryDeep} />
+                      ) : (
+                        <Download color={theme.isDark ? theme.textLight : theme.textMuted} size={16} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -386,6 +417,13 @@ const SalaryScreen = ({ navigation, route }) => {
           </View>
         </ScrollView>
       )}
+      <PdfViewerModal
+        visible={!!viewer}
+        uri={viewer?.uri}
+        title={viewer?.title ? `Salary Slip · ${viewer.title}` : 'Salary Slip'}
+        onClose={() => setViewer(null)}
+        onShare={() => viewer?.uri && shareSlip(viewer.uri)}
+      />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
@@ -433,14 +471,14 @@ const styles = StyleSheet.create({
 
   // List
   listCard: { backgroundColor: '#FFF', borderRadius: moderateScale(24), padding: moderateScale(8), ...SHADOWS.light },
-  slipItem: { flexDirection: 'row', alignItems: 'center', padding: moderateScale(16), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  slipIcon: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(12), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(16) },
-  slipMain: { flex: 1 },
+  slipItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(14), paddingHorizontal: moderateScale(12), borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  slipIcon: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(12), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(12) },
+  slipMain: { flex: 1, minWidth: 0 },
   slipMonth: { fontSize: moderateScale(15), fontWeight: '800', color: COLORS.text },
   slipDate: { fontSize: moderateScale(12), color: COLORS.textLight, fontWeight: '600', marginTop: 2 },
-  slipEnd: { alignItems: 'flex-end', flexDirection: 'row', alignItems: 'center' },
-  slipAmount: { fontSize: moderateScale(15), fontWeight: '900', color: COLORS.text, marginRight: moderateScale(15) },
-  downloadBtn: { width: moderateScale(30), height: moderateScale(30), borderRadius: moderateScale(15), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }
+  slipEnd: { flexDirection: 'row', alignItems: 'center', marginLeft: moderateScale(10) },
+  slipAmount: { fontSize: moderateScale(14), fontWeight: '800', color: COLORS.text, marginTop: 2 },
+  downloadBtn: { width: moderateScale(36), height: moderateScale(36), borderRadius: moderateScale(18), backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center' }
 });
 
 export default SalaryScreen;

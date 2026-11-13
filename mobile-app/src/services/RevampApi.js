@@ -89,40 +89,45 @@ export const TeamApi = {
   },
 };
 
+// A file from a /api/mobile route saved into the cache folder with the login token (one fresh sign-in on a 401);
+// returns its file uri. A failure carries the HTTP status (e.response.status), like an axios error.
+const downloadToCache = async (path, fileName, failMessage) => {
+  const dest = `${FileSystem.cacheDirectory}${fileName}`;
+  await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+  const get = (token) => FileSystem.downloadAsync(`${REVAMP_API_URL}${path}`, dest, { headers: { Authorization: `Bearer ${token}` } });
+  let res = await get(await getToken());
+  if (res.status === 401) res = await get(await signIn());
+  if (res.status !== 200) {
+    await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
+    throw Object.assign(new Error(failMessage), { response: { status: res.status } });
+  }
+  return res.uri;
+};
+
 // Salary slips from rizo-revamp (DigitalOcean companies): approved months only, and the PDF made by the
 // server with the same design as the web employee login's Download PDF.
 export const PayslipsApi = {
   list: () => request('get', '/payslips'),
   // Saves the PDF into the cache folder and returns its file uri
-  download: async (id, fileName) => {
-    const dest = `${FileSystem.cacheDirectory}${fileName}`;
-    await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
-    const get = (token) => FileSystem.downloadAsync(`${REVAMP_API_URL}/payslips/${id}/pdf`, dest, { headers: { Authorization: `Bearer ${token}` } });
-    let res = await get(await getToken());
-    if (res.status === 401) res = await get(await signIn());
-    if (res.status !== 200) {
-      await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
-      throw Object.assign(new Error('Could not download the payslip'), { response: { status: res.status } });
-    }
-    return res.uri;
-  },
+  download: (id, fileName) => downloadToCache(`/payslips/${id}/pdf`, fileName, 'Could not download the payslip'),
 };
 
 // The employee's own document (Profile > Other Details > Documents) stored on the website (/uploads/...):
 // saved into the cache folder with the login token (the website shows those files only to a signed-in user).
 export const DocumentsApi = {
-  download: async (id, fileName) => {
-    const dest = `${FileSystem.cacheDirectory}${fileName}`;
-    await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
-    const get = (token) => FileSystem.downloadAsync(`${REVAMP_API_URL}/document/${id}`, dest, { headers: { Authorization: `Bearer ${token}` } });
-    let res = await get(await getToken());
-    if (res.status === 401) res = await get(await signIn());
-    if (res.status !== 200) {
-      await FileSystem.deleteAsync(dest, { idempotent: true }).catch(() => {});
-      throw Object.assign(new Error('Could not open the document'), { response: { status: res.status } });
-    }
-    return res.uri;
-  },
+  download: (id, fileName) => downloadToCache(`/document/${id}`, fileName, 'Could not open the document'),
+};
+
+// Profile › Assets & Documents (DigitalOcean companies) — the web employee login's About Me › My Assets,
+// Generated Documents and My Documents, the signed-in employee's own only.
+export const AllocationsApi = {
+  assets: () => request('get', '/assets'),
+  generatedDocuments: () => request('get', '/generated-documents'),
+  // { document_name, doc_id, html }: the A4 page the web prints, turned into a PDF on the phone
+  generatedDocument: (id) => request('get', `/generated-documents/${id}`),
+  documents: () => request('get', '/allocated-documents'),
+  // An allocated document's file (policy, handbook…) saved into the cache folder
+  downloadDocument: (id, fileName) => downloadToCache(`/allocated-documents/${id}`, fileName, 'Could not download the document'),
 };
 
 export const AnnouncementsApi = {

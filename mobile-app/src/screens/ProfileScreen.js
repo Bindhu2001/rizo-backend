@@ -16,7 +16,7 @@ import {
   Cake, VenusAndMars, Heart, Droplet, Phone, UserCheck, HeartHandshake, IdCard, Building2, AtSign, Smartphone,
   CalendarDays, BadgeCheck, Hourglass, CalendarX, Clock, Building, Award, Timer, ClipboardList, UserRoundCog,
   GraduationCap, House, Map as MapIcon, Hash, Globe, KeyRound, Wallet, PiggyBank, Stethoscope, Percent, Plane,
-  Accessibility, TrainFront, Ear,
+  Accessibility, TrainFront, Ear, Package, FilePen, FolderOpen,
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
@@ -26,13 +26,23 @@ import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
 import { AnnouncementsApi, DocumentsApi } from '../services/RevampApi';
-import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
+import { API_ENDPOINTS, IMAGE_ROOT, isRevampCompany } from '../constants/Config';
 import { usePhotoSource, retryPhoto } from '../services/photoSource';
 import { useTheme } from '../components/ThemeContext';
+import AssetsDocuments from '../components/AssetsDocuments';
 
 const PLACEHOLDER_AVATAR = require('../../assets/signup/placeholdermen.jpeg');
 
 const PURPLE = '#4A148C';
+
+// Profile › Assets & Documents rows (section key → list)
+const ALLOC_SECTIONS = {
+  assets: { kind: 'assets', title: 'My Assets', subtitle: 'Laptop, devices & items allocated to you', icon: Package, bg: '#EFF6FF', fg: '#2563EB' },
+  // The web's "Generated Documents" (letters HR generated for the employee)
+  generatedDocs: { kind: 'generated', title: 'My Documents', subtitle: 'Offer letter, certificates & letters from HR', icon: FilePen, bg: '#F5F3FF', fg: '#7C3AED' },
+  // The web's "My Documents" (files HR uploaded and allocated)
+  myDocs: { kind: 'documents', title: 'Official Documents', subtitle: 'Policies & files shared with you by HR', icon: FolderOpen, bg: '#F0FDFA', fg: '#0D9488' },
+};
 
 // ─── Small read-only field row ────────────────────────────────────────────────
 const yesNo = (v) => (String(v).toUpperCase() === 'Y' || v === true ? 'Yes' : 'No');
@@ -379,6 +389,16 @@ const ProfileScreen = ({ navigation, route }) => {
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
+
+  // ── ASSETS & DOCUMENTS (My Assets, My Documents, Official Documents) ───────
+  if (ALLOC_SECTIONS[section]) {
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={safeEdges}>
+        <SectionHeader title={ALLOC_SECTIONS[section].title} onBack={() => setSection(null)} theme={theme} />
+        <AssetsDocuments kind={ALLOC_SECTIONS[section].kind} />
+      </SafeAreaView>
+    );
+  }
 
   // ── PERSONAL DETAILS ────────────────────────────────────────────────────────
   if (section === 'personal') {
@@ -744,6 +764,28 @@ const ProfileScreen = ({ navigation, route }) => {
             onPress={() => openSection('other')}
             last
           />
+        </View>
+
+        {/* The web employee login's About Me › My Assets, Generated Documents and My Documents. DigitalOcean
+            companies (rizo-revamp) for now; the others see Coming soon. */}
+        <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Assets & Documents</Text>
+        <View style={[s.menuCard, { backgroundColor: theme.card }]}>
+          {Object.entries(ALLOC_SECTIONS).map(([key, m], i, all) => {
+            const ready = isRevampCompany(user.user_id);
+            const Icon = m.icon;
+            return (
+              <View key={key} style={!ready && { opacity: 0.55 }}>
+                <SectionItem
+                  iconBg={m.bg} icon={<Icon color={m.fg} size={20} />}
+                  title={m.title} subtitle={ready ? m.subtitle : 'Coming soon'}
+                  onPress={() => (ready
+                    ? setSection(key)
+                    : showAlert('info', 'Coming soon', `${m.title} will be available here soon.`))}
+                  last={i === all.length - 1}
+                />
+              </View>
+            );
+          })}
         </View>
 
         <Text style={[s.cardGroupTitle, { color: theme.textLight }]}>Support</Text>
