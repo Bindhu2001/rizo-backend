@@ -908,7 +908,8 @@ const HomeScreen = ({ navigation, route }) => {
                   ) : (
                     <>
                       <Camera color="#FFF" size={moderateScale(22)} />
-                      <Text style={styles.selfieBtnText}>
+                      {/* One line on the narrowest phones (shrinks rather than wraps) */}
+                      <Text style={styles.selfieBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                         {statusPending ? 'Checking…' : `Take selfie to ${isPunchedIn ? 'Check Out' : 'Check In'}`}
                       </Text>
                     </>
@@ -1153,7 +1154,7 @@ const styles = StyleSheet.create({
     width: '100%', borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: moderateScale(10), ...SHADOWS.light,
   },
-  selfieBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800' },
+  selfieBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800', flexShrink: 1 },
   punchActionTitle: {
     fontSize: moderateScale(22),
     fontWeight: '800',
