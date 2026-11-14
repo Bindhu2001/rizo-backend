@@ -121,7 +121,7 @@ const PdfViewerModal = ({ visible, uri, title, onClose, onShare }) => {
 
           {failed ? (
             <View style={styles.center}>
-              <Text style={[styles.msg, { color: theme.text }]}>Could not show the salary slip here.</Text>
+              <Text style={[styles.msg, { color: theme.text }]}>Could not show this document here.</Text>
               <Text style={[styles.sub, { color: theme.textLight }]}>Please check your connection, or use the share button to open it in another app.</Text>
             </View>
           ) : !rendered ? (

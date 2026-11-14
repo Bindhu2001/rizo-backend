@@ -7,15 +7,17 @@ import { ChevronLeft, ChevronDown, ChevronUp, ShieldCheck, BadgeCheck, CalendarX
 import { format } from 'date-fns';
 import { moderateScale, SHADOWS } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { TeamApi } from '../services/RevampApi';
+import { TeamApi, PunchSelfieApi } from '../services/RevampApi';
 import TeamAvatar from '../components/TeamAvatar';
+import { SelfieThumb, latestSelfieByEmp } from '../components/TeamSelfie';
 
 // Home "My Team" tile → this page. The two teams the employee has (rizo-revamp /api/mobile/team-today):
 //   You authorise: people whose reporting manager they are
 //   You approve:   people whose leave they approve
 // Each shows "N members · 3 in · 1 on leave · 1 not punched in ⌄"; the arrow opens the list — names, and per
 // person: leave type + part of the day (approved leave), "In · 09:32", "Not punched in · Shift 09:30",
-// "Week off" or "Holiday", for their current shift.
+// "Week off" or "Holiday", for their current shift. GRTL / MYPY: the person's latest punch selfie today beside
+// the status — tap for the large photo (components/TeamSelfie.js).
 
 const ROLES = [
   { key: 'authorise', title: 'You authorise', note: 'Your reporting team', Icon: ShieldCheck, color: '#2563EB', bg: '#DBEAFE' },
@@ -34,9 +36,12 @@ const MyTeamScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [open, setOpen] = useState({});
+  const [selfies, setSelfies] = useState(new Map()); // empPkey → latest selfie today
 
   const load = async () => {
     setError(false);
+    // The team list doesn't wait for the selfies (and a selfie failure never hides the team)
+    PunchSelfieApi.teamToday().then((rows) => setSelfies(latestSelfieByEmp(rows))).catch(() => {});
     try {
       setData(await TeamApi.today());
     } catch (e) {
@@ -103,6 +108,7 @@ const MyTeamScreen = ({ navigation }) => {
 
   const renderPerson = (p) => {
     const half = p.leave && p.leave.session !== 'Full day';
+    const selfie = selfies.get(Number(p.empPkey));
     return (
       <View key={p.empPkey} style={[s.person, { borderTopColor: theme.border }]}>
         <TeamAvatar person={p} size={moderateScale(38)} />
@@ -119,6 +125,11 @@ const MyTeamScreen = ({ navigation }) => {
             </View>
           </View>
         ) : renderStatus(p)}
+        {!!selfie && (
+          <View style={{ marginLeft: moderateScale(10) }}>
+            <SelfieThumb selfie={selfie} name={p.name} size={moderateScale(34)} />
+          </View>
+        )}
       </View>
     );
   };

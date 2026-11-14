@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
   Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
-  CheckCircle, ClipboardList, ChevronRight, ChevronDown, ChevronUp
+  CheckCircle, ClipboardList, ChevronRight, ChevronDown, ChevronUp, Camera
 } from 'lucide-react-native';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -23,11 +23,13 @@ import SwipeToPunch from '../components/SwipeToPunch';
 import CalendarWidget from '../components/CalendarWidget';
 import TeamTile from '../components/TeamTile';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
+import SelfieCameraModal from '../components/SelfieCameraModal';
+import { keepSelfiePhoto, queuePunchSelfie, SELFIE_PUNCH_TYPE, selfieNeededFor, cachedSelfieRequired } from '../services/PunchSelfie';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import { usePhotoSource, retryPhoto } from '../services/photoSource';
 import {
   savePunchLocal, getPunchesBetween, updatePunchLocation,
-  getPendingCount, getPendingSyncCount, initDB
+  getPendingCount, getPendingSyncCount, initDB, getPunchConfig
 } from '../services/LocalDB';
 import { loadPunchConfig, getRecentFix, rememberFix } from '../services/PunchPrefetch';
 import SyncService from '../services/SyncService';
@@ -73,6 +75,11 @@ const HomeScreen = ({ navigation, route }) => {
   const [locationName, setLocationName] = useState('Fetching location...');
   const [showConfirmOut, setShowConfirmOut] = useState(false);
   const [showShiftConfirm, setShowShiftConfirm] = useState(false);
+  // "Mobile with selfie": whether the punch being confirmed needs one, and the direction the camera is open for
+  const selfieNeeded = useRef(false);
+  const [selfieFor, setSelfieFor] = useState(null);
+  // This employee punches with a selfie → a "Take selfie" button instead of the swipe
+  const [selfieMode, setSelfieMode] = useState(false);
   const [shiftConfirmType, setShiftConfirmType] = useState('IN');
   const [offlineCount, setOfflineCount] = useState(0);
   const lastActionTime = useRef(0);
@@ -139,6 +146,7 @@ const HomeScreen = ({ navigation, route }) => {
       fetchRoles();
       fetchMenus();
       checkOfflinePunches();
+      refreshSelfieMode().catch(() => {});
       // Use ref so we always get the latest user_id
       syncEmployeeDetails(userRef.current, navigation).then((updated) => { if (updated) setUser(updated); });
       NotificationManager.checkStatusChanges();
@@ -414,6 +422,7 @@ const HomeScreen = ({ navigation, route }) => {
       fetchRoles(),
       fetchMenus(),
       checkOfflinePunches(),
+      refreshSelfieMode().catch(() => {}),
       syncEmployeeDetails(user, navigation).then((updated) => { if (updated) setUser(updated); })
     ]);
     initLocationWithDisclosure();
@@ -443,8 +452,9 @@ const HomeScreen = ({ navigation, route }) => {
   //   M → mobile, anywhere
   //   O → single office, within 100 m of data.latitude/longitude
   //   A → all branches, within 100 m of ANY branch location
+  //   F → mobile, anywhere, with a front-camera selfie (services/PunchSelfie.js)
   //   S / W → not permitted
-  const checkPunchAllowed = async () => {
+  const punchRules = async () => {
     verifiedPunchLoc.current = null;
 
     // 1. Punch type — fetched from the server when online (and saved to LocalDB);
@@ -469,6 +479,7 @@ const HomeScreen = ({ navigation, route }) => {
       return { allowed: false, message: 'Punching is not allowed for your account. Please contact HR.' };
     }
     if (t === 'M') return { allowed: true };
+    if (t === SELFIE_PUNCH_TYPE) return { allowed: true, selfie: true };
     if (t !== 'O' && t !== 'A') return { allowed: true }; // unknown type → allow
 
     // Build list of office locations to validate against
@@ -544,7 +555,31 @@ const HomeScreen = ({ navigation, route }) => {
     return { allowed: true };
   };
 
-  const handleSwipeComplete = async () => {
+  // The punch rules above, plus whether this punch takes a selfie (punch type F, or rizo-revamp says so — e.g. an
+  // older Mobile employee with "Selfie required at punch" ticked; services/PunchSelfie.js)
+  const checkPunchAllowed = async () => {
+    const verdict = await punchRules();
+    if (!verdict.allowed) return verdict;
+    const cfg = await getPunchConfig(user.user_id).catch(() => null);
+    const selfie = !!verdict.selfie || await selfieNeededFor(user.user_id, cfg?.data?.punchtype);
+    setSelfieMode(selfie);
+    return { ...verdict, selfie };
+  };
+
+  // Selfie employees get a "Take selfie" button instead of the swipe: decided from the punch type and the server's
+  // answer (both kept for offline), refreshed when Home opens and on pull-to-refresh
+  const refreshSelfieMode = async () => {
+    const userId = userRef.current?.user_id;
+    if (!userId) return;
+    const kept = await getPunchConfig(userId).catch(() => null);
+    const keptType = String(kept?.data?.punchtype || '').toUpperCase();
+    setSelfieMode(keptType === SELFIE_PUNCH_TYPE || await cachedSelfieRequired(userId));
+    const fresh = await loadPunchConfig(userId).catch(() => null);
+    setSelfieMode(await selfieNeededFor(userId, fresh?.data?.punchtype ?? keptType));
+  };
+
+  // fromSelfieButton: the "Take selfie" button — the photo is the confirmation, so the camera opens straight away
+  const handleSwipeComplete = async (fromSelfieButton = false) => {
     // Spinner on the knob while the punch type / 100 m office check runs
     setCheckingPunch(true);
     let verdict;
@@ -562,6 +597,11 @@ const HomeScreen = ({ navigation, route }) => {
       return;
     }
     const type = isPunchedIn ? 'OUT' : 'IN';
+    selfieNeeded.current = !!verdict.selfie;
+    if (verdict.selfie && fromSelfieButton) {
+      setSelfieFor(type);
+      return;
+    }
     setShiftConfirmType(type);
     setShowShiftConfirm(true);
   };
@@ -630,7 +670,8 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
-  const processPunch = async (type) => {
+  // selfie: { keptUri } (the photo already kept by keepSelfiePhoto) for a selfie punch, else null
+  const processPunch = async (type, selfie = null) => {
     if (punching) return;
     setPunching(true);
     setPunchingType(type);
@@ -673,6 +714,12 @@ const HomeScreen = ({ navigation, route }) => {
       }
 
       console.log(`[Punch] ${type} saved locally: ${savedId} (${Date.now() - now}ms)`);
+
+      // Queued before the sync below starts, so it goes up right after the punch
+      if (selfie) {
+        await queuePunchSelfie({ userId: user.user_id, direction: type, punchTime, keptUri: selfie.keptUri })
+          .catch((e) => console.log('[Punch] selfie not queued', e?.message));
+      }
 
       // 3. Update UI state immediately — the punch is saved, so the button is
       //    released now; location, address and sync finish in the background
@@ -842,8 +889,32 @@ const HomeScreen = ({ navigation, route }) => {
                 : statusPending ? 'Checking…' : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
-            {/* Swipe */}
+            {/* Swipe — or, for a selfie employee, one tap that opens the front camera */}
             <View style={{ width: '100%', height: SWIPE_TRACK_HEIGHT, marginTop: moderateScale(12) }}>
+              {selfieMode ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={punching || checkingPunch || statusPending}
+                  onPress={() => handleSwipeComplete(true)}
+                  accessibilityLabel={`Take selfie to ${isPunchedIn ? 'check out' : 'check in'}`}
+                  style={[styles.selfieBtn, {
+                    height: SWIPE_TRACK_HEIGHT,
+                    backgroundColor: statusPending ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A'),
+                    opacity: punching || checkingPunch ? 0.75 : 1,
+                  }]}
+                >
+                  {punching || checkingPunch ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <>
+                      <Camera color="#FFF" size={moderateScale(22)} />
+                      <Text style={styles.selfieBtnText}>
+                        {statusPending ? 'Checking…' : `Take selfie to ${isPunchedIn ? 'Check Out' : 'Check In'}`}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : (
               <SwipeToPunch
                 isPunchedIn={isPunchedIn}
                 loading={punching || checkingPunch}
@@ -857,6 +928,7 @@ const HomeScreen = ({ navigation, route }) => {
                 onDragStart={() => setSwipeDragging(true)}
                 onDragEnd={() => setSwipeDragging(false)}
               />
+              )}
             </View>
 
             {/* Live status — always visible while punching */}
@@ -990,7 +1062,13 @@ const HomeScreen = ({ navigation, route }) => {
                 disabled={punching}
                 onPress={() => {
                   setShowShiftConfirm(false);
-                  processPunch(shiftConfirmType);
+                  if (selfieNeeded.current) {
+                    // iOS won't present a Modal while another is still closing
+                    const type = shiftConfirmType;
+                    setTimeout(() => setSelfieFor(type), Platform.OS === 'ios' ? 450 : 0);
+                  } else {
+                    processPunch(shiftConfirmType);
+                  }
                 }}
               >
                 {punching ? <ActivityIndicator color="#FFF" /> : <Text style={styles.logoutBtnText}>OK</Text>}
@@ -1000,6 +1078,29 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
+      <SelfieCameraModal
+        visible={!!selfieFor}
+        direction={selfieFor}
+        onCapture={async (photoUri) => {
+          const type = selfieFor;
+          setSelfieFor(null);
+          // The photo is kept first: no photo kept, no punch
+          let keptUri;
+          setCheckingPunch(true); // spinner on the button while the photo is shrunk and kept
+          try {
+            keptUri = await keepSelfiePhoto(photoUri);
+            setCheckingPunch(false);
+          } catch (e) {
+            setCheckingPunch(false);
+            console.log('[Punch] selfie not kept', e?.message);
+            setCancelTrigger((t) => t + 1);
+            showAlert('error', 'Photo not saved', `Your selfie could not be saved, so you are not ${type === 'OUT' ? 'checked out' : 'checked in'} yet. Please free some space on your phone and try again.`);
+            return;
+          }
+          processPunch(type, { keptUri });
+        }}
+        onCancel={() => { setSelfieFor(null); setCancelTrigger((t) => t + 1); }}
+      />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <LocationDisclosureModal
         visible={showLocationDisclosure}
@@ -1048,6 +1149,11 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(12),
     fontWeight: '600',
   },
+  selfieBtn: {
+    width: '100%', borderRadius: 999, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: moderateScale(10), ...SHADOWS.light,
+  },
+  selfieBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800' },
   punchActionTitle: {
     fontSize: moderateScale(22),
     fontWeight: '800',

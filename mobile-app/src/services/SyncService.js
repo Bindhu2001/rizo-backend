@@ -4,6 +4,7 @@ import { initDB } from './LocalDB';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import NotificationManager from './NotificationManager';
+import { syncPunchSelfies } from './PunchSelfie';
 
 // reverseGeocodeAsync has no built-in timeout and can hang far longer than the sync should wait
 const reverseGeocodeWithTimeout = (coords) => Promise.race([
@@ -58,6 +59,9 @@ const SyncService = {
       // 1. Sync Attendance
       await SyncService.syncAttendance(db);
       flushCallbacks(callbacks.attendance);
+
+      // 1b. Selfies of "Mobile with selfie" punches (after the punches they belong to)
+      await syncPunchSelfies().catch((e) => console.log('[SyncService] Selfie sync failed:', e?.message));
 
       // 2. Sync Visits
       await SyncService.syncVisits(db);

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { REVAMP_API_URL, REVAMP_WEB_API_URL, API_ENDPOINTS } from '../constants/Config';
+import { REVAMP_API_URL, REVAMP_WEB_API_URL, API_ENDPOINTS, isRevampCompany } from '../constants/Config';
 import { getLoggedUser } from './LocalDB';
 import * as FileSystem from 'expo-file-system/legacy';
 
@@ -45,7 +45,11 @@ const request = async (method, path, data, base = REVAMP_API_URL) => {
     url: `${base}${path}`,
     data,
     timeout: 15000,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // A file upload ({ uri, name, type } on FormData) — as the app's other uploads send it
+      ...(data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}),
+    },
   });
   try {
     return (await send(await getToken())).data;
@@ -128,6 +132,25 @@ export const AllocationsApi = {
   documents: () => request('get', '/allocated-documents'),
   // An allocated document's file (policy, handbook…) saved into the cache folder
   downloadDocument: (id, fileName) => downloadToCache(`/allocated-documents/${id}`, fileName, 'Could not download the document'),
+};
+
+// Selfie of a "Mobile with selfie" punch (rizo-revamp lib/punchSelfie.ts) — multipart: direction, punch_time and
+// photo (JPEG), or no photo and no_selfie_reason. Sending the same punch again updates it.
+export const PunchSelfieApi = {
+  upload: (form) => request('post', '/punch-selfie', form),
+  // Whether the signed-in employee must take a selfie with each punch (false outside GRTL / MYPY, without a call)
+  required: async () => {
+    const user = await getLoggedUser();
+    if (!isRevampCompany(user?.user_id)) return false;
+    return !!(await request('get', '/punch-selfie'))?.required;
+  },
+  // Today's selfie punches of the caller's team (the same people My Team lists), newest first:
+  // [{ id, empFkey, empId, time, direction, source, hasPhoto }]. Only GRTL / MYPY have selfie punch.
+  teamToday: async () => {
+    const user = await getLoggedUser();
+    if (!isRevampCompany(user?.user_id)) return [];
+    return (await request('get', '/team-selfies'))?.data || [];
+  },
 };
 
 export const AnnouncementsApi = {

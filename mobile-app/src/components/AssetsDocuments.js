@@ -108,10 +108,21 @@ const Row = ({ icon: Icon, tint, title, lines, chip, onPress, disabled, last, ch
   );
 };
 
+// Why a list could not load, from the error: no reply at all is the connection; anything else is the server's
+// answer, with its code so it can be traced ("Server error (500)")
+const loadFailMessage = (e) => {
+  const status = e?.response?.status;
+  if (!status) return 'Could not load. Please check your connection and pull down to try again.';
+  if (status === 401) return 'Could not sign in to load this (401). Please log out and log in again.';
+  if (status === 429) return 'Too many sign-in attempts. Please wait a few minutes and pull down to try again.';
+  if (status >= 500) return `Could not load: server error (${status}). Please pull down to try again later, or contact HR.`;
+  return `Could not load (${status}). Please pull down to try again.`;
+};
+
 const AssetsDocuments = ({ kind }) => {
   const theme = useTheme();
   const [rows, setRows] = useState(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState(null); // the message to show when the list could not load
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(null); // { id, action: 'view' | 'download' } — one at a time
   const [pdf, setPdf] = useState(null); // { uri, title } in the PDF viewer
@@ -126,10 +137,10 @@ const AssetsDocuments = ({ kind }) => {
         : kind === 'generated' ? await AllocationsApi.generatedDocuments()
           : await AllocationsApi.documents();
       setRows(Array.isArray(res?.data) ? res.data : []);
-      setFailed(false);
+      setFailed(null);
     } catch (e) {
-      console.log('Assets & Documents load failed', kind, e?.response?.status, e?.message);
-      setFailed(true);
+      console.log('Assets & Documents load failed', kind, e?.response?.status, e?.response?.data?.error, e?.message);
+      setFailed(loadFailMessage(e));
       setRows((r) => r || []);
     }
   }, [kind]);
@@ -273,7 +284,7 @@ const AssetsDocuments = ({ kind }) => {
             {rows.length === 0 ? (
               <View style={st.empty}>
                 <Text style={[st.emptyText, { color: theme.textLight }]}>
-                  {failed ? 'Could not load. Please check your connection and pull down to try again.' : EMPTY[kind]}
+                  {failed || EMPTY[kind]}
                 </Text>
               </View>
             ) : rows.map(renderRow)}

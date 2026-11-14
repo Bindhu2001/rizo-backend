@@ -18,7 +18,7 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Rizo needs access to your location for attendance punching and visit tracking.",
-        "NSCameraUsageDescription": "Rizo needs camera access to capture receipts and documents for expense and leave attachments.",
+        "NSCameraUsageDescription": "Rizo needs camera access to take your attendance selfie when you check in or out, and to capture receipts and documents for expense and leave attachments.",
         "NSPhotoLibraryUsageDescription": "Rizo needs photo library access so you can attach receipts and documents for expenses and leave requests.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": ["remote-notification"]
@@ -27,7 +27,7 @@
     "android": {
       "package": "com.rizo.mobile",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 25,
+      "versionCode": 26,
       "blockedPermissions": ["android.permission.ACCESS_BACKGROUND_LOCATION"],
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [

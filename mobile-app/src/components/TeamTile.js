@@ -5,12 +5,17 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Users, ChevronRight } from 'lucide-react-native';
 import { SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
-import { TeamApi } from '../services/RevampApi';
+import { TeamApi, PunchSelfieApi } from '../services/RevampApi';
+import { SelfiePhoto, latestSelfieByEmp } from './TeamSelfie';
+
+// Selfie faces shown on the tile before "+N"
+const TILE_SELFIES = 4;
 
 // Home "My Team" tile (rizo-revamp /api/mobile/team-today): full width like the Client Visit tile, but shorter.
 // Shows how many people are in the team the employee authorises / approves and how many are in / on leave /
 // not punched in / off for their current shift (each person once, even when in both teams);
-// tapping opens the My Team page. Nothing at all when the employee has no team.
+// tapping opens the My Team page. Nothing at all when the employee has no team. GRTL / MYPY: today's punch
+// selfies of the team as small faces next to the arrow (components/TeamSelfie.js).
 
 // Unique people across the "authorise" and "approve" teams (a reportee can be in both)
 export const teamSummary = (data) => {
@@ -53,24 +58,31 @@ const subText = (sum) => {
   return [head, ...parts].join(' · ');
 };
 
-// Last answer, so returning to Home never makes the tile jump
+// Last answers, so returning to Home never makes the tile jump
 let cached = null;
+let cachedSelfies = [];
 
 const TeamTile = ({ user }) => {
   const theme = useTheme();
   const navigation = useNavigation();
   const [data, setData] = useState(cached);
+  const [selfies, setSelfies] = useState(cachedSelfies);
 
   useFocusEffect(useCallback(() => {
     let alive = true;
     TeamApi.today()
       .then((res) => { cached = res || null; if (alive) setData(cached); })
       .catch(() => {});
+    // Today's team punch selfies (GRTL / MYPY): each person's latest, newest first
+    PunchSelfieApi.teamToday()
+      .then((rows) => { cachedSelfies = [...latestSelfieByEmp(rows).values()]; if (alive) setSelfies(cachedSelfies); })
+      .catch(() => {});
     return () => { alive = false; };
   }, []));
 
   const sum = teamSummary(data);
   if (!sum) return null;
+  const faceSize = moderateScale(30);
 
   return (
     <TouchableOpacity
@@ -87,6 +99,25 @@ const TeamTile = ({ user }) => {
           <Text style={[s.sub, { color: theme.textLight }]} numberOfLines={2}>{subText(sum)}</Text>
         </View>
       </View>
+      {selfies.length > 0 && (
+        <View style={s.faces} accessibilityLabel={`${selfies.length} punch ${selfies.length === 1 ? 'selfie' : 'selfies'} today`}>
+          {selfies.slice(0, TILE_SELFIES).map((sf, i) => (
+            <SelfiePhoto
+              key={sf.id}
+              selfie={sf}
+              size={faceSize}
+              round
+              hideTag
+              style={[s.face, { borderColor: theme.card, marginLeft: i ? -faceSize * 0.35 : 0 }]}
+            />
+          ))}
+          {selfies.length > TILE_SELFIES && (
+            <View style={[s.face, s.more, { width: faceSize, height: faceSize, borderRadius: faceSize / 2, borderColor: theme.card, marginLeft: -faceSize * 0.35 }]}>
+              <Text style={s.moreText}>+{selfies.length - TILE_SELFIES}</Text>
+            </View>
+          )}
+        </View>
+      )}
       <ChevronRight color={theme.textLight} size={20} />
     </TouchableOpacity>
   );
@@ -104,6 +135,11 @@ const s = StyleSheet.create({
   iconBox: { width: moderateScale(38), height: moderateScale(38), borderRadius: moderateScale(12), backgroundColor: '#2563EB', justifyContent: 'center', alignItems: 'center', marginRight: moderateScale(14) },
   title: { fontSize: moderateScale(15), fontWeight: '900', marginBottom: 1 },
   sub: { fontSize: moderateScale(11.5), fontWeight: '600' },
+  // Today's punch selfies, overlapping faces left of the arrow
+  faces: { flexDirection: 'row', alignItems: 'center', marginRight: moderateScale(6) },
+  face: { borderWidth: 2 },
+  more: { backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center' },
+  moreText: { color: '#FFF', fontSize: moderateScale(10), fontWeight: '800' },
 });
 
 export default TeamTile;

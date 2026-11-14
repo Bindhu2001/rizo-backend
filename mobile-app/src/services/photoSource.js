@@ -6,6 +6,7 @@ import { getRevampToken, renewRevampToken } from './RevampApi';
 //  - a full link (https://..., data:, file:)            -> as it is
 //  - a website photo '/uploads/<COMPANY>/<file>'          -> rizo-revamp /api/mobile/photo with the app's login
 //    token (the website shows those files only to a signed-in user, never publicly)
+//  - a rizo-revamp mobile route '/api/mobile/...'          -> that route with the login token (punch selfies)
 //  - a legacy v1 file name / '/img/avatar/...'             -> the PHP server (IMAGE_ROOT)
 
 let cachedToken = null;
@@ -27,7 +28,7 @@ const loadToken = () => {
   return tokenRequest;
 };
 
-const isWebsitePhoto = (s) => s.startsWith('/uploads/');
+const isWebsitePhoto = (s) => s.startsWith('/uploads/') || s.startsWith('/api/mobile/');
 
 /** The source for a photo value, or null when there is none (or a website photo while the token isn't known yet). */
 export const photoSourceFor = (pic, token) => {
@@ -38,7 +39,10 @@ export const photoSourceFor = (pic, token) => {
     if (!token) return null;
     // k (a bit of the token, ignored by the server) changes the address when the token is renewed, so the
     // <Image> really loads again instead of keeping the failed result
-    return { uri: `${REVAMP_API_URL}/photo?src=${encodeURIComponent(s)}&k=${token.slice(-8)}`, headers: { Authorization: `Bearer ${token}` } };
+    const uri = s.startsWith('/api/mobile/')
+      ? `${REVAMP_API_URL}${s.slice('/api/mobile'.length)}?k=${token.slice(-8)}`
+      : `${REVAMP_API_URL}/photo?src=${encodeURIComponent(s)}&k=${token.slice(-8)}`;
+    return { uri, headers: { Authorization: `Bearer ${token}` } };
   }
   return { uri: `${IMAGE_ROOT}/${s.replace(/^\/+/, '')}` };
 };

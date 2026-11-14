@@ -133,6 +133,20 @@ export const initDB = async () => {
       );
     `);
 
+    // Selfie of a "Mobile with selfie" punch waiting to upload (services/PunchSelfie.js).
+    // punch_time is the same 'YYYY-MM-DD HH:MM:SS' the punch syncs with; photo_uri is null for "No selfie".
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS punch_selfies (
+        id         TEXT PRIMARY KEY,
+        user_id    TEXT NOT NULL,
+        direction  TEXT NOT NULL,
+        punch_time TEXT NOT NULL,
+        photo_uri  TEXT,
+        reason     TEXT,
+        created_at TEXT NOT NULL
+      );
+    `);
+
     // ─── Migrations ───
     // Column additions for existing tables (won't affect new installs)
     const migrations = [
@@ -214,7 +228,8 @@ export const getPendingSyncCount = async () => {
   const database = await initDB();
   const row = await database.getFirstAsync(
     `SELECT (SELECT COUNT(*) FROM attendance WHERE sync_status = 'PENDING')
-          + (SELECT COUNT(*) FROM client_visits WHERE sync_status = 'PENDING') as count`
+          + (SELECT COUNT(*) FROM client_visits WHERE sync_status = 'PENDING')
+          + (SELECT COUNT(*) FROM punch_selfies) as count`
   );
   return row ? row.count : 0;
 };
