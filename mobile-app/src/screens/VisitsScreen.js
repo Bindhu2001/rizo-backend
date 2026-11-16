@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, MapPin, CheckCircle, Plus, CalendarDays } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, MapPin, CheckCircle, Plus, CalendarDays, History } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
@@ -215,9 +215,10 @@ const tl = StyleSheet.create({
 });
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
-const VisitCard = ({ visit, onStepIn, onStepOut, processing }) => {
+// readOnly (Visit History): always the timeline card, never the STEP IN / STEP OUT buttons
+const VisitCard = ({ visit, onStepIn, onStepOut, processing, readOnly = false }) => {
   const theme = useTheme();
-  const isLive = visit.status === 'REACHED' || visit.status === 'step_in';
+  const isLive = !readOnly && (visit.status === 'REACHED' || visit.status === 'step_in');
 
   // Resolve any stored lat/lng addresses to human-readable format
   const [resolvedLocation, setResolvedLocation] = useState(visit.location || '');
@@ -637,6 +638,219 @@ const sm = StyleSheet.create({
   saveBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
 });
 
+// ─── Visit History (one whole month, newest first) ────────────────────────────
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const currentMonthKey = () => todayStr().slice(0, 7); // YYYY-MM
+const shiftMonth = (key, delta) => {
+  const [y, m] = key.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+const fmtMonthKey = (key) => {
+  const [y, m] = key.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${y}`;
+};
+
+const MonthPickerModal = ({ visible, value, onSelect, onClose }) => {
+  const theme = useTheme();
+  const [year, setYear] = useState(Number(value.slice(0, 4)));
+  useEffect(() => { if (visible) setYear(Number(value.slice(0, 4))); }, [visible, value]);
+  if (!visible) return null;
+
+  const [maxY, maxM] = currentMonthKey().split('-').map(Number);
+  const accent = theme.isDark ? '#C4B5FD' : '#62338B';
+
+  return (
+    <Modal visible transparent statusBarTranslucent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={[mp.overlay, { backgroundColor: theme.modalOverlay }]} activeOpacity={1} onPress={onClose}>
+        {/* Claims taps so only the dimmed area outside the box closes it */}
+        <View style={[mp.box, { backgroundColor: theme.card }]} onStartShouldSetResponder={() => true}>
+          <View style={mp.yearRow}>
+            <TouchableOpacity onPress={() => setYear(year - 1)} style={s.dateArrow}>
+              <ChevronLeft color={theme.textMuted} size={20} />
+            </TouchableOpacity>
+            <Text style={[mp.yearText, { color: theme.text }]}>{year}</Text>
+            <TouchableOpacity onPress={() => setYear(year + 1)} style={[s.dateArrow, year >= maxY && { opacity: 0.25 }]} disabled={year >= maxY}>
+              <ChevronRight color={theme.textMuted} size={20} />
+            </TouchableOpacity>
+          </View>
+          <View style={mp.grid}>
+            {MONTHS.map((name, i) => {
+              const key = `${year}-${String(i + 1).padStart(2, '0')}`;
+              const future = year > maxY || (year === maxY && i + 1 > maxM);
+              const selected = key === value;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  disabled={future}
+                  onPress={() => onSelect(key)}
+                  style={[
+                    mp.cell,
+                    { borderColor: theme.border },
+                    selected && { backgroundColor: COLORS.primaryDeep, borderColor: COLORS.primaryDeep },
+                    future && { opacity: 0.3 },
+                  ]}
+                >
+                  <Text style={[mp.cellText, { color: selected ? '#FFF' : accent }]}>{name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+const mp = StyleSheet.create({
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: moderateScale(28) },
+  box: { borderRadius: moderateScale(20), padding: moderateScale(16), width: '100%' },
+  yearRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: moderateScale(12) },
+  yearText: { fontSize: moderateScale(17), fontWeight: '800' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  cell: { width: '31%', paddingVertical: moderateScale(12), borderRadius: moderateScale(12), borderWidth: 1, alignItems: 'center', marginBottom: moderateScale(10) },
+  cellText: { fontSize: moderateScale(14), fontWeight: '700' },
+});
+
+const VisitHistoryScreen = ({ visible, user, onClose }) => {
+  const theme = useTheme();
+  const insets = useSafeAreaInsets();
+  const [month, setMonth] = useState(currentMonthKey());
+  const [allVisits, setAllVisits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null); // 'offline' | 'failed' | null
+  const [showPicker, setShowPicker] = useState(false);
+
+  // The API returns every visit of the user when no date is sent, so one fetch covers all months;
+  // changing the month only re-filters. Pull-to-refresh fetches again.
+  const load = async () => {
+    try {
+      const net = await Network.getNetworkStateAsync();
+      if (!net.isConnected) { setError('offline'); return; }
+      const res = await axios.post(API_ENDPOINTS.CUSTOMER_VISIT_HISTORY,
+        { user_id: user.user_id, selected_date: '' },
+        { timeout: 20000 },
+      );
+      const raw = res.data?.data || [];
+      setAllVisits(Array.isArray(raw) ? raw.map(normalizeVisit) : []);
+      setError(null);
+    } catch (e) {
+      console.log('Visit history error', e);
+      setError('failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!visible || !user?.user_id) return;
+    setMonth(currentMonthKey());
+    setLoading(true);
+    load();
+  }, [visible]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
+  // Visits of the chosen month grouped by the date the visit started, newest date first;
+  // inside a date the latest visit comes first
+  const groups = [];
+  allVisits
+    .filter(v => (v.created_at || '').slice(0, 7) === month)
+    .sort((a, b) => String(b.start_time || b.created_at).localeCompare(String(a.start_time || a.created_at)))
+    .forEach((v) => {
+      const date = (v.created_at || '').slice(0, 10);
+      const last = groups[groups.length - 1];
+      if (last && last.date === date) last.items.push(v);
+      else groups.push({ date, items: [v] });
+    });
+
+  if (!visible) return null;
+
+  const isCurrentMonth = month === currentMonthKey();
+  const accent = theme.isDark ? '#C4B5FD' : '#62338B';
+
+  return (
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      {/* Same iOS top-inset fix as the Going to Meet screen */}
+      <SafeAreaView
+        edges={Platform.OS === 'ios' ? ['left', 'right', 'bottom'] : undefined}
+        style={[s.container, { backgroundColor: theme.bg }, Platform.OS === 'ios' && { paddingTop: insets.top }]}
+      >
+        <View style={[s.header, { backgroundColor: theme.bg }]}>
+          <TouchableOpacity onPress={onClose} style={s.backBtn}>
+            <ChevronLeft color={theme.text} size={28} />
+          </TouchableOpacity>
+          <Text style={[s.headerTitle, { color: theme.text }]}>Visit History</Text>
+          <View style={{ width: 44 }} />
+        </View>
+
+        <View style={[s.dateRow, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+          <TouchableOpacity onPress={() => setMonth(shiftMonth(month, -1))} style={s.dateArrow}>
+            <ChevronLeft color={theme.textMuted} size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowPicker(true)} style={[s.dateChip, { backgroundColor: theme.isDark ? '#2D1B69' : '#F3E8FF' }]}>
+            <CalendarDays color={accent} size={14} />
+            <Text style={[s.dateChipText, { color: accent }]}>{fmtMonthKey(month)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setMonth(shiftMonth(month, 1))}
+            style={[s.dateArrow, isCurrentMonth && { opacity: 0.25 }]}
+            disabled={isCurrentMonth}
+          >
+            <ChevronRight color={theme.textMuted} size={20} />
+          </TouchableOpacity>
+        </View>
+
+        {loading ? (
+          <View style={s.loadingWrap}>
+            <ActivityIndicator size="large" color="#62338B" />
+          </View>
+        ) : (
+          <ScrollView
+            contentContainerStyle={[s.scroll, { paddingBottom: moderateScale(32) }, groups.length === 0 && { flexGrow: 1 }]}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}
+          >
+            {groups.length === 0 ? (
+              <View style={s.emptyWrap}>
+                <CalendarDays color={theme.textMuted} size={48} strokeWidth={1.5} />
+                <Text style={[s.emptyText, { color: theme.textMuted, textAlign: 'center' }]}>
+                  {error === 'offline' ? 'Connect to the internet to see visit history'
+                    : error === 'failed' ? 'Could not load visit history.\nPull down to try again.'
+                    : 'No visits in this month'}
+                </Text>
+              </View>
+            ) : groups.map(g => (
+              <View key={g.date}>
+                <Text style={[hs.dayHeader, { color: theme.text }]}>
+                  {fmtDateStr(g.date)}
+                  <Text style={{ color: theme.textMuted, fontWeight: '600' }}>  ·  {g.items.length} {g.items.length === 1 ? 'visit' : 'visits'}</Text>
+                </Text>
+                {g.items.map(v => <VisitCard key={v.id} visit={v} readOnly />)}
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        <MonthPickerModal
+          visible={showPicker}
+          value={month}
+          onSelect={(key) => { setMonth(key); setShowPicker(false); }}
+          onClose={() => setShowPicker(false)}
+        />
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
+const hs = StyleSheet.create({
+  dayHeader: { fontSize: moderateScale(14), fontWeight: '800', marginBottom: moderateScale(10), marginLeft: 2 },
+});
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const VisitsScreen = ({ navigation, route }) => {
   const theme = useTheme();
@@ -657,6 +871,7 @@ const VisitsScreen = ({ navigation, route }) => {
   const [alertCfg, setAlertCfg] = useState(null);
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -860,7 +1075,9 @@ const VisitsScreen = ({ navigation, route }) => {
           <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
         <Text style={[s.headerTitle, { color: theme.text }]}>My Customer Visits</Text>
-        <View style={{ width: 44 }} />
+        <TouchableOpacity onPress={() => setShowHistory(true)} style={s.backBtn}>
+          <History color={theme.text} size={22} />
+        </TouchableOpacity>
       </View>
 
       {/* Date selector row */}
@@ -989,6 +1206,11 @@ const VisitsScreen = ({ navigation, route }) => {
         onConfirm={doStepOut}
         onCancel={() => setConfirmVisible(false)}
         processing={processing}
+      />
+      <VisitHistoryScreen
+        visible={showHistory}
+        user={user}
+        onClose={() => setShowHistory(false)}
       />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
