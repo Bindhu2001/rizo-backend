@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useContext } from 'react';
+import React, { useRef, useState, useEffect, useContext, useCallback } from 'react';
 import { OfflineBarContext } from '../../App';
 import {
   View, StyleSheet, TouchableOpacity, ScrollView,
@@ -20,6 +20,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS, SIZES, SHADOWS, moderateScale } from '../components/Theme';
 import SwipeToPunch from '../components/SwipeToPunch';
+import ShiftConfirmModal from '../components/ShiftConfirmModal';
+import { recordAudit } from '../services/AuditTrail';
 import CalendarWidget from '../components/CalendarWidget';
 import TeamTile from '../components/TeamTile';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
@@ -108,6 +110,8 @@ const HomeScreen = ({ navigation, route }) => {
     return () => sub.remove();
   }, [navigation, eventsOpen]);
   const [cancelTrigger, setCancelTrigger] = useState(0);
+  const punchLock = useRef(false); // set the moment a punch starts (state would lag a double tap)
+  const punchTimer = useRef(null); // { swiped, shown } timestamps for the [PunchTiming] logs
   const [punchMessage, setPunchMessage] = useState('');
   const [msgIndex, setMsgIndex] = useState(0);
   const msgFade = useRef(new Animated.Value(1)).current;
@@ -394,11 +398,24 @@ const HomeScreen = ({ navigation, route }) => {
       if (requestId !== fetchStatusRequestId.current || !server) return; // superseded, or offline
       const serverPunches = await getCachedServerPunches(user.user_id); // now holding this answer
       if (requestId !== fetchStatusRequestId.current) return;
-      applyPunchState(nextPunch(new Date(), mergePunches(localPunches, serverPunches), schedule));
+      // The phone's punches are read again here: a punch made while the server answered (up to 8 s) is not in
+      // the copy read at the start, and applying that copy would flip the button back
+      const now2 = new Date();
+      const freshLocal = await getPunchesBetween(user.user_id, new Date(now2.getTime() - SHIFT_DATE_LOOKBACK_MS).toISOString(), new Date(now2.getTime() + 60000).toISOString()).catch(() => localPunches);
+      if (requestId !== fetchStatusRequestId.current) return;
+      applyPunchState(nextPunch(now2, mergePunches(freshLocal, serverPunches), schedule));
       setServerDurationMins(server.durationMins);
     } finally {
       if (requestId === fetchStatusRequestId.current) setStatusPending(false);
     }
+  };
+
+  // A punch was just saved. A status refresh still running started before it and read the phone's punches
+  // without it — it must not land afterwards and flip the Check In / Check Out label back. Cancelling it and
+  // refreshing at once (not after the address lookup, up to 5 s offline) keeps the label right.
+  const refreshStatusAfterPunch = () => {
+    fetchStatusRequestId.current += 1;
+    fetchStatus();
   };
 
   // Punches reached the server: refresh the badge and button now, then re-fetch the shift
@@ -603,6 +620,7 @@ const HomeScreen = ({ navigation, route }) => {
       return;
     }
     setShiftConfirmType(type);
+    punchTimer.current = { swiped: Date.now(), shown: Date.now() }; // read by the [PunchTiming] logs
     setShowShiftConfirm(true);
   };
 
@@ -651,6 +669,9 @@ const HomeScreen = ({ navigation, route }) => {
         if (isNowIn) setPunchInAddress(punchAddress);
       }
       console.log(`[Punch] Address: ${punchAddress} (${Date.now() - startedAt}ms)`);
+      recordAudit(`location of the ${isNowIn ? 'check-in' : 'check-out'}`, {
+        Location: punchAddress, Latitude: latitude ? latitude.toFixed(5) : 'Not available', Longitude: longitude ? longitude.toFixed(5) : 'Not available',
+      });
     } catch (e) {
       console.log('[Punch] background location failed', e?.message);
     }
@@ -670,23 +691,59 @@ const HomeScreen = ({ navigation, route }) => {
     }
   };
 
+  // Handlers of the shift-confirm dialog. Stable identities (they call the latest closure through a ref),
+  // so the memoised dialog never re-renders because Home did.
+  const shiftActionsRef = useRef({});
+  shiftActionsRef.current = {
+    cancel: () => {
+      setShowShiftConfirm(false);
+      setCancelTrigger(prev => prev + 1);
+    },
+    ok: () => {
+      if (punchLock.current) return; // double tap before the screen redrew
+      console.log(`[PunchTiming] OK tapped (${punchTimer.current ? Date.now() - punchTimer.current.shown : '?'}ms after dialog shown)`);
+      setShowShiftConfirm(false);
+      if (selfieNeeded.current) {
+        // iOS won't present a Modal while another is still closing
+        const type = shiftConfirmType;
+        setTimeout(() => setSelfieFor(type), Platform.OS === 'ios' ? 450 : 0);
+      } else {
+        processPunch(shiftConfirmType);
+      }
+    },
+  };
+  const onShiftCancel = useCallback(() => shiftActionsRef.current.cancel(), []);
+  const onShiftOk = useCallback(() => shiftActionsRef.current.ok(), []);
+  const onShiftShown = useCallback(() => {
+    const t = punchTimer.current;
+    if (t) { t.shown = Date.now(); console.log(`[PunchTiming] dialog shown ${t.shown - t.swiped}ms after swipe`); }
+  }, []);
+
   // selfie: { keptUri } (the photo already kept by keepSelfiePhoto) for a selfie punch, else null
   const processPunch = async (type, selfie = null) => {
-    if (punching) return;
+    // A ref, not `punching` state: a second tap can arrive before the state change has rendered
+    if (punching || punchLock.current) return;
+    punchLock.current = true;
     setPunching(true);
     setPunchingType(type);
     setShowConfirmOut(false);
     const now = Date.now();
     lastActionTime.current = now;
-    await AsyncStorage.setItem(`LAST_ACTION_${user.user_id}`, now.toString());
+    // Not awaited: a slow storage write must not hold the punch
+    AsyncStorage.setItem(`LAST_ACTION_${user.user_id}`, now.toString()).catch(() => {});
 
     console.log(`[Punch] Initiating ${type} process...`);
     const punchTime = new Date().toISOString();
 
     try {
-      // 1. Check network first so we can show the right message
-      const net = await Network.getNetworkStateAsync();
+      // 1. Check network first so we can show the right message. Capped at 1 s — a stuck
+      //    check counts as offline (the sync re-checks the network itself).
+      const net = (await Promise.race([
+        Network.getNetworkStateAsync().catch(() => null),
+        new Promise((resolve) => setTimeout(() => resolve(null), 1000)),
+      ])) || { isConnected: false };
       const isOffline = !net.isConnected;
+      console.log(`[PunchTiming] network checked (${Date.now() - now}ms)`);
 
       // 2. Save the punch immediately — before any location/geocode work — so
       //    its insertion order (which local-status lookups rely on) always
@@ -714,6 +771,8 @@ const HomeScreen = ({ navigation, route }) => {
       }
 
       console.log(`[Punch] ${type} saved locally: ${savedId} (${Date.now() - now}ms)`);
+      console.log(`[PunchTiming] punch saved ${Date.now() - now}ms after OK`);
+      recordAudit(type === 'IN' ? 'checked in' : 'checked out', { Selfie: selfie ? 'Yes' : 'No' });
 
       // Queued before the sync below starts, so it goes up right after the punch
       if (selfie) {
@@ -734,6 +793,8 @@ const HomeScreen = ({ navigation, route }) => {
         setPunchInAddress('');
       }
 
+      refreshStatusAfterPunch();
+
       const verified = verifiedPunchLoc.current;
       verifiedPunchLoc.current = null;
       const officeLoc = verified && Date.now() - verified.at <= VERIFIED_LOC_MAX_AGE_MS ? verified.loc : null;
@@ -744,6 +805,7 @@ const HomeScreen = ({ navigation, route }) => {
       console.error('[Punch] Error:', e);
       showAlert('error', 'Error', 'Failed to process punch. Please try again.');
     } finally {
+      punchLock.current = false;
       setPunching(false);
       setPunchingType(null);
       setPunchMessage('');
@@ -1027,57 +1089,14 @@ const HomeScreen = ({ navigation, route }) => {
       </ScrollView>
 
       {/* SHIFT POLICY CONFIRM MODAL — shown before both Punch IN and Punch OUT */}
-      <Modal
+      <ShiftConfirmModal
         visible={showShiftConfirm}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { setShowShiftConfirm(false); setCancelTrigger(prev => prev + 1); }}
-        statusBarTranslucent
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={[styles.modalPowerCircle, {
-              backgroundColor: shiftConfirmType === 'OUT' ? '#FFF0F0' : '#EEF2FF',
-              borderColor: shiftConfirmType === 'OUT' ? '#FFE4E4' : '#C7D2FE'
-            }]}>
-              {shiftConfirmType === 'OUT'
-                ? <Power color={COLORS.danger} size={32} />
-                : <Fingerprint color={COLORS.primaryDeep} size={32} />
-              }
-            </View>
-            <Text style={styles.modalTitle}>Attendance</Text>
-            <Text style={styles.modalSub}>Attendance direction is decided by your shift policy</Text>
-            <View style={styles.modalBtns}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                disabled={punching}
-                onPress={() => {
-                  setShowShiftConfirm(false);
-                  setCancelTrigger(prev => prev + 1);
-                }}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.logoutBtn, { backgroundColor: shiftConfirmType === 'OUT' ? COLORS.danger : COLORS.primaryDeep }, punching && { opacity: 0.6 }]}
-                disabled={punching}
-                onPress={() => {
-                  setShowShiftConfirm(false);
-                  if (selfieNeeded.current) {
-                    // iOS won't present a Modal while another is still closing
-                    const type = shiftConfirmType;
-                    setTimeout(() => setSelfieFor(type), Platform.OS === 'ios' ? 450 : 0);
-                  } else {
-                    processPunch(shiftConfirmType);
-                  }
-                }}
-              >
-                {punching ? <ActivityIndicator color="#FFF" /> : <Text style={styles.logoutBtnText}>OK</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        type={shiftConfirmType}
+        punching={punching}
+        onCancel={onShiftCancel}
+        onConfirm={onShiftOk}
+        onShow={onShiftShown}
+      />
 
       <SelfieCameraModal
         visible={!!selfieFor}

@@ -6,6 +6,7 @@ import {
 import { Text } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import {
   Calendar as CalendarIcon, Clock, Filter, Cloud, CloudOff, ChevronLeft, ChevronDown, ChevronUp
 } from 'lucide-react-native';
@@ -29,6 +30,8 @@ const formatPunchTime = (isoOrFull) => {
 };
 
 const AttendanceScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const user = route?.params?.user;
@@ -267,7 +270,7 @@ const AttendanceScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
       {/* ── Header ── */}
@@ -303,7 +306,7 @@ const AttendanceScreen = ({ navigation, route }) => {
             data={logs}
             keyExtractor={(item, index) => item.date + index}
             renderItem={renderLogItem}
-            contentContainerStyle={s.listContents}
+            contentContainerStyle={[s.listContents, { paddingBottom: bottomPad }]}
             showsVerticalScrollIndicator={false}
             refreshing={refreshing}
             onRefresh={onRefresh}

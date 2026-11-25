@@ -76,19 +76,26 @@ const loadSchedule = async (userId, forceFetch) => {
   return cached?.days || [];
 };
 
-// Actual start/end Date for a schedule row, with half-day adjustments
-const shiftWindow = (row) => {
+// Start/end Date of the whole shift of a schedule row (an exception day's own times included)
+const fullShift = (row) => {
   const toDate = (hhmm) => {
     const [y, mo, d] = row.date.split('-').map(Number);
     const [h, mi] = String(hhmm || '').split(':').map(Number);
     if (![y, mo, d, h, mi].every(Number.isFinite)) return null;
     return new Date(y, mo - 1, d, h, mi, 0, 0);
   };
-  let start = toDate(row.shift_start);
+  const start = toDate(row.shift_start);
   let end = toDate(row.shift_end);
   if (!start || !end) return null;
   if (row.crosses_midnight || end <= start) end = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end };
+};
 
+// The part of it to work: half-day adjustments (first / second half leave, half week-off)
+const shiftWindow = (row) => {
+  const whole = fullShift(row);
+  if (!whole) return null;
+  let { start, end } = whole;
   const halfMs = (Number(row.half_day_minutes) || 0) * 60 * 1000;
   if (halfMs > 0) {
     if (row.day_type === 'HALF_DAY_LEAVE' && row.leave_session === 'FIRST_HALF') {
@@ -98,6 +105,50 @@ const shiftWindow = (row) => {
     }
   }
   return { start, end };
+};
+
+/**
+ * Minutes worked on a shift date, counted as the server's attendance calculation (time_duration_check) does:
+ *   include_break + first_in_last_punch   first IN → last punch of any kind
+ *   include_break                         first IN → last OUT
+ *   neither                               only the IN → OUT sessions: a break is not work
+ * strict_monitorings: time before the shift starts / after it ends does not count (the whole shift, also on a half day).
+ * punches: that shift date's, in time order ({ type, time }). null = nothing to count. An older server sends no
+ * include_break: first IN → last OUT, as before.
+ */
+export const workedMinutes = (punches, row) => {
+  const is = (p, type) => String(p.type).toUpperCase() === type;
+  const firstIn = punches.find((p) => is(p, 'IN'));
+  const lastAny = row.include_break === 'Y' && row.first_in_last_punch === 'Y';
+  const last = lastAny ? punches[punches.length - 1] : [...punches].reverse().find((p) => is(p, 'OUT'));
+  if (!firstIn || !last || last.time <= firstIn.time) return null;
+
+  const strict = row.strict_monitorings === 'Y' ? fullShift(row) : null;
+  // Whole minutes of one stretch, cut to the shift when strict; null = it starts after the shift ended
+  const minutes = (from, to) => {
+    let a = from.getTime();
+    let b = to.getTime();
+    if (strict) {
+      if (a > strict.end.getTime()) return null;
+      a = Math.max(a, strict.start.getTime());
+      b = Math.min(b, strict.end.getTime());
+    }
+    return Math.trunc((b - a) / 60000);
+  };
+
+  if (row.include_break !== 'N') {
+    const worked = minutes(firstIn.time, last.time);
+    return worked === null || worked < 0 ? null : worked;
+  }
+  let worked = 0;
+  for (let i = 1; i < punches.length; i += 1) {
+    const from = punches[i - 1];
+    const to = punches[i];
+    if (!is(from, 'IN') || !is(to, 'OUT') || from.time < firstIn.time || to.time > last.time) continue;
+    const session = minutes(from.time, to.time);
+    if (session !== null) worked = Math.max(0, worked + session);
+  }
+  return worked;
 };
 
 const schedule = (identifier, title, body, date, data) =>
@@ -188,22 +239,13 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
         if (after > now) await schedule(id('end-after'), '🚪 Not checked out yet', `Your shift ended at ${endLabel}. Please check out now.`, new Date(after), { type: 'SHIFT_REMINDER' });
       }
 
-      // Short hours, same rule as the server's attendance calculation: first IN → last OUT, or the
-      // last punch of any kind when the shift has include_break + first_in_last_punch; with
-      // strict_monitorings, time before shift start / after shift end does not count
+      // Short hours: minutes worked (the server's rule, see workedMinutes) below the day's Full Day minutes. Not while
+      // still checked in — "Not checked out yet" covers that — unless the shift counts to the last punch of any kind.
       const required = Number(row.required_minutes) || 0;
       const shortId = `${SHORT_PREFIX}${row.date}`;
       const lastAnyPunch = row.include_break === 'Y' && row.first_in_last_punch === 'Y';
-      const outPunch = lastAnyPunch ? last : [...inWindow].reverse().find((p) => p.type === 'OUT');
-      const hasOut = !!(firstIn && outPunch && outPunch.time > firstIn.time);
-      if ((checkedOut || (lastAnyPunch && hasOut)) && hasOut && required > 0) {
-        let inMs = firstIn.time.getTime();
-        let outMs = outPunch.time.getTime();
-        if (row.strict_monitorings === 'Y') {
-          inMs = Math.max(inMs, startMs);
-          outMs = Math.min(outMs, endMs);
-        }
-        const workedMins = Math.max(0, Math.floor((outMs - inMs) / 60000));
+      const workedMins = checkedOut || (checkedIn && lastAnyPunch) ? workedMinutes(inWindow, row) : null;
+      if (workedMins !== null && required > 0) {
         if (workedMins < required) {
           const prev = shortState[row.date];
           if (prev && prev.worked === workedMins) {

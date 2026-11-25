@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Switch, Keyboard, ActivityIndicator } from 'react-native';
+import { useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Modal, Platform, Switch, Keyboard, ActivityIndicator } from 'react-native';
 import { Text, TextInput } from './AppText';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -10,7 +10,10 @@ import { Plus, Pencil, Trash2, X, FileText, Calendar, ChevronDown, Check } from 
 import { moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import KeyboardSafeView from './KeyboardSafeView';
+import ScrollView from './KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import KeyboardDoneBar, { doneBarId } from './KeyboardDoneBar';
+import { canScanAtSignup, readSignupPhoto, scanError } from '../services/SignupScan';
+import { planDocFill } from '../services/DocumentReader';
 
 // Sign-up's optional last step: the same Education, Experience, Family and Documents rows Employee
 // Joining keeps, so HR finds them on the joiner's record. Nothing here is required to finish, but a row
@@ -135,7 +138,7 @@ async function fileRow(uri, name, mime, size, showAlert) {
   if (size && size > MAX_FILE_BYTES) return tooBig();
   const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
   if (base64.length * 0.75 > MAX_FILE_BYTES) return tooBig();
-  return { name, data: `data:${mime};base64,${base64}` };
+  return { name, data: `data:${mime};base64,${base64}`, uri, mime };
 }
 
 /** Every date is picked from a calendar: nothing is typed. */
@@ -175,7 +178,11 @@ function DateField({ field, form, value, onChange, theme }) {
   );
 }
 
-export default function SignupExtraDetails({ value, onChange, showAlert, selfName }) {
+// A read document's values -> this form's field names
+const READ_KEYS = { type: 'document_type', number: 'document_number', name: 'name', validFrom: 'valid_from', validTill: 'valid_till', gender: 'classification' };
+const READ_LABELS = { type: 'Document Type', number: 'Number', name: 'Name', validFrom: 'Valid From', validTill: 'Valid Till', gender: 'Gender' };
+
+export default function SignupExtraDetails({ value, onChange, showAlert, selfName, companyCode, scanned = [] }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [editing, setEditing] = useState(null); // { section, index (null = new), form }
@@ -183,6 +190,13 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
   const [reading, setReading] = useState(false);
   const [openChoice, setOpenChoice] = useState(null);
   const section = SECTIONS.find((s) => s.key === editing?.section);
+  // The attached document photo being read (GRTL / MYPY): its empty boxes are filled, the person checks them
+  const [docRead, setDocRead] = useState(null);
+  const readSeq = useRef(0);
+  const stopReading = () => { readSeq.current += 1; setDocRead(null); };
+  const closeForm = () => { stopReading(); setEditing(null); };
+  // Photos already scanned on the earlier steps and not added here yet
+  const waiting = scanned.filter((d) => !value.documents.some((row) => row.scanId === d.id));
 
   const openForm = (s, index = null) => {
     if (index === null && value[s.key].length >= MAX_ROWS) {
@@ -191,6 +205,7 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
     }
     setFormError('');
     setOpenChoice(null);
+    stopReading();
     const start = Object.fromEntries(s.fields.filter((x) => x.initial).map((x) => [x.key, x.initial]));
     setEditing({ section: s.key, index, form: index === null ? start : { ...value[s.key][index] } });
   };
@@ -205,6 +220,47 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
       return { ...e, form };
     });
   };
+  // Opens Add Document with what the earlier scan read and its photo; only what the card does not say is left to fill
+  const addScanned = async (doc) => {
+    if (value.documents.length >= MAX_ROWS) { showAlert('warning', 'Limit Reached', `You can add up to ${MAX_ROWS} here.`); return; }
+    try {
+      const file = await fileRow(doc.file.uri, doc.file.name, doc.file.mimeType, doc.file.size, showAlert);
+      if (!file) return;
+      stopReading();
+      setFormError('');
+      setOpenChoice(null);
+      setEditing({ section: 'documents', index: null, form: {
+        document_type: doc.document_type, document_number: cleanNumber(doc.document_number, doc.document_type), relation: 'Self',
+        name: cleanName(selfName || doc.name), classification: doc.classification, nationality: 'Indian', file, scanId: doc.id,
+      } });
+    } catch (_) {
+      showAlert('warning', 'Photo Not Found', 'The scanned photo is no longer on this phone. Please add it again.');
+    }
+  };
+  const readDocument = async (file) => {
+    if (!canScanAtSignup(companyCode) || !/^image\/(jpe?g|png)$/.test(file.mime || '')) return;
+    const mine = ++readSeq.current;
+    setDocRead({ status: 'reading' });
+    try {
+      const { fields } = await readSignupPhoto(companyCode, { uri: file.uri, name: file.name, mimeType: file.mime });
+      if (mine !== readSeq.current) return; // closed, or another file attached meanwhile
+      setEditing((e) => {
+        if (!e) return e;
+        const now = Object.fromEntries(Object.entries(READ_KEYS).map(([k, f]) => [k, e.form[f] || '']));
+        const form = { ...e.form };
+        const { fill } = planDocFill(fields, now);
+        if (fill.validFrom && fill.validFrom > today()) delete fill.validFrom;
+        for (const [k, v] of Object.entries(fill)) form[READ_KEYS[k]] = v;
+        if (fill.number) form.document_number = cleanNumber(fill.number, form.document_type);
+        if (fill.name) form.name = cleanName(fill.name).slice(0, 50);
+        return { ...e, form };
+      });
+      const plan = planDocFill(fields, Object.fromEntries(Object.keys(READ_KEYS).map((k) => [k, ''])));
+      setDocRead({ status: 'done', read: plan.filled.map((k) => READ_LABELS[k]) });
+    } catch (e) {
+      if (mine === readSeq.current) setDocRead({ status: 'failed', message: scanError(e) });
+    }
+  };
   const remove = (s, index) => onChange({ ...value, [s.key]: value[s.key].filter((_, i) => i !== index) });
 
   const save = () => {
@@ -217,14 +273,17 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
     const rows = [...value[section.key]];
     if (editing.index === null) rows.push(f); else rows[editing.index] = f;
     onChange({ ...value, [section.key]: rows });
-    setEditing(null);
+    closeForm();
   };
 
   const attach = async (load) => {
     setReading(true);
     try {
       const file = await load();
-      if (file) setField('file', file);
+      if (file) {
+        setField('file', file);
+        if (editing?.section === 'documents') readDocument(file);
+      }
     } catch (e) {
       setFormError('This file could not be read. Please try another.');
     } finally {
@@ -306,8 +365,16 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
               <View style={styles.fileName}>
                 <FileText color={PURPLE} size={15} />
                 <Text numberOfLines={1} style={{ color: theme.text, fontSize: moderateScale(12.5), flex: 1 }}>{v.name}</Text>
-                <TouchableOpacity onPress={() => setField('file', '')} hitSlop={HIT} accessibilityLabel="Remove file"><X color={theme.textMuted} size={16} /></TouchableOpacity>
+                <TouchableOpacity onPress={() => { stopReading(); setField('file', ''); }} hitSlop={HIT} accessibilityLabel="Remove file"><X color={theme.textMuted} size={16} /></TouchableOpacity>
               </View>
+            )}
+            {!!docRead && (
+              <Text style={{ color: docRead.status === 'failed' ? '#DC2626' : theme.textMuted, fontSize: moderateScale(12), marginTop: 6 }}>
+                {docRead.status === 'reading' ? 'Reading the document…'
+                  : docRead.status === 'failed' ? docRead.message
+                    : docRead.read.length ? `Read from the document: ${docRead.read.join(', ')}. Empty boxes are filled: please check.`
+                      : 'Couldn’t read this document. Please type the details.'}
+              </Text>
             )}
           </>
         )}
@@ -341,6 +408,15 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
               <Text style={styles.addText}>Add</Text>
             </TouchableOpacity>
           </View>
+          {s.key === 'documents' && waiting.map((d) => (
+            <View key={d.id} style={[styles.row, { backgroundColor: '#F5F0FF' }]}>
+              <Text numberOfLines={1} style={[styles.rowText, { color: PURPLE }]}>{d.label} (already scanned)</Text>
+              <TouchableOpacity onPress={() => addScanned(d)} hitSlop={HIT} style={styles.addBtn} accessibilityRole="button" accessibilityLabel={`Add scanned ${d.label}`}>
+                <Plus color={PURPLE} size={16} />
+                <Text style={styles.addText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
           {value[s.key].map((row, i) => (
             <View key={`${s.key}${i}`} style={[styles.row, { backgroundColor: theme.inputBg }]}>
               <Text numberOfLines={2} style={[styles.rowText, { color: theme.text }]}>{s.summary(row)}</Text>
@@ -351,12 +427,12 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
         </View>
       ))}
 
-      <Modal visible={!!editing} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setEditing(null)}>
+      <Modal visible={!!editing} transparent animationType="slide" statusBarTranslucent onRequestClose={closeForm}>
         <KeyboardSafeView style={[styles.overlay, { backgroundColor: theme.modalOverlay }]}>
           <View style={[styles.sheet, { backgroundColor: theme.card, paddingBottom: Math.max(insets.bottom, 12) }]}>
             <View style={styles.sheetHead}>
               <Text style={[styles.sheetTitle, { color: theme.text }]}>{section?.add}</Text>
-              <TouchableOpacity onPress={() => setEditing(null)} hitSlop={HIT} accessibilityLabel="Close"><X color={theme.textMuted} size={22} /></TouchableOpacity>
+              <TouchableOpacity onPress={closeForm} hitSlop={HIT} accessibilityLabel="Close"><X color={theme.textMuted} size={22} /></TouchableOpacity>
             </View>
             <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="none" showsVerticalScrollIndicator={false}>
               {section?.fields.map(renderField)}

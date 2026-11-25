@@ -5,12 +5,70 @@ import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import NotificationManager from './NotificationManager';
 import { syncPunchSelfies } from './PunchSelfie';
+import { createAddressResolver, isUnresolvedAddress } from './AddressResolver';
 
 // reverseGeocodeAsync has no built-in timeout and can hang far longer than the sync should wait
 const reverseGeocodeWithTimeout = (coords) => Promise.race([
   Location.reverseGeocodeAsync(coords),
   new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
 ]);
+
+// Retries (HomeScreen retries every 30 s) a punch may wait for a throttled address lookup
+const MAX_ADDRESS_HOLDS = 5;
+const SWIPE_BATCH_SIZE = 50;
+const addressHolds = {}; // punch id -> times held back
+// How long a visit step may wait for its address before it goes with the Lat/Lng text
+const VISIT_HOLD_MS = 150000;
+const VISIT_HOLD_MAX_MS = 15 * 60000;
+const visitHoldSince = {}; // "visit id:step" -> when its lookup first failed
+let lastAddressFoundAt = 0; // the last lookup that worked (punches and visits)
+// The steps of a customer visit, in the order they are sent, and the client_visits columns each one uses
+const VISIT_STEPS = [
+  { type: 'Start From', time: 'start_time', lat: 'latitude', lng: 'longitude', address: 'location', offline: 'start_offline', sent: 'start_synced' },
+  { type: 'in', time: 'step_in_time', lat: 'step_in_lat', lng: 'step_in_lng', address: 'step_in_address', offline: 'step_in_offline', sent: 'step_in_synced' },
+  { type: 'out', time: 'end_time', lat: 'end_lat', lng: 'end_lng', address: 'end_address', offline: 'end_offline', sent: 'end_synced' },
+];
+
+// Did the server take what was sent? It answers 200 with success 0 when it could not store it (e.g. the punch queue is
+// unreachable) and expects the app to keep it and send it again. An error page or an empty body is a "no" too. A reply
+// that is text but holds "success":1 (a PHP notice printed before the JSON) is a "yes": sending it again would duplicate.
+const serverAccepted = (reply) => {
+  if (typeof reply === 'string') return /"success"\s*:\s*("1"|1|true)/.test(reply);
+  if (!reply || typeof reply !== 'object') return false;
+  return !(reply.success === 0 || reply.success === '0' || reply.success === false);
+};
+
+// Which of the `count` punches of a batch the server took (positions). Its reply lists one entry per punch taken:
+//   - as many entries as were sent: all of them;
+//   - entries by position ({ "0": …, "2": … }): those positions;
+//   - a shorter plain list (the queue took only some): no telling which, so none — they are sent again one by one
+//     (punchBatches) and the queue drops the punches it already has.
+const acceptedIndexes = (reply, count) => {
+  if (!serverAccepted(reply)) return [];
+  const all = Array.from({ length: count }, (_, i) => i);
+  const data = typeof reply === 'object' ? reply.data : null;
+  if (Array.isArray(data)) return data.length > 0 && data.length < count ? [] : all;
+  if (data && typeof data === 'object') {
+    const positions = Object.keys(data).map(Number).filter((i) => Number.isInteger(i) && i >= 0 && i < count);
+    return positions.length > 0 ? positions : all;
+  }
+  return all;
+};
+
+// Punches in order, SWIPE_BATCH_SIZE at a time; one that came back in an unclear reply goes alone
+const sendAlone = new Set(); // punch ids
+const punchBatches = (items) => {
+  const batches = [];
+  let current = [];
+  for (const item of items) {
+    const alone = sendAlone.has(item.id);
+    if (current.length > 0 && (alone || current.length === SWIPE_BATCH_SIZE)) { batches.push(current); current = []; }
+    if (alone) batches.push([item]);
+    else current.push(item);
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+};
 
 const flushCallbacks = (list) => list.splice(0).forEach((cb) => {
   try { cb(); } catch (_) {}
@@ -56,15 +114,18 @@ const SyncService = {
       console.log('[SyncService] Starting background sync...');
       const db = await initDB();
 
+      // One address lookup per place for the whole run (punches and visits share it and its throttle state)
+      const addressResolver = createAddressResolver(reverseGeocodeWithTimeout);
+
       // 1. Sync Attendance
-      await SyncService.syncAttendance(db);
+      await SyncService.syncAttendance(db, addressResolver);
       flushCallbacks(callbacks.attendance);
 
       // 1b. Selfies of "Mobile with selfie" punches (after the punches they belong to)
       await syncPunchSelfies().catch((e) => console.log('[SyncService] Selfie sync failed:', e?.message));
 
       // 2. Sync Visits
-      await SyncService.syncVisits(db);
+      await SyncService.syncVisits(db, addressResolver);
       flushCallbacks(callbacks.visits);
 
       // 3. Sync Leaves
@@ -86,8 +147,9 @@ const SyncService = {
     }
   },
 
-  syncAttendance: async (db) => {
-    const pending = await db.getAllAsync("SELECT * FROM attendance WHERE sync_status = 'PENDING'");
+  syncAttendance: async (db, addressResolver = createAddressResolver(reverseGeocodeWithTimeout)) => {
+    // In tap order (rowid): the server decides IN / OUT from the order it receives them
+    const pending = await db.getAllAsync("SELECT * FROM attendance WHERE sync_status = 'PENDING' ORDER BY rowid");
     if (pending.length === 0) return;
 
     // Group pending punches by user_id
@@ -166,34 +228,34 @@ const SyncService = {
           if (Math.abs(freshLat) > 0.0001) {
             await db.runAsync("UPDATE attendance SET latitude = ?, longitude = ?, address = ? WHERE id = ?", [freshLat, freshLng, freshLocName, item.id]);
           }
-        } else {
-          // We have coords, but do we have a valid address generated while offline?
-          if (!item.address || item.address === 'Location Attached' || item.address.startsWith('Lat:')) {
-            try {
-              const geo = await reverseGeocodeWithTimeout({ latitude: storedLat, longitude: storedLng });
-              if (geo && geo.length > 0) {
-                const r = geo[0];
-                const parts = [
-                  r.name, 
-                  r.street, 
-                  r.district || r.subregion,
-                  r.city || r.locality, 
-                  r.region, 
-                  r.postalCode
-                ].filter(Boolean);
-                
-                if (parts.length > 0) {
-                  const newAddress = [...new Set(parts)].join(', ');
-                  item.address = newAddress;
-                  // Save the newly resolved address in DB for later use
-                  await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
-                }
-              }
-            } catch (e) {
-              console.log('[SyncService] Reverse geocode failed for attendance sync:', e.message);
-            }
+        } else if (isUnresolvedAddress(item.address)) {
+          // We have coords but no real address (punched offline). Looked up once
+          // per place; stops early if the geocoder is throttled (iOS ~50/min).
+          const newAddress = await addressResolver.resolve(storedLat, storedLng);
+          if (newAddress) {
+            lastAddressFoundAt = Date.now();
+            item.address = newAddress;
+            // Save the newly resolved address in DB for later use
+            await db.runAsync("UPDATE attendance SET address = ? WHERE id = ?", [newAddress, item.id]);
+          } else {
+            item.addressPending = true;
           }
         }
+      }
+
+      // Punches whose address could not be looked up yet (geocoder throttled):
+      // hold them (and everything after them, to keep IN/OUT order) for the next
+      // retry. After MAX_ADDRESS_HOLDS tries they go with the Lat/Lng text so a
+      // geocoder that never works can't block attendance.
+      let sendItems = items;
+      items.forEach((item) => {
+        if (item.addressPending) addressHolds[item.id] = (addressHolds[item.id] || 0) + 1;
+      });
+      const firstHeld = items.findIndex((item) => item.addressPending && addressHolds[item.id] <= MAX_ADDRESS_HOLDS);
+      if (firstHeld !== -1) {
+        sendItems = items.slice(0, firstHeld);
+        console.log(`[SyncService] Address lookup throttled — sending ${sendItems.length}, holding ${items.length - sendItems.length} for retry`);
+        if (sendItems.length === 0) continue;
       }
 
       // --- Step 2: Fetch emp_pkey ---
@@ -214,7 +276,7 @@ const SyncService = {
       };
 
       // --- Step 3: Build payload ---
-      const login_auditor_array = items.map(item => {
+      const buildPayload = (list) => list.map(item => {
         // Evaluate the flag to determine suffix exclusively for the backend payload
         const punchTypeSuffix = parseInt(item.is_offline) === 1 ? '(Offline Punch)' : '(Online Punch)';
         const apiLocationName = `${punchTypeSuffix} ${item.address || 'Location Attached'}`;
@@ -233,118 +295,129 @@ const SyncService = {
       });
 
       // --- Step 4: Call API ---
-      try {
-        console.log('[SyncService] SWIPE request in_out sequence:', login_auditor_array.map(x => `${x.in_out}@${x.time_check}`));
-        const swipeRes = await axios.post(API_ENDPOINTS.SWIPE, {
-          user_id: userId,
-          login_auditor: JSON.stringify(login_auditor_array)
-        }, { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
-        console.log('[SyncService] SWIPE response:', JSON.stringify(swipeRes.data));
+      // Sent in order, SWIPE_BATCH_SIZE at a time, so a big offline backlog
+      // (200+) isn't one huge request that times out. Each batch is marked
+      // SYNCED as it lands; if one fails the rest stay PENDING for the retry.
+      for (const batch of punchBatches(sendItems)) {
+        const login_auditor_array = buildPayload(batch);
+        try {
+          console.log('[SyncService] SWIPE request in_out sequence:', login_auditor_array.map(x => `${x.in_out}@${x.time_check}`));
+          const swipeRes = await axios.post(API_ENDPOINTS.SWIPE, {
+            user_id: userId,
+            login_auditor: JSON.stringify(login_auditor_array)
+          }, { headers: { 'Content-Type': 'application/json' }, timeout: 30000 });
+          console.log('[SyncService] SWIPE response:', JSON.stringify(swipeRes.data));
 
-        for (const item of items) {
-          await db.runAsync("UPDATE attendance SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
+          // Only the punches the server says it took are synced; the others stay PENDING for the next sync
+          const accepted = acceptedIndexes(swipeRes.data, batch.length);
+          for (const index of accepted) {
+            await db.runAsync("UPDATE attendance SET sync_status = 'SYNCED' WHERE id = ?", [batch[index].id]);
+            delete addressHolds[batch[index].id];
+            sendAlone.delete(batch[index].id);
+          }
+          // Accepted, but with a list that doesn't say which ones: next time one by one, so every answer is clear
+          if (accepted.length === 0 && serverAccepted(swipeRes.data)) batch.forEach((item) => sendAlone.add(item.id));
+          console.log(`[SyncService] Synced ${accepted.length} of ${batch.length} punch(es) for user ${userId}`);
+          if (accepted.length < batch.length) throw new Error(swipeRes.data?.message || 'the server did not accept every punch');
+        } catch (e) {
+          console.log(`[SyncService] Attendance sync failed for user ${userId}:`, e.message);
+          break; // keep order: don't send later batches past a failed one
         }
-        console.log(`[SyncService] Synced ${items.length} punch(es) for user ${userId}`);
-      } catch (e) {
-        console.log(`[SyncService] Attendance sync failed for user ${userId}:`, e.message);
       }
     }
   },
 
-  syncVisits: async (db) => {
-    const pending = await db.getAllAsync("SELECT * FROM client_visits WHERE sync_status = 'PENDING'");
-    if (pending.length === 0) return;
+  // Customer visits go up one STEP at a time (Start, then Step In, then Step Out), online or from an offline backlog:
+  // each step is sent as soon as it exists and its own address is known — never waiting for the visit to be completed.
+  // One visit failing or waiting never stops the other visits (the server orders steps by their tap time).
+  syncVisits: async (db, addressResolver = createAddressResolver(reverseGeocodeWithTimeout)) => {
+    const pending = await db.getAllAsync("SELECT id FROM client_visits WHERE sync_status = 'PENDING'");
+    for (const { id } of pending) {
+      try {
+        await SyncService.syncVisitSteps(db, id, addressResolver);
+      } catch (e) {
+        console.log(`[SyncService] Visit ${id} sync failed:`, e.message);
+      }
+    }
+  },
 
-    const resolveAddress = async (lat, lng, existingAddr) => {
-      if (!existingAddr || existingAddr === 'Unable to fetch location' || existingAddr === 'Unknown Location' || existingAddr.startsWith('Lat:')) {
-        if (Math.abs(lat) > 0.01) {
-          try {
-            const geo = await reverseGeocodeWithTimeout({ latitude: lat, longitude: lng });
-            if (geo && geo.length > 0) {
-              const r = geo[0];
-              const parts = [r.name, r.street, r.district || r.subregion, r.city || r.locality, r.region, r.postalCode].filter(Boolean);
-              if (parts.length > 0) return [...new Set(parts)].join(', ');
-            }
-          } catch (e) {
-            console.log('[SyncService] Reverse geocode failed during sync:', e.message);
+  // Sends every step of one visit that has not reached the server yet, in order.
+  syncVisitSteps: async (db, id, addressResolver) => {
+    for (const step of VISIT_STEPS) {
+      // Read again before EVERY step: the person may have tapped the next one while the last was being sent
+      const v = await db.getFirstAsync('SELECT * FROM client_visits WHERE id = ?', [id]);
+      if (!v) return;
+      if (!v[step.time] || v[step.sent]) continue; // not tapped yet, or already on the server
+      if (step.type === 'out' && v.status !== 'COMPLETED') continue;
+
+      const lat = parseFloat(v[step.lat]) || 0;
+      const lng = parseFloat(v[step.lng]) || 0;
+      let address = v[step.address];
+      const holdKey = `${id}:${step.type}`;
+      if (Math.abs(lat) > 0.01 && isUnresolvedAddress(address)) {
+        // Looked up from THIS step's coordinates; only this step's address is saved, and only while it is still
+        // the same tap — a sync must never overwrite what a newer tap wrote
+        const found = await addressResolver.resolve(lat, lng);
+        if (found) {
+          address = found;
+          lastAddressFoundAt = Date.now();
+          await db.runAsync(`UPDATE client_visits SET ${step.address} = ? WHERE id = ? AND ${step.time} = ?`, [found, id, v[step.time]]);
+        } else {
+          // Lookup not possible yet (iOS throttling / weak network): this step and the ones after it wait for the next
+          // sync; steps already sent stay sent. Counted in time, not tries: several triggers (tap, Home timer, Visits
+          // timer) can fire within a minute. Lookups that still succeed elsewhere mean it is only throttling, so keep
+          // waiting; none for VISIT_HOLD_MS (or VISIT_HOLD_MAX_MS in all) and it goes with the Lat/Lng text.
+          const now = Date.now();
+          VISIT_STEPS.forEach((s) => {
+            const key = `${id}:${s.type}`;
+            if (v[s.time] && !v[s.sent] && !visitHoldSince[key]) visitHoldSince[key] = now; // the later steps wait alongside
+          });
+          const since = visitHoldSince[holdKey];
+          if (now - Math.max(since, lastAddressFoundAt) < VISIT_HOLD_MS && now - since < VISIT_HOLD_MAX_MS) {
+            console.log(`[SyncService] Visit ${id}: ${step.type} waits for its address`);
+            return;
           }
         }
       }
-      return existingAddr;
-    };
 
-    for (const item of pending) {
-      try {
-        // Resolve all possible addresses
-        const finalMainLoc = await resolveAddress(parseFloat(item.latitude) || 0, parseFloat(item.longitude) || 0, item.location);
-        const finalStepInAddr = await resolveAddress(parseFloat(item.step_in_lat) || 0, parseFloat(item.step_in_lng) || 0, item.step_in_address || item.location);
-        const finalEndAddr = await resolveAddress(parseFloat(item.end_lat) || 0, parseFloat(item.end_lng) || 0, item.end_address || item.location);
-
-        // Update local DB with resolved addresses if they changed
-        if (finalMainLoc !== item.location || finalStepInAddr !== item.step_in_address || finalEndAddr !== item.end_address) {
-          await db.runAsync(
-            "UPDATE client_visits SET location = ?, step_in_address = ?, end_address = ? WHERE id = ?",
-            [finalMainLoc, finalStepInAddr, finalEndAddr, item.id]
-          );
-        }
-
-        const formatSyncTime = (iso) => {
-           if (!iso) return "";
-           const d = new Date(iso);
-           const pad = (n) => n.toString().padStart(2, '0');
-           return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-        };
-
-        const postVisit = async (stepType, timeStr, lat, lng, addr) => {
-            const resolvedAddr = addr || finalMainLoc || '';
-            const isOffline = resolvedAddr.startsWith('Lat:');
-            const punchTag = isOffline ? '(Offline)' : '(Online)';
-            const locationWithTag = `${punchTag} ${resolvedAddr}`.slice(0, 250);
-            const payload = {
-              stepinout: stepType,
-              customer_name: item.client_name,
-              purpose: item.purpose,
-              latitude: `${lat || 0}`,
-              longitude: `${lng || 0}`,
-              accuracy: 20,
-              location: locationWithTag,
-              contact_person: item.contact_person,
-              contact_number: item.contact_number,
-              created_time: formatSyncTime(timeStr)
-            };
-            const url = `${API_ENDPOINTS.VISIT_SYNC}?user_id=${item.user_id}`;
-            await axios.post(url, payload, { 
-              headers: { 'Content-Type': 'application/json' }, 
-              timeout: 10000 
-            });
-        };
-
-        // Post "Start From" only once (flag prevents re-send on subsequent syncs)
-        if (item.start_time && !item.start_synced) {
-          await postVisit("Start From", item.start_time, item.latitude || 0, item.longitude || 0, finalMainLoc);
-          await db.runAsync("UPDATE client_visits SET start_synced = 1 WHERE id = ?", [item.id]);
-        }
-
-        // Post "in" only once
-        if (item.step_in_time && !item.step_in_synced) {
-          const sLat = item.step_in_lat || item.latitude || 0;
-          const sLng = item.step_in_lng || item.longitude || 0;
-          await postVisit("in", item.step_in_time, sLat, sLng, finalStepInAddr);
-          await db.runAsync("UPDATE client_visits SET step_in_synced = 1 WHERE id = ?", [item.id]);
-        }
-
-        // Post "out" when visit is completed
-        if (item.status === 'COMPLETED' && item.end_time) {
-          const eLat = item.end_lat || item.latitude || 0;
-          const eLng = item.end_lng || item.longitude || 0;
-          await postVisit("out", item.end_time, eLat, eLng, finalEndAddr);
-        }
-
-        await db.runAsync("UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?", [item.id]);
-      } catch (e) {
-        console.log(`[SyncService] Visit ${item.id} sync failed:`, e.message);
-      }
+      await SyncService.postVisitStep(v, step, lat, lng, address);
+      await db.runAsync(`UPDATE client_visits SET ${step.sent} = 1 WHERE id = ?`, [id]);
+      delete visitHoldSince[holdKey];
     }
+
+    // "Synced" only when every step tapped so far is on the server. Checked by the database in the same statement, so a
+    // step tapped while the last one was being sent keeps the visit PENDING instead of being lost.
+    await db.runAsync(
+      `UPDATE client_visits SET sync_status = 'SYNCED' WHERE id = ?
+         AND (start_time IS NULL OR start_synced = 1)
+         AND (step_in_time IS NULL OR step_in_synced = 1)
+         AND (end_time IS NULL OR status <> 'COMPLETED' OR end_synced = 1)`,
+      [id]
+    );
+  },
+
+  postVisitStep: async (v, step, lat, lng, address) => {
+    const text = address || v.location || '';
+    // The tag follows whether the step was made offline (saved at tap time), NOT whether the address is still Lat/Lng
+    // text. Rows from before the flag existed (null) keep the old rule.
+    const flag = v[step.offline];
+    const hasFlag = flag !== null && flag !== undefined && flag !== '';
+    const isOffline = hasFlag ? parseInt(flag, 10) === 1 : text.startsWith('Lat:');
+    const d = new Date(v[step.time]);
+    const pad = (n) => n.toString().padStart(2, '0');
+    const res = await axios.post(`${API_ENDPOINTS.VISIT_SYNC}?user_id=${v.user_id}`, {
+      stepinout: step.type,
+      customer_name: v.client_name,
+      purpose: v.purpose,
+      latitude: `${lat || v.latitude || 0}`,
+      longitude: `${lng || v.longitude || 0}`,
+      accuracy: 20,
+      location: `${isOffline ? '(Offline)' : '(Online)'} ${text}`.slice(0, 250),
+      contact_person: v.contact_person,
+      contact_number: v.contact_number,
+      created_time: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`,
+    }, { headers: { 'Content-Type': 'application/json' }, timeout: 10000 });
+    if (!serverAccepted(res?.data)) throw new Error(res?.data?.message || 'the server did not accept the step');
   },
 
   syncLeaves: async (db) => {

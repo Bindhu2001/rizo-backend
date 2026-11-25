@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   ActivityIndicator, Modal, Platform, Animated, RefreshControl
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -8,17 +8,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import LocationDisclosureModal from '../components/LocationDisclosureModal';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, ChevronRight, MapPin, CheckCircle, Plus, CalendarDays, History } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, MapPin, CheckCircle, Plus, CalendarDays, History, RefreshCw } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
 import { API_ENDPOINTS } from '../constants/Config';
 import * as Location from 'expo-location';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible, useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
-import { getTodayVisits, getVisitsByDate, getLiveVisits, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
+import { getTodayVisits, getVisitsByDate, getLiveVisits, visitStartDate, saveVisitLocal, updateVisitStatus, initDB } from '../services/LocalDB';
 import SyncService from '../services/SyncService';
+import { createAddressResolver } from '../services/AddressResolver';
+import { recordAudit } from '../services/AuditTrail';
 import { verifyDeviceClock } from '../services/TimeCheck';
 import { getRecentFix, rememberFix } from '../services/PunchPrefetch';
 import * as Network from 'expo-network';
@@ -35,7 +38,9 @@ const fmtDate = (iso) => {
   if (!iso) return '';
   try {
     const d = new Date(iso);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (isNaN(d.getTime())) return '';
+    // dd-mm-yyyy
+    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
   } catch (_) { return ''; }
 };
 
@@ -50,6 +55,25 @@ const fmtDateStr = (dateStr) => {
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   return `${d} ${months[m - 1]} ${y}`;
 };
+
+// My Customer Visits: an open visit (Step In / Step Out still to do) stays at the top whenever it started, then the
+// latest visit first (last in, first shown): by the visit's start time (else its first step / creation time), visits
+// with no usable time last, ties by id (newest id first) so the order never jumps between refreshes.
+const visitTimeMs = (v) => {
+  const t = new Date(v.start_time || v.step_in_time || v.created_at || '').getTime();
+  return isNaN(t) ? -Infinity : t;
+};
+const isOpenVisit = (v) => v.status === 'REACHED' || v.status === 'step_in';
+const sortVisitsNewestFirst = (list) => [...list].sort((a, b) => {
+  const open = Number(isOpenVisit(b)) - Number(isOpenVisit(a));
+  if (open !== 0) return open;
+  const d = visitTimeMs(b) - visitTimeMs(a);
+  if (d !== 0 && !isNaN(d)) return d;
+  return String(b.id).localeCompare(String(a.id));
+});
+
+// While a visit is "Pending sync" and the screen is open, try again this often (ms)
+const AUTO_SYNC_RETRY_MS = 30000;
 
 const normalizeVisit = (v) => {
   // API response: visit grouped with punches array
@@ -73,6 +97,7 @@ const normalizeVisit = (v) => {
       step_in_address: inPunch?.location || '',
       end_address: outPunch?.location || '',
       status,
+      sync_status: 'SYNCED', // it came from the server
       created_at: v.visit_date || startPunch?.created_time || '',
     };
   }
@@ -91,6 +116,8 @@ const normalizeVisit = (v) => {
     end_address: v.end_address || v.out_location || '',
     status: v.status || 'COMPLETED',
     created_at: v.created_at || v.created_time || '',
+    start_offline: v.start_offline, step_in_offline: v.step_in_offline, end_offline: v.end_offline,
+    sync_status: v.sync_status,
   };
 };
 
@@ -102,26 +129,51 @@ const reverseGeocodeWithTimeout = (coords) => Promise.race([
   new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
 ]);
 
+// One lookup per place for the whole screen (cached, one at a time, pauses 60 s after
+// repeated failures so it never burns iOS's ~50 lookups a minute across many cards)
+const screenResolver = createAddressResolver(reverseGeocodeWithTimeout, { cooldownMs: 60000 });
+const TAG_REGEX = /^\s*\((Online|Offline)\)\s*/i;
+
+// No internet right now? (a stuck check counts as offline)
+const isOfflineNow = async () => {
+  try {
+    const net = await Promise.race([
+      Network.getNetworkStateAsync(),
+      new Promise((resolve) => setTimeout(() => resolve(null), 1000)),
+    ]);
+    return !net || !net.isConnected;
+  } catch (_) { return true; }
+};
+
+// "(Offline) <text>" for a step made offline, "(Online) <text>" for one made online. Text that
+// already carries the tag (rows from the server) is left as is; flag unknown (older rows) = as is.
+const withTag = (text, offlineFlag) => {
+  if (!text || TAG_REGEX.test(text)) return text;
+  if (offlineFlag === null || offlineFlag === undefined || offlineFlag === '') return text;
+  return `${parseInt(offlineFlag, 10) === 1 ? '(Offline)' : '(Online)'} ${text}`;
+};
+
 const resolveAddress = async (locationStr) => {
   if (!locationStr) return locationStr;
+  const prefix = (locationStr.match(TAG_REGEX) || [''])[0]; // keep "(Offline) " when the address replaces Lat/Lng
   const match = locationStr.match(LAT_LNG_REGEX);
   if (!match) return locationStr; // Already a readable address
   try {
     const net = await Network.getNetworkStateAsync();
     if (!net.isConnected) return locationStr;
-    const lat = parseFloat(match[1]);
-    const lng = parseFloat(match[2]);
-    const geo = await reverseGeocodeWithTimeout({ latitude: lat, longitude: lng });
-    if (geo && geo.length > 0) {
-      const g = geo[0];
-      const parts = [g.name || g.street, g.district || g.subregion || g.city, g.region].filter(Boolean);
-      if (parts.length > 0) return [...new Set(parts)].join(', ');
-    }
+    const address = await screenResolver.resolve(parseFloat(match[1]), parseFloat(match[2]));
+    if (address) return `${prefix}${address}`;
   } catch (_) { }
   return locationStr;
 };
 
+// The place + whether the step was made offline (stored with the visit for the Online/Offline tag)
 const getAddress = async () => {
+  const [place, offline] = await Promise.all([getAddressInner(), isOfflineNow()]);
+  return { ...place, offline };
+};
+
+const getAddressInner = async () => {
   try {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return { address: 'Location permission denied', lat: 0, lng: 0 };
@@ -169,7 +221,8 @@ const getAddress = async () => {
 };
 
 // ─── Timeline Step Row (For Completed Visits) ─────────────────────────
-const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast }) => {
+// date: the step's own date — a visit can start on one day and step in / out on another
+const TimelineStep = ({ time, date, location, label, labelColor, labelBg, done, isLast }) => {
   const theme = useTheme();
   return (
   <View style={tl.row}>
@@ -181,7 +234,13 @@ const TimelineStep = ({ time, location, label, labelColor, labelBg, done, isLast
     </View>
     <View style={tl.content}>
       <View style={tl.topRow}>
-        {time ? <Text style={[tl.time, { color: theme.text }]}>{time}</Text> : <Text style={[tl.timePlaceholder, { color: theme.textMuted }]}>--:--:--</Text>}
+        {time
+          ? (
+            <Text style={[tl.time, { color: theme.text }]} numberOfLines={1}>
+              {date ? <Text style={[tl.date, { color: theme.textMuted }]}>{date}  </Text> : null}{time}
+            </Text>
+          )
+          : <Text style={[tl.timePlaceholder, { color: theme.textMuted }]}>--:--:--</Text>}
         <View style={[tl.badge, { backgroundColor: labelBg }]}>
           <Text style={[tl.badgeText, { color: labelColor }]}>{label}</Text>
         </View>
@@ -206,7 +265,8 @@ const tl = StyleSheet.create({
   line: { width: 2, flex: 1, backgroundColor: '#E5E7EB', marginVertical: 4 },
   content: { flex: 1, paddingBottom: moderateScale(14) },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  time: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827' },
+  time: { fontSize: moderateScale(13), fontWeight: '700', color: '#111827', flexShrink: 1, marginRight: moderateScale(8) },
+  date: { fontSize: moderateScale(11), fontWeight: '600', color: '#9CA3AF' },
   timePlaceholder: { fontSize: moderateScale(13), fontWeight: '700', color: '#9CA3AF' },
   badge: { paddingHorizontal: moderateScale(10), paddingVertical: 3, borderRadius: moderateScale(6) },
   badgeText: { fontSize: moderateScale(9), fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -216,6 +276,22 @@ const tl = StyleSheet.create({
 
 // ─── Visit Card ───────────────────────────────────────────────────────────────
 // readOnly (Visit History): always the timeline card, never the STEP IN / STEP OUT buttons
+// Whether the visit has reached the server: "Pending sync" until then, "Synced" after
+const isVisitPending = (v) => String(v?.sync_status || '').toUpperCase() === 'PENDING';
+
+const SyncChip = ({ pending }) => (
+  <View style={[sc.chip, pending ? sc.chipPending : sc.chipSynced]} accessibilityLabel={pending ? 'Pending sync' : 'Synced'}>
+    {pending ? <RefreshCw color="#C2410C" size={11} strokeWidth={3} /> : <CheckCircle color="#15803D" size={11} strokeWidth={3} />}
+    <Text style={[sc.text, { color: pending ? '#C2410C' : '#15803D' }]}>{pending ? 'Pending sync' : 'Synced'}</Text>
+  </View>
+);
+const sc = StyleSheet.create({
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: moderateScale(8), paddingVertical: 3, borderRadius: moderateScale(10), borderWidth: 1 },
+  chipPending: { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' },
+  chipSynced: { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' },
+  text: { fontSize: moderateScale(10), fontWeight: '800', marginLeft: 4 },
+});
+
 const VisitCard = ({ visit, onStepIn, onStepOut, processing, readOnly = false }) => {
   const theme = useTheme();
   const isLive = !readOnly && (visit.status === 'REACHED' || visit.status === 'step_in');
@@ -267,8 +343,11 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing, readOnly = false })
             <Text style={cs.liveText}>LIVE</Text>
           </View>
         </View>
-        <Text style={[cs.liveTimeText, { color: theme.textLight }]}>{fmtTime(visit.start_time)} {fmtDate(visit.start_time)}</Text>
-        <Text style={[cs.liveLocText, { color: theme.textLight }]}>Location: {resolvedLocation}</Text>
+        <View style={cs.liveTimeRow}>
+          <Text style={[cs.liveTimeText, { color: theme.textLight, marginBottom: 0 }]}>{fmtTime(visit.start_time)} {fmtDate(visit.start_time)}</Text>
+          {!readOnly && <SyncChip pending={isVisitPending(visit)} />}
+        </View>
+        <Text style={[cs.liveLocText, { color: theme.textLight }]}>Location: {withTag(resolvedLocation, visit.start_offline)}</Text>
 
         <TouchableOpacity
           style={[cs.purpleBtnFull, processing && { opacity: 0.6 }]}
@@ -298,20 +377,23 @@ const VisitCard = ({ visit, onStepIn, onStepOut, processing, readOnly = false })
   return (
     <View style={[cs.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={cs.compHeader}>
-        <Text style={[cs.clientName, { color: theme.text }]}>{visit.client_name}</Text>
+        <View style={cs.nameRow}>
+          <Text style={[cs.clientName, { color: theme.text, flex: 1, marginRight: moderateScale(8) }]}>{visit.client_name}</Text>
+          {!readOnly && <SyncChip pending={isVisitPending(visit)} />}
+        </View>
         <Text style={[cs.date, { color: theme.textMuted }]}>{dateStr}</Text>
         <Text style={[cs.contactText, { color: theme.textMuted }]}>{contactPerson}: {contactNo}</Text>
       </View>
 
       <View style={cs.timeline}>
         {hasStart && (
-          <TimelineStep time={fmtTime(visit.start_time)} location={visit.location || location} label="START" labelBg="#EDE9FE" labelColor="#7C3AED" done={hasStart} isLast={!hasStepIn} />
+          <TimelineStep time={fmtTime(visit.start_time)} date={fmtDate(visit.start_time)} location={withTag(location || visit.location, visit.start_offline)} label="START" labelBg="#EDE9FE" labelColor="#7C3AED" done={hasStart} isLast={!hasStepIn} />
         )}
         {hasStepIn && (
-          <TimelineStep time={fmtTime(visit.step_in_time)} location={resolvedStepIn || location} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
+          <TimelineStep time={fmtTime(visit.step_in_time)} date={fmtDate(visit.step_in_time)} location={withTag(resolvedStepIn || location, visit.step_in_offline)} label="STEP IN" labelBg="#DCFCE7" labelColor="#16A34A" done={hasStepIn} isLast={!hasStepOut} />
         )}
         {hasStepOut && (
-          <TimelineStep time={fmtTime(visit.end_time)} location={resolvedEnd || location} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
+          <TimelineStep time={fmtTime(visit.end_time)} date={fmtDate(visit.end_time)} location={withTag(resolvedEnd || location, visit.end_offline)} label="STEP OUT" labelBg="#FCE4EC" labelColor="#C2185B" done={hasStepOut} isLast={true} />
         )}
       </View>
     </View>
@@ -327,6 +409,8 @@ const cs = StyleSheet.create({
   liveDot: { width: moderateScale(6), height: moderateScale(6), borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 },
   liveText: { fontSize: moderateScale(10), fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
   liveTimeText: { fontSize: moderateScale(13), color: '#4B5563', marginBottom: 4, fontWeight: '600' },
+  liveTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   liveLocText: { fontSize: moderateScale(12), color: '#4B5563', marginBottom: moderateScale(16), lineHeight: 18 },
   purpleBtnFull: { backgroundColor: COLORS.primaryDeep, paddingVertical: moderateScale(14), borderRadius: moderateScale(50), alignItems: 'center' },
   purpleBtnText: { color: '#FFF', fontSize: moderateScale(13), fontWeight: '800', letterSpacing: 1 },
@@ -345,8 +429,52 @@ const BanIcon = () => (
   </View>
 );
 
+// ─── Current location shown in the Step In sheet and the Step Out dialog ─────
+// Fetched when the dialog opens. Offline: just "Lat: …, Lng: …". Online: the street address — if the
+// lookup only gave coordinates, the address is retried (2 x, 1.5 s apart) before falling back to them.
+// The same result is what gets saved for the step (see handleConfirmStepIn / doStepOut), so the person
+// saves exactly what they saw. null while loading.
+const useCurrentLocation = (active) => {
+  const [loc, setLoc] = useState(null);
+  useEffect(() => {
+    if (!active) { setLoc(null); return undefined; }
+    let cancelled = false;
+    (async () => {
+      let res = await getAddress();
+      if (!res.offline && /^Lat:/.test(res.address || '') && (res.lat || res.lng)) {
+        for (let i = 0; i < 2 && !cancelled; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          const found = await screenResolver.resolve(res.lat, res.lng);
+          if (found) { res = { ...res, address: found }; break; }
+        }
+      }
+      if (!cancelled) setLoc(res);
+    })();
+    return () => { cancelled = true; };
+  }, [active]);
+  return loc;
+};
+
+const CurrentLocationBox = ({ loc }) => (
+  <View style={lb.box}>
+    <View style={lb.head}>
+      <MapPin color="#7C3AED" size={14} />
+      <Text style={lb.label}>Your Current Location</Text>
+    </View>
+    {loc ? <Text style={lb.text} numberOfLines={3}>{loc.address}</Text> : <ActivityIndicator size="small" color="#7C3AED" />}
+  </View>
+);
+
+const lb = StyleSheet.create({
+  box: { backgroundColor: '#F5F3FF', borderRadius: moderateScale(12), padding: moderateScale(12), alignItems: 'center', marginBottom: moderateScale(16), borderWidth: 1, borderColor: '#EDE9FE', minHeight: moderateScale(64), justifyContent: 'center', width: '100%' },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  label: { fontSize: moderateScale(12), fontWeight: '700', color: '#6D28D9', marginLeft: moderateScale(6) },
+  text: { fontSize: moderateScale(12), color: COLORS.primaryDeep, textAlign: 'center', lineHeight: 18, width: '100%' },
+});
+
 const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
   const theme = useTheme();
+  const loc = useCurrentLocation(visible);
   return (
   <Modal visible={visible} transparent statusBarTranslucent animationType="fade" onRequestClose={onCancel}>
     <View style={[cm.overlay, { backgroundColor: theme.modalOverlay }]}>
@@ -354,11 +482,12 @@ const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
         <View style={[cm.iconWrap, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E8FF' }]}><BanIcon /></View>
         <Text style={[cm.title, { color: theme.text }]}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
         <Text style={[cm.desc, { color: theme.textMuted }]}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
+        <CurrentLocationBox loc={loc} />
         <View style={cm.row}>
           <TouchableOpacity style={[cm.cancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={onCancel} activeOpacity={0.8} disabled={processing}>
             <Text style={[cm.cancelText, { color: theme.text }]}>No, Go back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[cm.confirmBtn, processing && { opacity: 0.6 }]} onPress={onConfirm} activeOpacity={0.8} disabled={processing}>
+          <TouchableOpacity style={[cm.confirmBtn, processing && { opacity: 0.6 }]} onPress={() => onConfirm(loc)} activeOpacity={0.8} disabled={processing}>
             {processing ? <ActivityIndicator color="#FFF" /> : <Text style={cm.confirmText}>Yes, Confirm</Text>}
           </TouchableOpacity>
         </View>
@@ -375,7 +504,7 @@ const cm = StyleSheet.create({
   banOuter: { width: moderateScale(44), height: moderateScale(44), borderRadius: moderateScale(22), borderWidth: 3.5, borderColor: '#62338B', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   banDiag: { position: 'absolute', width: 3.5, height: moderateScale(52), backgroundColor: '#62338B', transform: [{ rotate: '45deg' }] },
   title: { fontSize: moderateScale(18), fontWeight: '800', color: '#111827', textAlign: 'center', marginBottom: moderateScale(8) },
-  desc: { fontSize: moderateScale(13), color: '#9CA3AF', textAlign: 'center', marginBottom: moderateScale(28), lineHeight: 20 },
+  desc: { fontSize: moderateScale(13), color: '#9CA3AF', textAlign: 'center', marginBottom: moderateScale(16), lineHeight: 20 },
   row: { flexDirection: 'row', gap: moderateScale(12), width: '100%' },
   cancelBtn: { flex: 1, paddingVertical: moderateScale(15), borderRadius: moderateScale(50), backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' },
   cancelText: { fontSize: moderateScale(14), fontWeight: '800', color: '#374151' },
@@ -581,6 +710,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
   const [contactNo, setContactNo] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [purpose, setPurpose] = useState('');
+  const loc = useCurrentLocation(visible);
 
   // Pre-fill
   useEffect(() => {
@@ -606,17 +736,18 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <Text style={[sm.title, { color: theme.text }]}>Enter details</Text>
 
           <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+            <CurrentLocationBox loc={loc} />
             {/* The visit place is fixed once the visit has started (set on the Going to Meet screen). */}
             <FloatInput label="Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} editable={false} />
-            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
+            <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
           </ScrollView>
 
           <View style={[sm.footer, { paddingBottom: footerPad }]}>
             <TouchableOpacity
               style={[sm.saveBtn, processing && { opacity: 0.7 }]}
-              onPress={() => onSave({ company, contactNo, contactPerson, purpose })}
+              onPress={() => onSave({ company, contactNo, contactPerson, purpose, loc })}
               disabled={processing}
             >
               {processing ? <ActivityIndicator color="#FFF" /> : <Text style={sm.saveBtnText}>STEP IN</Text>}
@@ -872,6 +1003,14 @@ const VisitsScreen = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState(todayStr());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  // Latest values for the auto-sync timer below (it lives across renders)
+  const visitsRef = useRef(visits);
+  visitsRef.current = visits;
+  const selectedDateRef = useRef(selectedDate);
+  selectedDateRef.current = selectedDate;
+  const fetchVisitsRef = useRef(null);
+  const autoBusy = useRef(false);
+  const fetchSeq = useRef(0); // number of the newest fetchVisits call
 
   const showAlert = (type, title, message, buttons) => setAlertCfg({ type, title, message, buttons });
 
@@ -887,15 +1026,47 @@ const VisitsScreen = ({ navigation, route }) => {
     initDB().then(() => fetchVisits(selectedDate));
   }, [selectedDate]);
 
+  // Auto-sync while this screen is open and a visit is still "Pending sync": the moment the connection comes
+  // back — and then every 30 s (the address lookup may have been throttled) — sync and refresh the list quietly,
+  // so Lat/Lng turns into the street address and the chip flips to "Synced" without pulling to refresh.
+  useEffect(() => {
+    if (!user || !user.user_id) return undefined;
+    let wasOnline = null;
+    let lastTry = 0;
+    let stopped = false;
+    const tick = async () => {
+      if (stopped || autoBusy.current) return;
+      if (!visitsRef.current.some(isVisitPending)) { wasOnline = null; return; }
+      let online = false;
+      try { online = !!(await Network.getNetworkStateAsync()).isConnected; } catch (_) {}
+      const cameOnline = online && wasOnline === false;
+      wasOnline = online;
+      if (!online) return;
+      if (cameOnline || Date.now() - lastTry >= AUTO_SYNC_RETRY_MS) {
+        lastTry = Date.now();
+        autoBusy.current = true;
+        try { await fetchVisitsRef.current(selectedDateRef.current, { silent: true }); } catch (_) {} finally { autoBusy.current = false; }
+      }
+    };
+    const timer = setInterval(tick, 3000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [user && user.user_id]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchVisits(selectedDate);
     setRefreshing(false);
   };
 
-  const fetchVisits = async (dateStr) => {
+  // silent: a background refresh (see the auto-sync effect) — no early "local list" flash, the list changes once,
+  // when the sync + server answer are in
+  const fetchVisits = async (dateStr, opts = {}) => {
     const date = dateStr ?? selectedDate;
     const isToday = date === todayStr();
+    // Only the newest fetch may change the list: a background refresh that started before a tap (or before the date
+    // was changed) must not put the old list back
+    const requestId = ++fetchSeq.current;
+    const showVisits = (list) => { if (requestId === fetchSeq.current) setVisits(list); };
     try {
       // A visit that's still open (stepped in but not stepped out) must stay
       // visible and completable regardless of which date is being viewed —
@@ -904,29 +1075,35 @@ const VisitsScreen = ({ navigation, route }) => {
       // updateVisitStatus queries in SQLite — API IDs (mob_user_locations_pkey)
       // don't exist there, which would make step-in/out silently fail.
       const liveVisits = await getLiveVisits(user.user_id);
-      const liveForDate = liveVisits.filter(v => (v.created_at || '').slice(0, 10) === date);
+      // A visit is listed under the date it STARTED, also when it was stepped out on a later day
+      const isOnDate = (v) => visitStartDate(v) === date;
 
       const net = await Network.getNetworkStateAsync();
       if (!net.isConnected) {
-        // Offline: local DB only for today, live-only for past dates
+        // Offline: local DB for today; for past dates the open visits and the ones still waiting to sync
         if (isToday) {
           const data = await getVisitsByDate(user.user_id, date);
           const liveIds = new Set(liveVisits.map(v => v.id));
-          setVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
+          showVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
         } else {
-          setVisits(liveForDate);
+          // Plus visits completed but not on the server yet: started on this date, stepped out today while offline,
+          // they would otherwise be on no list at all until they sync
+          const notSent = (await getVisitsByDate(user.user_id, date).catch(() => [])).filter(v => v.sync_status === 'PENDING' && v.status === 'COMPLETED');
+          showVisits([...liveVisits.filter(isOnDate), ...notSent]);
         }
       } else {
         // Online: show the local list straight away (today only), sync pending
         // visits — waiting only for the visits step, not leaves/regularization —
         // then replace it with the API list
         if (isToday) {
-          try {
-            const data = await getVisitsByDate(user.user_id, date);
-            const liveIds = new Set(liveVisits.map(v => v.id));
-            setVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
-            setLoading(false);
-          } catch (_) {}
+          if (!opts.silent) {
+            try {
+              const data = await getVisitsByDate(user.user_id, date);
+              const liveIds = new Set(liveVisits.map(v => v.id));
+              showVisits([...liveVisits, ...(data || []).filter(v => !liveIds.has(v.id))]);
+              setLoading(false);
+            } catch (_) {}
+          }
           await new Promise((resolve) => {
             SyncService.syncAll({ onVisitsSynced: resolve }).catch(resolve);
           });
@@ -940,7 +1117,16 @@ const VisitsScreen = ({ navigation, route }) => {
         // Completed visits come from the API; open ones always come from local DB.
         const apiCompleted = normalized.filter(v => v.status !== 'REACHED' && v.status !== 'step_in');
 
-        setVisits(isToday ? [...liveVisits, ...apiCompleted] : [...liveForDate, ...apiCompleted]);
+        // A completed visit still PENDING (held back for an address retry) isn't on the server yet:
+        // keep showing the phone's copy instead of letting it vanish until it syncs
+        let heldLocal = [];
+        try {
+          const local = await getVisitsByDate(user.user_id, date);
+          heldLocal = (local || []).filter(v => v.sync_status === 'PENDING' && v.status === 'COMPLETED');
+        } catch (_) {}
+        // Open visits are read again here: the copy from before the sync still says "Pending sync" and Lat/Lng
+        const liveNow = await getLiveVisits(user.user_id);
+        showVisits([...(isToday ? liveNow : liveNow.filter(isOnDate)), ...heldLocal, ...apiCompleted]);
       }
     } catch (e) {
       console.log('Fetch visits error', e);
@@ -948,13 +1134,15 @@ const VisitsScreen = ({ navigation, route }) => {
       if (isToday) {
         try {
           const data = await getVisitsByDate(user.user_id, date);
-          setVisits(data || []);
+          showVisits(data || []);
         } catch (_) {}
       }
     } finally {
       setLoading(false);
     }
   };
+
+  fetchVisitsRef.current = fetchVisits;
 
   const changeDate = (delta) => {
     const d = new Date(selectedDate + 'T00:00:00');
@@ -990,6 +1178,11 @@ const VisitsScreen = ({ navigation, route }) => {
       // Immediately set REACHED
       await updateVisitStatus(id, 'REACHED', {
         startTime: new Date().toISOString(), lat: details.lat || 0, lng: details.lng || 0,
+        startOffline: await isOfflineNow(),
+      });
+      recordAudit(`started customer visit: ${details.company}`, {
+        'Contact person': details.contactPerson, 'Contact number': details.contactNo, Purpose: details.purpose,
+        Location: details.locText, Latitude: details.lat ? Number(details.lat).toFixed(5) : '', Longitude: details.lng ? Number(details.lng).toFixed(5) : '',
       });
       setShowStartScreen(false);
       setSelectedDate(todayStr());
@@ -1009,18 +1202,23 @@ const VisitsScreen = ({ navigation, route }) => {
     setProcessing(true);
     try {
       // Clock check and GPS/address run side by side instead of one after the other
-      const [clock, { lat, lng, address }] = await Promise.all([verifyDeviceClock(), getAddress()]);
+      // The location shown in the sheet is what is saved; not loaded yet -> fetch it now
+      const [clock, { lat, lng, address, offline }] = await Promise.all([verifyDeviceClock(), details.loc || getAddress()]);
       if (!clock.ok) {
         setProcessing(false);
         showAlert('warning', 'Clock Not Synced', clock.message);
         return;
       }
       await updateVisitStatus(pendingVisit.id, 'step_in', {
-        stepInTime: new Date().toISOString(), lat, lng, address,
+        stepInTime: new Date().toISOString(), lat, lng, address, offline,
         clientName: details.company,
         contactNumber: details.contactNo,
         contactPerson: details.contactPerson,
         purpose: details.purpose,
+      });
+      recordAudit(`stepped in at customer: ${details.company}`, {
+        Location: address, Latitude: lat ? Number(lat).toFixed(5) : '', Longitude: lng ? Number(lng).toFixed(5) : '',
+        'Contact person': details.contactPerson, 'Contact number': details.contactNo, Purpose: details.purpose,
       });
       // fetchVisits() syncs when viewing today; otherwise sync here (fire-and-forget)
       if (selectedDate !== todayStr()) syncIfOnline();
@@ -1037,12 +1235,12 @@ const VisitsScreen = ({ navigation, route }) => {
     setConfirmVisible(true);
   };
 
-  const doStepOut = async () => {
+  const doStepOut = async (shownLoc) => {
     setConfirmVisible(false);
     setProcessing(true);
     try {
-      // Clock check and GPS/address run side by side instead of one after the other
-      const [clock, { lat, lng, address }] = await Promise.all([verifyDeviceClock(), getAddress()]);
+      // The location shown in the dialog is what is saved; not loaded yet -> fetch it now
+      const [clock, { lat, lng, address, offline }] = await Promise.all([verifyDeviceClock(), shownLoc || getAddress()]);
       if (!clock.ok) {
         setProcessing(false);
         setPendingVisit(null);
@@ -1051,7 +1249,10 @@ const VisitsScreen = ({ navigation, route }) => {
       }
       await updateVisitStatus(pendingVisit.id, 'COMPLETED', {
         endTime: new Date().toISOString(),
-        lat, lng, address
+        lat, lng, address, offline
+      });
+      recordAudit(`stepped out from customer: ${pendingVisit.client_name || ''}`, {
+        Location: address, Latitude: lat ? Number(lat).toFixed(5) : '', Longitude: lng ? Number(lng).toFixed(5) : '',
       });
       // fetchVisits() syncs when viewing today; otherwise sync here (fire-and-forget)
       if (selectedDate !== todayStr()) syncIfOnline();
@@ -1069,7 +1270,7 @@ const VisitsScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />
@@ -1110,8 +1311,8 @@ const VisitsScreen = ({ navigation, route }) => {
           <Text style={[s.emptyText, { color: theme.textMuted }]}>No visits on this date</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
-          {visits.map((v) => (
+        <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: moderateScale(100) + insets.bottom }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
+          {sortVisitsNewestFirst(visits).map((v) => (
             <VisitCard
               key={v.id}
               visit={v}
@@ -1203,7 +1404,7 @@ const VisitsScreen = ({ navigation, route }) => {
       />
       <ConfirmModal
         visible={confirmVisible}
-        onConfirm={doStepOut}
+        onConfirm={(loc) => doStepOut(loc)}
         onCancel={() => setConfirmVisible(false)}
         processing={processing}
       />

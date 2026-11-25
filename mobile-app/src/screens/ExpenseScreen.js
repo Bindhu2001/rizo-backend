@@ -1,6 +1,6 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   ActivityIndicator, Modal, Platform, Pressable, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -13,9 +13,13 @@ import {
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import AttachmentSourceSheet from '../components/AttachmentSourceSheet';
+import { pickPhotoAttachment, takePhotoAttachment, MAX_ATTACHMENT_BYTES } from '../services/AttachmentPicker';
+import { canReadBills, planBillFill, readBillFile, billReadError, BILL_LABELS } from '../services/BillReader';
 import { COLORS, SHADOWS , moderateScale, hp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
-import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible, useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
 import NotificationManager from '../services/NotificationManager';
@@ -203,8 +207,18 @@ const sm = StyleSheet.create({
   itemTextActive: { color: '#111827', fontWeight: '600' },
 });
 
+// Amount box: digits and one decimal point, at most 2 decimals (a bill can be ₹1,563.50)
+export const cleanAmount = (v) => {
+  const s = String(v || '').replace(/^\s*(rs\.?|inr|₹)\s*/i, '').replace(/,/g, '').replace(/[^0-9.]/g, '');
+  const [whole, ...rest] = s.split('.');
+  return rest.length ? `${whole}.${rest.join('').slice(0, 2)}` : whole;
+};
+
 // ─── ExpenseScreen ─────────────────────────────────────────────────────────────
 const ExpenseScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last button clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
+  const fabInsets = useSafeAreaInsets();
   const theme = useTheme();
   const user = route?.params?.user;
 
@@ -217,7 +231,14 @@ const ExpenseScreen = ({ navigation, route }) => {
   const [amount, setAmount] = useState('');
   const [remarks, setRemarks] = useState('');
   const [purpose, setPurpose] = useState('');
+  const [vendor, setVendor] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  // The attached bill being read / what was filled from it (services/BillReader.js)
+  const [billRead, setBillRead] = useState(null);
+  const readSeq = useRef(0);
+  const formNow = useRef({ amount: '', date: '', vendor: '' });
+  useEffect(() => { formNow.current = { amount, date: expenseDate, vendor }; });
+  const [showSourceSheet, setShowSourceSheet] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [alertCfg, setAlertCfg] = useState(null);
@@ -245,7 +266,10 @@ const ExpenseScreen = ({ navigation, route }) => {
     setAmount('');
     setRemarks('');
     setPurpose('');
+    setVendor('');
     setAttachedFiles([]);
+    readSeq.current += 1;
+    setBillRead(null);
   };
 
   useEffect(() => {
@@ -330,7 +354,75 @@ const ExpenseScreen = ({ navigation, route }) => {
     }, [user])
   );
 
-  const pickFile = async () => {
+  // "Add file" asks where from: Photos (Photo Library) or Files (PDF / JPG)
+  const pickFile = () => setShowSourceSheet(true);
+  // iOS won't present the picker while the chooser sheet is still closing
+  const afterSheet = (pick) => { setShowSourceSheet(false); setTimeout(pick, Platform.OS === 'ios' ? 450 : 0); };
+
+  // The attached bill is read on the server and the empty Amount / Date / Vendor are filled from it
+  const readAttached = async (file) => {
+    if (!file || !canReadBills(user)) return;
+    const mine = ++readSeq.current;
+    setBillRead({ status: 'reading' });
+    try {
+      const reading = await readBillFile(file);
+      if (mine !== readSeq.current) return; // another bill was attached (or the form reset) meanwhile
+      const plan = planBillFill(reading?.fields, formNow.current);
+      if (plan.fill.amount) setAmount(plan.fill.amount);
+      if (plan.fill.date) setExpenseDate(plan.fill.date);
+      if (plan.fill.vendor) setVendor(plan.fill.vendor);
+      setBillRead({
+        status: 'done', filled: plan.filled, matched: plan.matched, suggestions: plan.suggestions, source: reading?.source,
+        billNo: reading?.fields?.billNo?.value || null, gstin: reading?.fields?.gstin?.value || null,
+      });
+    } catch (e) {
+      if (mine === readSeq.current) setBillRead({ status: 'failed', message: billReadError(e) });
+    }
+  };
+
+  const applySuggestion = (sg) => {
+    if (sg.key === 'amount') setAmount(sg.value);
+    else if (sg.key === 'date') setExpenseDate(sg.value);
+    else if (sg.key === 'vendor') setVendor(sg.value);
+    setBillRead((b) => (b && b.status === 'done'
+      ? { ...b, filled: [...b.filled.filter((k) => k !== sg.key), sg.key], suggestions: b.suggestions.filter((x) => x.key !== sg.key) }
+      : b));
+  };
+
+  const attach = (file) => {
+    setAttachedFiles([file]);
+    readAttached(file);
+  };
+
+  const removeAttachment = (i) => {
+    setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i));
+    readSeq.current += 1;
+    setBillRead(null);
+  };
+
+  const takePhoto = async () => {
+    const res = await takePhotoAttachment();
+    if (res.canceled) return;
+    if (res.error) { showAlert('error', res.error.title, res.error.message); return; }
+    if (res.file.size != null && res.file.size > MAX_ATTACHMENT_BYTES) {
+      showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please take the photo again.');
+      return;
+    }
+    attach(res.file);
+  };
+
+  const pickFromPhotos = async () => {
+    const res = await pickPhotoAttachment();
+    if (res.canceled) return;
+    if (res.error) { showAlert('error', res.error.title, res.error.message); return; }
+    if (res.file.size != null && res.file.size > MAX_ATTACHMENT_BYTES) {
+      showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please select a smaller file.');
+      return;
+    }
+    attach(res.file);
+  };
+
+  const pickFromFiles = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/jpg', 'application/pdf'],
@@ -347,7 +439,7 @@ const ExpenseScreen = ({ navigation, route }) => {
           showAlert('warning', 'Invalid File', 'Only JPG, JPEG, and PDF files are allowed.');
           return;
         }
-        setAttachedFiles([file]);
+        attach(file);
       }
     } catch (e) {
       showAlert('error', 'Error', 'Could not open file picker.');
@@ -402,6 +494,7 @@ const ExpenseScreen = ({ navigation, route }) => {
       formData.append('expenses_amount', amount);
       formData.append('remarks', remarks);
       formData.append('purpose', purpose);
+      formData.append('vendor', vendor.trim());
       formData.append('authorized_by', authBy?.key || '0');
       formData.append('approved_by', appBy?.key || '0');
 
@@ -464,14 +557,14 @@ const ExpenseScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       {view === 'LIST' && (
         <View style={{ flex: 1 }}>
           <Header title="Expenses" onBack={() => navigation.goBack()} theme={theme} />
           {loading ? (
             <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
           ) : (
-            <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
+            <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
               {expenses.length === 0 ? (
                 <View style={s.emptyWrap}>
                   <FileText color={theme.textMuted} size={48} style={{ marginBottom: 16 }} />
@@ -483,7 +576,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             </ScrollView>
           )}
 
-          <TouchableOpacity style={s.fab} activeOpacity={0.8} onPress={() => { resetExpenseForm(); setView('APPLY'); }}>
+          <TouchableOpacity style={[s.fab, { bottom: 24 + fabInsets.bottom }]} activeOpacity={0.8} onPress={() => { resetExpenseForm(); setView('APPLY'); }}>
             <Plus color="#FFF" size={28} />
           </TouchableOpacity>
         </View>
@@ -493,7 +586,76 @@ const ExpenseScreen = ({ navigation, route }) => {
         <View style={{ flex: 1 }}>
           <Header title="Create Expenses" onBack={() => setView('LIST')} theme={theme} />
           <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+            <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+
+            {/* Bill first: attaching it fills Amount / Date / Vendor below (GRTL / MYPY) */}
+            <View style={s.fileBox}>
+              <Text style={[s.label, { color: theme.textMuted }]}>Bill / Receipt</Text>
+              {attachedFiles.length === 0 && (
+                <>
+                  <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
+                    <Paperclip color={COLORS.primaryDeep} size={14} />
+                    <Text style={s.addFilesText}> Add file  (JPG, JPEG, PDF)</Text>
+                  </TouchableOpacity>
+                  {canReadBills(user) && (
+                    <Text style={[s.billHint, { color: theme.textMuted }]}>Attach the bill first: Amount, Date and Vendor are filled from it.</Text>
+                  )}
+                </>
+              )}
+
+              {attachedFiles.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible', flexGrow: 0 }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
+                  {attachedFiles.map((f, i) => (
+                    <FileThumbnail key={i} file={f} onRemove={() => removeAttachment(i)} />
+                  ))}
+                </ScrollView>
+              )}
+
+              {!!billRead && (
+                <View style={[s.billNote, billRead.status === 'failed' ? s.billNoteBad : billRead.status === 'done' && (billRead.filled.length || (billRead.matched.length && !billRead.suggestions.length)) ? s.billNoteGood : { borderColor: theme.inputBorder }]}>
+                  {billRead.status === 'reading' && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color={COLORS.primaryDeep} />
+                      <Text style={[s.billNoteText, { color: theme.text, marginLeft: 8 }]}>Reading the bill…</Text>
+                    </View>
+                  )}
+                  {billRead.status === 'failed' && <Text style={[s.billNoteText, { color: theme.text }]}>{billRead.message}</Text>}
+                  {billRead.status === 'done' && (
+                    <>
+                      {billRead.filled.length > 0 && (
+                        <Text style={[s.billNoteText, { color: theme.text }]}>
+                          <Text style={{ fontWeight: '800' }}>Filled from the bill: </Text>
+                          {billRead.filled.map((k) => BILL_LABELS[k]).join(', ')}. Please check before submitting.
+                        </Text>
+                      )}
+                      {!billRead.filled.length && billRead.matched.length > 0 && (
+                        <Text style={[s.billNoteText, { color: theme.text }]}>The bill matches what you entered: {billRead.matched.map((k) => BILL_LABELS[k]).join(', ')}.</Text>
+                      )}
+                      {!billRead.filled.length && !billRead.suggestions.length && !billRead.matched.length && (
+                        <Text style={[s.billNoteText, { color: theme.text }]}>
+                          {billRead.source === 'none' ? 'This PDF is a scanned image, so it can’t be read yet. Please type the details.' : 'Couldn’t find the details on this bill. Please type them.'}
+                        </Text>
+                      )}
+                      {billRead.suggestions.map((sg) => (
+                        <View key={sg.key} style={s.billSuggestion}>
+                          <Text style={[s.billNoteText, { color: theme.text, flex: 1 }]}>
+                            The bill may show {BILL_LABELS[sg.key]} <Text style={{ fontWeight: '800' }}>{sg.key === 'amount' ? `₹${sg.value}` : sg.value}</Text>
+                          </Text>
+                          <TouchableOpacity style={s.billUseBtn} onPress={() => applySuggestion(sg)} accessibilityLabel={`Use ${BILL_LABELS[sg.key]} from the bill`}>
+                            <Text style={s.billUseText}>Use</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      {!!(billRead.billNo || billRead.gstin) && (
+                        <Text style={[s.billMeta, { color: theme.textMuted }]}>
+                          {[billRead.billNo && `Bill no. ${billRead.billNo}`, billRead.gstin && `GSTIN ${billRead.gstin}`].filter(Boolean).join(' · ')}
+                        </Text>
+                      )}
+                    </>
+                  )}
+                </View>
+              )}
+            </View>
 
             {/* Expense Type */}
             <View style={s.inputBox}>
@@ -507,7 +669,7 @@ const ExpenseScreen = ({ navigation, route }) => {
             {/* Amount */}
             <View style={s.inputBox}>
               <Text style={[s.label, { color: theme.textMuted }]}>Amount (₹) *</Text>
-              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ''))} placeholder="e.g. 500" keyboardType="numeric" inputAccessoryViewID={doneBarId('numeric')} placeholderTextColor={theme.textMuted} maxLength={10} />
+              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={amount} onChangeText={(v) => setAmount(cleanAmount(v))} placeholder="e.g. 500" keyboardType="decimal-pad" inputAccessoryViewID={doneBarId('decimal-pad')} placeholderTextColor={theme.textMuted} maxLength={12} />
             </View>
 
             {/* Date */}
@@ -517,6 +679,12 @@ const ExpenseScreen = ({ navigation, route }) => {
                 <Text style={[s.inputVal, { color: theme.text }, !expenseDate && { color: theme.textMuted }]}>{expenseDate || 'YYYY-MM-DD'}</Text>
                 <CalendarIcon color={theme.textMuted} size={16} />
               </TouchableOpacity>
+            </View>
+
+            {/* Vendor (the shop / company on the bill) */}
+            <View style={s.inputBox}>
+              <Text style={[s.label, { color: theme.textMuted }]}>Vendor</Text>
+              <TextInput style={[s.inputRow, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={vendor} onChangeText={setVendor} placeholder="Shop / company name" placeholderTextColor={theme.textMuted} maxLength={100} />
             </View>
 
             {/* Authorised By */}
@@ -567,24 +735,6 @@ const ExpenseScreen = ({ navigation, route }) => {
             <View style={s.inputBox}>
               <Text style={[s.label, { color: theme.textMuted }]}>Purpose</Text>
               <TextInput style={[s.inputRow, s.textArea, { backgroundColor: theme.inputBg, borderColor: theme.inputBorder, color: theme.text }]} value={purpose} onChangeText={setPurpose} multiline placeholder="Enter purpose..." placeholderTextColor={theme.textMuted} maxLength={50} />
-            </View>
-
-            {/* Files */}
-            <View style={s.fileBox}>
-              {attachedFiles.length === 0 && (
-                <TouchableOpacity style={s.addFilesBtn} onPress={pickFile}>
-                  <Paperclip color={COLORS.primaryDeep} size={14} />
-                  <Text style={s.addFilesText}> Add file  (JPG, JPEG, PDF)</Text>
-                </TouchableOpacity>
-              )}
-
-              {attachedFiles.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: moderateScale(12), overflow: 'visible', flexGrow: 0 }} contentContainerStyle={{ paddingTop: moderateScale(2), overflow: 'visible', alignItems: 'flex-start' }}>
-                  {attachedFiles.map((f, i) => (
-                    <FileThumbnail key={i} file={f} onRemove={() => setAttachedFiles(prev => prev.filter((_, idx) => idx !== i))} />
-                  ))}
-                </ScrollView>
-              )}
             </View>
 
             <View style={{ flex: 1 }} />
@@ -672,6 +822,13 @@ const ExpenseScreen = ({ navigation, route }) => {
         </Modal>
       )}
 
+      <AttachmentSourceSheet
+        visible={showSourceSheet}
+        onCamera={() => afterSheet(takePhoto)}
+        onPhotos={() => afterSheet(pickFromPhotos)}
+        onFiles={() => afterSheet(pickFromFiles)}
+        onClose={() => setShowSourceSheet(false)}
+      />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );
@@ -690,7 +847,16 @@ const s = StyleSheet.create({
   inputVal: { fontSize: moderateScale(14), fontWeight: '600', color: COLORS.text, flex: 1 },
   textArea: { height: moderateScale(100), textAlignVertical: 'top', paddingTop: moderateScale(16), borderStyle: 'solid' }, // If it's active field we could tint border
 
-  fileBox: { marginBottom: moderateScale(24), paddingHorizontal: 4 },
+  fileBox: { marginBottom: moderateScale(20), paddingHorizontal: 4 },
+  billHint: { fontSize: moderateScale(11), marginLeft: moderateScale(6), marginTop: 2 },
+  billNote: { marginTop: moderateScale(10), padding: moderateScale(10), borderRadius: moderateScale(10), borderWidth: 1 },
+  billNoteGood: { borderColor: 'rgba(34,181,115,0.45)', backgroundColor: 'rgba(34,181,115,0.10)' },
+  billNoteBad: { borderColor: 'rgba(220,38,38,0.35)', backgroundColor: 'rgba(220,38,38,0.07)' },
+  billNoteText: { fontSize: moderateScale(12), lineHeight: moderateScale(18) },
+  billSuggestion: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  billUseBtn: { marginLeft: 8, paddingHorizontal: moderateScale(12), paddingVertical: moderateScale(5), borderRadius: moderateScale(8), backgroundColor: COLORS.primaryDeep },
+  billUseText: { color: '#FFF', fontWeight: '800', fontSize: moderateScale(12) },
+  billMeta: { fontSize: moderateScale(11), marginTop: 4 },
   addFilesBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: moderateScale(8), alignSelf: 'flex-start' },
   addFilesText: { color: COLORS.primaryDeep, fontWeight: '700', fontSize: moderateScale(13) },
   addMoreThumb: { width: moderateScale(64), height: moderateScale(64), borderRadius: moderateScale(10), backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: '#D1D5DB', borderStyle: 'dashed' },

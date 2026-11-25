@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Platform, ScrollView } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, StatusBar, Platform } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Mail, Lock, KeyRound, ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { API_ENDPOINTS } from '../constants/Config';
 import { useTheme } from '../components/ThemeContext';
 

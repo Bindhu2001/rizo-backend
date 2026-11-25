@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MessageCircle } from 'lucide-react-native';
 import { moderateScale } from './Theme';
+import { tabBarHeight } from './tabBarLayout';
 import { useTheme } from './ThemeContext';
 import { HrQueriesApi } from '../services/RevampApi';
 import { getLoggedUser } from '../services/LocalDB';
@@ -36,7 +37,7 @@ const HrFloatingButton = ({ currentRoute, navigationRef }) => {
   });
 
   // Starts bottom right, above the tab bar
-  const initial = useRef({ x: W - SIZE - 16, y: H - SIZE - insets.bottom - moderateScale(64) - 24 }).current;
+  const initial = useRef({ x: W - SIZE - 16, y: H - SIZE - tabBarHeight(insets.bottom) - 24 }).current;
   const pos = useRef(initial);
   const pan = useRef(new Animated.ValueXY(initial)).current;
   const setPos = (p) => { pos.current = p; pan.setValue(p); };

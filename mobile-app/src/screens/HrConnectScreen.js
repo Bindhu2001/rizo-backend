@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator,
-  Platform, RefreshControl, ScrollView, BackHandler,
+  Platform, RefreshControl, BackHandler,
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
@@ -14,9 +14,10 @@ import { format } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
-import { HrQueriesApi, apiErrorMessage } from '../services/RevampApi';
+import { HrQueriesApi, apiErrorMessage, loadFailureAlert } from '../services/RevampApi';
 
 // "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
 // the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
@@ -176,6 +177,8 @@ const NewConversation = ({ onBack, onCreated }) => {
 };
 
 const HrConnectScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const accent = hrAccent(theme);
   const user = route?.params?.user;
@@ -192,7 +195,7 @@ const HrConnectScreen = ({ navigation, route }) => {
       setQueries(cachedQueries);
     } catch (e) {
       if (!cachedQueries) setQueries([]);
-      setAlertCfg({ type: 'error', title: 'Could not load', message: apiErrorMessage(e, 'Please check your connection and try again.') });
+      setAlertCfg(loadFailureAlert(e));
     }
   };
 
@@ -284,7 +287,7 @@ const HrConnectScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <PanelHeader
         title={firstName ? `Hi ${firstName}, how can HR help?` : 'How can HR help?'}
@@ -309,7 +312,7 @@ const HrConnectScreen = ({ navigation, route }) => {
           data={sections}
           keyExtractor={(q) => q.key || String(q.hr_query_pkey)}
           renderItem={renderItem}
-          contentContainerStyle={[s.list, sections.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[s.list, { paddingBottom: bottomPad }, sections.length === 0 && { flexGrow: 1 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accent} colors={[theme.primaryDeep]}/>}
           ListEmptyComponent={
             <View style={s.empty}>

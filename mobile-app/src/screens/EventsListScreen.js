@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, RefreshControl } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { ChevronLeft, ChevronRight, CalendarX2 } from 'lucide-react-native';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, isSameDay, parse } from 'date-fns';
 import { moderateScale, SHADOWS } from '../components/Theme';
@@ -19,6 +20,8 @@ const LEGEND = [
 ];
 
 const EventsListScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const userId = route?.params?.userId;
   const [month, setMonth] = useState(() => {
@@ -86,7 +89,7 @@ const EventsListScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />
@@ -124,7 +127,7 @@ const EventsListScreen = ({ navigation, route }) => {
           data={days}
           keyExtractor={(d) => d.day.toISOString()}
           renderItem={renderDay}
-          contentContainerStyle={[s.list, days.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[s.list, { paddingBottom: bottomPad }, days.length === 0 && { flexGrow: 1 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={s.empty}>

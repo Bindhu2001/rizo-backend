@@ -1,17 +1,19 @@
 ﻿import { useState, useCallback, useEffect } from 'react';
 import {
   View, StyleSheet, TouchableOpacity, SectionList, FlatList,
-  Pressable, ScrollView, Modal, ActivityIndicator, StatusBar
+  Pressable, Modal, ActivityIndicator, StatusBar
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import {
   ChevronLeft, ChevronDown, XCircle, Calendar as CalendarIcon,
   Clock, Info, ClipboardList, CheckCircle, ShieldCheck,
 } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -53,6 +55,8 @@ const SECTION_META = {
 };
 
 const LeaveApprovalScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const user = route?.params?.user;
@@ -375,7 +379,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
       <View style={[s.header, { backgroundColor: theme.bg }]}>
@@ -416,7 +420,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
                 <View style={[s.sectionCount, { backgroundColor: theme.cardSoft }]}><Text style={[s.sectionCountText, { color: theme.text }]}>{section.data.length}</Text></View>
               </View>
             )}
-            contentContainerStyle={s.list}
+            contentContainerStyle={[s.list, { paddingBottom: bottomPad }]}
             ListEmptyComponent={<View style={s.empty}><ClipboardList color={theme.textMuted} size={60} /><Text style={[s.emptyText, { color: theme.textMuted }]}>No pending requests</Text></View>}
             onRefresh={() => fetchData(currentMonthStr)}
             refreshing={loading}
@@ -438,7 +442,7 @@ const LeaveApprovalScreen = ({ navigation, route }) => {
             <FlatList
               data={historyData}
               keyExtractor={(item, idx) => String(item.LEAVEENTRYID || idx)}
-              contentContainerStyle={s.list}
+              contentContainerStyle={[s.list, { paddingBottom: bottomPad }]}
               onRefresh={() => fetchHistory(currentMonthStr, histFilter)}
               refreshing={histLoading}
               ListEmptyComponent={<View style={s.empty}><ClipboardList color={theme.textMuted} size={60} /><Text style={[s.emptyText, { color: theme.textMuted }]}>No records found</Text></View>}

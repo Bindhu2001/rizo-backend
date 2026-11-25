@@ -27,7 +27,8 @@ export const teamSummary = (data) => {
   groups.forEach((g) => {
     (g.members || []).forEach((m) => {
       members.add(m.empPkey);
-      if (m.status) status.set(m.empPkey, m.status);
+      // A finished night shift (lastShift) counts as in, like a day worker who has left
+      if (m.status) status.set(m.empPkey, m.lastShift && m.status !== 'LEAVE' ? 'IN' : m.status);
     });
     (g.onLeave || []).forEach((p) => out.add(p.empPkey));
   });

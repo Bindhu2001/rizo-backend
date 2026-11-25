@@ -52,6 +52,7 @@ export const API_ENDPOINTS = {
   REGULARISATION_CANCEL: `${NEWAPP_URL}/regularisation_cancel`,
   LEAVE_HIERARCHY: `${NEWAPP_URL}/leave_hierarchy_list`,
   TEAM_TODAY: `${NEWAPP_URL}/team_today`,
+  TEAM_MEMBER_PUNCHES: `${NEWAPP_URL}/team_member_punches`,
   LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   LEAVE_APPROVED_LIST: `${NEWAPP_URL}/leave_approved_already_lists`,
   LEAVE_CANCEL: `${NEWAPP_URL}/leave_cancel`,
@@ -62,6 +63,8 @@ export const API_ENDPOINTS = {
   SIGNUP_DOCUMENT: `${NEWAPP_URL}/signupDocument`,
   // DigitalOcean company sign-up photo → the website's own storage (rizo-revamp, checked with the PHP's upload token)
   SIGNUP_PHOTO: `${REVAMP_API_URL}/signup/photo`,
+  // Reads a document photo during sign-up (no login; nothing stored) — services/SignupScan.js
+  SIGNUP_READ_DOCUMENT: `${REVAMP_API_URL}/signup/read-document`,
   REGISTER: `${NEWAPP_URL}/register`,
   EMPLOYEE_PUNCH_DETAILS: `${NEWAPP_URL}/getEmployeePunchDetails`,
   SHIFT_SCHEDULE: `${NEWAPP_URL}/shift_schedule`,

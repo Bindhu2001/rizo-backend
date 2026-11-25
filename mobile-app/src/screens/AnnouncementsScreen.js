@@ -5,12 +5,13 @@ import {
 import { Text } from '../components/AppText';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { ChevronLeft, Siren, Star, Info, Pin, Megaphone } from 'lucide-react-native';
 import { format, parse } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { AnnouncementsApi, apiErrorMessage } from '../services/RevampApi';
+import { AnnouncementsApi, apiErrorMessage, loadFailureAlert } from '../services/RevampApi';
 
 // Profile → Announcements: the company announcements addressed to this employee, the same list
 // and tabs as the web ESS home "Company Updates" panel (rizo-revamp /api/mobile/announcements).
@@ -46,6 +47,8 @@ const fmtDate = (ymd) => {
 let cached = null;
 
 const AnnouncementsScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const openId = route?.params?.openId;
   const [items, setItems] = useState(cached);
@@ -62,7 +65,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
       return cached;
     } catch (e) {
       if (!cached) setItems([]);
-      setAlertCfg({ type: 'error', title: 'Could not load', message: apiErrorMessage(e, 'Please check your connection and try again.') });
+      setAlertCfg(loadFailureAlert(e));
       return cached || [];
     }
   };
@@ -129,7 +132,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
   if (open) {
     const dst = styleOf(open);
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
         <View style={s.header}>
           <TouchableOpacity onPress={() => setOpen(null)} style={s.backBtn}>
             <ChevronLeft color={theme.text} size={28} />
@@ -137,7 +140,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
           <Text style={[s.headerTitle, { color: theme.text }]}>Announcement</Text>
           <View style={{ width: moderateScale(44) }} />
         </View>
-        <ScrollView contentContainerStyle={s.detailScroll}>
+        <ScrollView contentContainerStyle={[s.detailScroll, { paddingBottom: bottomPad }]}>
           <View style={[s.detailCard, { backgroundColor: theme.card, borderLeftColor: dst.color }]}>
             <View style={s.detailTop}>
               <View style={[s.iconBox, { backgroundColor: dst.bg, borderColor: dst.border }]}>
@@ -160,7 +163,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -190,7 +193,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
           data={visible}
           keyExtractor={(a) => String(a.announcement_pkey)}
           renderItem={renderItem}
-          contentContainerStyle={[s.list, visible.length === 0 && { flexGrow: 1 }]}
+          contentContainerStyle={[s.list, { paddingBottom: bottomPad }, visible.length === 0 && { flexGrow: 1 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={s.empty}>

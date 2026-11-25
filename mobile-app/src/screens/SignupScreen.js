@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, TouchableOpacity, StyleSheet,
-  Platform, ScrollView,
+  Platform,
   FlatList, Modal, StatusBar, Image, ActivityIndicator, Switch, BackHandler,
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -13,8 +13,10 @@ import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import { SHADOWS, moderateScale, wp, hp, SCREEN_WIDTH as width, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
 import SignupExtraDetails, { EMPTY_SIGNUP_DETAILS, documentPayload, signupRows } from '../components/SignupExtraDetails';
+import SignupScan from '../components/SignupScan';
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES } from '../constants/Config';
 
@@ -227,6 +229,8 @@ const SignupScreen = ({ navigation }) => {
 
   // Step 7 – Education, experience, family and documents (optional)
   const [extraDetails, setExtraDetails] = useState(EMPTY_SIGNUP_DETAILS);
+  // Photos scanned on the earlier steps, offered in the Documents step so they are not taken twice (one per scan)
+  const [scannedDocs, setScannedDocs] = useState([]);
   const [documentsFailed, setDocumentsFailed] = useState(0);
   const [submitNote, setSubmitNote] = useState('');
 
@@ -304,6 +308,67 @@ const SignupScreen = ({ navigation }) => {
   const [locomotive, setLocomotive] = useState(false);
   const [hearing, setHearing] = useState(false);
   const [visual, setVisual] = useState(false);
+
+  // The numbers are checked the same way typed or scanned (components/SignupScan.js)
+  const changeAadhaar = (t) => {
+    const v = t.replace(/[^0-9]/g, '');
+    setAadhaarNumber(v);
+    if (v.length === 0) { clearTimeout(vTimers.current['aadhar']); setAadharV(IDLE); }
+    else if (v.length < 12) { clearTimeout(vTimers.current['aadhar']); setAadharV({ status: 'error', message: 'Aadhaar must be exactly 12 digits!' }); }
+    else { validateField('aadhar', API_ENDPOINTS.CHECK_AADHAR, v, setAadharV, 12); }
+  };
+  const changePan = (t) => {
+    const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    setPanNumber(v);
+    if (v.length === 0) {
+      setPanV(IDLE);
+    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v)) {
+      setPanV({ status: 'error', message: 'Invalid PAN format! (e.g. ABCDE1234F)' });
+    } else {
+      validateField('pan', API_ENDPOINTS.CHECK_PAN, v, setPanV, 10);
+    }
+  };
+  const changeIfsc = (t) => {
+    const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    setIfscCode(v);
+    if (v.length === 0) setIfscV(IDLE);
+    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v)) setIfscV({ status: 'error', message: 'IFSC must be 11 characters, e.g. SBIN0001234' });
+    else setIfscV({ status: 'valid', message: 'Looks good' });
+  };
+  const changeEsi = (t) => {
+    const v = t.replace(/[^0-9]/g, '');
+    setEsiNo(v);
+    if (v.length === 0) { clearTimeout(vTimers.current['esi']); setEsiV(IDLE); }
+    else if (v.length < 10) { clearTimeout(vTimers.current['esi']); setEsiV({ status: 'error', message: 'ESI must be exactly 10 digits!' }); }
+    else validateField('esi', API_ENDPOINTS.CHECK_ESI, v, setEsiV);
+  };
+  const changeUan = (t) => {
+    const v = t.replace(/[^0-9]/g, '');
+    setUanNo(v);
+    if (v.length === 0) { clearTimeout(vTimers.current['uan']); setUanV(IDLE); }
+    else if (v.length < 12) { clearTimeout(vTimers.current['uan']); setUanV({ status: 'error', message: 'UAN must be exactly 12 digits!' }); }
+    else validateField('uan', API_ENDPOINTS.CHECK_UAN, v, setUanV);
+  };
+
+  // Scanning: the sign-up's values now, and how a scanned value goes in
+  const isoDob = dobDate ? `${dobDate.getFullYear()}-${String(dobDate.getMonth() + 1).padStart(2, '0')}-${String(dobDate.getDate()).padStart(2, '0')}` : '';
+  const scanNow = { name, dob: isoDob, gender, aadhaar: aadhaarNumber, pan: panNumber, bankName, ifsc: ifscCode, account: accountNumber, uan: uanNo, esi: esiNo };
+  const isoToDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
+  const scanAllow = (key, v) => key !== 'dob' || isoToDate(v) <= MAX_DOB; // the sign-up takes 18 and over only
+  const scanFill = (v) => {
+    if (v.name) setName(v.name.replace(/[^A-Za-z0-9.\s]/g, '').slice(0, 50));
+    if (v.dob) { setDobDate(isoToDate(v.dob)); setDob(v.dob.split('-').reverse().join('-')); }
+    if (v.gender) setGender(v.gender);
+    if (v.aadhaar) changeAadhaar(v.aadhaar);
+    if (v.pan) changePan(v.pan);
+    if (v.bankName) setBankName(v.bankName.replace(/[^A-Za-z0-9\s.&-]/g, '').slice(0, 100));
+    if (v.ifsc) changeIfsc(v.ifsc);
+    if (v.account) setAccountNumber(v.account.replace(/[^0-9]/g, '').slice(0, 18));
+    if (v.uan) changeUan(v.uan);
+    if (v.esi) changeEsi(v.esi);
+  };
+  const keepScanned = (doc) => setScannedDocs((list) => [...list.filter((d) => d.scan !== doc.scan), doc]);
+  const scanButton = (scan) => <SignupScan scan={scan} companyCode={companyCode} now={scanNow} onFill={scanFill} onDocument={keepScanned} allow={scanAllow} />;
 
   // Countries list
   const [countries, setCountries] = useState([]);
@@ -773,6 +838,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Personal Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>Let's start with your basic information</Text>
+                {scanButton('aadhaar')}
                 <FloatInput label="Name *" value={name} onChangeText={t => setName(t.replace(/[^A-Za-z0-9.\s]/g, ''))} placeholder="Employee Name" maxLength={50} />
                 <FloatInput label="Mobile Number *" value={mobileNo} onChangeText={t => setMobileNo(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Mobile Number" maxLength={15} />
                 <PickerRow label="Date of Birth *" value={dob || ''} onPress={() => setShowDobPicker(true)} />
@@ -814,35 +880,21 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>KYC Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your Aadhaar card number</Text>
+                {scanButton('aadhaar')}
                 <FloatInput
                   label="Aadhaar Number *"
                   value={aadhaarNumber}
-                  onChangeText={t => {
-                    const v = t.replace(/[^0-9]/g, '');
-                    setAadhaarNumber(v);
-                    if (v.length === 0) { clearTimeout(vTimers.current['aadhar']); setAadharV(IDLE); }
-                    else if (v.length < 12) { clearTimeout(vTimers.current['aadhar']); setAadharV({ status: 'error', message: 'Aadhaar must be exactly 12 digits!' }); }
-                    else { validateField('aadhar', API_ENDPOINTS.CHECK_AADHAR, v, setAadharV, 12); }
-                  }}
+                  onChangeText={changeAadhaar}
                   keyboardType="number-pad"
                   placeholder="XXXX XXXX XXXX"
                   maxLength={12}
                   validation={aadharV}
                 />
+                {scanButton('pan')}
                 <FloatInput
                   label="PAN Number"
                   value={panNumber}
-                  onChangeText={t => {
-                    const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                    setPanNumber(v);
-                    if (v.length === 0) {
-                      setPanV(IDLE);
-                    } else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v)) {
-                      setPanV({ status: 'error', message: 'Invalid PAN format! (e.g. ABCDE1234F)' });
-                    } else {
-                      validateField('pan', API_ENDPOINTS.CHECK_PAN, v, setPanV, 10);
-                    }
-                  }}
+                  onChangeText={changePan}
                   placeholder="ABCDE1234F"
                   maxLength={10}
                   validation={panV}
@@ -870,30 +922,21 @@ const SignupScreen = ({ navigation }) => {
                 {/* Bank */}
                 <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>Bank Details</Text>
+                  {scanButton('bank')}
                   <FloatInput label="Bank Name" value={bankName} onChangeText={t => setBankName(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Bank Name" maxLength={100} />
                   <FloatInput label="Branch" value={branch} onChangeText={t => setBranch(t.replace(/[^A-Za-z0-9\s.&-]/g, ''))} placeholder="Branch" maxLength={100} />
-                  <FloatInput label="IFSC Code" value={ifscCode} onChangeText={t => {
-                    const v = t.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                    setIfscCode(v);
-                    if (v.length === 0) setIfscV(IDLE);
-                    else if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(v)) setIfscV({ status: 'error', message: 'IFSC must be 11 characters, e.g. SBIN0001234' });
-                    else setIfscV({ status: 'valid', message: 'Looks good' });
-                  }} placeholder="SBIN0001234" maxLength={11} validation={ifscV} />
+                  <FloatInput label="IFSC Code" value={ifscCode} onChangeText={changeIfsc} placeholder="SBIN0001234" maxLength={11} validation={ifscV} />
                   <FloatInput label="Account Number" value={accountNumber} onChangeText={t => setAccountNumber(t.replace(/[^0-9]/g, ''))} keyboardType="number-pad" placeholder="Account Number" maxLength={18} />
                 </View>
 
                 {/* HR / Compliance */}
                 <View style={[st.toggleCard, { backgroundColor: theme.cardSoft, borderColor: theme.border }]}>
                   <Text style={[st.toggleLabel, { color: theme.text, marginBottom: 14 }]}>HR &amp; Compliance</Text>
+                  {scanButton('uan')}
+                  {scanButton('esi')}
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="ESI No" value={esiNo} onChangeText={t => {
-                        const v = t.replace(/[^0-9]/g, '');
-                        setEsiNo(v);
-                        if (v.length === 0) { clearTimeout(vTimers.current['esi']); setEsiV(IDLE); }
-                        else if (v.length < 10) { clearTimeout(vTimers.current['esi']); setEsiV({ status: 'error', message: 'ESI must be exactly 10 digits!' }); }
-                        else validateField('esi', API_ENDPOINTS.CHECK_ESI, v, setEsiV);
-                      }} keyboardType="number-pad" placeholder="ESI No" maxLength={10} validation={esiV} />
+                      <FloatInput label="ESI No" value={esiNo} onChangeText={changeEsi} keyboardType="number-pad" placeholder="ESI No" maxLength={10} validation={esiV} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <FloatInput label="PF No" value={pfNo} onChangeText={t => { const v = t.replace(/[^A-Za-z0-9]/g, ''); setPfNo(v); validateField('pf', API_ENDPOINTS.CHECK_PF, v, setPfV); }} placeholder="PF No" maxLength={22} validation={pfV} />
@@ -902,13 +945,7 @@ const SignupScreen = ({ navigation }) => {
                   <FloatInput label="ESI Dispensary" value={esiDispensary} onChangeText={t => setEsiDispensary(t.replace(/[^A-Za-z0-9\s]/g, ''))} placeholder="ESI Dispensary" maxLength={100} />
                   <View style={st.inputRow}>
                     <View style={{ flex: 1, marginRight: 10 }}>
-                      <FloatInput label="UAN No" value={uanNo} onChangeText={t => {
-                        const v = t.replace(/[^0-9]/g, '');
-                        setUanNo(v);
-                        if (v.length === 0) { clearTimeout(vTimers.current['uan']); setUanV(IDLE); }
-                        else if (v.length < 12) { clearTimeout(vTimers.current['uan']); setUanV({ status: 'error', message: 'UAN must be exactly 12 digits!' }); }
-                        else validateField('uan', API_ENDPOINTS.CHECK_UAN, v, setUanV);
-                      }} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
+                      <FloatInput label="UAN No" value={uanNo} onChangeText={changeUan} keyboardType="number-pad" placeholder="UAN No" maxLength={12} validation={uanV} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <FloatInput label="Previous Member ID" value={prevMemberId} onChangeText={t => setPrevMemberId(t.replace(/[^A-Za-z0-9]/g, ''))} autoCapitalize="characters" placeholder="Prev Member ID" maxLength={15} />
@@ -988,7 +1025,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Education & Documents</Text>
                 <Text style={[st.cardSub, { color: theme.textLight, marginBottom: 16 }]}>Optional. Add what you can now, or skip this step and HR will help you later.</Text>
-                <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} selfName={name.trim()} />
+                <SignupExtraDetails value={extraDetails} onChange={setExtraDetails} showAlert={showAlert} selfName={name.trim()} companyCode={companyCode} scanned={scannedDocs} />
                 <TouchableOpacity style={[st.nextBtn, { marginTop: 12 }]} onPress={nextStep} disabled={loading}>
                   {loading ? <ActivityIndicator color="#FFF" /> : <><Text style={st.nextBtnText}>{Object.values(extraDetails).some((rows) => rows.length) ? 'Complete Signup' : 'Skip & Complete Signup'}</Text><ChevronRight color="#FFF" size={20} /></>}
                 </TouchableOpacity>

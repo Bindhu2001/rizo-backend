@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, Modal, ScrollView, ActivityIndicator, Pressable, Linking, Platform, Keyboard,
+  View, StyleSheet, TouchableOpacity, Modal, ActivityIndicator, Pressable, Linking, Platform, Keyboard,
 } from 'react-native';
 import { Text, TextInput } from './AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronDown, Check, X, Paperclip, Calendar as CalendarIcon
 import { moderateScale, SHADOWS, COLORS } from './Theme';
 import { useTheme } from './ThemeContext';
 import KeyboardSafeView from './KeyboardSafeView';
+import ScrollView from './KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { usePopupSpace } from './popupSpace';
 import { getLoggedUser } from '../services/LocalDB';
 
@@ -59,7 +60,7 @@ export const currentMonth = () => {
 export const EssScreen = ({ title, onBack, children, right }) => {
   const theme = useTheme();
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <View style={[s.header, { backgroundColor: theme.card }]}>
         <TouchableOpacity onPress={onBack} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />

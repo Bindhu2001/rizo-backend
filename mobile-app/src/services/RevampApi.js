@@ -39,12 +39,12 @@ export const clearRevampToken = async () => {
   try { await AsyncStorage.removeItem(TOKEN_KEY); } catch (_) {}
 };
 
-const request = async (method, path, data, base = REVAMP_API_URL) => {
+const request = async (method, path, data, base = REVAMP_API_URL, timeout = 15000) => {
   const send = (token) => axios({
     method,
     url: `${base}${path}`,
     data,
-    timeout: 15000,
+    timeout,
     headers: {
       Authorization: `Bearer ${token}`,
       // A file upload ({ uri, name, type } on FormData) — as the app's other uploads send it
@@ -62,6 +62,18 @@ const request = async (method, path, data, base = REVAMP_API_URL) => {
 // Server's own error text ("Subject is required", ...) when there is one
 export const apiErrorMessage = (e, fallback) => e?.response?.data?.error || fallback;
 
+// The request got no reply at all (offline, timeout, DNS) — the connection, not the server.
+// Errors that are not HTTP errors from our own code (e.g. "Not logged in") are not network errors.
+export const isNetworkError = (e) => !!e && !e.response && (e.request !== undefined || e.code === 'ERR_NETWORK' || e.code === 'ECONNABORTED' || /network error|timeout/i.test(e.message || ''));
+
+// The alert for a list/screen that could not load: "No internet connection" when offline,
+// otherwise "Could not load" with the server's own message (or the fallback).
+export const loadFailureAlert = (e, fallback = 'Please check your connection and try again.') => (
+  isNetworkError(e)
+    ? { type: 'error', title: 'No internet connection', message: 'Please connect to the internet and try again.' }
+    : { type: 'error', title: 'Could not load', message: apiErrorMessage(e, fallback) }
+);
+
 // This phone's Expo push token, so rizo-revamp can push to it directly (HR replies, ...)
 export const PushTokenApi = {
   register: (pushToken, platform) => request('post', '/push-token', { push_token: pushToken, platform }),
@@ -78,6 +90,12 @@ export const HrQueriesApi = {
   withdraw: (id) => request('post', `/hr-queries/${id}/withdraw`),
 };
 
+// The app's audit trail (services/AuditTrail.js) → the company's Audit Trail report. Only GRTL / MYPY have it.
+export const AuditApi = {
+  // events: [{ id, at, label, screen, details, offline }] → { accepted: [id], dropped: [id] }
+  send: (events) => request('post', '/audit-events', { events }),
+};
+
 // My Team. Read from the PHP API first — the same database the Leave Approval lists come from, so it works for
 // OVH and DigitalOcean companies alike; rizo-revamp's own answer is only the fallback (older server).
 export const TeamApi = {
@@ -90,6 +108,15 @@ export const TeamApi = {
       }
     } catch (_) { /* fall through */ }
     return request('get', '/team-today');
+  },
+  // One person's punches of their current shift date. The server only answers for people in the caller's own teams.
+  memberPunches: async (empPkey) => {
+    const user = await getLoggedUser();
+    if (!user?.user_id) throw new Error('Not logged in');
+    const res = await axios.post(API_ENDPOINTS.TEAM_MEMBER_PUNCHES, { user_id: user.user_id, emp_pkey: empPkey }, { timeout: 12000 });
+    const ok = res.data?.success;
+    if (!(ok === 1 || ok === '1' || ok === true) || !res.data.data) throw new Error(res.data?.message || 'Could not load the punches.');
+    return res.data.data;
   },
 };
 
@@ -170,6 +197,18 @@ export const LeaveApprovalsApi = {
   // action: authorize | approve | reject | cancellation/approve | cancellation/reject
   act: (id, action, remarks) => web('post', `/leave/requests/${id}/${action}`, { remarks: remarks || '' }),
 };
+
+// Reads an expense bill (photo / PDF) on the server: amount, date, vendor, bill no., GSTIN — services/BillReader.js.
+// OCR takes a few seconds (longer when the reader is busy), hence the longer wait.
+export const BillReaderApi = {
+  read: (formData) => request('post', '/document-reader/bill', formData, REVAMP_WEB_API_URL, 45000),
+};
+
+// The employee's own PF / ESI / WWF status and documents, and adding one of their own documents (the Joining Checklist)
+export const StatutoryApi = { mine: () => request('get', '/statutory') };
+export const MyDocumentsApi = { add: (formData) => request('post', '/my-documents', formData, REVAMP_API_URL, 60000) };
+// Reads a joining document (Aadhaar, PAN, passport, licence, voter ID, passbook, certificate) — services/DocumentReader.js
+export const DocumentReaderApi = { read: (formData) => request('post', '/document-reader/document', formData, REVAMP_WEB_API_URL, 45000) };
 
 export const ExpenseApprovalsApi = {
   queue: (empFkey) => web('get', `/expenses?authorizerFkey=${empFkey}&approverFkey=${empFkey}`),

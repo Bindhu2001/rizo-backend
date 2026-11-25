@@ -9,6 +9,7 @@ import { ResignationApi, apiErrorMessage } from '../services/RevampApi';
 import {
   EssScreen, StatusChip, Card, InfoRows, ActionButton, Loading, FieldLabel, Input, Select, DateSelect, FormSheet, BRAND, fmtDate,
 } from '../components/EssUi';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 
 // Requests › Resignation, the web employee login's ESS My Requests › Resignation (/api/ess/resignation): apply,
 // track the request, withdraw it until it is Completed. The same fields and checks; an admin-started
@@ -36,6 +37,8 @@ const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, 
 const isMeaningfulText = (v) => v.trim().length >= 5 && /[A-Za-z]/.test(v);
 
 const EssResignationScreen = ({ navigation }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / navigation bar
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const [data, setData] = useState(null);
   const [loadError, setLoadError] = useState(false);
@@ -133,7 +136,7 @@ const EssResignationScreen = ({ navigation }) => {
   return (
     <EssScreen title="Resignation" onBack={() => navigation.goBack()}>
       {!data && !loadError ? <Loading /> : (
-        <ScrollView contentContainerStyle={{ paddingBottom: moderateScale(32) }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <ScrollView contentContainerStyle={{ paddingBottom: bottomPad }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={s.intro}>
             <Text style={[s.introText, { color: theme.textMuted }]}>Apply for resignation and track your request.</Text>
             {!!data && !r && !data.byAdmin && (

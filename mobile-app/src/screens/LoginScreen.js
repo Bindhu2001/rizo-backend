@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Image, StatusBar, Platform, ScrollView
+  ActivityIndicator, Image, StatusBar, Platform
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
@@ -10,8 +10,10 @@ import axios from 'axios';
 import { Mail, Lock, LogIn, ChevronLeft, ArrowRight, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale, wp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
+import { auditSignIn } from '../services/AuditTrail';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../components/ThemeContext';
@@ -93,6 +95,7 @@ const LoginScreen = ({ navigation, route }) => {
 
               // Do NOT call get_employee_full_details here — that happens on Home page load.
               await saveUserLocally(user, password);
+              auditSignIn(); // audit trail: "signed in" (not awaited)
               navigation.replace('Main', { user });
               return;
             }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   Image, ActivityIndicator, BackHandler, Switch, Linking,
   Platform, Modal,
 } from 'react-native';
@@ -20,10 +20,13 @@ import {
 } from 'lucide-react-native';
 import axios from 'axios';
 import { COLORS, SHADOWS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { clearUserSession, getLocalUser } from '../services/LocalDB';
 import { syncEmployeeDetails } from '../services/EmployeeSync';
 import NotificationManager from '../services/NotificationManager';
+import { auditSignOut } from '../services/AuditTrail';
 import { isRemindersEnabled, setRemindersEnabled } from '../services/ShiftReminders';
 import { AnnouncementsApi, DocumentsApi } from '../services/RevampApi';
 import { API_ENDPOINTS, IMAGE_ROOT, isRevampCompany } from '../constants/Config';
@@ -176,7 +179,10 @@ const ProfileScreen = ({ navigation, route }) => {
   // edge here added that space a second time (a blank strip above the tab bar). Opened as a page of its own
   // (no tab bar), it still needs the bottom edge.
   const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
-  const safeEdges = inTabs ? ['top', 'left', 'right'] : ['top', 'left', 'right', 'bottom'];
+  const safeEdges = ['top', 'left', 'right'];
+  // In the tabs: room for the tab bar and the chat button. Own page (no tab bar): just clear the home bar.
+  const footerPad = useFooterPadding();
+  const scrollBottom = inTabs ? moderateScale(110) : footerPad;
   const [user, setUser] = useState(route?.params?.user);
   // The profile photo path that failed to load → the placeholder instead of a blank circle
   const [failedPic, setFailedPic] = useState(null);
@@ -343,6 +349,7 @@ const ProfileScreen = ({ navigation, route }) => {
         showAlert('success', 'Password Reset', 'Your password has been reset successfully. You will be logged out.', [
           {
             text: 'OK', onPress: async () => {
+              await auditSignOut();
               await NotificationManager.unregisterToken(user.user_id);
               await clearUserSession();
               navigation.replace('Login');
@@ -362,7 +369,7 @@ const ProfileScreen = ({ navigation, route }) => {
   const handleLogout = () => {
     showAlert('warning', 'Sign Out', 'Are you sure you want to sign out from your account?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: async () => { await NotificationManager.unregisterToken(user?.user_id); await clearUserSession(); navigation.replace('Login'); } },
+      { text: 'Sign Out', style: 'destructive', onPress: async () => { await auditSignOut(); await NotificationManager.unregisterToken(user?.user_id); await clearUserSession(); navigation.replace('Login'); } },
     ]);
   };
 
@@ -381,7 +388,7 @@ const ProfileScreen = ({ navigation, route }) => {
       {busy ? (
         <View style={s.loaderWrap}><ActivityIndicator size="large" color={PURPLE} /></View>
       ) : (
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[s.formScroll, { paddingBottom: scrollBottom }]} showsVerticalScrollIndicator={false}>
           {children}
           <View style={{ height: 32 }} />
         </ScrollView>
@@ -618,7 +625,7 @@ const ProfileScreen = ({ navigation, route }) => {
       <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={safeEdges}>
         <SectionHeader title="Reset Password" onBack={() => { setSection(null); setNewPassword(''); setConfirmPassword(''); }} theme={theme} />
         <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.formScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[s.formScroll, { paddingBottom: scrollBottom }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={[s.fieldCard, { backgroundColor: theme.card, paddingVertical: moderateScale(20) }]}>
             <Text style={[s.pwdLabel, { color: theme.textMuted }]}>New Password</Text>
             <View style={[s.pwdInputWrap, { borderColor: theme.divider, backgroundColor: theme.bg }]}>
@@ -698,7 +705,7 @@ const ProfileScreen = ({ navigation, route }) => {
         <View style={{ width: 44 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.scroll, { paddingBottom: scrollBottom }]}>
         <View style={[s.profileCard, { backgroundColor: theme.card }]}>
           <View style={s.avatarWrap}>
             <Image source={getAvatarSource()} onError={() => { const pic = user.profile_pic; retryPhoto(mainPhoto).then((again) => { if (!again) setFailedPic(pic); }); }} style={s.avatarLg} />

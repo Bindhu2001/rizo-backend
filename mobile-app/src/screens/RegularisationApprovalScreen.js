@@ -1,14 +1,16 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   ActivityIndicator, Dimensions, FlatList, StatusBar, Modal, Pressable, Image
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronDown, CheckCircle, XCircle, Info, Clock, ClipboardList } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,6 +24,8 @@ const HIST_FILTERS = {
 const HIST_FILTER_KEYS = ['Approved', 'Rejected', 'CancellationOfApproved'];
 
 const RegularisationApprovalScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const user = route?.params?.user;
@@ -231,7 +235,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'bottom']}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={theme.statusBarStyle} />
       <View style={[s.header, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
@@ -262,7 +266,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
           data={requests}
           keyExtractor={(item, index) => String(item.id || item.emp_attendance_regularisation_pkey || index)}
           renderItem={renderItem}
-          contentContainerStyle={s.list}
+          contentContainerStyle={[s.list, { paddingBottom: bottomPad }]}
           ListEmptyComponent={
             !loading && (
               <View style={s.empty}>
@@ -289,7 +293,7 @@ const RegularisationApprovalScreen = ({ navigation, route }) => {
             <FlatList
               data={historyData}
               keyExtractor={(item, idx) => String(item.id || item.emp_attendance_regularisation_pkey || idx)}
-              contentContainerStyle={s.list}
+              contentContainerStyle={[s.list, { paddingBottom: bottomPad }]}
               onRefresh={() => fetchHistory(currentMonthStr, histFilter)}
               refreshing={histLoading}
               ListEmptyComponent={

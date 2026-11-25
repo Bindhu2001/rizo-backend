@@ -47,11 +47,18 @@ const writeCache = async (userId, cache) => {
 /** Server punches + the phone's punches the server doesn't have yet. */
 export const mergePunches = (localPunches, serverPunches) => {
   const server = serverPunches || [];
-  const serverMs = server.map((p) => ({ type: p.type, ms: new Date(p.punch_time).getTime() }));
+  const pool = server.map((p) => ({ type: p.type, ms: new Date(p.punch_time).getTime(), used: false }));
   const localOnly = (localPunches || []).filter((l) => {
+    // A punch still PENDING has not reached the server, so it cannot be a copy of a server
+    // punch. (Treating a rapid offline OUT as a copy of an earlier server OUT made the
+    // button pick OUT again and again, recording duplicate punches.)
+    if (String(l.sync_status).toUpperCase() === 'PENDING') return true;
     const ms = new Date(l.punch_time).getTime();
     const type = String(l.type).toUpperCase();
-    return !serverMs.some((s) => s.type === type && Math.abs(s.ms - ms) <= SAME_PUNCH_MS);
+    // One server punch matches at most one phone punch
+    const hit = pool.find((s) => !s.used && s.type === type && Math.abs(s.ms - ms) <= SAME_PUNCH_MS);
+    if (hit) { hit.used = true; return false; }
+    return true;
   });
   return [...server, ...localOnly];
 };

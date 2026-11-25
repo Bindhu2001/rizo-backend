@@ -2,6 +2,7 @@
 import { View, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Image, RefreshControl } from 'react-native';
 import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import {
   Bell, CheckCircle, Calendar, FileText, AlertCircle, X,
   ChevronLeft, ChevronRight
@@ -100,6 +101,8 @@ const dp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const NotificationsScreen = ({ navigation }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +224,7 @@ const NotificationsScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -265,7 +268,7 @@ const NotificationsScreen = ({ navigation }) => {
           data={filteredNotifications}
           renderItem={renderItem}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
           refreshing={refreshing}
           onRefresh={onRefresh}

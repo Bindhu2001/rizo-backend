@@ -37,11 +37,15 @@ import EssExpenseApprovalScreen from './src/screens/EssExpenseApprovalScreen';
 import EssAdvanceLoanApprovalScreen from './src/screens/EssAdvanceLoanApprovalScreen';
 import EssAdvanceLoanScreen from './src/screens/EssAdvanceLoanScreen';
 import EssResignationScreen from './src/screens/EssResignationScreen';
+import JoiningChecklistScreen from './src/screens/JoiningChecklistScreen';
 import HrFloatingButton from './src/components/HrFloatingButton';
 import { useMenuAccess } from './src/services/MenuAccess';
 import { isRevampCompany } from './src/constants/Config';
 
 import OfflineBanner from './src/components/OfflineBanner';
+import { installTapRecorder } from './src/services/TapRecorder';
+import { startAuditTrail, setAuditScreen } from './src/services/AuditTrail';
+import { tabBarHeight, tabBarBottomPad } from './src/components/tabBarLayout';
 import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH } from './src/components/Theme';
 import { ThemeProvider, useTheme } from './src/components/ThemeContext';
 import { initDB, getLoggedUser } from './src/services/LocalDB';
@@ -81,8 +85,8 @@ function TabNavigator({ route }) {
         tabBarStyle: {
           backgroundColor: theme.tabBarBg,
           borderTopWidth: 0,
-          height: 64 + insets.bottom,
-          paddingBottom: insets.bottom || 12,
+          height: tabBarHeight(insets.bottom),
+          paddingBottom: tabBarBottomPad(insets.bottom),
           paddingTop: 12,
           borderTopLeftRadius: 30,
           borderTopRightRadius: 30,
@@ -219,6 +223,7 @@ function AppContent() {
             currentState = nestedRoute.state;
           }
           setCurrentRoute(currentName);
+          setAuditScreen(currentName); // audit trail: "opened <screen>" (services/AuditTrail.js)
         }}
       >
         <Stack.Navigator
@@ -251,6 +256,7 @@ function AppContent() {
           <Stack.Screen name="EssAdvanceLoanApproval" component={EssAdvanceLoanApprovalScreen} />
           <Stack.Screen name="EssAdvanceLoan" component={EssAdvanceLoanScreen} />
           <Stack.Screen name="EssResignation" component={EssResignationScreen} />
+          <Stack.Screen name="JoiningChecklist" component={JoiningChecklistScreen} />
         </Stack.Navigator>
       </NavigationContainer>
       <HrFloatingButton currentRoute={currentRoute} navigationRef={navigationRef} />
@@ -272,9 +278,13 @@ function AppContent() {
 }
 
 // ─── Root App ──────────────────────────────────────────────────────────────
+// Audit trail (GRTL / MYPY): every tap and field is recorded from here on (services/TapRecorder.js)
+installTapRecorder();
+
 export default function App() {
   useEffect(() => {
     NotificationManager.setup();
+    startAuditTrail();
   }, []);
 
   return (

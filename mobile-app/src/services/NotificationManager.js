@@ -16,6 +16,9 @@ const BG_PUSH_TASK_NAME = 'rizo-silent-push';
 const ANN_SEEDED_KEY = (userId) => `announcements_seeded_${userId}`;
 // Leave / regularisation / expense decisions: the first check after sign-in only records what is already there
 const STATUS_SEEDED_KEY = (userId, kind) => `status_seeded_${kind}_${userId}`;
+// Shown at once. Android: on the app's own 'default' channel (made in setup(), the one the shift reminders and server
+// pushes use) instead of the library's fallback channel
+const IMMEDIATE_TRIGGER = Platform.OS === 'android' ? { channelId: 'default' } : null;
 
 // Configure Expo Notifications globally
 Notifications.setNotificationHandler({
@@ -84,8 +87,9 @@ class NotificationManager {
         title,
         body: message,
         data: { type },
+        sound: 'default', // iOS shows a local notification silently unless it asks for a sound
       },
-      trigger: null, // trigger immediately
+      trigger: IMMEDIATE_TRIGGER,
     });
   }
 
@@ -353,8 +357,8 @@ class NotificationManager {
         if (!seeded) await markNotificationsAsReadLocal(user.user_id, notifId);
         if (seeded) {
           await Notifications.scheduleNotificationAsync({
-            content: { title, body: message, data: { type: 'ANNOUNCEMENT', id: Number(a.announcement_pkey) } },
-            trigger: null,
+            content: { title, body: message, data: { type: 'ANNOUNCEMENT', id: Number(a.announcement_pkey) }, sound: 'default' },
+            trigger: IMMEDIATE_TRIGGER,
           });
         }
       }

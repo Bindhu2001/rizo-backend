@@ -1,6 +1,6 @@
 ﻿import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   ActivityIndicator, Modal, Dimensions, Platform, RefreshControl, BackHandler, Linking
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
@@ -12,11 +12,14 @@ import {
 } from 'lucide-react-native';
 import { COLORS, SHADOWS , moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
-import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/KeyboardDoneBar';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
+import KeyboardDoneBar, { doneBarId, useKeyboardVisible, useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import AttachmentSourceSheet from '../components/AttachmentSourceSheet';
+import { pickPhotoAttachment, MAX_ATTACHMENT_BYTES } from '../services/AttachmentPicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
@@ -440,6 +443,8 @@ const sm = StyleSheet.create({
 
 // ─── Main LeaveScreen ─────────────────────────────────────────────────────────
 const LeaveScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last button clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const user = route?.params?.user;
 
@@ -469,6 +474,7 @@ const LeaveScreen = ({ navigation, route }) => {
   const [contactNo, setContactNo] = useState('');
   const [handoverTo, setHandoverTo] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [showSourceSheet, setShowSourceSheet] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // Comp Off: the earned days (Available Dates) the leave can be taken against, loaded for the chosen From Date.
   // manual = the employee's shift is "Comp Off - Manual": a date must be picked and there must be one.
@@ -653,7 +659,23 @@ const LeaveScreen = ({ navigation, route }) => {
   const selectedCompOff = compOff.dates.find((d) => d.id === compOffId) || null;
 
   // ── File Picker ──────────────────────────────────────────────────────────────
-  const pickFile = async () => {
+  // "Add file" asks where from: Photos (Photo Library) or Files (PDF / JPG)
+  const pickFile = () => setShowSourceSheet(true);
+  // iOS won't present the picker while the chooser sheet is still closing
+  const afterSheet = (pick) => { setShowSourceSheet(false); setTimeout(pick, Platform.OS === 'ios' ? 450 : 0); };
+
+  const pickFromPhotos = async () => {
+    const res = await pickPhotoAttachment();
+    if (res.canceled) return;
+    if (res.error) { showAlert('error', res.error.title, res.error.message); return; }
+    if (res.file.size != null && res.file.size > MAX_ATTACHMENT_BYTES) {
+      showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please select a smaller file.');
+      return;
+    }
+    setAttachedFiles([res.file]);
+  };
+
+  const pickFromFiles = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['image/jpeg', 'image/jpg', 'application/pdf'],
@@ -758,7 +780,7 @@ const LeaveScreen = ({ navigation, route }) => {
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primaryDeep} style={{ marginTop: 60 }} />
       ) : (
-        <ScrollView contentContainerStyle={s.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
+        <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {leaveBalances.map((item, idx) => {
             const BAR_COLORS = ['#8B5CF6', '#0EA5E9', '#10B981', '#F59E0B', '#EF4444', '#6366F1'];
             const taken = parseFloat(item.leave_taken) || 0;
@@ -798,7 +820,7 @@ const LeaveScreen = ({ navigation, route }) => {
         <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
       <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+        <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
 
         {/* From Row */}
         <View style={s.dateRow}>
@@ -1087,7 +1109,7 @@ const LeaveScreen = ({ navigation, route }) => {
             </Text>
           </View>
         ) : (
-          <ScrollView contentContainerStyle={s.scroll}>
+          <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]}>
             {shown.map((item, idx) => (
               <HistoryCard
                 key={item.leave_id || idx}
@@ -1115,11 +1137,17 @@ const LeaveScreen = ({ navigation, route }) => {
   );
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       {view === 'DASHBOARD' && DashboardView()}
       {view === 'APPLY' && ApplyView()}
       {view === 'HISTORY' && HistoryView()}
       {view === 'SUCCESS' && SuccessView()}
+      <AttachmentSourceSheet
+        visible={showSourceSheet}
+        onPhotos={() => afterSheet(pickFromPhotos)}
+        onFiles={() => afterSheet(pickFromFiles)}
+        onClose={() => setShowSourceSheet(false)}
+      />
       <CustomAlert config={alertCfg} onClose={() => setAlertCfg(null)} />
     </SafeAreaView>
   );

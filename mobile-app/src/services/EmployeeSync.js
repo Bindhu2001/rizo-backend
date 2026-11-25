@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_ENDPOINTS } from '../constants/Config';
 import { clearUserSession, updateUserProfileLocal } from './LocalDB';
 import NotificationManager from './NotificationManager';
+import { auditSignOut } from './AuditTrail';
 
 const DEVICE_IMEI_KEY = 'DEVICE_IMEI';
 
@@ -62,6 +63,7 @@ export const syncEmployeeDetails = async (user, navigation, skipImeiCheck = fals
 
       if (deviceImei && serverImei && deviceImei !== serverImei) {
         console.log('[Sync] IMEI mismatch — forcing logout');
+        await auditSignOut();
         await NotificationManager.unregisterToken(user.user_id);
         await clearUserSession();
         // Walk up to the root navigator so 'Login' (in root stack) is reachable

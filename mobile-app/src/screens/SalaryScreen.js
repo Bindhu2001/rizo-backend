@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Plat
 import { Text } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import {
   MoreHorizontal, FileText,
   Calendar, Download, Landmark, ShieldCheck,
@@ -20,6 +21,8 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 
 const SalaryScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const user = route?.params?.user;
   const [loading, setLoading] = useState(true);
@@ -309,7 +312,7 @@ const SalaryScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
@@ -324,7 +327,7 @@ const SalaryScreen = ({ navigation, route }) => {
           <ActivityIndicator size="large" color={COLORS.primaryDeep} />
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scroll, { paddingBottom: bottomPad }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
 
           {/* Salary Card */}
           <LinearGradient

@@ -11,6 +11,7 @@ import {
   EssScreen, SegTabs, StatusChip, Card, InfoRows, FileLink, ActionButton, EmptyState, ActionSheet, Loading,
   fmtDate, resolveEmpId, FilterBar, ALL, monthFilterOptions, valueFilterOptions, monthOf, rangeInMonth, currentMonth,
 } from '../components/EssUi';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 
 // Approvals › Leave, the web employee login's ESS Approvals › Leave (rizo-revamp /ess/approvals): the same
 // /api/leave/requests queue and action routes, the same role split, statuses, details and remarks rules.
@@ -97,6 +98,8 @@ const LeaveDetails = ({ id }) => {
 };
 
 const EssLeaveApprovalScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / navigation bar
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const user = route.params?.user;
   const [empId, setEmpId] = useState(Number(user?.emp_pkey) || 0);
@@ -197,7 +200,7 @@ const EssLeaveApprovalScreen = ({ navigation, route }) => {
           data={shown}
           keyExtractor={(x) => String(x.row.LEAVEENTRYID)}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: moderateScale(32) }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={<EmptyState text={error ? 'Could not load. Pull to retry.' : list.length > 0 ? 'No records match these filters.' : tab === 'pending' ? "No pending approvals — you're all caught up!" : 'No records found.'} />}
         />

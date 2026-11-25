@@ -10,6 +10,7 @@ import {
   EssScreen, SegTabs, StatusChip, Card, InfoRows, ActionButton, EmptyState, ActionSheet, Loading,
   fmtDate, fmtAmt, fmtPercent, resolveEmpId, FilterBar, ALL, monthFilterOptions, valueFilterOptions, monthOf, rangeInMonth, currentMonth,
 } from '../components/EssUi';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 
 // Approvals › Advance & Loan, the web employee login's ESS Approvals › Advance & Loan: salary advance and loan
 // requests the viewer was listed on as authorizer / approver (/api/advances|loans/requests?queue=1), the same
@@ -22,6 +23,8 @@ const detailText = (row) => (row.kind === 'advance'
   : `Loan · ${row.tenure} months @ ${fmtPercent(row.intrest_rate)} · EMI from ${row.emi_start_month}`);
 
 const EssAdvanceLoanApprovalScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last item clear of the home bar / navigation bar
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const user = route.params?.user;
   const [empId, setEmpId] = useState(Number(user?.emp_pkey) || 0);
@@ -116,7 +119,7 @@ const EssAdvanceLoanApprovalScreen = ({ navigation, route }) => {
           data={shown}
           keyExtractor={(x) => `${x.row.kind}-${x.row.id}`}
           renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: moderateScale(32) }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={<EmptyState text={error ? 'Could not load. Pull to retry.' : list.length > 0 ? 'No records match these filters.' : tab === 'pending' ? "No pending advance or loan requests — you're all caught up!" : 'No records found.'} />}
         />

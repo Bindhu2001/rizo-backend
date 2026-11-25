@@ -1,18 +1,20 @@
 ﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, StyleSheet, TouchableOpacity, ScrollView,
+  View, StyleSheet, TouchableOpacity,
   ActivityIndicator, Modal, Platform,
   Pressable, Dimensions, Image, RefreshControl, BackHandler
 } from 'react-native';
 import { Text, TextInput } from '../components/AppText';
 import CustomAlert from '../components/CustomAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFooterPadding } from '../components/KeyboardDoneBar';
 import {
   CheckCircle, CalendarDays, Check, Target, ChevronDown, ChevronLeft, Clock
 } from 'lucide-react-native';
 import axios from 'axios';
 import { SHADOWS, COLORS, moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
+import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { useTheme } from '../components/ThemeContext';
 import { API_ENDPOINTS } from '../constants/Config';
 import { format } from 'date-fns';
@@ -714,6 +716,8 @@ const rp = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 const AttendanceRegScreen = ({ navigation, route }) => {
+  // The screen runs to the bottom edge; this keeps the last button clear of the home bar / gesture line
+  const bottomPad = useFooterPadding();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const user = route?.params?.user;
@@ -896,7 +900,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
     const isSubmitActive = !!reason && !!logTime && !!remarks.trim();
     
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
         <View style={[s.headerBar, { backgroundColor: theme.bg }]}>
           <TouchableOpacity onPress={() => setView('MAIN')} style={s.backBtn}>
             <ChevronLeft color={theme.text} size={28} />
@@ -910,7 +914,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
           keyboardVerticalOffset={moderateScale(60)}
           style={{ flex: 1 }}
         >
-          <ScrollView contentContainerStyle={s.formScroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
+          <ScrollView contentContainerStyle={[s.formScroll, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
             <View style={[s.formWrap, { backgroundColor: theme.card }]}>
               <FloatingInput
                 label="Reason *"
@@ -967,7 +971,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
 
   if (view === 'SUCCESS') {
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+      <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
         <View style={[s.successBox, { backgroundColor: theme.bg }]}>
           <View style={[s.successAura, { backgroundColor: theme.isDark ? '#14532D' : '#F0FDF4' }]}>
             <View style={[s.successCircleInner, { backgroundColor: theme.card }]}>
@@ -986,7 +990,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]}>
+    <SafeAreaView style={[s.container, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right']}>
       <View style={[s.headerBar, { backgroundColor: theme.bg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />
@@ -1021,7 +1025,7 @@ const AttendanceRegScreen = ({ navigation, route }) => {
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator size="large" color={COLORS.primaryDeep} /></View>
       ) : (
-        <ScrollView contentContainerStyle={s.listScroll} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
+        <ScrollView contentContainerStyle={[s.listScroll, { paddingBottom: bottomPad }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} tintColor={'#4F46E5'} />}>
           {tab === 'LOG' && sortedAttLogs.map((item, i) => (
             <LogCard key={item.date || i} item={item} isRegularisedTab={false} regsForDate={regMap[item.date] || []} onRegularise={openRegForm} />
           ))}

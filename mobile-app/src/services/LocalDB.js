@@ -147,12 +147,27 @@ export const initDB = async () => {
       );
     `);
 
+    // Audit trail of the app (services/AuditTrail.js): every screen, tap and action, kept here — offline too — until
+    // rizo-revamp has stored it. seq = the order they happened in; at = ISO time on the phone.
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS audit_events (
+        seq      INTEGER PRIMARY KEY AUTOINCREMENT,
+        id       TEXT    NOT NULL UNIQUE,
+        user_id  TEXT    NOT NULL,
+        at       TEXT    NOT NULL,
+        label    TEXT    NOT NULL,
+        screen   TEXT,
+        details  TEXT,
+        offline  INTEGER NOT NULL DEFAULT 0
+      );
+    `);
+
     // ─── Migrations ───
     // Column additions for existing tables (won't affect new installs)
     const migrations = [
       { table: 'attendance', cols: ['address', 'sync_status', 'is_offline'] },
       { table: 'user_profile', cols: ['password', 'email', 'phone', 'emp_pkey', 'designation'] },
-      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at', 'step_in_lat', 'step_in_lng', 'end_lat', 'end_lng', 'step_in_address', 'end_address', 'start_synced', 'step_in_synced'] },
+      { table: 'client_visits', cols: ['contact_number', 'contact_person', 'purpose', 'step_in_time', 'created_at', 'step_in_lat', 'step_in_lng', 'end_lat', 'end_lng', 'step_in_address', 'end_address', 'start_synced', 'step_in_synced', 'start_offline', 'step_in_offline', 'end_offline', 'end_synced'] },
       { table: 'leaves', cols: ['from_half', 'to_half', 'authorized_by', 'approved_by', 'contact_no', 'created_at'] },
       { table: 'attendance_reg', cols: ['actual_time', 'expected_time', 'reason', 'created_at'] }
     ];
@@ -176,7 +191,48 @@ export const initDB = async () => {
   return initPromise;
 };
 
+// ─── Audit trail (services/AuditTrail.js) ──────────────────────────────────────
+/** Saves events in one statement: [{ id, userId, at, label, screen, details (object), offline }] */
+export const saveAuditEvents = async (events) => {
+  if (!events.length) return;
+  const database = await initDB();
+  await database.runAsync(
+    `INSERT OR IGNORE INTO audit_events (id, user_id, at, label, screen, details, offline) VALUES ${events.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+    events.flatMap((e) => [e.id, e.userId, e.at, e.label, e.screen || null, e.details ? JSON.stringify(e.details) : null, e.offline ? 1 : 0])
+  );
+};
+
+/** The oldest `limit` events of one user, in the order they happened */
+export const getAuditEvents = async (userId, limit) => {
+  const database = await initDB();
+  const rows = await database.getAllAsync(
+    `SELECT id, at, label, screen, details, offline FROM audit_events WHERE user_id = ? ORDER BY seq LIMIT ?`,
+    [userId, limit]
+  );
+  return rows.map((r) => {
+    let details = null;
+    try { details = r.details ? JSON.parse(r.details) : null; } catch (_) { details = null; }
+    return { id: r.id, at: r.at, label: r.label, screen: r.screen || undefined, details: details || undefined, offline: r.offline === 1 };
+  });
+};
+
+export const deleteAuditEvents = async (ids) => {
+  if (!ids.length) return;
+  const database = await initDB();
+  for (let i = 0; i < ids.length; i += 400) {
+    const part = ids.slice(i, i + 400);
+    await database.runAsync(`DELETE FROM audit_events WHERE id IN (${part.map(() => '?').join(', ')})`, part);
+  }
+};
+
+export const countAuditEvents = async (userId) => {
+  const database = await initDB();
+  const row = await database.getFirstAsync(`SELECT COUNT(*) AS n FROM audit_events WHERE user_id = ?`, [userId]);
+  return row ? Number(row.n) : 0;
+};
+
 // ─── Attendance ──────────────────────────────────────────────────────────────
+let punchSeq = 0;
 export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, longitude = 0, address = null, isOffline = 0 }) => {
   const database = await initDB();
   // Duplicate punch sequence guard removed to allow better multi-punch reliability in same session
@@ -191,7 +247,9 @@ export const savePunchLocal = async ({ userId, type, punchTime, latitude = 0, lo
   }
   */
 
-  const id = `att_${Date.now()}`;
+  // Counter + random suffix: two punches in the same millisecond must not share a primary key
+  punchSeq = (punchSeq + 1) % 1000000;
+  const id = `att_${Date.now()}_${punchSeq}_${Math.random().toString(36).slice(2, 6)}`;
   try {
     await database.runAsync(
       `INSERT INTO attendance (id, user_id, type, punch_time, latitude, longitude, address, sync_status, is_offline)
@@ -339,17 +397,20 @@ export const updateVisitStatus = async (id, status, details = {}) => {
   const database = await initDB();
   let query = `UPDATE client_visits SET status = ?, sync_status = 'PENDING'`;
   let params = [status];
+  // *Offline: was there no internet when the step was tapped? Kept so the Online/Offline tag
+  // stays right after the address is looked up later (1 = offline, 0 = online, unset = unknown)
+  const flag = (v) => (v === undefined || v === null ? null : (v ? 1 : 0));
   if (details.startTime) {
-    query += `, start_time = ?, latitude = ?, longitude = ?`;
-    params.push(details.startTime, details.lat || 0, details.lng || 0);
+    query += `, start_time = ?, latitude = ?, longitude = ?, start_offline = ?`;
+    params.push(details.startTime, details.lat || 0, details.lng || 0, flag(details.startOffline));
   }
   if (details.stepInTime) {
-    query += `, step_in_time = ?, step_in_lat = ?, step_in_lng = ?, step_in_address = ?`;
-    params.push(details.stepInTime, details.lat || 0, details.lng || 0, details.address || '');
+    query += `, step_in_time = ?, step_in_lat = ?, step_in_lng = ?, step_in_address = ?, step_in_offline = ?`;
+    params.push(details.stepInTime, details.lat || 0, details.lng || 0, details.address || '', flag(details.offline));
   }
   if (details.endTime) {
-    query += `, end_time = ?, end_lat = ?, end_lng = ?, end_address = ?`;
-    params.push(details.endTime, details.lat || 0, details.lng || 0, details.address || '');
+    query += `, end_time = ?, end_lat = ?, end_lng = ?, end_address = ?, end_offline = ?`;
+    params.push(details.endTime, details.lat || 0, details.lng || 0, details.address || '', flag(details.offline));
   }
   if (details.clientName !== undefined) {
     query += `, client_name = ?`;
@@ -377,12 +438,26 @@ export const getTodayVisits = async (userId) => {
   return await database.getAllAsync(`SELECT * FROM client_visits WHERE user_id = ? ORDER BY id DESC`, [userId]);
 };
 
+// The date (YYYY-MM-DD, the phone's own time zone) a visit is listed under: the day it STARTED, as the server lists it.
+// start_time / created_at are stored in UTC, so their first 10 characters can't be used: a visit started before 05:30
+// in India would land on the day before.
+export const visitStartDate = (v) => {
+  const d = new Date(v?.start_time || v?.created_at || '');
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
 export const getVisitsByDate = async (userId, dateStr) => {
   const database = await initDB();
-  return await database.getAllAsync(
-    `SELECT * FROM client_visits WHERE user_id = ? AND date(created_at) = ? ORDER BY id DESC`,
-    [userId, dateStr]
+  // A day either side in UTC, then the exact start date in the phone's time zone
+  const rows = await database.getAllAsync(
+    `SELECT * FROM client_visits WHERE user_id = ?
+       AND date(COALESCE(NULLIF(start_time, ''), created_at)) BETWEEN date(?, '-1 day') AND date(?, '+1 day')
+     ORDER BY id DESC`,
+    [userId, dateStr, dateStr]
   );
+  return rows.filter((v) => visitStartDate(v) === dateStr);
 };
 
 // A visit that's been started (and maybe stepped in) but not yet stepped out
