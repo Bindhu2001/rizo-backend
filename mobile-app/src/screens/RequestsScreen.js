@@ -1,5 +1,5 @@
 import React from 'react';
-import { Briefcase, FileText, History, Wallet, LogOut, ClipboardCheck } from 'lucide-react-native';
+import { Briefcase, FileText, History, Wallet, LogOut } from 'lucide-react-native';
 import MenuListPage from '../components/MenuListPage';
 import { isRevampCompany } from '../constants/Config';
 
@@ -11,7 +11,6 @@ const itemsFor = (revamp) => [
   { key: 'requests.regularization', title: 'Regularization', note: 'Late in / early out requests', route: 'AttendanceReg', params: { initialTab: 'LOG' }, Icon: History, color: '#FF9800', bg: '#FFF3E0' },
   { key: 'requests.advance-loan', title: 'Advance & Loan', note: 'Request a salary advance and view your loans', route: revamp ? 'EssAdvanceLoan' : null, Icon: Wallet, color: '#0EA5E9', bg: '#E0F2FE' },
   { key: 'requests.resignation', title: 'Resignation', note: 'Apply for resignation and track your request', route: revamp ? 'EssResignation' : null, Icon: LogOut, color: '#64748B', bg: '#F1F5F9' },
-  { key: 'requests.joining', title: 'Joining Checklist', note: 'Your PF, ESI, WWF and documents', route: revamp ? 'JoiningChecklist' : null, Icon: ClipboardCheck, color: '#16A34A', bg: '#F0FDF4' },
 ];
 
 const RequestsScreen = ({ navigation, route }) => {
