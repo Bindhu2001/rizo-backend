@@ -196,6 +196,16 @@ const HomeScreen = ({ navigation, route }) => {
     };
   }, [navigation]);
 
+  // Home hidden (another tab or page opened) while the punch dialog is open: close it, so it is never left open
+  // behind. Not while the punch is being saved.
+  const shiftOpenRef = useRef(false);
+  shiftOpenRef.current = showShiftConfirm && !punching;
+  useEffect(() => navigation.addListener('blur', () => {
+    if (!shiftOpenRef.current) return;
+    setShowShiftConfirm(false);
+    setCancelTrigger((t) => t + 1);
+  }), [navigation]);
+
   if (!user) return null;
 
   const toggleEvents = () => {
@@ -607,6 +617,11 @@ const HomeScreen = ({ navigation, route }) => {
       verdict = { allowed: false, message: 'Could not verify punch. Please try again.' };
     } finally {
       setCheckingPunch(false);
+    }
+    // Left Home (another tab / page) while the check ran: cancel, so the punch dialog never opens behind it
+    if (!navigation.isFocused()) {
+      setCancelTrigger((t) => t + 1);
+      return;
     }
     if (!verdict.allowed) {
       setCancelTrigger((t) => t + 1);
@@ -1087,6 +1102,12 @@ const HomeScreen = ({ navigation, route }) => {
         </View>
 
       </ScrollView>
+
+      {/* While the punch check or save runs, nothing else on Home can be tapped (no other popup or page opens
+          and leaves the punch dialog behind it) */}
+      {(checkingPunch || punching) && (
+        <View style={StyleSheet.absoluteFill} onStartShouldSetResponder={() => true} accessible={false} testID="punch-busy-shield" />
+      )}
 
       {/* SHIFT POLICY CONFIRM MODAL — shown before both Punch IN and Punch OUT */}
       <ShiftConfirmModal

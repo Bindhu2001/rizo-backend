@@ -14,6 +14,7 @@ import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the f
 import { API_ENDPOINTS } from '../constants/Config';
 import { initDB, saveUserLocally, getLocalUser } from '../services/LocalDB';
 import { auditSignIn } from '../services/AuditTrail';
+import { refreshCompanyFeatures } from '../services/CompanyFeatures';
 import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../components/ThemeContext';
@@ -95,6 +96,9 @@ const LoginScreen = ({ navigation, route }) => {
 
               // Do NOT call get_employee_full_details here — that happens on Home page load.
               await saveUserLocally(user, password);
+              // Which features this company has: the server says (services/CompanyFeatures.js). Never throws;
+              // waits at most 5 s, so the first screens already show the right menus.
+              await refreshCompanyFeatures(user.user_id, 5000);
               auditSignIn(); // audit trail: "signed in" (not awaited)
               navigation.replace('Main', { user });
               return;

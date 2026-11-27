@@ -43,7 +43,9 @@ export const missingIn = (f, file) => {
   return '';
 };
 
-const JoiningChecklistScreen = ({ navigation }) => {
+// route.params.docsOnly (Profile › Upload Documents): only "My documents" and its Add form — no PF / ESI / WWF
+const JoiningChecklistScreen = ({ navigation, route }) => {
+  const docsOnly = !!route?.params?.docsOnly;
   const bottomPad = useFooterPadding();
   const theme = useTheme();
   const [data, setData] = useState(null);
@@ -150,7 +152,7 @@ const JoiningChecklistScreen = ({ navigation }) => {
   const set = (key) => (v) => { setForm((f) => ({ ...f, [key]: v })); setError(''); };
 
   return (
-    <EssScreen title="Joining Checklist" onBack={() => navigation.goBack()}>
+    <EssScreen title={docsOnly ? 'Upload Documents' : 'Joining Checklist'} onBack={() => navigation.goBack()}>
       {!data && !loadError ? <Loading /> : (
         <ScrollView contentContainerStyle={{ padding: moderateScale(16), paddingBottom: bottomPad + moderateScale(16) }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primaryDeep]} tintColor={COLORS.primaryDeep} />}>
@@ -162,6 +164,7 @@ const JoiningChecklistScreen = ({ navigation }) => {
           )}
           {!!data && (
             <>
+              {!docsOnly && (<>
               <Card>
                 <Text style={[s.section, { color: theme.text }]}>PF, ESI and WWF</Text>
                 {item('Provident Fund (UAN)', data.pf, data.pf.pfNo)}
@@ -178,8 +181,10 @@ const JoiningChecklistScreen = ({ navigation }) => {
                   </View>
                 ))}
               </Card>
+              </>)}
               <Card>
                 <Text style={[s.section, { color: theme.text }]}>My documents</Text>
+                {docsOnly && <Text style={[s.rowSub, { color: theme.textMuted, marginBottom: 8 }]}>Take a photo of your Aadhaar, PAN, passport, licence or certificate: the details are read from it and you check them before sending to HR.</Text>}
                 {data.documents.length === 0 && <Text style={[s.rowSub, { color: theme.textMuted }]}>No documents added yet.</Text>}
                 {data.documents.map((d) => (
                   <View key={d.id} style={s.docRow}>
@@ -227,7 +232,7 @@ const JoiningChecklistScreen = ({ navigation }) => {
                 {reading.kind !== 'Other' && <Text style={[s.noteText, { color: theme.textMuted }]}>Looks like: {reading.kind === 'Bank' ? 'Bank passbook / cheque' : reading.kind}</Text>}
                 {reading.filled.length > 0 && <Text style={[s.noteText, { color: theme.text }]}><Text style={{ fontWeight: '800' }}>Filled: </Text>{reading.filled.map((k) => DOC_LABELS[k]).join(', ')}. Please check.</Text>}
                 {!reading.filled.length && !reading.suggestions.length && (
-                  <Text style={[s.noteText, { color: theme.text }]}>{reading.source === 'none' ? 'This PDF is a scanned image, so it can’t be read. Please type the details.' : 'Couldn’t read the details. Please type them.'}</Text>
+                  <Text style={[s.noteText, { color: theme.text }]}>{reading.source === 'none' ? 'This PDF couldn’t be opened to read it. Please type the details, or attach a photo of it.' : 'Couldn’t read the details. Please type them.'}</Text>
                 )}
                 {reading.suggestions.map((sg) => (
                   <View key={sg.key} style={s.suggestion}>

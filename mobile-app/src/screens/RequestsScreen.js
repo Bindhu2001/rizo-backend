@@ -1,7 +1,7 @@
 import React from 'react';
 import { Briefcase, FileText, History, Wallet, LogOut } from 'lucide-react-native';
 import MenuListPage from '../components/MenuListPage';
-import { isRevampCompany } from '../constants/Config';
+import { useRizoNew } from '../services/CompanyFeatures';
 
 // Requests tab — the employee's own requests (web ESS: My Requests). No `route` = no screen in this app version yet.
 // Advance & Loan and Resignation run on the web employee login's own routes, so only DigitalOcean companies have them.
@@ -15,8 +15,9 @@ const itemsFor = (revamp) => [
 
 const RequestsScreen = ({ navigation, route }) => {
   const user = route.params?.user;
+  const rizoNew = useRizoNew(user?.user_id); // the server says (services/CompanyFeatures.js)
   return (
-    <MenuListPage title="Requests" subtitle="Your requests" items={itemsFor(isRevampCompany(user?.user_id))} user={user} navigation={navigation} />
+    <MenuListPage title="Requests" subtitle="Your requests" items={itemsFor(rizoNew)} user={user} navigation={navigation} />
   );
 };
 

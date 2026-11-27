@@ -2,7 +2,7 @@ import { AppState } from 'react-native';
 import * as Network from 'expo-network';
 import { getLoggedUser, saveAuditEvents, getAuditEvents, deleteAuditEvents } from './LocalDB';
 import { AuditApi } from './RevampApi';
-import { isRevampCompany } from '../constants/Config';
+import { rizoNewFor } from './CompanyFeatures';
 
 // The app's audit trail: every screen opened, every tap, every field filled and the actions themselves (punch,
 // visit steps …) of the signed-in employee, for the company's Audit Trail report (rizo-revamp
@@ -45,7 +45,7 @@ const currentUser = async (force) => {
   let id = null;
   try {
     const u = await getLoggedUser();
-    id = u?.user_id && isRevampCompany(u.user_id) ? String(u.user_id) : null;
+    id = u?.user_id && (await rizoNewFor(u.user_id)) ? String(u.user_id) : null;
   } catch (_) { id = null; }
   user = { at: Date.now(), id };
   return id;
@@ -95,7 +95,7 @@ const SCREEN_NAMES = {
   RegularisationApproval: 'Regularisation Approval', LeaveApproval: 'Leave Approval', HrConnect: 'HR Connect', HrQueryThread: 'HR conversation',
   EventsList: 'Events', MyTeam: 'My Team', EssLeaveApproval: 'Leave Approvals', EssExpenseApproval: 'Expense Approvals',
   EssAdvanceLoanApproval: 'Advance & Loan Approvals', EssAdvanceLoan: 'Advance & Loan', EssResignation: 'Resignation',
-  Visits: 'My Customer Visits', Salary: 'Payslip', ForgotPassword: 'Forgot Password',
+  Visits: 'Client Visits', Salary: 'Payslip', ForgotPassword: 'Forgot Password',
 };
 export const screenName = (route) => SCREEN_NAMES[route] || String(route || '').replace(/([a-z])([A-Z])/g, '$1 $2');
 

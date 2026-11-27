@@ -40,7 +40,7 @@ import EssResignationScreen from './src/screens/EssResignationScreen';
 import JoiningChecklistScreen from './src/screens/JoiningChecklistScreen';
 import HrFloatingButton from './src/components/HrFloatingButton';
 import { useMenuAccess } from './src/services/MenuAccess';
-import { isRevampCompany } from './src/constants/Config';
+import { useRizoNew } from './src/services/CompanyFeatures';
 
 import OfflineBanner from './src/components/OfflineBanner';
 import { installTapRecorder } from './src/services/TapRecorder';
@@ -70,11 +70,12 @@ const APPROVAL_KEYS = ['approvals.leave', 'approvals.expense', 'approvals.regula
 function TabNavigator({ route }) {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
-  // DigitalOcean companies: no Approvals tab once every approval menu is off for this employee (Menu Allocation).
+  // Companies on the new Rizo server (the server says, services/CompanyFeatures.js): no Approvals tab once every approval menu is off for this employee (Menu Allocation).
   // Shown until the menus are known (services/MenuAccess.js — loaded by Home).
   const userId = route.params?.user?.user_id;
   const menus = useMenuAccess(userId);
-  const hideApprovals = isRevampCompany(userId) && !!menus && APPROVAL_KEYS.every((k) => menus[k] !== 'Y');
+  const rizoNew = useRizoNew(userId);
+  const hideApprovals = rizoNew && !!menus && APPROVAL_KEYS.every((k) => menus[k] !== 'Y');
 
   return (
     <Tab.Navigator

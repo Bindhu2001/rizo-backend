@@ -53,7 +53,7 @@ export const takePhotoAttachment = async (deps = {}) => {
   try {
     const perm = await picker.requestCameraPermissionsAsync();
     if (!perm || !perm.granted) {
-      return { error: { title: 'Camera Not Allowed', message: 'Please allow camera access for Rizo in Settings to take a photo of the bill.' } };
+      return { error: { title: 'Camera Not Allowed', message: 'Please allow camera access for Rizo in Settings to take a photo.' } };
     }
   } catch (_) {
     return { error: { title: 'Camera Not Available', message: 'Could not open the camera. Please try Photo Library instead.' } };

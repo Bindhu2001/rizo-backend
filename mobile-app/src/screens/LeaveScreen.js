@@ -19,7 +19,7 @@ import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import AttachmentSourceSheet from '../components/AttachmentSourceSheet';
-import { pickPhotoAttachment, MAX_ATTACHMENT_BYTES } from '../services/AttachmentPicker';
+import { pickPhotoAttachment, takePhotoAttachment, MAX_ATTACHMENT_BYTES } from '../services/AttachmentPicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 import { API_ENDPOINTS, IMAGE_ROOT } from '../constants/Config';
@@ -659,10 +659,22 @@ const LeaveScreen = ({ navigation, route }) => {
   const selectedCompOff = compOff.dates.find((d) => d.id === compOffId) || null;
 
   // ── File Picker ──────────────────────────────────────────────────────────────
-  // "Add file" asks where from: Photos (Photo Library) or Files (PDF / JPG)
+  // "Add file" asks where from: the camera (Take Photo), Photos (Photo Library) or Files (PDF / JPG)
   const pickFile = () => setShowSourceSheet(true);
   // iOS won't present the picker while the chooser sheet is still closing
   const afterSheet = (pick) => { setShowSourceSheet(false); setTimeout(pick, Platform.OS === 'ios' ? 450 : 0); };
+
+  // A new photo with the camera (e.g. a medical certificate), JPEG under 5 MB like a Photos pick
+  const takePhoto = async () => {
+    const res = await takePhotoAttachment();
+    if (res.canceled) return;
+    if (res.error) { showAlert('error', res.error.title, res.error.message); return; }
+    if (res.file.size != null && res.file.size > MAX_ATTACHMENT_BYTES) {
+      showAlert('warning', 'File Too Large', 'File exceeds the 5MB limit. Please take the photo again.');
+      return;
+    }
+    setAttachedFiles([res.file]);
+  };
 
   const pickFromPhotos = async () => {
     const res = await pickPhotoAttachment();
@@ -816,8 +828,9 @@ const LeaveScreen = ({ navigation, route }) => {
   const ApplyView = () => (
     <View style={{ flex: 1 }}>
       <LeaveHeader title={`Apply ${selectedLeave?.leave_name?.trim() || ''}`} onBack={() => setView('DASHBOARD')} theme={theme} />
-      <View style={s.remBanner}>
-        <Text style={s.remText}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
+      {/* Dark mode: a purple tint of the page with lavender text instead of the bright lavender strip */}
+      <View style={[s.remBanner, theme.isDark && { backgroundColor: '#7C3AED26' }]}>
+        <Text style={[s.remText, theme.isDark && { color: '#C4B5FD' }]}>{selectedLeave?.leave_name?.trim().toLowerCase()} remaining : {selectedLeave?.leave_balance || 0}</Text>
       </View>
       <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
@@ -1144,6 +1157,8 @@ const LeaveScreen = ({ navigation, route }) => {
       {view === 'SUCCESS' && SuccessView()}
       <AttachmentSourceSheet
         visible={showSourceSheet}
+        onCamera={() => afterSheet(takePhoto)}
+        cameraNote="Take a photo of your document"
         onPhotos={() => afterSheet(pickFromPhotos)}
         onFiles={() => afterSheet(pickFromFiles)}
         onClose={() => setShowSourceSheet(false)}

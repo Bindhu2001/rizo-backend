@@ -6,9 +6,9 @@ import { COLORS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import { useFooterPadding } from './KeyboardDoneBar';
 
-// "Add file" chooser: Take Photo (the camera — only where the screen offers it: an expense bill), Photo Library
-// (the Photos app) or Choose File (the Files app: PDF / JPG).
-const AttachmentSourceSheet = ({ visible, onCamera, onPhotos, onFiles, onClose }) => {
+// "Add file" chooser: Take Photo (the camera — only where the screen offers it: an expense bill, a leave document),
+// Photo Library (the Photos app) or Choose File (the Files app: PDF / JPG). cameraNote: the line under Take Photo.
+const AttachmentSourceSheet = ({ visible, onCamera, cameraNote = 'Photograph the bill with the camera', onPhotos, onFiles, onClose }) => {
   const theme = useTheme();
   const footerPad = useFooterPadding();
   return (
@@ -24,7 +24,7 @@ const AttachmentSourceSheet = ({ visible, onCamera, onPhotos, onFiles, onClose }
               <View style={[s.iconWrap, { backgroundColor: '#DCFCE7' }]}><Camera color="#15803D" size={20} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={[s.rowTitle, { color: theme.text }]}>Take Photo</Text>
-                <Text style={[s.rowNote, { color: theme.textMuted }]}>Photograph the bill with the camera</Text>
+                <Text style={[s.rowNote, { color: theme.textMuted }]}>{cameraNote}</Text>
               </View>
             </TouchableOpacity>
           )}

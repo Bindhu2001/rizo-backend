@@ -17,7 +17,7 @@ import KeyboardSafeView from '../components/KeyboardSafeView';
 import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
 import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
-import { HrQueriesApi, apiErrorMessage, loadFailureAlert } from '../services/RevampApi';
+import { HrQueriesApi, apiErrorMessage, loadFailureAlertUnlessOffline } from '../services/RevampApi';
 
 // "Connect to HR" — the employee's own conversations with HR (rizo-revamp hr_queries), laid out like
 // the web ESS widget (components/ess/HrConnectWidget.tsx): greeting header with "New conversation",
@@ -195,7 +195,7 @@ const HrConnectScreen = ({ navigation, route }) => {
       setQueries(cachedQueries);
     } catch (e) {
       if (!cachedQueries) setQueries([]);
-      setAlertCfg(loadFailureAlert(e));
+      setAlertCfg(await loadFailureAlertUnlessOffline(e));
     }
   };
 

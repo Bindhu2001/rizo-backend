@@ -1,8 +1,10 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { REVAMP_API_URL, REVAMP_WEB_API_URL, API_ENDPOINTS, isRevampCompany } from '../constants/Config';
+import { REVAMP_API_URL, REVAMP_WEB_API_URL, API_ENDPOINTS } from '../constants/Config';
+import { rizoNewFor } from './CompanyFeatures';
 import { getLoggedUser } from './LocalDB';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Network from 'expo-network';
 
 // Calls into rizo-revamp's /api/mobile/* routes. Signs in silently with the user id + password
 // the app already logged in with (kept in LocalDB user_profile) and keeps the 30-day bearer
@@ -73,6 +75,20 @@ export const loadFailureAlert = (e, fallback = 'Please check your connection and
     ? { type: 'error', title: 'No internet connection', message: 'Please connect to the internet and try again.' }
     : { type: 'error', title: 'Could not load', message: apiErrorMessage(e, fallback) }
 );
+
+
+// The same alert, but none when the phone itself is offline: components/OfflineBanner.js then already covers the page
+// with "No Internet Connection" and Back to Home, so a second "No internet" popup with OK is not shown on top of it.
+// Same offline test as the banner. Online but the server not answering: the alert still shows (no blocker then).
+export const loadFailureAlertUnlessOffline = async (e, fallback) => {
+  if (isNetworkError(e)) {
+    try {
+      const state = await Network.getNetworkStateAsync();
+      if (!state.isConnected || !state.isInternetReachable) return null;
+    } catch (_) { /* unknown: show the alert */ }
+  }
+  return loadFailureAlert(e, fallback);
+};
 
 // This phone's Expo push token, so rizo-revamp can push to it directly (HR replies, ...)
 export const PushTokenApi = {
@@ -168,14 +184,14 @@ export const PunchSelfieApi = {
   // Whether the signed-in employee must take a selfie with each punch (false outside GRTL / MYPY, without a call)
   required: async () => {
     const user = await getLoggedUser();
-    if (!isRevampCompany(user?.user_id)) return false;
+    if (!(await rizoNewFor(user?.user_id))) return false;
     return !!(await request('get', '/punch-selfie'))?.required;
   },
   // Today's selfie punches of the caller's team (the same people My Team lists), newest first:
   // [{ id, empFkey, empId, time, direction, source, hasPhoto }]. Only GRTL / MYPY have selfie punch.
   teamToday: async () => {
     const user = await getLoggedUser();
-    if (!isRevampCompany(user?.user_id)) return [];
+    if (!(await rizoNewFor(user?.user_id))) return [];
     return (await request('get', '/team-selfies'))?.data || [];
   },
 };

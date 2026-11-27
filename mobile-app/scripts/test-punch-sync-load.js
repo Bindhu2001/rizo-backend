@@ -35,7 +35,8 @@ const build = (platform, { company = 'queue', raw = new DatabaseSync(':memory:')
   };
   const st = server || { stored: [], requests: 0, sizes: [], reply: null };   // the server outlives an app restart
   const net = { online: true, window: [], lookups: 0 };
-  const keyOf = (x) => `${x.user_id}|${x.time_check}|${x.in_out}`;
+  // in_out compared without case, like the real DB (latin1 / utf8mb4 case-insensitive collations)
+  const keyOf = (x) => `${x.user_id}|${x.time_check}|${String(x.in_out).toLowerCase()}`;
   // Stores punches as the real server would
   const store = (list) => list.forEach((x) => {
     if (company === 'queue' && st.stored.some((s) => keyOf(s) === keyOf(x))) return;  // the queue worker drops a repeat
@@ -96,7 +97,7 @@ const build = (platform, { company = 'queue', raw = new DatabaseSync(':memory:')
   const pending = () => rows().filter((r) => r.sync_status === 'PENDING').length;
   const pad = (n) => String(n).padStart(2, '0');
   const local = (iso) => { const d = new RealDate(iso); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
-  const onServer = (r) => st.stored.filter((s) => keyOf(s) === `${r.user_id}|${local(r.punch_time)}|${r.type}`).length;
+  const onServer = (r) => st.stored.filter((s) => keyOf(s) === `${r.user_id}|${local(r.punch_time)}|${String(r.type).toLowerCase()}`).length;
   // The rule everything is about: "synced" on the phone = really on the server
   const checkTruth = () => rows().forEach((r) => { if (r.sync_status === 'SYNCED') assert.ok(onServer(r) >= 1, `punch ${local(r.punch_time)} ${r.type} is marked synced but is not on the server`); });
   // Everything arrived, exactly once, in tap order, IN OUT IN OUT per user
@@ -106,7 +107,8 @@ const build = (platform, { company = 'queue', raw = new DatabaseSync(':memory:')
     if (order) [...new Set(rows().map((r) => r.user_id))].forEach((u) => {
       const mine = st.stored.filter((s) => s.user_id === u);
       assert.deepStrictEqual(mine.map((s) => s.time_check), rows().filter((r) => r.user_id === u).map((r) => local(r.punch_time)), 'tap order');
-      mine.forEach((s, i) => assert.strictEqual(s.in_out, i % 2 ? 'OUT' : 'IN', `punch ${i} direction`));
+      // Sent lowercase (the app's own rows keep IN / OUT)
+      mine.forEach((s, i) => assert.strictEqual(s.in_out, i % 2 ? 'out' : 'in', `punch ${i} direction`));
     });
   };
   const untilDone = async (max = 80, each = () => {}) => { let runs = 0; while (pending() && runs < max) { await sync(); runs++; each(); tick(30000); } return runs; };
@@ -195,7 +197,7 @@ const build = (platform, { company = 'queue', raw = new DatabaseSync(':memory:')
     const p = build('android', { company: 'direct' }); await p.DB.initDB(); for (let i = 0; i < 200; i++) await p.punch({ user: 'ABCD100011' });
     p.st.reply = async ({ list, store, ack }) => { store(list); return { data: { success: 1, data: [ack(list[0])] } }; };
     const runs = await p.untilDone(60, p.checkTruth); assert.strictEqual(p.pending(), 0);
-    p.rows().forEach((r) => { const n = p.st.stored.filter((s) => s.in_out === r.type && s.time_check.endsWith(new Date(r.punch_time).toTimeString().slice(0, 8))).length; assert.ok(n <= 2, `stored ${n} times`); });
+    p.rows().forEach((r) => { const n = p.st.stored.filter((s) => s.in_out === String(r.type).toLowerCase() &&s.time_check.endsWith(new Date(r.punch_time).toTimeString().slice(0, 8))).length; assert.ok(n <= 2, `stored ${n} times`); });
     const before = p.st.requests; await p.sync(); await p.sync(); assert.strictEqual(p.st.requests, before, 'nothing more is sent');
     return `${runs} sync runs, ${p.st.requests} requests`;
   });

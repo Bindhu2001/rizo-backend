@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle, ClipboardList, Receipt, Wallet } from 'lucide-react-native';
 import MenuListPage from '../components/MenuListPage';
-import { isRevampCompany } from '../constants/Config';
+import { useRizoNew } from '../services/CompanyFeatures';
 
 // Approvals tab — your team's requests waiting on you (web ESS: Approvals). No `route` = no screen in this app
 // version yet. DigitalOcean companies get the screens built on the web employee login's own routes (Ess*Screen);
@@ -15,8 +15,9 @@ const itemsFor = (revamp) => [
 
 const ApprovalsScreen = ({ navigation, route }) => {
   const user = route.params?.user;
+  const rizoNew = useRizoNew(user?.user_id); // the server says (services/CompanyFeatures.js)
   return (
-    <MenuListPage title="Approvals" subtitle="Your team's requests waiting on you" items={itemsFor(isRevampCompany(user?.user_id))} user={user} navigation={navigation} />
+    <MenuListPage title="Approvals" subtitle="Your team's requests waiting on you" items={itemsFor(rizoNew)} user={user} navigation={navigation} />
   );
 };
 

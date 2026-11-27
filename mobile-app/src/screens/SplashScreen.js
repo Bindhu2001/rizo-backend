@@ -4,6 +4,7 @@ import { Text } from '../components/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { getLoggedUser } from '../services/LocalDB';
+import { refreshCompanyFeatures } from '../services/CompanyFeatures';
 import { loadPunchConfig, warmUpLocation } from '../services/PunchPrefetch';
 import { useTheme } from '../components/ThemeContext';
 import { SCREEN_WIDTH } from '../components/Theme';
@@ -50,6 +51,7 @@ const SplashScreen = ({ navigation }) => {
     getLoggedUser().then((user) => {
       if (!user?.user_id) return;
       loadPunchConfig(user.user_id).catch(() => {});
+      refreshCompanyFeatures(user.user_id).catch(() => {}); // the company's features, asked again on every start
       warmUpLocation();
     }).catch(() => {});
 

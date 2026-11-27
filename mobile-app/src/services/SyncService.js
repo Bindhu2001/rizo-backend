@@ -287,7 +287,9 @@ const SyncService = {
           longitude: parseFloat(item.longitude) || 0,
           user_id: item.user_id,
           time_check: formatTime(item.punch_time),
-          in_out: item.type, // 'IN' or 'OUT'
+          // The app keeps 'IN' / 'OUT'; the server gets 'in' / 'out' like biometric, manual and regularisation punches
+          // (C1 is lowercase there; the Break report compares it case-sensitively and skipped uppercase mobile punches)
+          in_out: String(item.type || '').toLowerCase(),
           accuracy: "20",
           loc_sourse: "fused-android",
           locationName: apiLocationName

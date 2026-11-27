@@ -455,15 +455,25 @@ const useCurrentLocation = (active) => {
   return loc;
 };
 
-const CurrentLocationBox = ({ loc }) => (
-  <View style={lb.box}>
-    <View style={lb.head}>
-      <MapPin color="#7C3AED" size={14} />
-      <Text style={lb.label}>Your Current Location</Text>
+// "Your Current Location" card colours in dark mode (light mode keeps the lavender card): a purple tint of the page
+// instead of the bright #F5F3FF, lavender title, address in the normal text colour
+const LOC_DARK = { card: { backgroundColor: '#7C3AED26', borderColor: '#7C3AED66' }, label: '#C4B5FD', pin: '#A78BFA' };
+
+const CurrentLocationBox = ({ loc }) => {
+  const theme = useTheme();
+  const dark = theme.isDark;
+  return (
+    <View style={[lb.box, dark && LOC_DARK.card]}>
+      <View style={lb.head}>
+        <MapPin color={dark ? LOC_DARK.pin : '#7C3AED'} size={14} />
+        <Text style={[lb.label, dark && { color: LOC_DARK.label }]}>Your Current Location</Text>
+      </View>
+      {loc
+        ? <Text style={[lb.text, dark && { color: theme.text }]} numberOfLines={3}>{loc.address}</Text>
+        : <ActivityIndicator size="small" color={dark ? LOC_DARK.pin : '#7C3AED'} />}
     </View>
-    {loc ? <Text style={lb.text} numberOfLines={3}>{loc.address}</Text> : <ActivityIndicator size="small" color="#7C3AED" />}
-  </View>
-);
+  );
+};
 
 const lb = StyleSheet.create({
   box: { backgroundColor: '#F5F3FF', borderRadius: moderateScale(12), padding: moderateScale(12), alignItems: 'center', marginBottom: moderateScale(16), borderWidth: 1, borderColor: '#EDE9FE', minHeight: moderateScale(64), justifyContent: 'center', width: '100%' },
@@ -481,7 +491,7 @@ const ConfirmModal = ({ visible, onConfirm, onCancel, processing }) => {
       <View style={[cm.box, { backgroundColor: theme.card }]}>
         <View style={[cm.iconWrap, { backgroundColor: theme.isDark ? '#3B1E5C' : '#F3E8FF' }]}><BanIcon /></View>
         <Text style={[cm.title, { color: theme.text }]}>Are you sure you want to{"\n"}Confirm Step Out?</Text>
-        <Text style={[cm.desc, { color: theme.textMuted }]}>You'll marked as stepped out from{"\n"}the customer you visited.</Text>
+        <Text style={[cm.desc, { color: theme.textMuted }]}>You'll be marked as stepped out from{"\n"}the client you visited.</Text>
         <CurrentLocationBox loc={loc} />
         <View style={cm.row}>
           <TouchableOpacity style={[cm.cancelBtn, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={onCancel} activeOpacity={0.8} disabled={processing}>
@@ -604,7 +614,7 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
   };
 
   const handleSave = () => {
-    if (!company.trim()) { showAlert('warning', 'Company Required', 'Please enter the Company / Customer name.'); return; }
+    if (!company.trim()) { showAlert('warning', 'Company Required', 'Please enter the Company / Client name.'); return; }
     if (!contactPerson.trim()) { showAlert('warning', 'Name Required', 'Please enter the Contact Person name.'); return; }
     if (fetchingLoc) { showAlert('info', 'Please Wait', 'We are still fetching your current location.'); return; }
     onSave({ company, contactNo, contactPerson, purpose, locText, ...locCoords });
@@ -635,22 +645,22 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
           style={{ flex: 1 }}
         >
           <ScrollView contentContainerStyle={sv.scroll} keyboardShouldPersistTaps="handled" keyboardDismissMode="none" style={{ flex: 1 }}>
-            <View style={sv.locChipBox}>
+            <View style={[sv.locChipBox, theme.isDark && LOC_DARK.card]}>
               <View style={sv.locWrap}>
-                <MapPin color="#7C3AED" size={14} />
-                <Text style={sv.locLabel}>Your Current Location</Text>
+                <MapPin color={theme.isDark ? LOC_DARK.pin : '#7C3AED'} size={14} />
+                <Text style={[sv.locLabel, theme.isDark && { color: LOC_DARK.label }]}>Your Current Location</Text>
               </View>
               <View style={sv.locTextWrap}>
                 {fetchingLoc ? (
-                  <ActivityIndicator size="small" color="#7C3AED" />
+                  <ActivityIndicator size="small" color={theme.isDark ? LOC_DARK.pin : '#7C3AED'} />
                 ) : (
-                  <Text style={sv.locText} numberOfLines={2}>{locText}</Text>
+                  <Text style={[sv.locText, theme.isDark && { color: theme.text }]} numberOfLines={2}>{locText}</Text>
                 )}
               </View>
             </View>
 
             <View style={[sv.formWrap, { backgroundColor: theme.card }]}>
-              <FloatInput label="Enter Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} />
+              <FloatInput label="Enter Company / Client you visit" value={company} onChangeText={setCompany} maxLength={30} />
               <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
               <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
               <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
@@ -738,7 +748,7 @@ const StepInModal = ({ visible, visit, onClose, onSave, processing }) => {
           <ScrollView contentContainerStyle={{ paddingBottom: 8 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
             <CurrentLocationBox loc={loc} />
             {/* The visit place is fixed once the visit has started (set on the Going to Meet screen). */}
-            <FloatInput label="Company / Customer you visit" value={company} onChangeText={setCompany} maxLength={30} editable={false} />
+            <FloatInput label="Company / Client you visit" value={company} onChangeText={setCompany} maxLength={30} editable={false} />
             <FloatInput label="Contact Person" value={contactPerson} onChangeText={setContactPerson} maxLength={30} />
             <FloatInput label="Contact Number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" maxLength={30} />
             <FloatInput label="Purpose" value={purpose} onChangeText={setPurpose} multiline maxLength={100} />
@@ -916,7 +926,7 @@ const VisitHistoryScreen = ({ visible, user, onClose }) => {
           <TouchableOpacity onPress={onClose} style={s.backBtn}>
             <ChevronLeft color={theme.text} size={28} />
           </TouchableOpacity>
-          <Text style={[s.headerTitle, { color: theme.text }]}>Visit History</Text>
+          <Text style={[s.headerTitle, { color: theme.text }]}>My Client Visits</Text>
           <View style={{ width: 44 }} />
         </View>
 
@@ -1180,7 +1190,7 @@ const VisitsScreen = ({ navigation, route }) => {
         startTime: new Date().toISOString(), lat: details.lat || 0, lng: details.lng || 0,
         startOffline: await isOfflineNow(),
       });
-      recordAudit(`started customer visit: ${details.company}`, {
+      recordAudit(`started client visit:${details.company}`, {
         'Contact person': details.contactPerson, 'Contact number': details.contactNo, Purpose: details.purpose,
         Location: details.locText, Latitude: details.lat ? Number(details.lat).toFixed(5) : '', Longitude: details.lng ? Number(details.lng).toFixed(5) : '',
       });
@@ -1216,7 +1226,7 @@ const VisitsScreen = ({ navigation, route }) => {
         contactPerson: details.contactPerson,
         purpose: details.purpose,
       });
-      recordAudit(`stepped in at customer: ${details.company}`, {
+      recordAudit(`stepped in at client:${details.company}`, {
         Location: address, Latitude: lat ? Number(lat).toFixed(5) : '', Longitude: lng ? Number(lng).toFixed(5) : '',
         'Contact person': details.contactPerson, 'Contact number': details.contactNo, Purpose: details.purpose,
       });
@@ -1251,13 +1261,13 @@ const VisitsScreen = ({ navigation, route }) => {
         endTime: new Date().toISOString(),
         lat, lng, address, offline
       });
-      recordAudit(`stepped out from customer: ${pendingVisit.client_name || ''}`, {
+      recordAudit(`stepped out from client:${pendingVisit.client_name || ''}`, {
         Location: address, Latitude: lat ? Number(lat).toFixed(5) : '', Longitude: lng ? Number(lng).toFixed(5) : '',
       });
       // fetchVisits() syncs when viewing today; otherwise sync here (fire-and-forget)
       if (selectedDate !== todayStr()) syncIfOnline();
       fetchVisits();
-      showAlert('success', 'Visit Completed', 'Customer visit has been closed.');
+      showAlert('success', 'Visit Completed', 'Client visit has been closed.');
     } catch (_) { showAlert('error', 'Error', 'Failed to step-out.'); }
     finally { setProcessing(false); setPendingVisit(null); }
   };
@@ -1275,7 +1285,7 @@ const VisitsScreen = ({ navigation, route }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
           <ChevronLeft color={theme.text} size={28} />
         </TouchableOpacity>
-        <Text style={[s.headerTitle, { color: theme.text }]}>My Customer Visits</Text>
+        <Text style={[s.headerTitle, { color: theme.text }]}>Client Visits</Text>
         <TouchableOpacity onPress={() => setShowHistory(true)} style={s.backBtn}>
           <History color={theme.text} size={22} />
         </TouchableOpacity>

@@ -13,12 +13,8 @@ export const revampFileUrl = (v) => {
   if (/^https?:\/\//.test(s)) return s;
   return s.startsWith('/') ? `${REVAMP_ORIGIN}${s}` : null;
 };
-// Companies on the DigitalOcean database, whose salary slip is the rizo-revamp one (the same companies the
-// PHP API routes to DigitalOcean). Everyone else (OVH) keeps the slip the app has always built itself.
-export const REVAMP_PAYSLIP_COMPANIES = ['GRTL', 'MYPY'];
-export const companyLettersOf = (userId) => String(userId || '').replace(/[^a-zA-Z]+/g, '').toUpperCase();
-// DigitalOcean company: its approvals and Advance & Loan run on the web employee login's own routes (RevampApi.js)
-export const isRevampCompany = (userId) => REVAMP_PAYSLIP_COMPANIES.includes(companyLettersOf(userId));
+// Which companies are on the new Rizo server is decided by the server (newapp/app_features), never by a list in
+// the app: services/CompanyFeatures.js.
 
 export const API_ENDPOINTS = {
   AUTH: `${AUTH_URL}/login`,
@@ -53,6 +49,7 @@ export const API_ENDPOINTS = {
   LEAVE_HIERARCHY: `${NEWAPP_URL}/leave_hierarchy_list`,
   TEAM_TODAY: `${NEWAPP_URL}/team_today`,
   TEAM_MEMBER_PUNCHES: `${NEWAPP_URL}/team_member_punches`,
+  APP_FEATURES: `${NEWAPP_URL}/app_features`,
   LEAVE_ACTION: `${NEWAPP_URL}/leave_action`,
   LEAVE_APPROVED_LIST: `${NEWAPP_URL}/leave_approved_already_lists`,
   LEAVE_CANCEL: `${NEWAPP_URL}/leave_cancel`,

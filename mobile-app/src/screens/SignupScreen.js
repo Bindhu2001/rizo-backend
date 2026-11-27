@@ -18,7 +18,8 @@ import KeyboardDoneBar, { doneBarId, useKeyboardVisible } from '../components/Ke
 import SignupExtraDetails, { EMPTY_SIGNUP_DETAILS, documentPayload, signupRows } from '../components/SignupExtraDetails';
 import SignupScan from '../components/SignupScan';
 import { useTheme } from '../components/ThemeContext';
-import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES } from '../constants/Config';
+import { API_ENDPOINTS } from '../constants/Config';
+import { setSignupCompany, isSignupRizoNew } from '../services/SignupScan';
 
 const MAX_DOB = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 18); return d; })();
 const PURPLE = '#4A148C';
@@ -352,7 +353,11 @@ const SignupScreen = ({ navigation }) => {
 
   // Scanning: the sign-up's values now, and how a scanned value goes in
   const isoDob = dobDate ? `${dobDate.getFullYear()}-${String(dobDate.getMonth() + 1).padStart(2, '0')}-${String(dobDate.getDate()).padStart(2, '0')}` : '';
-  const scanNow = { name, dob: isoDob, gender, aadhaar: aadhaarNumber, pan: panNumber, bankName, ifsc: ifscCode, account: accountNumber, uan: uanNo, esi: esiNo };
+  const scanNow = {
+    name, dob: isoDob, gender, aadhaar: aadhaarNumber, pan: panNumber, bankName, ifsc: ifscCode, account: accountNumber, uan: uanNo, esi: esiNo,
+    house: address.house, line2: address.line2, city: address.city, district: address.district, state: address.state, pincode: address.pincode,
+    guardianName, guardianRelation,
+  };
   const isoToDate = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
   const scanAllow = (key, v) => key !== 'dob' || isoToDate(v) <= MAX_DOB; // the sign-up takes 18 and over only
   const scanFill = (v) => {
@@ -366,6 +371,21 @@ const SignupScreen = ({ navigation }) => {
     if (v.account) setAccountNumber(v.account.replace(/[^0-9]/g, '').slice(0, 18));
     if (v.uan) changeUan(v.uan);
     if (v.esi) changeEsi(v.esi);
+    // The Aadhaar's back: address, PIN and the S/O / W/O / C/O name — through the same character rules as typing
+    const addr = {};
+    if (v.house) addr.house = v.house.replace(/[^A-Za-z0-9\s,./#()-]/g, '').slice(0, 60);
+    if (v.line2) addr.line2 = v.line2.replace(/[^A-Za-z0-9\s,./#()-]/g, '').slice(0, 60);
+    if (v.city) addr.city = v.city.replace(/[^A-Za-z\s]/g, '').slice(0, 30);
+    if (v.district) addr.district = v.district.replace(/[^A-Za-z\s]/g, '').slice(0, 50);
+    if (v.state) addr.state = v.state.replace(/[^A-Za-z\s]/g, '').slice(0, 50);
+    if (v.pincode) addr.pincode = v.pincode.replace(/[^0-9]/g, '').slice(0, 6);
+    if (Object.keys(addr).length) {
+      setAddress((a) => ({ ...a, ...addr }));
+      // An Aadhaar address is in India
+      if (!addrCountry) { const india = countries.find((c) => /^india$/i.test(String(c.country_name || '').trim())); if (india) setAddrCountry(india); }
+    }
+    if (v.guardianName) setGuardianName(v.guardianName.replace(/[^A-Za-z\s]/g, '').slice(0, 50));
+    if (v.guardianRelation) setGuardianRelation(v.guardianRelation.replace(/[^A-Za-z\s]/g, '').slice(0, 100));
   };
   const keepScanned = (doc) => setScannedDocs((list) => [...list.filter((d) => d.scan !== doc.scan), doc]);
   const scanButton = (scan) => <SignupScan scan={scan} companyCode={companyCode} now={scanNow} onFill={scanFill} onDocument={keepScanned} allow={scanAllow} />;
@@ -381,6 +401,9 @@ const SignupScreen = ({ navigation }) => {
       });
       const ok = res.data?.success === 1 || res.data?.success === true || res.data?.success === '1';
       const raw = res.data?.data;
+      // The server says whether this company is on the new Rizo server (photo upload, document reading)
+      const flag = res.data?.rizo_new;
+      setSignupCompany(code, ok && (flag === 1 || flag === '1' || flag === true));
       if (ok && Array.isArray(raw) && raw.length > 0) {
         setCountries(raw.map(c => ({ id: c.id, country_name: c.country_name })));
       } else {
@@ -519,11 +542,11 @@ const SignupScreen = ({ navigation }) => {
 
       const res = await axios.post(API_ENDPOINTS.REGISTER, payload, { headers: { 'Content-Type': 'application/json' } });
       if (res.data?.success === 1 || res.data?.success === true) {
-        // DigitalOcean company (GRTL / MYPY): the photo also goes to the website's own storage (rizo-revamp
+        // Company on the new Rizo server (the server says, see fetchCountries): the photo also goes to the website's own storage (rizo-revamp
         // api/mobile/signup/photo, checked with the PHP's upload token), which then points the Employee Joining
         // record at that copy, so it shows in Employee Joining / Onboarding. The copy the PHP saved on the old
         // server stays as the fallback: if this upload fails, that one still shows (through the v1 path).
-        if (photoBase64 && REVAMP_PAYSLIP_COMPANIES.includes(companyCode.trim().toUpperCase()) && res.data.upload_token) {
+        if (photoBase64 && isSignupRizoNew(companyCode) && res.data.upload_token) {
           setSubmitNote('Uploading photo...');
           try {
             await axios.post(API_ENDPOINTS.SIGNUP_PHOTO, {
@@ -856,6 +879,7 @@ const SignupScreen = ({ navigation }) => {
               <>
                 <Text style={[st.cardTitle, { color: theme.text }]}>Address Details</Text>
                 <Text style={[st.cardSub, { color: theme.textLight }]}>This information will be used for official records</Text>
+                {scanButton('aadhaarBack')}
                 <FloatInput label="House / Flat Name *" value={address.house} onChangeText={t => setAddress({ ...address, house: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Flat 12A, Sunshine Apt" maxLength={60} />
                 <FloatInput label="Address Line 2 (Optional)" value={address.line2} onChangeText={t => setAddress({ ...address, line2: t.replace(/[^A-Za-z0-9\s,./#()-]/g, '') })} placeholder="Near City Mall" maxLength={60} />
                 <View style={st.inputRow}>

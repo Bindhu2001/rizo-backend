@@ -11,7 +11,7 @@ import { format, parse } from 'date-fns';
 import CustomAlert from '../components/CustomAlert';
 import { moderateScale, SHADOWS } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
-import { AnnouncementsApi, apiErrorMessage, loadFailureAlert } from '../services/RevampApi';
+import { AnnouncementsApi, apiErrorMessage, loadFailureAlertUnlessOffline } from '../services/RevampApi';
 
 // Profile → Announcements: the company announcements addressed to this employee, the same list
 // and tabs as the web ESS home "Company Updates" panel (rizo-revamp /api/mobile/announcements).
@@ -65,7 +65,7 @@ const AnnouncementsScreen = ({ navigation, route }) => {
       return cached;
     } catch (e) {
       if (!cached) setItems([]);
-      setAlertCfg(loadFailureAlert(e));
+      setAlertCfg(await loadFailureAlertUnlessOffline(e));
       return cached || [];
     }
   };

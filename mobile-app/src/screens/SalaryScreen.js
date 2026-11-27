@@ -14,7 +14,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SHADOWS , moderateScale, SCREEN_WIDTH } from '../components/Theme';
 import { useTheme } from '../components/ThemeContext';
 import axios from 'axios';
-import { API_ENDPOINTS, REVAMP_PAYSLIP_COMPANIES, companyLettersOf } from '../constants/Config';
+import { API_ENDPOINTS } from '../constants/Config';
+import { rizoNewFor } from '../services/CompanyFeatures';
 import { PayslipsApi } from '../services/RevampApi';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -60,10 +61,10 @@ const SalaryScreen = ({ navigation, route }) => {
         setGrossSalary(grossRes.data.data.gross_salary);
       }
 
-      // Fetch Salary Slips — DigitalOcean companies (GRTL, MYPY): rizo-revamp's approved months, downloaded as
+      // Fetch Salary Slips — companies on the new Rizo server (the server says): rizo-revamp's approved months, downloaded as
       // its web-design PDF. OVH companies, and any problem reaching rizo-revamp: the slip the app builds itself.
       let loaded = false;
-      if (REVAMP_PAYSLIP_COMPANIES.includes(companyLettersOf(user.user_id))) {
+      if (await rizoNewFor(user.user_id)) {
         try {
           const res = await PayslipsApi.list();
           if (Array.isArray(res?.data)) {

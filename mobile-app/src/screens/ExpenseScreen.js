@@ -16,6 +16,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import AttachmentSourceSheet from '../components/AttachmentSourceSheet';
 import { pickPhotoAttachment, takePhotoAttachment, MAX_ATTACHMENT_BYTES } from '../services/AttachmentPicker';
 import { canReadBills, planBillFill, readBillFile, billReadError, BILL_LABELS } from '../services/BillReader';
+import { useRizoNew } from '../services/CompanyFeatures';
 import { COLORS, SHADOWS , moderateScale, hp, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
 import ScrollView from '../components/KeyboardAwareScrollView'; // scrolls the focused field above the keyboard
@@ -221,6 +222,7 @@ const ExpenseScreen = ({ navigation, route }) => {
   const fabInsets = useSafeAreaInsets();
   const theme = useTheme();
   const user = route?.params?.user;
+  useRizoNew(user?.user_id); // redraw when the server's answer arrives: canReadBills follows it
 
   const [view, setView] = useState('LIST');
   const [expenses, setExpenses] = useState([]);
@@ -236,8 +238,11 @@ const ExpenseScreen = ({ navigation, route }) => {
   // The attached bill being read / what was filled from it (services/BillReader.js)
   const [billRead, setBillRead] = useState(null);
   const readSeq = useRef(0);
-  const formNow = useRef({ amount: '', date: '', vendor: '' });
-  useEffect(() => { formNow.current = { amount, date: expenseDate, vendor }; });
+  const formNow = useRef({ amount: '', date: '', vendor: '', type: '', remarks: '' });
+  useEffect(() => { formNow.current = { amount, date: expenseDate, vendor, type: expenseType?.name || '', remarks }; });
+  const typesNow = useRef([]);
+  useEffect(() => { typesNow.current = expenseTypes; });
+  const typeByName = (name) => typesNow.current.find((t) => t.name === name) || null;
   const [showSourceSheet, setShowSourceSheet] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -359,7 +364,7 @@ const ExpenseScreen = ({ navigation, route }) => {
   // iOS won't present the picker while the chooser sheet is still closing
   const afterSheet = (pick) => { setShowSourceSheet(false); setTimeout(pick, Platform.OS === 'ios' ? 450 : 0); };
 
-  // The attached bill is read on the server and the empty Amount / Date / Vendor are filled from it
+  // The attached bill is read on the server and the empty Amount / Date / Vendor / Expense Type / Remarks are filled from it
   const readAttached = async (file) => {
     if (!file || !canReadBills(user)) return;
     const mine = ++readSeq.current;
@@ -367,10 +372,12 @@ const ExpenseScreen = ({ navigation, route }) => {
     try {
       const reading = await readBillFile(file);
       if (mine !== readSeq.current) return; // another bill was attached (or the form reset) meanwhile
-      const plan = planBillFill(reading?.fields, formNow.current);
+      const plan = planBillFill(reading?.fields, formNow.current, typesNow.current.map((t) => t.name));
       if (plan.fill.amount) setAmount(plan.fill.amount);
       if (plan.fill.date) setExpenseDate(plan.fill.date);
       if (plan.fill.vendor) setVendor(plan.fill.vendor);
+      if (plan.fill.type && typeByName(plan.fill.type)) setExpenseType(typeByName(plan.fill.type));
+      if (plan.fill.remarks) setRemarks(plan.fill.remarks);
       setBillRead({
         status: 'done', filled: plan.filled, matched: plan.matched, suggestions: plan.suggestions, source: reading?.source,
         billNo: reading?.fields?.billNo?.value || null, gstin: reading?.fields?.gstin?.value || null,
@@ -384,6 +391,7 @@ const ExpenseScreen = ({ navigation, route }) => {
     if (sg.key === 'amount') setAmount(sg.value);
     else if (sg.key === 'date') setExpenseDate(sg.value);
     else if (sg.key === 'vendor') setVendor(sg.value);
+    else if (sg.key === 'type' && typeByName(sg.value)) setExpenseType(typeByName(sg.value));
     setBillRead((b) => (b && b.status === 'done'
       ? { ...b, filled: [...b.filled.filter((k) => k !== sg.key), sg.key], suggestions: b.suggestions.filter((x) => x.key !== sg.key) }
       : b));
@@ -598,7 +606,7 @@ const ExpenseScreen = ({ navigation, route }) => {
                     <Text style={s.addFilesText}> Add file  (JPG, JPEG, PDF)</Text>
                   </TouchableOpacity>
                   {canReadBills(user) && (
-                    <Text style={[s.billHint, { color: theme.textMuted }]}>Attach the bill first: Amount, Date and Vendor are filled from it.</Text>
+                    <Text style={[s.billHint, { color: theme.textMuted }]}>Attach the bill first: Amount, Date, Vendor, Expense Type and Remarks are filled from it.</Text>
                   )}
                 </>
               )}
@@ -633,7 +641,7 @@ const ExpenseScreen = ({ navigation, route }) => {
                       )}
                       {!billRead.filled.length && !billRead.suggestions.length && !billRead.matched.length && (
                         <Text style={[s.billNoteText, { color: theme.text }]}>
-                          {billRead.source === 'none' ? 'This PDF is a scanned image, so it can’t be read yet. Please type the details.' : 'Couldn’t find the details on this bill. Please type them.'}
+                          {billRead.source === 'none' ? 'This PDF couldn’t be opened to read it. Please type the details, or attach a photo of it.' : 'Couldn’t find the details on this bill. Please type them.'}
                         </Text>
                       )}
                       {billRead.suggestions.map((sg) => (

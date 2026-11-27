@@ -13,7 +13,7 @@ import { moderateScale, KEYBOARD_AVOID_BEHAVIOR } from '../components/Theme';
 import KeyboardSafeView from '../components/KeyboardSafeView';
 import { useFooterPadding } from '../components/KeyboardDoneBar';
 import { useTheme } from '../components/ThemeContext';
-import { HrQueriesApi, apiErrorMessage, loadFailureAlert } from '../services/RevampApi';
+import { HrQueriesApi, apiErrorMessage, loadFailureAlertUnlessOffline } from '../services/RevampApi';
 import { hrFill, hrAccent, PanelHeader, parseQueryDate, dayDiff } from './HrConnectScreen';
 
 // One "Connect to HR" conversation, chat-style like the web ESS widget's thread view: day
@@ -72,7 +72,7 @@ const id = route?.params?.id;
       if (res?.query) setQuery(res.query);
       setMessages(Array.isArray(res?.messages) ? res.messages : []);
     } catch (e) {
-      if (!silent) setAlertCfg(loadFailureAlert(e));
+      if (!silent) setAlertCfg(await loadFailureAlertUnlessOffline(e));
     }
   };
 
