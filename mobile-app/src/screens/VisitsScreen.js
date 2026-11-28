@@ -669,12 +669,19 @@ const StartVisitScreen = ({ visible, onClose, onSave, processing }) => {
 
           <View style={[sv.footer, { backgroundColor: theme.bg, paddingBottom: footerPad }]}>
             <TouchableOpacity
-              style={[sv.startBtn, (!company.trim() || !contactPerson.trim() || processing) && sv.startBtnDisabled]}
+              // edited by Bindhu 28-11-2026: not ready yet — dark mode: its own purple at half strength, like Connect to
+              // HR's "Send to HR" (was a bright lavender block on the dark page); light mode unchanged // end
+              style={[
+                sv.startBtn,
+                (!company.trim() || !contactPerson.trim() || processing) && (theme.isDark ? sv.startBtnDisabledDark : sv.startBtnDisabled),
+              ]}
               onPress={handleSave}
               disabled={fetchingLoc || processing || !company.trim() || !contactPerson.trim()}
               activeOpacity={0.85}
             >
-              {processing ? <ActivityIndicator color="#62338B" /> : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && sv.startBtnTextDisabled]}>START</Text>}
+              {processing
+                ? <ActivityIndicator color={theme.isDark ? '#FFF' : '#62338B'} />
+                : <Text style={[sv.startBtnText, (!company.trim() || !contactPerson.trim()) && !theme.isDark && sv.startBtnTextDisabled]}>START</Text>}
             </TouchableOpacity>
           </View>
         <KeyboardDoneBar />
@@ -707,6 +714,8 @@ const sv = StyleSheet.create({
   footer: { padding: moderateScale(20), backgroundColor: '#F9FAFB' },
   startBtn: { backgroundColor: COLORS.primaryDeep, paddingVertical: moderateScale(18), borderRadius: moderateScale(50), alignItems: 'center' },
   startBtnDisabled: { backgroundColor: '#D1C4E9' },
+  // Dark mode: the button's own colour at half strength, as Connect to HR's "Send to HR" (edited by Bindhu 28-11-2026)
+  startBtnDisabledDark: { opacity: 0.5 },
   startBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '800', letterSpacing: 1 },
   startBtnTextDisabled: { color: '#9E9E9E' },
 });
