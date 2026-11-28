@@ -33,7 +33,7 @@ import {
   savePunchLocal, getPunchesBetween, updatePunchLocation,
   getPendingCount, getPendingSyncCount, initDB, getPunchConfig
 } from '../services/LocalDB';
-import { loadPunchConfig, getRecentFix, rememberFix } from '../services/PunchPrefetch';
+import { loadPunchConfig, getRecentFix, rememberFix, warmUpLocation } from '../services/PunchPrefetch';
 import SyncService from '../services/SyncService';
 import NotificationManager from '../services/NotificationManager';
 import { refreshShiftReminders, getCachedShiftSchedule } from '../services/ShiftReminders';
@@ -133,6 +133,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [lastPunchAt, setLastPunchAt] = useState(null);
   const lastPunchAtRef = useRef(null);
   const [cooldownMs, setCooldownMs] = useState(0);
+  // Where the last punch (in or out) was made — the gray button's second line during that minute
+  const [lastPunchAddress, setLastPunchAddress] = useState('');
   // end
   const [roles, setRoles] = useState({
     is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
@@ -177,6 +179,7 @@ const HomeScreen = ({ navigation, route }) => {
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
+        warmUpLocation(); // edited by Bindhu 28-11-2026: a fresh GPS fix ready for the next punch (never asks permission) // end
         fetchStatus();
         NotificationManager.forceCheck();
         // edited by Bindhu 28-11-2026: back in the app — fresh schedule too (forceFetch), then the button again // end
@@ -274,6 +277,9 @@ const HomeScreen = ({ navigation, route }) => {
       let loc = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
+      // edited by Bindhu 28-11-2026: kept for the punch's 100 m office check too, so a swipe within a minute of this
+      // doesn't wait for GPS again (services/PunchPrefetch.js getRecentFix) // end
+      rememberFix(loc);
       const { latitude, longitude } = loc.coords;
       lastLocationFetch.current = Date.now();
 
@@ -372,12 +378,18 @@ const HomeScreen = ({ navigation, route }) => {
     const s = Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   };
+  // The gray button's text during that minute: what was just done, then the wait — "Checked in · wait 0:42"
+  // (punched in now = it was a check-in). Not "Check Out in 0:42", which read as if it would check out by itself.
+  const gapText = (ms) => `${isPunchedIn ? 'Checked in' : 'Checked out'} · wait ${fmtGap(ms)}`;
+  // The last punch's place for the second line; nothing while it is still being looked up
+  const gapLocation = /^resolving/i.test(lastPunchAddress) ? '' : lastPunchAddress;
   // end
 
   // Button, check-in time and finished sessions from the shift date's punches (all sources)
   const applyPunchState = (next) => {
     const last = next.onShift[next.onShift.length - 1] || null;
     punchedInRef.current = next.direction === 'OUT'; // edited by Bindhu 28-11-2026 // end
+    setLastPunchAddress(last ? String(last.address || '') : ''); // edited by Bindhu 28-11-2026 // end
     setIsPunchedIn(next.direction === 'OUT');
     setStatus(prev => ({ ...prev, lastType: last ? String(last.type).toUpperCase() : 'NONE' }));
     if (next.direction === 'OUT' && last) {
@@ -547,8 +559,43 @@ const HomeScreen = ({ navigation, route }) => {
   //   A → all branches, within 100 m of ANY branch location
   //   F → mobile, anywhere, with a front-camera selfie (services/PunchSelfie.js)
   //   S / W → not permitted
+  // edited by Bindhu 28-11-2026: the GPS fix for the 100 m office check, by itself so it can start before the punch type
+  // is known. Permission only checked (asked only if missing — asking again on every swipe was slow on Android); a fix
+  // from the last 60 s skips the wait; else a fresh one (8 s cap), else any last-known. Never throws.
+  const getPunchFix = async () => {
+    try {
+      let { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') ({ status } = await Location.requestForegroundPermissionsAsync());
+      if (status !== 'granted') return { denied: true, loc: null };
+      let loc = await getRecentFix();
+      if (!loc) {
+        try {
+          loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 8000)),
+          ]);
+          rememberFix(loc);
+        } catch (_) {
+          try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
+        }
+      }
+      return { denied: false, loc };
+    } catch (_) {
+      return { denied: false, loc: null };
+    }
+  };
+  // end
+
   const punchRules = async () => {
     verifiedPunchLoc.current = null;
+
+    // edited by Bindhu 28-11-2026: an office punch type (O / A) in the saved copy starts the GPS fix now, side by side
+    // with the punch type call below, instead of after it (on Android the two waits added up). Used only if the
+    // fresh punch type is O / A too.
+    const kept = await getPunchConfig(user.user_id).catch(() => null);
+    const keptType = String(kept?.data?.punchtype || '').toUpperCase();
+    const earlyFix = keptType === 'O' || keptType === 'A' ? getPunchFix() : null;
+    // end
 
     // 1. Punch type — fetched from the server when online (and saved to LocalDB);
     //    the last saved LocalDB copy when offline.
@@ -612,24 +659,12 @@ const HomeScreen = ({ navigation, route }) => {
       return { allowed: false, message: 'Office location is not configured correctly. Please contact HR.' };
     }
 
-    // GPS check
-    const { status: perm } = await Location.requestForegroundPermissionsAsync();
-    if (perm !== 'granted') {
+    // GPS check — the fix started above alongside the punch type call, else started now (edited by Bindhu 28-11-2026)
+    const fix = await (earlyFix || getPunchFix());
+    if (fix.denied) {
       return { allowed: false, message: 'Location permission is required to punch from the office. Please enable it in settings.' };
     }
-    // A fix from the last 60 s (Splash warm-up / OS cache) skips the GPS wait
-    let loc = await getRecentFix();
-    if (!loc) {
-      try {
-        loc = await Promise.race([
-          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), 8000)),
-        ]);
-        rememberFix(loc);
-      } catch (_) {
-        try { loc = await Location.getLastKnownPositionAsync(); } catch (__) {}
-      }
-    }
+    const loc = fix.loc;
     if (!loc?.coords) {
       return { allowed: false, message: "You're not in an accurate location. Please enable GPS and try again." };
     }
@@ -788,6 +823,7 @@ const HomeScreen = ({ navigation, route }) => {
         setLocationName(punchAddress);
         await updatePunchLocation(savedId, { latitude, longitude, address: punchAddress });
         if (isNowIn) setPunchInAddress(punchAddress);
+        setLastPunchAddress(punchAddress); // edited by Bindhu 28-11-2026: the gray button's location line // end
       }
       console.log(`[Punch] Address: ${punchAddress} (${Date.now() - startedAt}ms)`);
       recordAudit(`location of the ${isNowIn ? 'check-in' : 'check-out'}`, {
@@ -906,6 +942,7 @@ const HomeScreen = ({ navigation, route }) => {
       const isNowIn = type === 'IN';
       punchedInRef.current = isNowIn; // edited by Bindhu 28-11-2026 // end
       noteLastPunch([{ punch_time: punchTime }]); // edited by Bindhu 28-11-2026: 1-minute gap starts now // end
+      setLastPunchAddress(''); // edited by Bindhu 28-11-2026: this punch's address is filled in once found // end
       setIsPunchedIn(isNowIn);
       if (isNowIn) {
         setPunchInTime(new Date(punchTime));
@@ -1085,7 +1122,7 @@ const HomeScreen = ({ navigation, route }) => {
                   accessibilityState={{ disabled: punching || checkingPunch || cooldownMs > 0, busy: punching || checkingPunch }}
                   onPress={() => handleSwipeComplete(true)}
                   accessibilityLabel={cooldownMs > 0
-                    ? `${isPunchedIn ? 'Check Out' : 'Check In'} available in ${fmtGap(cooldownMs)}. One minute is needed between punches.`
+                    ? `${gapText(cooldownMs)}. You can punch again after one minute.${gapLocation ? ` Location: ${gapLocation}.` : ''}`
                     : `Take selfie to ${isPunchedIn ? 'check out' : 'check in'}`}
                   style={[styles.selfieBtn, {
                     height: SWIPE_TRACK_HEIGHT,
@@ -1103,11 +1140,14 @@ const HomeScreen = ({ navigation, route }) => {
                           real width to fit into (otherwise the text could push past the button on narrow iPhones) */}
                       <View style={styles.selfieTextBox}>
                         <Text style={[styles.selfieBtnText, { fontVariant: ['tabular-nums'] }]} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.6}>
-                          {`${isPunchedIn ? 'Check Out' : 'Check In'} in ${fmtGap(cooldownMs)}`}
+                          {gapText(cooldownMs)}
                         </Text>
-                        <Text style={styles.selfieGapNote} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.75}>
-                          1 min between punches
-                        </Text>
+                        {/* Where that punch was made (edited by Bindhu 28-11-2026: was "1 min between punches") */}
+                        {!!gapLocation && (
+                          <Text style={styles.selfieGapNote} numberOfLines={1} ellipsizeMode="tail">
+                            {gapLocation}
+                          </Text>
+                        )}
                       </View>
                     </>
                     // end
@@ -1129,9 +1169,10 @@ const HomeScreen = ({ navigation, route }) => {
                 onSwipeComplete={handleSwipeComplete}
                 resetTrigger={cancelTrigger}
                 trackHeight={SWIPE_TRACK_HEIGHT}
-                locationName={isPunchedIn ? punchInAddress : ''}
+                // During the minute after a punch: that punch's place (in or out); otherwise the check-in place as before
+                locationName={cooldownMs > 0 ? gapLocation : (isPunchedIn ? punchInAddress : '')}
                 punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
-                cooldownText={cooldownMs > 0 ? fmtGap(cooldownMs) : null}
+                cooldownText={cooldownMs > 0 ? gapText(cooldownMs) : null}
                 onDragStart={() => setSwipeDragging(true)}
                 onDragEnd={() => setSwipeDragging(false)}
               />

@@ -23,7 +23,8 @@ const SwipeToPunch = ({
   punchTime = null,
   // Check In or Check Out not known yet (the server is being asked): grey, no swiping, "Checking status..."
   statusPending = false,
-  // edited by Bindhu 28-11-2026: 1 minute after the last punch (any source): "0:42" left — grey, no swiping, countdown
+  // edited by Bindhu 28-11-2026: 1 minute after the last punch (any source): the text to show, e.g. "Checked in · wait 0:42"
+  // — grey, no swiping, countdown
   cooldownText = null,
   // end
   // Told when a drag starts / ends, so the screen can stop its own scrolling meanwhile (on iPhone the page
@@ -141,20 +142,21 @@ const SwipeToPunch = ({
     textColor = theme.isDark ? '#CBD5E1' : '#64748B';
     textVal = 'Checking status...';
   }
-  // edited by Bindhu 28-11-2026: the 1-minute wait after a punch — grey track, timer knob, "Check Out in 0:42"
+  // edited by Bindhu 28-11-2026: the 1-minute wait after a punch — grey track, timer knob, and the text the screen gives
+  // (cooldownText: "Checked in · wait 0:42" — what was just done, then the wait)
   const cooling = !!cooldownText && !loading && !statusPending;
   if (cooling) {
     trackColor = theme.isDark ? '#2A2F36' : '#F1F5F9';
     buttonColor = '#94A3B8';
     textColor = theme.isDark ? '#CBD5E1' : '#64748B';
-    textVal = `${isPunchedIn ? 'Check Out' : 'Check In'} in ${cooldownText}`;
+    textVal = cooldownText;
   }
   // end
 
   return (
     <View
       accessible={cooling || undefined}
-      accessibilityLabel={cooling ? `${isPunchedIn ? 'Check Out' : 'Check In'} available in ${cooldownText}. One minute is needed between punches.` : undefined}
+      accessibilityLabel={cooling ? `${cooldownText}. You can punch again after one minute.${locationName ? ` Location: ${locationName}.` : ''}` : undefined}
       style={[
         styles.swipeTrack,
         { 
@@ -180,15 +182,9 @@ const SwipeToPunch = ({
         <Text style={[styles.swipeText, cooling && styles.countdownText, { color: textColor }]} allowFontScaling={false} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.6}>{textVal.toUpperCase()}</Text>
         {/* end */}
 
-        {/* edited by Bindhu 28-11-2026: why it is grey — one short line, shrinks rather than wraps on small phones */}
-        {cooling && (
-          <Text style={[styles.locText, styles.gapNote, { color: textColor }]} allowFontScaling={false} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.75}>
-            1 min between punches
-          </Text>
-        )}
-        {/* end */}
-
-        {isPunchedIn && !loading && !statusPending && !cooling && !!locationName && (
+        {/* Second line: where the punch was made — the check-in place as before, and during the minute after any punch
+            (in or out) that punch's place (edited by Bindhu 28-11-2026: was "1 min between punches") */}
+        {!loading && !statusPending && (isPunchedIn || cooling) && !!locationName && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={moderateScale(10)} />
             <Text style={[styles.locText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>
@@ -248,8 +244,6 @@ const styles = StyleSheet.create({
   },
   // The countdown's digits keep one width, so the text doesn't jiggle every second
   countdownText: { fontVariant: ['tabular-nums'] },
-  // Short, so it stays readable on the narrowest phones (320 pt) instead of shrinking to a tiny size
-  gapNote: { fontSize: moderateScale(10), marginLeft: 0, marginTop: 4 },
   textBlock: {
     width: '100%',
     alignItems: 'center',
