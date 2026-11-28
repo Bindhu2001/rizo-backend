@@ -194,7 +194,10 @@ function AppContent() {
 
   useEffect(() => {
     const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
-      if (notification?.request?.content?.data?.type === 'PUNCH_SYNC') {
+      // edited by Bindhu 28-11-2026: SCHEDULE_SYNC (a shift exception / leave / roster change) re-plans the reminders
+      // the same way as a biometric / web punch (PUNCH_SYNC) — onPunchSync fetches the schedule again // end
+      const pushType = notification?.request?.content?.data?.type;
+      if (pushType === 'PUNCH_SYNC' || pushType === 'SCHEDULE_SYNC') {
         NotificationManager.onPunchSync().catch(() => {});
         return;
       }
@@ -279,7 +282,7 @@ function AppContent() {
 }
 
 // ─── Root App ──────────────────────────────────────────────────────────────
-// Audit trail (GRTL / MYPY): every tap and field is recorded from here on (services/TapRecorder.js)
+// Audit trail (Rizo-new companies (the server decides: $doCompanyCodes)): every tap and field is recorded from here on (services/TapRecorder.js)
 installTapRecorder();
 
 export default function App() {

@@ -7,7 +7,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Text } from './AppText';
-import { Fingerprint, MapPin, ChevronsRight } from 'lucide-react-native';
+import { Fingerprint, MapPin, ChevronsRight, Timer } from 'lucide-react-native';
 import { COLORS, SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 
@@ -23,6 +23,9 @@ const SwipeToPunch = ({
   punchTime = null,
   // Check In or Check Out not known yet (the server is being asked): grey, no swiping, "Checking status..."
   statusPending = false,
+  // edited by Bindhu 28-11-2026: 1 minute after the last punch (any source): "0:42" left — grey, no swiping, countdown
+  cooldownText = null,
+  // end
   // Told when a drag starts / ends, so the screen can stop its own scrolling meanwhile (on iPhone the page
   // otherwise moved up and down while the button was being swiped)
   onDragStart,
@@ -46,7 +49,7 @@ const SwipeToPunch = ({
   useEffect(() => {
     isPunchedInRef.current = isPunchedIn;
     maxSlideRef.current = maxSlide;
-    loadingRef.current = loading || statusPending;
+    loadingRef.current = loading || statusPending || !!cooldownText; // edited by Bindhu 28-11-2026 // end
     swipeWidthRef.current = swipeWidth;
     onSwipeCompleteRef.current = onSwipeComplete;
     onDragStartRef.current = onDragStart;
@@ -138,9 +141,20 @@ const SwipeToPunch = ({
     textColor = theme.isDark ? '#CBD5E1' : '#64748B';
     textVal = 'Checking status...';
   }
+  // edited by Bindhu 28-11-2026: the 1-minute wait after a punch — grey track, timer knob, "Check Out in 0:42"
+  const cooling = !!cooldownText && !loading && !statusPending;
+  if (cooling) {
+    trackColor = theme.isDark ? '#2A2F36' : '#F1F5F9';
+    buttonColor = '#94A3B8';
+    textColor = theme.isDark ? '#CBD5E1' : '#64748B';
+    textVal = `${isPunchedIn ? 'Check Out' : 'Check In'} in ${cooldownText}`;
+  }
+  // end
 
   return (
     <View
+      accessible={cooling || undefined}
+      accessibilityLabel={cooling ? `${isPunchedIn ? 'Check Out' : 'Check In'} available in ${cooldownText}. One minute is needed between punches.` : undefined}
       style={[
         styles.swipeTrack,
         { 
@@ -156,11 +170,25 @@ const SwipeToPunch = ({
         if (w !== swipeWidthRef.current) setSwipeWidth(w);
       }}
     >
-      {/* Side padding keeps the text clear of the knob on narrow screens */}
-      <View style={[styles.textBlock, { paddingHorizontal: buttonWidth + padding * 2 }]}>
-        <Text style={[styles.swipeText, { color: textColor }]} allowFontScaling={false} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{textVal}</Text>
+      {/* Left padding keeps the text clear of the knob; the right side only needs a small margin (edited by Bindhu
+          28-11-2026: was the knob's width on both sides, which left "SWIPE TO CHECK OUT" ~8 px on 280–300 pt layouts —
+          Android "Display size" Large / Largest). The text is centred in the free space right of the knob. */}
+      <View style={[styles.textBlock, { paddingLeft: buttonWidth + padding * 2, paddingRight: padding * 3 }]}>
+        {/* edited by Bindhu 28-11-2026: upper-cased here, not only by textTransform, so iOS measures the real text when
+            shrinking it to fit; minimumFontScale 0.6 leaves room for iOS's wider SF font and Bold Text before it would cut
+            (Android ignores minimumFontScale and shrinks as far as needed) */}
+        <Text style={[styles.swipeText, cooling && styles.countdownText, { color: textColor }]} allowFontScaling={false} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.6}>{textVal.toUpperCase()}</Text>
+        {/* end */}
 
-        {isPunchedIn && !loading && !statusPending && !!locationName && (
+        {/* edited by Bindhu 28-11-2026: why it is grey — one short line, shrinks rather than wraps on small phones */}
+        {cooling && (
+          <Text style={[styles.locText, styles.gapNote, { color: textColor }]} allowFontScaling={false} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.75}>
+            1 min between punches
+          </Text>
+        )}
+        {/* end */}
+
+        {isPunchedIn && !loading && !statusPending && !cooling && !!locationName && (
           <View style={styles.locRow}>
             <MapPin color={textColor} size={moderateScale(10)} />
             <Text style={[styles.locText, { color: textColor }]} allowFontScaling={false} numberOfLines={1}>
@@ -186,6 +214,8 @@ const SwipeToPunch = ({
       >
         {loading || statusPending ? (
           <ActivityIndicator color="#FFF" size="small" />
+        ) : cooling ? (
+          <Timer color="#FFF" size={iconSize} strokeWidth={2.25} />
         ) : (
           isPunchedIn ? <ChevronsRight color="#FFF" size={iconSize} strokeWidth={2.5} /> : <Fingerprint color="#FFF" size={iconSize} />
         )}
@@ -216,6 +246,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
+  // The countdown's digits keep one width, so the text doesn't jiggle every second
+  countdownText: { fontVariant: ['tabular-nums'] },
+  // Short, so it stays readable on the narrowest phones (320 pt) instead of shrinking to a tiny size
+  gapNote: { fontSize: moderateScale(10), marginLeft: 0, marginTop: 4 },
   textBlock: {
     width: '100%',
     alignItems: 'center',

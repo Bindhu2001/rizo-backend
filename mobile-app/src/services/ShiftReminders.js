@@ -15,7 +15,10 @@ import { fetchServerDay, getCachedServerPunches, mergePunches } from './AllPunch
 export const REMINDERS_ENABLED_KEY = 'punch_reminders_enabled';
 const SCHEDULE_CACHE_KEY = (userId) => `shift_schedule_${userId}`;
 const SHORT_STATE_KEY = (userId) => `shift_short_state_${userId}`;
-const SCHEDULE_MAX_AGE_MS = 3 * 60 * 60 * 1000;
+// edited by Bindhu 28-11-2026: was 3 hours — a shift exception / leave / roster change made after the last fetch kept
+// the old reminders for up to 3 h. 15 min matches the background task's interval; app open asks at once (forceFetch).
+const SCHEDULE_MAX_AGE_MS = 15 * 60 * 1000;
+// end
 const REMINDER_OFFSET_MS = 10 * 60 * 1000;
 // Punches this far before shift start / after shift end still belong to that shift
 const WINDOW_PAD_MS = 4 * 60 * 60 * 1000;
@@ -60,7 +63,7 @@ const fetchSchedule = async (userId) => {
 const loadSchedule = async (userId, forceFetch) => {
   let cached = null;
   try { cached = JSON.parse(await AsyncStorage.getItem(SCHEDULE_CACHE_KEY(userId)) || 'null'); } catch (_) {}
-  // Re-fetched every new day and after 3 hours (and on every punch sync, via forceFetch)
+  // Re-fetched every new day and after 15 minutes (and on app open / every punch sync, via forceFetch)
   const fresh = cached && Date.now() - cached.fetchedAt < SCHEDULE_MAX_AGE_MS
     && isoDay(new Date(cached.fetchedAt)) === isoDay(new Date());
   if (fresh && !forceFetch) return cached.days;
@@ -213,6 +216,16 @@ export const refreshShiftReminders = async (userId, { forceFetch = false } = {})
     const nextShortState = {};
 
     await cancelByPrefix(REMINDER_PREFIX);
+
+    // edited by Bindhu 28-11-2026: a short-hours alert still waiting for a date that is no longer a working day (a shift
+    // exception / week off, holiday or leave added since) is cancelled — the loop below only visits working days
+    const workingDates = new Set(windows.map(({ row }) => row.date));
+    for (const [date, st] of Object.entries(shortState)) {
+      if (!workingDates.has(date) && st && st.fireAt > now) {
+        await Notifications.cancelScheduledNotificationAsync(`${SHORT_PREFIX}${date}`).catch(() => {});
+      }
+    }
+    // end
 
     for (const { row, w } of windows) {
       const startMs = w.start.getTime();
