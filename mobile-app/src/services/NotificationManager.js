@@ -7,6 +7,7 @@ import { getLoggedUser, getLeavesLocal, saveNotificationLocal, markNotifications
 import { clearShiftReminders, refreshShiftReminders } from './ShiftReminders';
 import { clearRevampToken, PushTokenApi, AnnouncementsApi } from './RevampApi';
 import { API_ENDPOINTS } from '../constants/Config';
+import { countPendingApprovals, pendingApprovalsMessage } from './PendingApprovals';
 import axios from 'axios';
 import { Platform } from 'react-native';
 
@@ -16,6 +17,9 @@ const BG_PUSH_TASK_NAME = 'rizo-silent-push';
 const ANN_SEEDED_KEY = (userId) => `announcements_seeded_${userId}`;
 // Leave / regularisation / expense decisions: the first check after sign-in only records what is already there
 const STATUS_SEEDED_KEY = (userId, kind) => `status_seeded_${kind}_${userId}`;
+// edited by Bindhu 28-11-2026: who the 'waiting for your approval' reminder was last given to since a sign-in — removed
+// at sign-out, so the first check after every sign-in reminds once (services/PendingApprovals.js) // end
+const APPROVAL_REMINDER_KEY = 'approval_reminder_user';
 // Shown at once. Android: on the app's own 'default' channel (made in setup(), the one the shift reminders and server
 // pushes use) instead of the library's fallback channel
 const IMMEDIATE_TRIGGER = Platform.OS === 'android' ? { channelId: 'default' } : null;
@@ -106,7 +110,8 @@ class NotificationManager {
   static async recordStatus(user, ref, title, message, type, seeded) {
     const { initDB } = require('./LocalDB');
     const db = await initDB();
-    const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+    // edited by Bindhu 28-11-2026: per person — on a shared phone each person keeps their own copy // end
+    const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ? AND user_id = ?`, [ref, user.user_id]);
     if (existing) return;
     const notifId = await saveNotificationLocal({ userId: user.user_id, title, message, type: ref });
     if (seeded) await this.triggerLocalNotification(title, message, type);
@@ -125,7 +130,7 @@ class NotificationManager {
       if (!user?.user_id) return;
       const { initDB } = require('./LocalDB');
       const db = await initDB();
-      const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+      const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ? AND user_id = ?`, [ref, user.user_id]); // per person (shared phone)
       if (existing) return;
       await saveNotificationLocal({
         userId: user.user_id,
@@ -166,6 +171,9 @@ class NotificationManager {
 
       // Server pushes already shown → recorded first, so the checks below skip them
       await this.recordPresentedPushes();
+
+      // edited by Bindhu 28-11-2026: requests that wait on this person, once after each sign-in // end
+      await this.remindPendingApprovals(user);
 
       // Check Leaves Status
       await this.checkLeavesDiff(user);
@@ -223,6 +231,13 @@ class NotificationManager {
   static async unregisterToken(userId) {
     // Shift reminders and the rizo-revamp sign-in are per-user — never leave them for the next login
     await clearShiftReminders().catch(() => {});
+    // edited by Bindhu 28-11-2026: this person's notifications leave the phone's notification bar too — the next person
+    // to sign in would otherwise get them copied into their own list (recordPresentedPushes) and see their count on the
+    // app icon. Their list in the app stays for when they sign in again. Next sign-in: the approvals reminder again.
+    await Notifications.dismissAllNotificationsAsync().catch(() => {});
+    await Notifications.setBadgeCountAsync(0).catch(() => {});
+    await AsyncStorage.removeItem(APPROVAL_REMINDER_KEY).catch(() => {});
+    // end
     let token = null;
     try { token = await NotificationManager.getPushToken(); } catch (_) {}
     if (token) {
@@ -242,6 +257,29 @@ class NotificationManager {
       }
     }
   }
+
+  // edited by Bindhu 28-11-2026
+  // Once after each sign-in: what waits on this person in the Approvals tab — pushes sent while they were signed out
+  // (or while a shared phone was someone else's) never reached them. Shown as an alert and kept in Notifications.
+  // Nothing readable (offline): tried again on the next check.
+  static async remindPendingApprovals(user) {
+    try {
+      if (!user?.user_id) return;
+      const done = await AsyncStorage.getItem(APPROVAL_REMINDER_KEY).catch(() => null);
+      if (done === String(user.user_id)) return;
+      const counts = await countPendingApprovals(user);
+      if (!counts) return;
+      await AsyncStorage.setItem(APPROVAL_REMINDER_KEY, String(user.user_id)).catch(() => {});
+      const message = pendingApprovalsMessage(counts);
+      if (!message) return;
+      const title = '📝 Waiting for your approval';
+      await saveNotificationLocal({ userId: user.user_id, title, message, type: `approvals_due_${Date.now()}` });
+      await this.triggerLocalNotification(title, message, 'APPROVALS_DUE');
+    } catch (e) {
+      console.log('[NotificationManager] remindPendingApprovals error:', e?.message);
+    }
+  }
+  // end
 
   static async checkLeavesDiff(user) {
     // 1. Fetch Leave History from Server
@@ -347,7 +385,7 @@ class NotificationManager {
       for (const a of rows) {
         if (a.is_read) continue;
         const ref = `ann_${a.announcement_pkey}`;
-        const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ?`, [ref]);
+        const existing = await db.getFirstAsync(`SELECT id FROM notifications WHERE type = ? AND user_id = ?`, [ref, user.user_id]); // per person (shared phone)
         if (existing) continue;
         const prefix = a.category === 'Emergency' ? '🚨 Emergency' : a.category === 'Important' ? '📌 Important' : '📢 Announcement';
         const title = `${prefix}: ${a.title}`;

@@ -12,6 +12,7 @@ import {
   fmtDate, fmtAmt, resolveEmpId, FilterBar, ALL, monthFilterOptions, valueFilterOptions, monthOf, rangeInMonth, currentMonth,
 } from '../components/EssUi';
 import { useFooterPadding } from '../components/KeyboardDoneBar';
+import { expenseRowState } from '../services/ApprovalRules';
 
 // Approvals › Expense, the web employee login's ESS Approvals › Expense: the same /api/expenses queue and
 // authorize / approve / reject routes, role split, statuses and claim details (ExpenseDetailsModal).
@@ -24,16 +25,8 @@ const STATUS_COLOR = {
 };
 const LABELS = { authorize: 'Authorize', approve: 'Approve', reject: 'Reject' };
 
-// authorized_by / approved_by are varchar columns — compared as numbers (web expenseRowStateFor)
-const rowStateFor = (row, empId) => {
-  const isAuthorizer = row.authorized_by != null && Number(row.authorized_by) === empId;
-  const isApprover = row.approved_by != null && Number(row.approved_by) === empId;
-  if (!isAuthorizer && !isApprover) return null;
-  if (isAuthorizer && row.expense_status === 'Applied') return { kind: 'pending', primary: 'authorize' };
-  if (isApprover && row.expense_status === 'Authorized') return { kind: 'pending', primary: 'approve' };
-  if (['Authorized', 'Approved', 'Rejected'].includes(row.expense_status)) return { kind: 'history' };
-  return null;
-};
+// authorized_by / approved_by compared as numbers (web expenseRowStateFor) — services/ApprovalRules.js
+const rowStateFor = expenseRowState;
 
 const fullName = (r) => `${r.first_name} ${r.last_name || ''}`.trim();
 const empCode = (r) => (r.emp_company_id || '').trim() || r.emp_id;

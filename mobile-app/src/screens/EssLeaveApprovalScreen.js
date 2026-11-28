@@ -12,6 +12,7 @@ import {
   fmtDate, resolveEmpId, FilterBar, ALL, monthFilterOptions, valueFilterOptions, monthOf, rangeInMonth, currentMonth,
 } from '../components/EssUi';
 import { useFooterPadding } from '../components/KeyboardDoneBar';
+import { leaveRowState } from '../services/ApprovalRules';
 
 // Approvals › Leave, the web employee login's ESS Approvals › Leave (rizo-revamp /ess/approvals): the same
 // /api/leave/requests queue and action routes, the same role split, statuses, details and remarks rules.
@@ -33,20 +34,8 @@ const STATUS_LABEL = {
   CancellationOfApproved: 'Cancellation of Approved',
   CancelledByAdmin: 'Cancelled by Admin',
 };
-const HISTORY_STATUSES = ['Authorized', 'Rejected', 'Approved', 'CancellationOfAuthorized', 'CancellationOfApproved', 'Cancelled', 'CancelledByAdmin', 'Cancellation Authorized', 'Cancellation Approved'];
-
-// Which of authorizer / approver this row is for the viewer, and what they may do now (web rowStateFor)
-const rowStateFor = (row, empId) => {
-  const isAuthorizer = Number(row.ISAutherizedby) === empId;
-  const isApprover = Number(row.APPROVEDBY) === empId;
-  if (!isAuthorizer && !isApprover) return null;
-  if (isAuthorizer && row.LEAVESTATUS === 'Applied') return { kind: 'pending', primary: 'authorize' };
-  if (isAuthorizer && row.LEAVESTATUS === 'CancellationOfAuthorized') return { kind: 'pending', cancellation: true };
-  if (isApprover && row.LEAVESTATUS === 'Authorized' && !row.APPROVED_date) return { kind: 'pending', primary: 'approve' };
-  if (isApprover && row.LEAVESTATUS === 'CancellationOfApproved') return { kind: 'pending', cancellation: true };
-  if (HISTORY_STATUSES.includes(row.LEAVESTATUS)) return { kind: 'history' };
-  return null;
-};
+// Which of authorizer / approver this row is for the viewer, and what they may do now (web rowStateFor) — services/ApprovalRules.js
+const rowStateFor = leaveRowState;
 
 const LABELS = {
   authorize: 'Authorize', approve: 'Approve', reject: 'Reject',
