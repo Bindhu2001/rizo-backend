@@ -1181,9 +1181,10 @@ const HomeScreen = ({ navigation, route }) => {
 
             {/* Live status — always visible while punching */}
             {(punching || !!punchMessage) && (
-              <View style={styles.punchMessageBanner}>
-                <ActivityIndicator size="small" color={COLORS.primaryDeep} style={{ marginRight: 8 }} />
-                <Text style={styles.punchMessageText}>
+              // edited by Bindhu 28-11-2026: dark mode — indigo tint with light text instead of the bright light strip // end
+              <View style={[styles.punchMessageBanner, theme.isDark && { backgroundColor: '#4F46E526', borderColor: '#4F46E566' }]}>
+                <ActivityIndicator size="small" color={theme.isDark ? '#A5B4FC' : COLORS.primaryDeep} style={{ marginRight: 8 }} />
+                <Text style={[styles.punchMessageText, theme.isDark && { color: '#C7D2FE' }]}>
                   {punchMessage || (isPunchedIn ? 'Processing check out...' : 'Processing check in...')}
                 </Text>
               </View>
@@ -1198,9 +1199,11 @@ const HomeScreen = ({ navigation, route }) => {
           if (!msgs.length) return null;
           const msg = msgs[msgIndex % msgs.length];
           return (
-            <Animated.View style={[styles.sysMsgBar, { opacity: msgFade, borderLeftColor: msg.color }]}>
+            // edited by Bindhu 28-11-2026: dark mode — a soft blue tint of the page with light-blue text instead of the
+            // bright light strip (light mode unchanged) // end
+            <Animated.View style={[styles.sysMsgBar, { opacity: msgFade, borderLeftColor: theme.isDark ? '#38BDF8' : msg.color }, theme.isDark && { backgroundColor: '#0EA5E91F' }]}>
               <Text style={styles.sysMsgIcon}>{msg.icon}</Text>
-              <Text style={[styles.sysMsgText, { color: msg.color }]} numberOfLines={2}>{msg.text}</Text>
+              <Text style={[styles.sysMsgText, { color: theme.isDark ? '#7DD3FC' : msg.color }]} numberOfLines={2}>{msg.text}</Text>
               {msgs.length > 1 && (
                 <Text style={styles.sysMsgDots}>{msgs.map((_, i) => i === msgIndex % msgs.length ? '●' : '○').join(' ')}</Text>
               )}
@@ -1397,7 +1400,7 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4, borderLeftColor: '#4F46E5',
   },
   sysMsgIcon: { fontSize: moderateScale(16), marginRight: moderateScale(8) },
-  sysMsgText: { flex: 1, fontSize: moderateScale(12), fontWeight: '700', lineHeight: 18 },
+  sysMsgText: { flex: 1, fontSize: moderateScale(12), fontWeight: '700', lineHeight: moderateScale(18) },
   sysMsgDots: { fontSize: moderateScale(8), color: '#9CA3AF', marginLeft: moderateScale(8) },
 
   punchedInCard: { flexDirection: 'row', backgroundColor: '#FFEBEB', height: moderateScale(68), borderRadius: moderateScale(34), alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: moderateScale(8), ...SHADOWS.light },
