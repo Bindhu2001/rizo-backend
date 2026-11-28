@@ -417,7 +417,9 @@ TaskManager.defineTask(BG_TASK_NAME, async () => {
     await NotificationManager.checkExpenseDiff(user);
     await NotificationManager.checkAnnouncements(user);
     // A biometric / web punch made while the app is closed cancels the reminders it answers
-    await refreshShiftReminders(user.user_id);
+    // edited by Bindhu 28-11-2026: and a fresh schedule each run (forceFetch), so a shift exception / leave / roster
+    // change made while the app is closed cancels that day's reminders too // end
+    await refreshShiftReminders(user.user_id, { forceFetch: true });
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch {
     return BackgroundFetch.BackgroundFetchResult.Failed;

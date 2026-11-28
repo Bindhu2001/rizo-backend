@@ -14,7 +14,7 @@ const TILE_SELFIES = 4;
 // Home "My Team" tile (rizo-revamp /api/mobile/team-today): full width like the Client Visit tile, but shorter.
 // Shows how many people are in the team the employee authorises / approves and how many are in / on leave /
 // not punched in / off for their current shift (each person once, even when in both teams);
-// tapping opens the My Team page. Nothing at all when the employee has no team. GRTL / MYPY: today's punch
+// tapping opens the My Team page. Nothing at all when the employee has no team. Rizo-new companies (the server decides: $doCompanyCodes): today's punch
 // selfies of the team as small faces next to the arrow (components/TeamSelfie.js).
 
 // Unique people across the "authorise" and "approve" teams (a reportee can be in both)
@@ -74,7 +74,7 @@ const TeamTile = ({ user }) => {
     TeamApi.today()
       .then((res) => { cached = res || null; if (alive) setData(cached); })
       .catch(() => {});
-    // Today's team punch selfies (GRTL / MYPY): each person's latest, newest first
+    // Today's team punch selfies (Rizo-new companies (the server decides: $doCompanyCodes)): each person's latest, newest first
     PunchSelfieApi.teamToday()
       .then((rows) => { cachedSelfies = [...latestSelfieByEmp(rows).values()]; if (alive) setSelfies(cachedSelfies); })
       .catch(() => {});

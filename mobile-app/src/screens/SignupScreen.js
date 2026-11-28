@@ -764,7 +764,7 @@ const SignupScreen = ({ navigation }) => {
               <Text style={[st.cardTitle, { color: theme.text }]}>Hello,</Text>
               <Text style={[st.cardSub, { color: theme.textLight }]}>Enter your details to continue</Text>
               <View style={{ marginTop: 28 }}>
-                <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="GLET" maxLength={50} />
+                <FloatInput label="Company Code" value={companyCode} onChangeText={t => setCompanyCode(t.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} placeholder="ABCD" maxLength={50} />
               </View>
               <FloatInput label="Offer ID (if you have one)" value={offerId} onChangeText={t => setOfferId(t.replace(/[^A-Za-z0-9-]/g, '').toUpperCase())} autoCapitalize="characters" placeholder="OFR-XXXXXX" maxLength={10} />
               <FloatInput label="Email ID" value={email} onChangeText={t => setEmail(t.replace(/[^a-zA-Z0-9@._-]/g, '').toLowerCase())} keyboardType="email-address" autoCapitalize="none" placeholder="employee@gmail.com" maxLength={100} />

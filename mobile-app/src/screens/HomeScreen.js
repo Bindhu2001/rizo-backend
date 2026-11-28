@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Clock, MapPin, Bell, Briefcase, DollarSign, FileText,
   Calendar as CalendarIcon, Gift, Power, Fingerprint, History, Navigation, CloudOff,
-  CheckCircle, ClipboardList, ChevronRight, ChevronDown, ChevronUp, Camera
+  CheckCircle, ClipboardList, ChevronRight, ChevronDown, ChevronUp, Camera, Timer
 } from 'lucide-react-native';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -122,8 +122,18 @@ const HomeScreen = ({ navigation, route }) => {
   const [closedMins, setClosedMins] = useState(0);
   const [serverDurationMins, setServerDurationMins] = useState(null);
   const [, setClockTick] = useState(0);
-  // Check In / Check Out not known yet: the saved server punches are old and the server is being asked
-  const [statusPending, setStatusPending] = useState(false);
+  // edited by Bindhu 28-11-2026: no "Checking…" lock at app open. The button shows at once from the phone + saved server
+  // punches; the server is asked in the background. serverCheck: { promise, mustWait } of that ask — mustWait when the
+  // saved copy was old, so a swipe waits for it (services/AllPunches.js). punchedInRef: the latest Check In / Out.
+  const serverCheck = useRef(null);
+  const punchedInRef = useRef(false);
+  // end
+  // edited by Bindhu 28-11-2026: the next punch only 1 minute after the last one — from ANY source (this phone,
+  // biometric, web: the merged punches, services/AllPunches.js). lastPunchAt: newest punch time (ms); cooldownMs: left.
+  const [lastPunchAt, setLastPunchAt] = useState(null);
+  const lastPunchAtRef = useRef(null);
+  const [cooldownMs, setCooldownMs] = useState(0);
+  // end
   const [roles, setRoles] = useState({
     is_employee_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true',
     is_leave_hierarchy: user?.is_hierarchy == 1 || user?.is_hierarchy === true || user?.is_hierarchy === '1' || user?.is_hierarchy === 'true'
@@ -156,7 +166,9 @@ const HomeScreen = ({ navigation, route }) => {
       NotificationManager.checkStatusChanges();
       NotificationManager.registerAndSendToken(userRef.current.user_id);
       // Re-check the button once the schedule is fresh (night shifts need it for the shift date)
-      refreshShiftReminders(userRef.current.user_id).then(() => fetchStatus());
+      // edited by Bindhu 28-11-2026: the schedule is asked again on app open (forceFetch), so a shift exception / leave /
+      // roster change made since the last fetch cancels its reminders at once (offline: the saved schedule) // end
+      refreshShiftReminders(userRef.current.user_id, { forceFetch: true }).then(() => fetchStatus());
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -167,7 +179,8 @@ const HomeScreen = ({ navigation, route }) => {
       if (state === 'active') {
         fetchStatus();
         NotificationManager.forceCheck();
-        if (userRef.current) refreshShiftReminders(userRef.current.user_id);
+        // edited by Bindhu 28-11-2026: back in the app — fresh schedule too (forceFetch), then the button again // end
+        if (userRef.current) refreshShiftReminders(userRef.current.user_id, { forceFetch: true }).then(() => fetchStatus());
       }
     });
     return () => sub.remove();
@@ -331,9 +344,40 @@ const HomeScreen = ({ navigation, route }) => {
   // The phone's own punch within this is the newest punch anyway — no need to wait on the server
   const OWN_PUNCH_RECENT_MS = 2 * 60 * 1000;
 
+  // edited by Bindhu 28-11-2026: the 1-minute gap between punches (any source)
+  const PUNCH_GAP_MS = 60 * 1000;
+  // Time left before the next punch. Capped at the gap: a server punch "in the future" (phone clock a little behind)
+  // must not block for longer than a minute.
+  const punchGapLeft = (at = lastPunchAtRef.current) => (
+    at ? Math.min(PUNCH_GAP_MS, Math.max(0, at + PUNCH_GAP_MS - Date.now())) : 0
+  );
+  // Newest punch among the merged punches (phone + biometric + web). Only ever moves forward, so an older answer
+  // landing late never lifts the wait of a punch just made.
+  const noteLastPunch = (punches) => {
+    let newest = 0;
+    // A punch more than 2 min ahead of this phone's clock is a clock mismatch (punches need the clock within 2 min,
+    // see punchRules), not a punch to wait for — it could otherwise keep the button grey for long
+    const latestAllowed = Date.now() + 2 * 60 * 1000;
+    (punches || []).forEach((p) => {
+      const ms = new Date(p.punch_time).getTime();
+      if (isFinite(ms) && ms <= latestAllowed && ms > newest) newest = ms;
+    });
+    if (newest && newest > (lastPunchAtRef.current || 0)) {
+      lastPunchAtRef.current = newest;
+      setLastPunchAt(newest);
+    }
+  };
+  // "0:42"
+  const fmtGap = (ms) => {
+    const s = Math.ceil(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+  // end
+
   // Button, check-in time and finished sessions from the shift date's punches (all sources)
   const applyPunchState = (next) => {
     const last = next.onShift[next.onShift.length - 1] || null;
+    punchedInRef.current = next.direction === 'OUT'; // edited by Bindhu 28-11-2026 // end
     setIsPunchedIn(next.direction === 'OUT');
     setStatus(prev => ({ ...prev, lastType: last ? String(last.type).toUpperCase() : 'NONE' }));
     if (next.direction === 'OUT' && last) {
@@ -370,6 +414,7 @@ const HomeScreen = ({ navigation, route }) => {
     let shiftDate = null;
     let schedule = [];
     let localPunches = [];
+    let mustWait = false; // edited by Bindhu 28-11-2026: saved server copy old → a swipe waits for the server's answer // end
     try {
       const now = new Date();
       const [sched, punches, cachedServer, lastStored] = await Promise.all([
@@ -381,18 +426,20 @@ const HomeScreen = ({ navigation, route }) => {
       schedule = sched;
       localPunches = punches;
       if (lastStored) lastActionTime.current = parseInt(lastStored, 10);
-      const next = nextPunch(now, mergePunches(punches, cachedServer), schedule);
+      const merged = mergePunches(punches, cachedServer); // edited by Bindhu 28-11-2026 // end
+      const next = nextPunch(now, merged, schedule);
       shiftDate = next.shiftDate;
       const cachedDay = await getCachedServerDay(user.user_id, shiftDate);
 
       if (requestId !== fetchStatusRequestId.current) return; // superseded by a newer call
 
       applyPunchState(next);
+      noteLastPunch(merged); // edited by Bindhu 28-11-2026 // end
       // A new shift date (button back to Check In) has no worked time yet
       setServerDurationMins(cachedDay ? cachedDay.durationMins : null);
       const serverCopyStale = !cachedDay?.fetchedAt || Date.now() - cachedDay.fetchedAt > SERVER_FRESH_MS;
       const ownPunchRecent = Date.now() - lastActionTime.current < OWN_PUNCH_RECENT_MS;
-      setStatusPending(serverCopyStale && !ownPunchRecent);
+      mustWait = serverCopyStale && !ownPunchRecent; // edited by Bindhu 28-11-2026 (was the "Checking…" lock) // end
     } catch (e) {
       console.log('[Home] Local status fetch error:', e);
     } finally {
@@ -402,6 +449,10 @@ const HomeScreen = ({ navigation, route }) => {
     // 2. The server's punches of the shift date — biometric and web punches the phone can't know about. Applied
     //    the same way, so the button only changes when there really is a new punch. Offline or no answer
     //    (fetchServerDay gives up after 8 s): the button stays on the saved copy.
+    // edited by Bindhu 28-11-2026: runs in the background (the button is not locked); a swipe meanwhile waits for it
+    let serverDone;
+    serverCheck.current = { promise: new Promise((resolve) => { serverDone = resolve; }), mustWait };
+    // end
     try {
       if (!shiftDate) return;
       const server = await fetchServerDay(user.user_id, shiftDate);
@@ -413,12 +464,27 @@ const HomeScreen = ({ navigation, route }) => {
       const now2 = new Date();
       const freshLocal = await getPunchesBetween(user.user_id, new Date(now2.getTime() - SHIFT_DATE_LOOKBACK_MS).toISOString(), new Date(now2.getTime() + 60000).toISOString()).catch(() => localPunches);
       if (requestId !== fetchStatusRequestId.current) return;
-      applyPunchState(nextPunch(now2, mergePunches(freshLocal, serverPunches), schedule));
+      // edited by Bindhu 28-11-2026: the server's answer may hold a biometric / web punch of the last minute
+      const merged2 = mergePunches(freshLocal, serverPunches);
+      applyPunchState(nextPunch(now2, merged2, schedule));
+      noteLastPunch(merged2);
+      // end
       setServerDurationMins(server.durationMins);
     } finally {
-      if (requestId === fetchStatusRequestId.current) setStatusPending(false);
+      serverDone(); // edited by Bindhu 28-11-2026 // end
     }
   };
+
+  // edited by Bindhu 28-11-2026: a swipe while the background server check (above) is still running waits for it, so a
+  // biometric / web punch the phone didn't know about is counted. At most SWIPE_STATUS_WAIT_MS, run alongside the punch
+  // type check (same 6 s), so the swipe is not made longer. Never throws.
+  const SWIPE_STATUS_WAIT_MS = 6000;
+  const waitForServerStatus = () => {
+    const check = serverCheck.current;
+    if (!check || !check.mustWait) return Promise.resolve();
+    return Promise.race([check.promise, new Promise((resolve) => setTimeout(resolve, SWIPE_STATUS_WAIT_MS))]);
+  };
+  // end
 
   // A punch was just saved. A status refresh still running started before it and read the phone's punches
   // without it — it must not land afterwards and flip the Check In / Check Out label back. Cancelling it and
@@ -605,13 +671,36 @@ const HomeScreen = ({ navigation, route }) => {
     setSelfieMode(await selfieNeededFor(userId, fresh?.data?.punchtype ?? keptType));
   };
 
+  // edited by Bindhu 28-11-2026: count down the 1-minute gap once a second while it runs (the button is grey meanwhile).
+  // Worked out from the clock each tick, so it is right again after the app was in the background.
+  useEffect(() => {
+    const tick = () => {
+      const left = punchGapLeft(lastPunchAt);
+      setCooldownMs(left);
+      return left;
+    };
+    if (!tick()) return undefined;
+    const timer = setInterval(() => { if (!tick()) clearInterval(timer); }, 1000);
+    return () => clearInterval(timer);
+  }, [lastPunchAt]); // eslint-disable-line react-hooks/exhaustive-deps
+  // end
+
   // fromSelfieButton: the "Take selfie" button — the photo is the confirmation, so the camera opens straight away
   const handleSwipeComplete = async (fromSelfieButton = false) => {
+    // edited by Bindhu 28-11-2026: within 1 minute of the last punch (any source) — the button is grey; ignore
+    if (punchGapLeft() > 0) {
+      setCancelTrigger((t) => t + 1);
+      return;
+    }
+    // end
     // Spinner on the knob while the punch type / 100 m office check runs
     setCheckingPunch(true);
+    const swipedIn = isPunchedIn; // edited by Bindhu 28-11-2026: the label the person swiped // end
     let verdict;
     try {
-      verdict = await checkPunchAllowed();
+      // edited by Bindhu 28-11-2026: the server's Check In / Out (if still being asked) alongside the punch type check
+      [verdict] = await Promise.all([checkPunchAllowed(), waitForServerStatus()]);
+      // end
     } catch (e) {
       console.log('[Punch] check failed', e?.message);
       verdict = { allowed: false, message: 'Could not verify punch. Please try again.' };
@@ -628,7 +717,24 @@ const HomeScreen = ({ navigation, route }) => {
       showAlert('warning', 'Punch Not Allowed', verdict.message || "You're not in an accurate location.");
       return;
     }
-    const type = isPunchedIn ? 'OUT' : 'IN';
+    // edited by Bindhu 28-11-2026: the server's answer showed a punch of the last minute (biometric / web): no punch —
+    // the button is now grey with the countdown, so the person sees why
+    if (punchGapLeft() > 0) {
+      setCancelTrigger((t) => t + 1);
+      return;
+    }
+    // end
+    // edited by Bindhu 28-11-2026: the server's answer changed the button (e.g. a biometric punch): don't punch the
+    // other way than the person swiped — the button now shows the right one; they swipe again
+    if (punchedInRef.current !== swipedIn) {
+      setCancelTrigger((t) => t + 1);
+      showAlert('info', 'Status Updated', punchedInRef.current
+        ? 'You are already checked in (punch from another device). Swipe again to Check Out.'
+        : 'You are already checked out (punch from another device). Swipe again to Check In.');
+      return;
+    }
+    const type = punchedInRef.current ? 'OUT' : 'IN';
+    // end
     selfieNeeded.current = !!verdict.selfie;
     if (verdict.selfie && fromSelfieButton) {
       setSelfieFor(type);
@@ -798,6 +904,8 @@ const HomeScreen = ({ navigation, route }) => {
       // 3. Update UI state immediately — the punch is saved, so the button is
       //    released now; location, address and sync finish in the background
       const isNowIn = type === 'IN';
+      punchedInRef.current = isNowIn; // edited by Bindhu 28-11-2026 // end
+      noteLastPunch([{ punch_time: punchTime }]); // edited by Bindhu 28-11-2026: 1-minute gap starts now // end
       setIsPunchedIn(isNowIn);
       if (isNowIn) {
         setPunchInTime(new Date(punchTime));
@@ -863,7 +971,7 @@ const HomeScreen = ({ navigation, route }) => {
     const dur = getWorkDuration();
     const msgs = [];
 
-    if (!dur || statusPending) return msgs;
+    if (!dur) return msgs;
 
     const { hours, minutes } = dur;
     msgs.push({
@@ -950,20 +1058,21 @@ const HomeScreen = ({ navigation, route }) => {
           <View style={[styles.punchCard, { backgroundColor: theme.card }]}>
 
             {/* Status row — only shown when punched in and time is known */}
-            {isPunchedIn && !!punchInTime && !statusPending && (
+            {isPunchedIn && !!punchInTime && (
               <View style={styles.punchStatusRow}>
                 <View style={[styles.punchDot, { backgroundColor: '#39B54A' }]} />
-                <Text style={[styles.punchStatusText, { color: '#2E7D32' }]}>
+                {/* edited by Bindhu 28-11-2026: one line on every phone / font size (iOS Larger Text, Bold Text): shrinks, never wraps */}
+                <Text style={[styles.punchStatusText, { color: '#2E7D32', flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
                   {`Checked in at ${format(punchInTime, 'hh:mm a')}`}
                 </Text>
               </View>
             )}
 
-            {/* Action title */}
-            <Text style={[styles.punchActionTitle, { color: punching || statusPending ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]}>
+            {/* Action title — grey during the 1-minute gap after a punch (edited by Bindhu 28-11-2026) */}
+            <Text style={[styles.punchActionTitle, { color: punching || cooldownMs > 0 ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {punching
                 ? (punchingType === 'OUT' ? 'Checking Out…' : 'Checking In…')
-                : statusPending ? 'Checking…' : (isPunchedIn ? 'Check Out' : 'Check In')}
+                : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
             {/* Swipe — or, for a selfie employee, one tap that opens the front camera */}
@@ -971,23 +1080,43 @@ const HomeScreen = ({ navigation, route }) => {
               {selfieMode ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  disabled={punching || checkingPunch || statusPending}
+                  disabled={punching || checkingPunch || cooldownMs > 0}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: punching || checkingPunch || cooldownMs > 0, busy: punching || checkingPunch }}
                   onPress={() => handleSwipeComplete(true)}
-                  accessibilityLabel={`Take selfie to ${isPunchedIn ? 'check out' : 'check in'}`}
+                  accessibilityLabel={cooldownMs > 0
+                    ? `${isPunchedIn ? 'Check Out' : 'Check In'} available in ${fmtGap(cooldownMs)}. One minute is needed between punches.`
+                    : `Take selfie to ${isPunchedIn ? 'check out' : 'check in'}`}
                   style={[styles.selfieBtn, {
                     height: SWIPE_TRACK_HEIGHT,
-                    backgroundColor: statusPending ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A'),
+                    backgroundColor: cooldownMs > 0 && !punching ? '#94A3B8' : (isPunchedIn ? '#E91E63' : '#39B54A'),
                     opacity: punching || checkingPunch ? 0.75 : 1,
                   }]}
                 >
                   {punching || checkingPunch ? (
                     <ActivityIndicator color="#FFF" />
+                  ) : cooldownMs > 0 ? (
+                    // edited by Bindhu 28-11-2026: the 1-minute gap — "Check Out in 0:42", one line on every phone
+                    <>
+                      <Timer color="#FFF" size={moderateScale(22)} />
+                      {/* minWidth 0 lets the box shrink below its text's full width, so iOS's adjustsFontSizeToFit gets a
+                          real width to fit into (otherwise the text could push past the button on narrow iPhones) */}
+                      <View style={styles.selfieTextBox}>
+                        <Text style={[styles.selfieBtnText, { fontVariant: ['tabular-nums'] }]} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.6}>
+                          {`${isPunchedIn ? 'Check Out' : 'Check In'} in ${fmtGap(cooldownMs)}`}
+                        </Text>
+                        <Text style={styles.selfieGapNote} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.75}>
+                          1 min between punches
+                        </Text>
+                      </View>
+                    </>
+                    // end
                   ) : (
                     <>
                       <Camera color="#FFF" size={moderateScale(22)} />
                       {/* One line on the narrowest phones (shrinks rather than wraps) */}
-                      <Text style={styles.selfieBtnText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-                        {statusPending ? 'Checking…' : `Take selfie to ${isPunchedIn ? 'Check Out' : 'Check In'}`}
+                      <Text style={styles.selfieBtnText} numberOfLines={1} ellipsizeMode="tail" adjustsFontSizeToFit minimumFontScale={0.65}>
+                        {`Take selfie to ${isPunchedIn ? 'Check Out' : 'Check In'}`}
                       </Text>
                     </>
                   )}
@@ -1002,7 +1131,7 @@ const HomeScreen = ({ navigation, route }) => {
                 trackHeight={SWIPE_TRACK_HEIGHT}
                 locationName={isPunchedIn ? punchInAddress : ''}
                 punchTime={isPunchedIn && punchInTime ? format(punchInTime, 'hh:mm a') : null}
-                statusPending={statusPending}
+                cooldownText={cooldownMs > 0 ? fmtGap(cooldownMs) : null}
                 onDragStart={() => setSwipeDragging(true)}
                 onDragEnd={() => setSwipeDragging(false)}
               />
@@ -1195,6 +1324,8 @@ const styles = StyleSheet.create({
     gap: moderateScale(10), ...SHADOWS.light,
   },
   selfieBtnText: { color: '#FFF', fontSize: moderateScale(16), fontWeight: '800', flexShrink: 1 },
+  selfieGapNote: { color: '#FFF', fontSize: moderateScale(10), fontWeight: '600', opacity: 0.9, marginTop: 2 }, // edited by Bindhu 28-11-2026 // end
+  selfieTextBox: { flexShrink: 1, minWidth: 0, alignItems: 'center' }, // edited by Bindhu 28-11-2026 // end
   punchActionTitle: {
     fontSize: moderateScale(22),
     fontWeight: '800',

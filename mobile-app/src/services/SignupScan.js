@@ -3,7 +3,7 @@ import { API_ENDPOINTS } from '../constants/Config';
 
 // Scanning documents during self sign-up (no login yet): the photo is read on the server (rizo-revamp
 // api/mobile/signup/read-document — OCR + rules, nothing stored) and the sign-up's empty boxes are filled.
-// GRTL / MYPY only. What the person typed is never overwritten; a different or unsure reading is offered with "Use".
+// Rizo-new companies (the server decides: $doCompanyCodes) only. What the person typed is never overwritten; a different or unsure reading is offered with "Use".
 
 // Sign-up has no login: whether this company is on the new Rizo server comes with its countries list
 // (newapp/countries → rizo_new, decided by the server), saved here by SignupScreen for the code it was asked for.

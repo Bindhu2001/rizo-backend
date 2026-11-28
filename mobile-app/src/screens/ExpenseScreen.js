@@ -596,7 +596,7 @@ const ExpenseScreen = ({ navigation, route }) => {
           <KeyboardSafeView behavior={KEYBOARD_AVOID_BEHAVIOR} keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={[s.scroll, { paddingBottom: bottomPad }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="none">
 
-            {/* Bill first: attaching it fills Amount / Date / Vendor below (GRTL / MYPY) */}
+            {/* Bill first: attaching it fills Amount / Date / Vendor below (Rizo-new companies (the server decides: $doCompanyCodes)) */}
             <View style={s.fileBox}>
               <Text style={[s.label, { color: theme.textMuted }]}>Bill / Receipt</Text>
               {attachedFiles.length === 0 && (
