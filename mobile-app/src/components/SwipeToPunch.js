@@ -23,7 +23,7 @@ const SwipeToPunch = ({
   punchTime = null,
   // Check In or Check Out not known yet (the server is being asked): grey, no swiping, "Checking status..."
   statusPending = false,
-  // edited by Bindhu 28-11-2026: 1 minute after the last punch (any source): the text to show, e.g. "Checked in · wait 0:42"
+  // edited by Bindhu 28-11-2026: 1 minute after the last punch (any source): the text to show, e.g. "Please wait 0:42"
   // — grey, no swiping, countdown
   cooldownText = null,
   // end
@@ -143,7 +143,7 @@ const SwipeToPunch = ({
     textVal = 'Checking status...';
   }
   // edited by Bindhu 28-11-2026: the 1-minute wait after a punch — grey track, timer knob, and the text the screen gives
-  // (cooldownText: "Checked in · wait 0:42" — what was just done, then the wait)
+  // (cooldownText: "Please wait 0:42" — only the wait; the title above shows the next action in grey)
   const cooling = !!cooldownText && !loading && !statusPending;
   if (cooling) {
     trackColor = theme.isDark ? '#2A2F36' : '#F1F5F9';

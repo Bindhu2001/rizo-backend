@@ -378,9 +378,10 @@ const HomeScreen = ({ navigation, route }) => {
     const s = Math.ceil(ms / 1000);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   };
-  // The gray button's text during that minute: what was just done, then the wait — "Checked in · wait 0:42"
-  // (punched in now = it was a check-in). Not "Check Out in 0:42", which read as if it would check out by itself.
-  const gapText = (ms) => `${isPunchedIn ? 'Checked in' : 'Checked out'} · wait ${fmtGap(ms)}`;
+  // The gray button's text during that minute: only the wait — "Please wait 0:42". The status line above already says
+  // "Checked in at …" and the title the next action, so "Checked in" isn't repeated a third time; and not "Check Out in
+  // 0:42", which read as if it would check out by itself.
+  const gapText = (ms) => `Please wait ${fmtGap(ms)}`;
   // The last punch's place for the second line; nothing while it is still being looked up
   const gapLocation = /^resolving/i.test(lastPunchAddress) ? '' : lastPunchAddress;
   // end
@@ -1105,23 +1106,12 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
             )}
 
-            {/* Action title (edited by Bindhu 28-11-2026): during the 1-minute gap after a punch it says what was just done —
-                "Checked In ✓" green / "Checked Out ✓" pink — matching the button ("Checked in · wait 0:42"); showing the
-                next action ("Check Out") there while the button said "Checked in" was confusing. After the minute: the
-                next action as before. */}
-            <Text
-              style={[styles.punchActionTitle, {
-                color: punching ? theme.textMuted
-                  : cooldownMs > 0 ? (isPunchedIn ? '#39B54A' : '#E91E63')
-                  : (isPunchedIn ? '#E91E63' : '#39B54A'),
-              }]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              minimumFontScale={0.75}
-            >
+            {/* Action title: the next action — grey during the 1-minute gap after a punch (edited by Bindhu 28-11-2026: the
+                status line above already says "Checked in at …", so the title doesn't repeat it, and the button only
+                says "Please wait 0:42") */}
+            <Text style={[styles.punchActionTitle, { color: punching || cooldownMs > 0 ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
               {punching
                 ? (punchingType === 'OUT' ? 'Checking Out…' : 'Checking In…')
-                : cooldownMs > 0 ? (isPunchedIn ? 'Checked In ✓' : 'Checked Out ✓')
                 : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
