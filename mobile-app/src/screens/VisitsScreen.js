@@ -84,12 +84,18 @@ const normalizeVisit = (v) => {
     let status = 'COMPLETED';
     if (!inPunch && !outPunch) status = 'REACHED';
     else if (inPunch && !outPunch) status = 'step_in';
+    // edited by Bindhu 28-11-2026: contact number / person / purpose can be filled (or changed) at STEP IN, not only at
+    // START — the server groups the visit from the START row, so take the newest filled value from any of its punches
+    const latest = (field) => {
+      const filled = [startPunch, inPunch, outPunch].filter(p => p && String(p[field] ?? '').trim() !== '');
+      return filled.length ? filled[filled.length - 1][field] : (v[field] || '');
+    };
     return {
       id: startPunch?.mob_user_locations_pkey || (String(v.customer_name) + String(v.visit_date)),
       client_name: v.customer_name || '',
-      contact_number: v.contact_number || '',
-      contact_person: v.contact_person || '',
-      purpose: v.purpose || '',
+      contact_number: latest('contact_number'),
+      contact_person: latest('contact_person'),
+      purpose: latest('purpose'),
       location: startPunch?.location || '',
       start_time: startPunch?.created_time || '',
       step_in_time: inPunch?.created_time || '',
