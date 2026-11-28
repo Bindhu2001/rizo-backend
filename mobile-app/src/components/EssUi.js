@@ -153,7 +153,7 @@ export const EmptyState = ({ text }) => {
   const theme = useTheme();
   return (
     <View style={s.empty}>
-      <Text style={{ fontSize: 36, marginBottom: 8 }}>✅</Text>
+      <Text style={{ fontSize: moderateScale(36), marginBottom: 8 }}>✅</Text>
       <Text style={[s.emptyText, { color: theme.textMuted }]}>{text}</Text>
     </View>
   );

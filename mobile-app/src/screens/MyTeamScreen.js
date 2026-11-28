@@ -191,7 +191,8 @@ const MyTeamScreen = ({ navigation }) => {
         ) : renderStatus(p)}
         {!!selfie && (
           <View style={{ marginLeft: moderateScale(10) }}>
-            <SelfieThumb selfie={selfie} name={p.name} size={moderateScale(34)} />
+            {/* Round and the size of the avatar on the left (components/TeamSelfie.js); a tap opens the photo */}
+            <SelfieThumb selfie={selfie} name={p.name} size={moderateScale(38)} />
           </View>
         )}
         {listable && (

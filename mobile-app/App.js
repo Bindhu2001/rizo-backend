@@ -46,7 +46,7 @@ import OfflineBanner from './src/components/OfflineBanner';
 import { installTapRecorder } from './src/services/TapRecorder';
 import { startAuditTrail, setAuditScreen } from './src/services/AuditTrail';
 import { tabBarHeight, tabBarBottomPad } from './src/components/tabBarLayout';
-import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH } from './src/components/Theme';
+import { SHADOWS, LARGE_SCREEN_BREAKPOINT, LARGE_SCREEN_CAPPED_WIDTH, moderateScale } from './src/components/Theme';
 import { ThemeProvider, useTheme } from './src/components/ThemeContext';
 import { initDB, getLoggedUser } from './src/services/LocalDB';
 import * as SQLite from 'expo-sqlite';
@@ -94,11 +94,14 @@ function TabNavigator({ route }) {
           ...SHADOWS.medium,
           elevation: 15,
         },
+        // edited by Bindhu 28-11-2026: the label scales with the screen and does not grow with the phone's font setting —
+        // a quarter of the bar can't hold "Approvals" at the largest system font (it overflowed) // end
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: moderateScale(10),
           fontWeight: '700',
           marginTop: 2,
         },
+        tabBarAllowFontScaling: false,
       }}
     >
       <Tab.Screen

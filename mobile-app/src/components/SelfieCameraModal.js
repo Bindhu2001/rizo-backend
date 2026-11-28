@@ -132,7 +132,8 @@ const PREVIEW = moderateScale(280);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#0B1220', paddingHorizontal: 20 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  title: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  // Font sizes scale with the screen (moderateScale), as the rest of the app — edited by Bindhu 28-11-2026 // end
+  title: { color: '#FFF', fontSize: moderateScale(18), fontWeight: '700' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   previewWrap: {
     width: PREVIEW, height: PREVIEW, borderRadius: PREVIEW / 2, overflow: 'hidden',
@@ -140,14 +141,14 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   preview: { width: '100%', height: '100%' },
-  hint: { color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: 18 },
+  hint: { color: 'rgba(255,255,255,0.75)', fontSize: moderateScale(14), marginTop: 18 },
   shutter: {
     marginTop: 36, width: 76, height: 76, borderRadius: 38, backgroundColor: '#FFF',
     alignItems: 'center', justifyContent: 'center', borderWidth: 5, borderColor: 'rgba(255,255,255,0.35)',
   },
   messageBox: { width: '100%', alignItems: 'center', paddingHorizontal: 8 },
-  messageTitle: { color: '#FFF', fontSize: 18, fontWeight: '700', marginBottom: 10, textAlign: 'center' },
-  messageText: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 24 },
+  messageTitle: { color: '#FFF', fontSize: moderateScale(18), fontWeight: '700', marginBottom: 10, textAlign: 'center' },
+  messageText: { color: 'rgba(255,255,255,0.8)', fontSize: moderateScale(14), lineHeight: moderateScale(20), textAlign: 'center', marginBottom: 24 },
   primaryBtn: { backgroundColor: COLORS.primaryDeep, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 28, minWidth: 220, alignItems: 'center' },
-  primaryBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  primaryBtnText: { color: '#FFF', fontSize: moderateScale(15), fontWeight: '700' },
 });

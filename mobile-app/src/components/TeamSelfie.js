@@ -32,6 +32,7 @@ export const SelfiePhoto = ({ selfie, size, round, hideTag, style }) => {
         <Image
           source={source}
           style={box}
+          resizeMode="cover"
           onError={() => { retryPhoto(source).then((again) => { if (!again) setFailed(true); }); }}
         />
       )}
@@ -44,13 +45,40 @@ export const SelfiePhoto = ({ selfie, size, round, hideTag, style }) => {
   );
 };
 
-/** Tap target for a selfie on My Team: a small photo that opens large with the name and time */
+/**
+ * A selfie as a round face like an avatar, ringed green for a check-in and red for a check-out (a corner tag would be
+ * cut off by the circle). The round outer frame does the clipping — a reliable circle on Android and iOS alike (a
+ * photo clipped inside a bordered box could show square on some Android phones). Used by the Home "My Team" tile and
+ * the My Team page.
+ */
+export const SelfieFace = ({ selfie, size, style }) => {
+  const ring = Math.max(2, Math.round(size * 0.07));
+  return (
+    <View
+      style={[
+        styles.ring,
+        { width: size, height: size, borderRadius: size / 2, borderWidth: ring, borderColor: selfie.direction === 'OUT' ? '#E11D48' : '#059669' },
+        style,
+      ]}
+    >
+      <SelfiePhoto selfie={selfie} size={size - ring * 2} round hideTag />
+    </View>
+  );
+};
+
+/** Tap target for a selfie on My Team: the round face (SelfieFace); a tap opens it large with the name and time, as before */
 export const SelfieThumb = ({ selfie, name, size = moderateScale(40) }) => {
   const [open, setOpen] = useState(false);
+  const out = selfie.direction === 'OUT';
   return (
     <>
-      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.8} accessibilityLabel={`${name}'s punch selfie`}>
-        <SelfiePhoto selfie={selfie} size={size} />
+      <TouchableOpacity
+        onPress={() => setOpen(true)}
+        activeOpacity={0.8}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={`${name}'s check-${out ? 'out' : 'in'} selfie at ${selfie.time}. Opens the photo.`}
+      >
+        <SelfieFace selfie={selfie} size={size} />
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)} statusBarTranslucent>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
@@ -70,6 +98,7 @@ export const SelfieThumb = ({ selfie, name, size = moderateScale(40) }) => {
 
 const styles = StyleSheet.create({
   frame: { overflow: 'hidden', backgroundColor: '#E2E8F0' },
+  ring: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#E2E8F0' },
   tag: { position: 'absolute', bottom: 2, left: 2, borderRadius: 4, paddingHorizontal: 3, paddingVertical: 0.5 },
   tagText: { color: '#FFF', fontSize: moderateScale(8), fontWeight: '900' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center' },

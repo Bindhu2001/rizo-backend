@@ -6,7 +6,7 @@ import { Users, ChevronRight } from 'lucide-react-native';
 import { SHADOWS, moderateScale } from './Theme';
 import { useTheme } from './ThemeContext';
 import { TeamApi, PunchSelfieApi } from '../services/RevampApi';
-import { SelfiePhoto, latestSelfieByEmp } from './TeamSelfie';
+import { SelfieFace, latestSelfieByEmp } from './TeamSelfie';
 
 // Selfie faces shown on the tile before "+N"
 const TILE_SELFIES = 4;
@@ -103,13 +103,12 @@ const TeamTile = ({ user }) => {
       {selfies.length > 0 && (
         <View style={s.faces} accessibilityLabel={`${selfies.length} punch ${selfies.length === 1 ? 'selfie' : 'selfies'} today`}>
           {selfies.slice(0, TILE_SELFIES).map((sf, i) => (
-            <SelfiePhoto
+            // Round like an avatar, ringed green (in) / red (out) — the same face as the My Team page (TeamSelfie.js)
+            <SelfieFace
               key={sf.id}
               selfie={sf}
               size={faceSize}
-              round
-              hideTag
-              style={[s.face, { borderColor: theme.card, marginLeft: i ? -faceSize * 0.35 : 0 }]}
+              style={{ marginLeft: i ? -faceSize * 0.35 : 0 }}
             />
           ))}
           {selfies.length > TILE_SELFIES && (
