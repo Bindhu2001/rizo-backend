@@ -6,7 +6,7 @@ import { rizoNewFor } from './CompanyFeatures';
 
 // The app's audit trail: every screen opened, every tap, every field filled and the actions themselves (punch,
 // visit steps …) of the signed-in employee, for the company's Audit Trail report (rizo-revamp
-// /api/mobile/audit-events → audit_log, "Mobile App"). GRTL / MYPY only — the other companies have no audit trail.
+// /api/mobile/audit-events → audit_log, "Mobile App"). Rizo-new companies (the server decides: $doCompanyCodes) only — the other companies have no audit trail.
 //
 //   record()  keeps the event in memory and writes it to the phone's database within a second (in one statement,
 //             so it never holds up a punch being saved); offline the same — `offline` says whether the phone had
@@ -39,7 +39,7 @@ const newId = () => {
   return `${Date.now().toString(36)}-${seq.toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-/** The signed-in GRTL / MYPY employee's user_id, else null (read again at most every USER_TTL_MS) */
+/** The signed-in employee's user_id when their company is Rizo-new (the server decides: $doCompanyCodes), else null (read again at most every USER_TTL_MS) */
 const currentUser = async (force) => {
   if (!force && Date.now() - user.at < USER_TTL_MS) return user.id;
   let id = null;
@@ -126,7 +126,7 @@ export const uploadAudit = async () => {
       if (events.length < UPLOAD_BATCH) return;
     }
   } catch (e) {
-    // 403: this company has no audit trail (no longer GRTL / MYPY on the server) — keep quiet until next time
+    // 403: this company has no audit trail (no longer a Rizo-new company — the server decides: $doCompanyCodes) — keep quiet until next time
   } finally {
     uploading = false;
   }

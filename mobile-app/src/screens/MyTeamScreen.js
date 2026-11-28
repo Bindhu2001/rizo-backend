@@ -19,7 +19,7 @@ import { SelfieThumb, latestSelfieByEmp } from '../components/TeamSelfie';
 // Each shows "N members · 3 in · 1 on leave · 1 not punched in ⌄"; the arrow opens the list — names, and per
 // person: leave type + part of the day (approved leave), "In · 09:32" with "Out · 18:05" below it once their last
 // punch is an OUT, "Not punched in · Shift 09:30", "Week off" or "Holiday", for their current shift. The arrow on a
-// person's row opens all their punches of that shift date under the name (components/TeamPunches.js). GRTL / MYPY:
+// person's row opens all their punches of that shift date under the name (components/TeamPunches.js). Rizo-new companies (the server decides: $doCompanyCodes):
 // the person's latest punch selfie today beside the status — tap for the large photo (components/TeamSelfie.js).
 // An older server sends no out time: no "Out" line and no arrow on the rows.
 

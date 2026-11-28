@@ -3,7 +3,7 @@ import { BillReaderApi, isNetworkError } from './RevampApi';
 
 // The expense bill reader in the app: the attached bill (photo or PDF) is read on the server
 // (rizo-revamp api/document-reader/bill — OCR + rules, no AI) and the claim form is filled from it.
-//   - GRTL / MYPY only (the companies on the new server); others attach the bill as before.
+//   - Rizo-new companies (the server decides: $doCompanyCodes) only (the companies on the new server); others attach the bill as before.
 //   - Only EMPTY fields are filled; a reading the server is unsure of, or one that differs from what was
 //     typed, is offered with a "Use" button instead. The person checks everything before submitting.
 

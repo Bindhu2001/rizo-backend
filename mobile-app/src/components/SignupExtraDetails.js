@@ -190,7 +190,7 @@ export default function SignupExtraDetails({ value, onChange, showAlert, selfNam
   const [reading, setReading] = useState(false);
   const [openChoice, setOpenChoice] = useState(null);
   const section = SECTIONS.find((s) => s.key === editing?.section);
-  // The attached document photo being read (GRTL / MYPY): its empty boxes are filled, the person checks them
+  // The attached document photo being read (Rizo-new companies (the server decides: $doCompanyCodes)): its empty boxes are filled, the person checks them
   const [docRead, setDocRead] = useState(null);
   const readSeq = useRef(0);
   const stopReading = () => { readSeq.current += 1; setDocRead(null); };

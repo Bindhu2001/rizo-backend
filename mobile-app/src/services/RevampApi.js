@@ -106,7 +106,7 @@ export const HrQueriesApi = {
   withdraw: (id) => request('post', `/hr-queries/${id}/withdraw`),
 };
 
-// The app's audit trail (services/AuditTrail.js) → the company's Audit Trail report. Only GRTL / MYPY have it.
+// The app's audit trail (services/AuditTrail.js) → the company's Audit Trail report. Only Rizo-new companies (the server decides: $doCompanyCodes) have it.
 export const AuditApi = {
   // events: [{ id, at, label, screen, details, offline }] → { accepted: [id], dropped: [id] }
   send: (events) => request('post', '/audit-events', { events }),
@@ -181,14 +181,14 @@ export const AllocationsApi = {
 // photo (JPEG), or no photo and no_selfie_reason. Sending the same punch again updates it.
 export const PunchSelfieApi = {
   upload: (form) => request('post', '/punch-selfie', form),
-  // Whether the signed-in employee must take a selfie with each punch (false outside GRTL / MYPY, without a call)
+  // Whether the signed-in employee must take a selfie with each punch (false outside Rizo-new companies (the server decides: $doCompanyCodes), without a call)
   required: async () => {
     const user = await getLoggedUser();
     if (!(await rizoNewFor(user?.user_id))) return false;
     return !!(await request('get', '/punch-selfie'))?.required;
   },
   // Today's selfie punches of the caller's team (the same people My Team lists), newest first:
-  // [{ id, empFkey, empId, time, direction, source, hasPhoto }]. Only GRTL / MYPY have selfie punch.
+  // [{ id, empFkey, empId, time, direction, source, hasPhoto }]. Only Rizo-new companies (the server decides: $doCompanyCodes) have selfie punch.
   teamToday: async () => {
     const user = await getLoggedUser();
     if (!(await rizoNewFor(user?.user_id))) return [];

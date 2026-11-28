@@ -4,7 +4,7 @@ import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { initDB } from './LocalDB';
 import { PunchSelfieApi } from './RevampApi';
 
-// Selfie punch — Access page Punch Type "Mobile with selfie" (punchtype F, GRTL / MYPY only; rizo-revamp
+// Selfie punch — Access page Punch Type "Mobile with selfie" (punchtype F, Rizo-new companies (the server decides: $doCompanyCodes) only; rizo-revamp
 // lib/punchSelfie.ts). Each punch takes a front-camera photo (components/SelfieCameraModal.js). The photo is kept in
 // the app's own folder and queued in LocalDB punch_selfies with the punch's time, then uploaded by SyncService after
 // the punches — so an offline punch's selfie goes up once the phone is back online (the server takes up to 8 days).

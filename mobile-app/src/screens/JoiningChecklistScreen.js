@@ -15,7 +15,7 @@ import { recordAudit } from '../services/AuditTrail';
 import { EssScreen, StatusChip, Card, InfoRows, ActionButton, Loading, FieldLabel, Input, Select, DateSelect, FormSheet } from '../components/EssUi';
 import { useFooterPadding } from '../components/KeyboardDoneBar';
 
-// Requests › Joining Checklist (GRTL / MYPY): the employee's own PF / ESI / WWF status — the same rules as HR's New
+// Requests › Joining Checklist (Rizo-new companies (the server decides: $doCompanyCodes)): the employee's own PF / ESI / WWF status — the same rules as HR's New
 // Joiners Checklist — the documents HR still needs, and Add a document: photograph it (or pick it), the server reads
 // it (services/DocumentReader.js) and fills the form, the employee checks it and sends it to HR.
 
