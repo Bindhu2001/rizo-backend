@@ -1105,10 +1105,23 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
             )}
 
-            {/* Action title — grey during the 1-minute gap after a punch (edited by Bindhu 28-11-2026) */}
-            <Text style={[styles.punchActionTitle, { color: punching || cooldownMs > 0 ? theme.textMuted : (isPunchedIn ? '#E91E63' : '#39B54A') }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+            {/* Action title (edited by Bindhu 28-11-2026): during the 1-minute gap after a punch it says what was just done —
+                "Checked In ✓" green / "Checked Out ✓" pink — matching the button ("Checked in · wait 0:42"); showing the
+                next action ("Check Out") there while the button said "Checked in" was confusing. After the minute: the
+                next action as before. */}
+            <Text
+              style={[styles.punchActionTitle, {
+                color: punching ? theme.textMuted
+                  : cooldownMs > 0 ? (isPunchedIn ? '#39B54A' : '#E91E63')
+                  : (isPunchedIn ? '#E91E63' : '#39B54A'),
+              }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+            >
               {punching
                 ? (punchingType === 'OUT' ? 'Checking Out…' : 'Checking In…')
+                : cooldownMs > 0 ? (isPunchedIn ? 'Checked In ✓' : 'Checked Out ✓')
                 : (isPunchedIn ? 'Check Out' : 'Check In')}
             </Text>
 
